@@ -1,0 +1,1 @@
+Open Sans Regular map glyphs. Source: CARTO public GL font service. Original font license: Apache 2.0; see /licenses/open-sans.txt. Glyphs are self-hosted to keep map labels available independently of third-party font endpoints.

@@ -1,0 +1,16 @@
+{
+  "workspaceId": "1eafa2e8-f162-4243-8670-7b45438316ec",
+  "projectId": "af38443d-fff6-48a5-813f-06cbac886d2b",
+  "projectName": "ob-havo-ecmwf",
+  "environmentId": "1696508c-7a79-4bd5-8a14-f1114cd0c8f3",
+  "environmentName": "production",
+  "serviceId": "ce27b375-ce8e-4851-8668-8f8ca0dffba8",
+  "serviceName": "ob-havo-bot",
+  "dockerfilePath": "telegram/Dockerfile",
+  "healthcheckPath": "/healthz",
+  "externalDomain": "ob-havo-bot-production.up.railway.app",
+  "externalDomainApproval": "approved",
+  "deployment": null,
+  "botUsername": "ObHavo_ECMWF_bot",
+  "repository": "otabekvafoev92-del/ob-havo-ecmwf"
+}
