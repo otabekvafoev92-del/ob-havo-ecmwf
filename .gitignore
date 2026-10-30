@@ -1,3 +1,5 @@
 node_modules/
 site/data/
-tmp/
+site/prob/
+*.npz
+__pycache__/

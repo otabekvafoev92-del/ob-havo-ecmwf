@@ -6,7 +6,7 @@
 // Everything is read from the website built by GitHub Actions (SITE_URL/prob/manifest.json and the .mp4 files),
 // so the bot needs no database: the choice travels inside the button data.
 // Settings (Workers → Settings → Variables): BOT_TOKEN (secret), SITE_URL (e.g. https://name.github.io/repo).
-// Connect once: https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=<worker URL>
+// Connect once: open <worker URL>/setup in a browser (sets the webhook and the command menu).
 
 const NAMES = {
   cis: { uz: 'MDH va Turkiya', ru: 'СНГ и Турция', tr: 'BDT ve Türkiye' }, UZ: { uz: 'O‘zbekiston', ru: 'Узбекистан', tr: 'Özbekistan' },
@@ -17,15 +17,22 @@ const NAMES = {
   RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' },
 };
 const T = {
-  uz: { hi: 'Assalomu alaykum! Tilni tanlang:', pick: 'Davlatni tanlang:', menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 3D globus', back: '↩ Davlatlar', none: 'Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.' },
-  ru: { hi: 'Здравствуйте! Выберите язык:', pick: 'Выберите страну:', menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 3D-глобус', back: '↩ Страны', none: 'Данные ещё не готовы, попробуйте чуть позже.' },
-  tr: { hi: 'Merhaba! Dil seçin:', pick: 'Ülke seçin:', menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 3B küre', back: '↩ Ülkeler', none: 'Veriler henüz hazır değil, biraz sonra deneyin.' },
+  uz: { d15: '15 kunlik prognoz', hi: 'Assalomu alaykum! Tilni tanlang:', pick: 'Davlatni tanlang:', menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 3D globus', back: '↩ Davlatlar', none: 'Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.' },
+  ru: { d15: 'прогноз на 15 дней', hi: 'Здравствуйте! Выберите язык:', pick: 'Выберите страну:', menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 3D-глобус', back: '↩ Страны', none: 'Данные ещё не готовы, попробуйте чуть позже.' },
+  tr: { d15: '15 günlük tahmin', hi: 'Merhaba! Dil seçin:', pick: 'Ülke seçin:', menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 3B küre', back: '↩ Ülkeler', none: 'Veriler henüz hazır değil, biraz sonra deneyin.' },
 };
 const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], tr: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] };
 
 export default {
   async fetch(req, env) {
-    if (req.method !== 'POST') return new Response('ok');
+    const url = new URL(req.url);
+    if (req.method === 'GET' && url.pathname === '/setup') {
+      const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, allowed_updates: ['message', 'callback_query'] });
+      await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga (O‘zbekiston)' }, { command: 'prognoz', description: '15 kunlik prognoz' }, { command: 'today', description: 'Сегодня и завтра' }] });
+      const me = await tg(env, 'getMe', {});
+      return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    }
+    if (req.method !== 'POST') return new Response('Osmon bot is running. Open /setup once to connect it to Telegram.');
     const up = await req.json().catch(() => ({}));
     try { await handle(up, env); } catch (e) { console.log('error', e && e.stack); }
     return new Response('ok');
@@ -89,7 +96,7 @@ async function handle(up, env) {
     const base = env.SITE_URL.replace(/\/$/, '') + '/prob/';
     const vids = ['prob', 'temp', 'cloud'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
     const media = vids.map(v => ({ type: 'video', media: base + v.video, supports_streaming: true }));
-    media[0].caption = `<b>${NAMES[id][lang]}</b> · 15\n\n${dayLines(days, lang, today, 5)}`.slice(0, 1000);
+    media[0].caption = `<b>${NAMES[id][lang]}</b> · ${T[lang].d15}\n\n${dayLines(days, lang, today, 5)}`.slice(0, 1000);
     media[0].parse_mode = 'HTML';
     await tg(env, 'sendMediaGroup', { chat_id: chat, media });
     return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].menu, reply_markup: menuKb(env, lang, id) });
