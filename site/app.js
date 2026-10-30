@@ -83,7 +83,7 @@ const MON = { uz: ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen'
 const S = {
   lang: store.get('lang', 'uz'),
   layer: store.get('layer', 'temp'),
-  t: 0, playing: false, speed: 2, // forecast hours per second
+  t: 0, playing: false, speed: 1, // forecast hours per second (1× = one 6-h step every 6 s)
   A: null, B: null, pickTarget: 'A',
   exag: store.get('exag5', 3),
   fxPrecip: true, fxClouds: true, fxWind: true, windLvl: store.get('windLvl', '10m'), fxSun: store.get('sun', true), fxBorders: true,
@@ -1647,7 +1647,7 @@ function d5RecStart() {
   };
   const t0 = Math.max(0, D5.off + D5.idx.steps[0] - 3);
   D5.rec = { mr, cv, ctx: cv.getContext('2d'), W, H, speed: S.speed, end: G.tMax };
-  S.t = t0; S.speed = 12; setPlaying(true); syncTimeUI();
+  S.t = t0; S.speed = 6; setPlaying(true); syncTimeUI();
   mr.start(500); renderLegend();
 }
 function d5RecStop() { const r = D5.rec; if (!r) return; D5.rec = null; S.speed = r.speed; setPlaying(false); try { r.mr.stop(); } catch {} renderLegend(); }
@@ -1916,7 +1916,7 @@ const PROB_NAMES = { cis: { uz: 'MDH va Turkiya', ru: 'СНГ и Турция', 
   KZ: { uz: 'Qozog‘iston', ru: 'Казахстан', tr: 'Kazakistan' }, KG: { uz: 'Qirg‘iziston', ru: 'Кыргызстан', tr: 'Kırgızistan' }, TJ: { uz: 'Tojikiston', ru: 'Таджикистан', tr: 'Tacikistan' },
   TM: { uz: 'Turkmaniston', ru: 'Туркменистан', tr: 'Türkmenistan' }, AZ: { uz: 'Ozarbayjon', ru: 'Азербайджан', tr: 'Azerbaycan' }, AM: { uz: 'Armaniston', ru: 'Армения', tr: 'Ermenistan' },
   BY: { uz: 'Belarus', ru: 'Беларусь', tr: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', tr: 'Moldova' }, RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' } };
-const PROB = { M: null, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate', 1), product: store.get('probProduct', 'prob') };
+const PROB = { M: null, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate2', 0.5), product: store.get('probProduct', 'prob') };
 const PROB_UI = {
   uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
   ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
@@ -1972,7 +1972,7 @@ async function renderProbPage() {
       <input type="range" id="probSeek" min="0" max="${n - 1}" step="1" value="0" aria-label="${t.frame}">
       <button class="icon-btn" id="probNext" aria-label="+6 h">›</button>
       <span class="mono muted" id="probIdx">1 / ${n}</span>
-      <span class="seg small" id="probRate" aria-label="${t.speed}">${[0.5, 1, 2].map(r => `<button data-r="${r}" aria-pressed="${r === PROB.rate}">${r}×</button>`).join('')}</span>
+      <span class="seg small" id="probRate" aria-label="${t.speed}">${[0.25, 0.5, 1].map(r => `<button data-r="${r}" aria-pressed="${r === PROB.rate}">${r}×</button>`).join('')}</span>
       <button class="btn" id="probDl">${U.dl}</button> <a class="btn" id="probShare" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(probLink())}&text=${encodeURIComponent(t.title + ' · ' + PROB_NAMES[PROB.region][lang])}">${U.share}</a> <button class="btn" id="probCopy">${U.copy}</button> <span class="muted mono" id="probDlMsg"></span>
     </div>` : `<p class="muted">${t.none}</p>`}
     ${days && days.days ? `<section class="prob-days"><h2>${U.days}${days.city ? ' · ' + days.city : ''}</h2><ol id="probDays">${Object.entries(days.days).map(([d, txt]) => { const dt_ = new Date(d + 'T12:00:00Z'); return `<li data-d="${d}"${d < today ? ` class="past" title="${U.past}"` : ''}><b>${U.wd[dt_.getUTCDay()]}, ${String(dt_.getUTCDate()).padStart(2, '0')}.${String(dt_.getUTCMonth() + 1).padStart(2, '0')}</b><span>${txt}</span></li>`; }).join('')}</ol></section>` : ''}
@@ -1998,7 +1998,7 @@ async function renderProbPage() {
   seek.oninput = () => go(+seek.value);
   $('probPrev').onclick = () => go(frameOf() - 1); $('probNext').onclick = () => go(frameOf() + 1);
   $('probPlay').onclick = () => { if (v.paused) { v.play(); $('probPlay').textContent = '❚❚'; } else { v.pause(); $('probPlay').textContent = '▶'; } };
-  el.querySelectorAll('#probRate button').forEach(b => b.onclick = () => { PROB.rate = +b.dataset.r; store.set('probRate', PROB.rate); v.playbackRate = PROB.rate; el.querySelectorAll('#probRate button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+  el.querySelectorAll('#probRate button').forEach(b => b.onclick = () => { PROB.rate = +b.dataset.r; store.set('probRate2', PROB.rate); v.playbackRate = PROB.rate; el.querySelectorAll('#probRate button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
 }
 
 /* ---------- text pages ---------- */
