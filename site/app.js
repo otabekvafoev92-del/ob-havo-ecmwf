@@ -30,7 +30,7 @@ const I18N = {
     'fx.precip': 'Yomg‘ir va qor', 'fx.wind': 'Shamol oqimi', 'lvl.10m': 'Yer usti', 'lvl.850': '1,5 km', 'lvl.500': '5,5 km', 'lvl.250': '10 km',
     'lvl.title': 'Shamol balandligi: yer usti (10 m), 850 gPa (~1,5 km), 500 gPa (~5,5 km), 250 gPa (~10 km, reaktiv oqim)', 'windNow': 'Shamol (ECMWF)', 'dir': ['shim.', 'shim.-sharq', 'sharq', 'jan.-sharq', 'jan.', 'jan.-g‘arb', 'g‘arb', 'shim.-g‘arb'], 'fx.clouds': 'Bulutlar', 'fx.exag': 'Tog‘ balandligi', 'fx.sun': 'Kun va tun', 'fx.borders': 'Chegaralar',
     'view.globe': 'Butun dunyo', 'view.shot': 'Rasmni saqlash', 'view.tour': 'Sayohat: shaharlar bo‘ylab', 'view.fly': 'Nuqtaga uchish', 'view.top': 'Yuqoridan',
-    'glLost': 'Videokarta 3D sahnani to‘xtatdi (yuklama juda katta). Sahifani qayta yuklang.', 'glReload': 'Qayta yuklash', 'fx.more': '⚙ Sozlamalar', 'layer.d5': 'Ehtimollik · 15 kun', 'd5.title': 'Yog‘in ehtimolligi, 15 kun (6 model)', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 Videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'd5.outside': 'Mintaqadan tashqarida — ECMWF ma’lumotlari (10 kungacha).', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
+    'glLost': 'Videokarta 3D sahnani to‘xtatdi (yuklama juda katta). Sahifani qayta yuklang.', 'glReload': 'Qayta yuklash', 'vis.title': 'Saytga tashriflar', 'vis.today': 'bugun', 'vis.total': 'jami', 'fx.more': '⚙ Sozlamalar', 'layer.d5': 'Ehtimollik · 15 kun', 'd5.title': 'Yog‘in ehtimolligi, 15 kun (6 model)', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 Videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'd5.outside': 'Mintaqadan tashqarida — ECMWF ma’lumotlari (10 kungacha).', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
     'leg.relief': 'Sentinel-2 va NASA sun’iy yo‘ldosh tasviri, relyef', 'leg.temp': '2 m harorat, °C', 'leg.rain': 'So‘nggi 6 soatdagi yog‘in, mm', 'leg.wind': '10 m shamol tezligi, m/s (10 dan yuqori)', 'leg.sun': 'Quyosh nuri davomiyligi, 24 soatda, soat',
     'panel.point': 'Tanlangan nuqta', 'panel.more': 'Batafsil prognoz →',
     'mob.map': '⌖ Globus', 'mob.forecast': '☀ Prognoz', 'mob.menu': '☰ Joylar',
@@ -52,7 +52,7 @@ const I18N = {
     'fx.precip': 'Дождь и снег', 'fx.wind': 'Потоки ветра', 'lvl.10m': 'У земли', 'lvl.850': '1,5 км', 'lvl.500': '5,5 км', 'lvl.250': '10 км',
     'lvl.title': 'Высота ветра: у земли (10 м), 850 гПа (~1,5 км), 500 гПа (~5,5 км), 250 гПа (~10 км, струйное течение)', 'windNow': 'Ветер (ECMWF)', 'dir': ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'], 'fx.clouds': 'Облака', 'fx.exag': 'Высота гор', 'fx.sun': 'День и ночь', 'fx.borders': 'Границы',
     'view.globe': 'Весь мир', 'view.shot': 'Сохранить снимок', 'view.tour': 'Экскурсия по городам', 'view.fly': 'Перелететь к точке', 'view.top': 'Сверху',
-    'glLost': 'Видеокарта остановила 3D-сцену (слишком большая нагрузка). Перезагрузите страницу.', 'glReload': 'Перезагрузить', 'fx.more': '⚙ Настройки', 'layer.d5': 'Вероятность · 15 дней', 'd5.title': 'Вероятность осадков, 15 дней (6 моделей)', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'd5.outside': 'За пределами региона — данные ECMWF (до 10 дней).', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
+    'glLost': 'Видеокарта остановила 3D-сцену (слишком большая нагрузка). Перезагрузите страницу.', 'glReload': 'Перезагрузить', 'vis.title': 'Посещения сайта', 'vis.today': 'сегодня', 'vis.total': 'всего', 'fx.more': '⚙ Настройки', 'layer.d5': 'Вероятность · 15 дней', 'd5.title': 'Вероятность осадков, 15 дней (6 моделей)', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'd5.outside': 'За пределами региона — данные ECMWF (до 10 дней).', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
     'leg.relief': 'Спутниковые снимки Sentinel-2 и NASA, рельеф', 'leg.temp': 'Температура 2 м, °C', 'leg.rain': 'Осадки за 6 часов, мм', 'leg.wind': 'Ветер 10 м, м/с (от 10 и выше)', 'leg.sun': 'Солнечное сияние за 24 часа, ч',
     'panel.point': 'Выбранная точка', 'panel.more': 'Подробный прогноз →',
     'mob.map': '⌖ Глобус', 'mob.forecast': '☀ Прогноз', 'mob.menu': '☰ Места',
@@ -1314,7 +1314,7 @@ function updateUniforms(now) {
     if (S.layer === 'relief') { u.uAlpha.value = 0; continue; }
     const L = S.layer === 'd5' ? (D5.prod === 'temp' ? 'temp' : 'rain') : S.layer;
     // 5D: outside the multimodel box (and within ECMWF's 10 days) the globe shows ECMWF rain, so the world is not empty
-    if (S.layer === 'd5' && (src === 'reg' || D5.prod === 'cloud' || G.missing?.[L] || S.t > D.global.layers[L].steps.at(-1))) { u.uAlpha.value = 0; continue; }
+    if (S.layer === 'd5' && (D5.global || src === 'reg' || D5.prod === 'cloud' || G.missing?.[L] || S.t > D.global.layers[L].steps.at(-1))) { u.uAlpha.value = 0; continue; }
     if (S.layer === 'd5') { u.uMaskOn.value = 1; if (D5.idx) u.uMask.value.set(D5.idx.lon0, D5.idx.lat0 - (D5.idx.H - 1) * D5.idx.d, D5.idx.lon0 + (D5.idx.W - 1) * D5.idx.d, D5.idx.lat0); }
     const fr = frameAt(L, S.t);
     u.uA.value = classTex(src, L, fr.i0); u.uB.value = classTex(src, L, fr.i1);
@@ -1324,7 +1324,7 @@ function updateUniforms(now) {
   for (const m of mats.clouds) { const u = m.uniforms; u.uSun.value.copy(sv); u.uSunOn.value = sunOn; }
   CU.uTime.value = now / 1000;
   updateSky(sv, now);
-  const cOn = S.fxClouds;
+  const cOn = S.fxClouds && !(S.layer === 'd5' && D5.global);
   CU.uCMaskOn.value = S.layer === 'd5' ? 1 : 0;
   if (D5.idx) CU.uCMask.value.set(D5.idx.lon0, D5.idx.lat0 - (D5.idx.H - 1) * D5.idx.d, D5.idx.lon0 + (D5.idx.W - 1) * D5.idx.d, D5.idx.lat0);
   CU.uCOn.value = cOn ? 1 : 0; clouds.visible = cOn;
@@ -1501,11 +1501,11 @@ function setupPointer() {
 const D5 = { idx: null, img: [], tex: [], off: 0, prod: store.get('d5prod', 'all'), mesh: null, cloud: null, cv: null, cvI: -1, rec: null };
 const D5_VERT = /* glsl */`
 in vec3 aDir; in vec2 aUV;
-uniform sampler2D uA; uniform sampler2D uB; uniform float uF; uniform float uK; uniform float uBase; uniform int uMode;
+uniform sampler2D uA; uniform sampler2D uB; uniform float uF; uniform float uK; uniform float uBase; uniform int uMode; uniform float uGlobal;
 out vec3 vW; out vec3 vD; out float vP; out float vT; out float vC; out float vE;
 void main(){
   // soft edges: the data covers 33–82°N, 20–190°E only; fade out over ~3° instead of a hard cut
-  vE = smoothstep(0.0, 0.02, aUV.x) * smoothstep(1.0, 0.98, aUV.x) * smoothstep(0.0, 0.05, aUV.y) * smoothstep(1.0, 0.92, aUV.y);
+  vE = uGlobal > 0.5 ? 1.0 : smoothstep(0.0, 0.02, aUV.x) * smoothstep(1.0, 0.98, aUV.x) * smoothstep(0.0, 0.05, aUV.y) * smoothstep(1.0, 0.92, aUV.y);
   vec3 v = mix(texture(uA, aUV).rgb, texture(uB, aUV).rgb, uF) * 255.0;
   vP = v.r / 250.0; vT = v.g / 2.0 - 60.0; vC = v.b / 250.0;
   float h = uMode == 0 ? smoothstep(0.06, 1.0, vP) * uK : uMode == 1 ? 0.0 : vC * uK * 0.25;
@@ -1537,7 +1537,9 @@ void main(){
   outColor = vec4(c * lit, a * uOp);
 }`;
 function d5Geometry() {
-  const I = D5.idx, sx = MOBILE ? 2 : 1, NX = Math.floor((I.W - 1) / sx) + 1, NY = Math.floor((I.H - 1) / sx) + 1;
+  // a world-wide grid (0.5°) gets one extra column that wraps to the first, so there is no seam at 360°
+  const I = D5.idx, sx = MOBILE ? 2 : 1, NY = Math.floor((I.H - 1) / sx) + 1;
+  const NX = D5.global ? Math.floor(I.W / sx) + 1 : Math.floor((I.W - 1) / sx) + 1;
   const dir = new Float32Array(NX * NY * 3), uv = new Float32Array(NX * NY * 2);
   for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
     const gi = i * sx, gj = j * sx, k = j * NX + i, v = vecLL(I.lon0 + gi * I.d, I.lat0 - gj * I.d, 1);
@@ -1553,13 +1555,14 @@ function d5Geometry() {
 }
 function d5Mat(mode, order) {
   const m = new THREE.ShaderMaterial({ glslVersion: THREE.GLSL3, vertexShader: D5_VERT, fragmentShader: D5_FRAG, transparent: true, depthWrite: mode !== 2, side: THREE.DoubleSide,
-    uniforms: { uA: { value: D5.blank }, uB: { value: D5.blank }, uF: { value: 0 }, uK: { value: 2.6 }, uBase: { value: R + 0.45 }, uMode: { value: mode }, uOp: { value: 1 }, uCT: { value: 0.2 } } });
+    uniforms: { uA: { value: D5.blank }, uB: { value: D5.blank }, uF: { value: 0 }, uK: { value: 2.6 }, uBase: { value: R + 0.45 }, uMode: { value: mode }, uOp: { value: 1 }, uCT: { value: 0.2 }, uGlobal: { value: D5.global ? 1 : 0 } } });
   return m;
 }
 async function d5Init() {
   try { D5.idx = await (await fetch('prob/d5/index.json', { cache: 'no-cache' })).json(); } catch { D5.idx = null; }
   if (!D5.idx || !D5.idx.steps || !D5.idx.steps.length) { D5.idx = null; G.missing = { ...(G.missing || {}), d5: true }; return; }
   D5.off = (Date.parse(D5.idx.run) - runDate()) / 3600e3; D5.blank = blankTex();
+  D5.global = D5.idx.W * D5.idx.d >= 359;
   const geo = d5Geometry();
   D5.mesh = new THREE.Mesh(geo, d5Mat(0)); D5.mesh.renderOrder = 6; D5.mesh.frustumCulled = false; D5.mesh.visible = false;
   D5.cloud = new THREE.Mesh(geo, d5Mat(2)); D5.cloud.renderOrder = 7; D5.cloud.frustumCulled = false; D5.cloud.visible = false;
@@ -1634,7 +1637,7 @@ function renderD5Legend(el) {
     <div class="seg small d5prod">${['all', 'temp', 'cloud'].map(k => `<button data-p="${k}" aria-pressed="${D5.prod === k}">${P(k)}</button>`).join('')}</div>
     <div class="lt muted">${P('leg_' + D5.prod)}</div>${bar}
     <div class="muted d5src">${(D5.idx.models || []).join(', ')}</div>
-    <div class="muted d5src">${P('outside')}</div>
+    ${D5.global ? '' : `<div class="muted d5src">${P('outside')}</div>`}
     <button class="btn d5rec" id="d5Rec">${D5.rec ? P('recStop') : P('rec')}</button> <span class="muted" id="d5RecMsg"></span>`;
   el.querySelectorAll('.d5prod button').forEach(b => b.onclick = () => { D5.prod = b.dataset.p; store.set('d5prod', D5.prod); renderLegend(); labelEls.forEach(e => e._id = null); labelTick = 7; });
   $('d5Rec').onclick = () => D5.rec ? d5RecStop() : d5RecStart();
@@ -1988,6 +1991,7 @@ async function renderProbPage() {
       <button class="btn" id="probDl">${U.dl}</button> <a class="btn" id="probShare" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(probLink())}&text=${encodeURIComponent(t.title + ' · ' + PROB_NAMES[PROB.region][lang])}">${U.share}</a> <button class="btn" id="probCopy">${U.copy}</button> <span class="muted mono" id="probDlMsg"></span>
     </div>` : `<p class="muted">${t.none}</p>`}
     ${days && days.days ? `<section class="prob-days"><h2>${U.days}${days.city ? ' · ' + days.city : ''}</h2><ol id="probDays">${Object.entries(days.days).map(([d, txt]) => { const dt_ = new Date(d + 'T12:00:00Z'); return `<li data-d="${d}"${d < today ? ` class="past" title="${U.past}"` : ''}><b>${U.wd[dt_.getUTCDay()]}, ${String(dt_.getUTCDate()).padStart(2, '0')}.${String(dt_.getUTCMonth() + 1).padStart(2, '0')}</b><span>${txt}</span></li>`; }).join('')}</ol></section>` : ''}
+    <section class="visits prob-visits" id="probVisits"${VIS.data ? '' : ' hidden'}>${visitsHtml(8)}</section>
     <div class="prob-notes"><div><h2>${t.h1}</h2><p>${t.p1}</p></div><div><h2>${t.h2}</h2><p>${t.p2}</p></div><div><h2>${t.h3}</h2><p>${t.p3}</p></div></div>
   </div>`;
   const selChip = el.querySelector('#probRegions [aria-pressed="true"]'); if (selChip) selChip.scrollIntoView({ block: 'nearest', inline: 'center' });
@@ -2070,6 +2074,7 @@ function showSheet(which) {
 }
 function applyLang() {
   document.documentElement.lang = S.lang;
+  if (VIS.data) renderVisits();
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = tr(el.dataset.i18nPh); });
   document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = tr(el.dataset.i18nTitle); el.setAttribute('aria-label', tr(el.dataset.i18nTitle)); });
@@ -2146,6 +2151,32 @@ function bindUI() {
 
 /* ---------- boot ---------- */
 function setLoading(text) { const s = $('loading').querySelector('span'); if (s) s.textContent = text; }
+/* ---------- visits by country and city (counted by the bot's worker, see telegram/worker.js) ---------- */
+const API = ((document.querySelector('meta[name="osmon-api"]') || {}).content || '').replace(/\/$/, '');
+const VIS = { data: null };
+const flag = cc => /^[A-Z]{2}$/.test(cc || '') ? String.fromCodePoint(...[...cc].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : '🌐';
+function ctyLabel(cc) { const c = (GEO && GEO.cty || []).find(x => x[0] === cc); return S.lang === 'ru' ? (c ? c[2] : cc) : (CTY_UZ[cc] || (c ? c[1] : cc)); }
+function cityLabel(name) { if (S.lang === 'uz') return UZ_PLACE[name] || name; const p = GEO && GEO.places.find(x => x[2] === name); return p ? p[3] : name; }
+async function initVisits() {
+  if (!API) return;
+  const day = new Date().toISOString().slice(0, 10);
+  try { if (store.get('hitDay', '') !== day) { await fetch(API + '/hit', { method: 'POST' }); store.set('hitDay', day); } } catch {}
+  try { VIS.data = await (await fetch(API + '/stats')).json(); } catch { VIS.data = null; }
+  renderVisits();
+}
+function visitsHtml(n = 6) {
+  const v = VIS.data; if (!v || !v.ok) return '';
+  const fmt = x => Number(x).toLocaleString(S.lang === 'ru' ? 'ru-RU' : 'uz-UZ');
+  return `<h3>${tr('vis.title')}</h3>
+    <div class="vis-tot"><span><b>${fmt(v.today)}</b> ${tr('vis.today')}</span><span><b>${fmt(v.total)}</b> ${tr('vis.total')}</span></div>
+    <div class="vis-cols"><ol>${v.countries.slice(0, n).map(c => `<li><span>${flag(c.country)} ${ctyLabel(c.country)}</span><b>${fmt(c.n)}</b></li>`).join('')}</ol>
+    <ol>${v.cities.slice(0, n).map(c => `<li><span>${flag(c.country)} ${cityLabel(c.city)}</span><b>${fmt(c.n)}</b></li>`).join('')}</ol></div>`;
+}
+function renderVisits() {
+  const h = visitsHtml(), el = $('visits'); if (el) { el.innerHTML = h; el.hidden = !h; }
+  const p = $('probVisits'); if (p) { p.innerHTML = visitsHtml(8); p.hidden = !p.innerHTML; }
+}
+
 /* ---------- Telegram Mini App: the same site opened from the bot ---------- */
 // Telegram opens the page with #tgWebAppData=… in the address; the bot passes the wanted view as ?view=prob/UZ/ru/temp
 const TG = { app: null };
@@ -2189,6 +2220,7 @@ async function boot() {
   $('loading').hidden = true;
   requestAnimationFrame(loop);
   window.__osmon = { S, flyTo, BLD, WIND, CU, cam: () => ({ d: camera.position.distanceTo(controls.target), mode, fly: !!fly }), setT: t => { S.t = t; syncTimeUI(); } }; // small hook for tests / console
+  initVisits();
   setTimeout(() => { if (S.layer === 'd5') d5Enter(); else if (!D5.entered) flyTo(S.A.lon, S.A.lat, { dist: inReg(S.A.lon, S.A.lat) ? 5 : 10 }); }, 900);
   // first visit: ask for the location once (or silently reuse an existing permission)
   if (!a && !store.get('geoDone', false)) setTimeout(() => locateMe(false), 1200);

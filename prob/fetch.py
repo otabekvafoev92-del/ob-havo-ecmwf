@@ -14,6 +14,8 @@ import eccodes
 
 GRID = dict(lon0=20.0, lat0=82.0, d=0.25, W=681, H=229)  # 20°E…190°E, 82°N…25°N (south edge beyond the maps so the 5D layer is not cut)
 N = GRID['W'] * GRID['H']
+# the whole world at 0.5° for the globe's probability layer (same downloads, just a second regridding)
+GLOBAL = dict(lon0=0.0, lat0=90.0, d=0.5, W=720, H=361)
 THR = 0.2  # mm per 6 h
 # ECMWF open data mirrors (the same files); the Google Cloud copy is used first, AWS is the fallback
 ECM = 'https://storage.googleapis.com/ecmwf-open-data'
@@ -54,10 +56,11 @@ def decode(buf):
 
 
 _maps = {}
-def regrid(g):
-    key = (g['Ni'], g['lo1'], g['la1'])
+def regrid(g, grid=None):
+    grid = grid or GRID
+    key = (g['Ni'], g['lo1'], g['la1'], tuple(sorted(grid.items())))
     if key not in _maps:
-        lon = GRID['lon0'] + np.arange(GRID['W']) * GRID['d']; lat = GRID['lat0'] - np.arange(GRID['H']) * GRID['d']
+        lon = grid['lon0'] + np.arange(grid['W']) * grid['d']; lat = grid['lat0'] - np.arange(grid['H']) * grid['d']
         fx = ((lon - g['lo1']) % 360) / g['di']; fy = (g['la1'] - lat) / g['dj']
         ix = np.floor(fx).astype(int); iy = np.floor(fy).astype(int)
         _maps[key] = (ix, (ix + 1) % g['Ni'], fx - ix, iy, np.minimum(iy + 1, g['Nj'] - 1), fy - iy)
@@ -99,8 +102,8 @@ def ncep_job(url, step, member, win=6):
 
 class Icon:
     """ICON global (deterministic) on its icosahedral grid → nearest cell for every target point."""
-    def __init__(self, run):
-        self.run = run; self.idx = None
+    def __init__(self, run, grids):
+        self.run = run; self.idx = None; self.grids = grids
         try:
             from scipy.spatial import cKDTree
             h = run.strftime('%H'); tag = run.strftime('%Y%m%d%H')
@@ -109,10 +112,12 @@ class Icon:
                 return eccodes.codes_get_values(eccodes.codes_new_from_message(bz2.decompress(raw)))
             clat, clon = np.radians(field('clat', 'CLAT')), np.radians(field('clon', 'CLON'))
             xyz = np.c_[np.cos(clat) * np.cos(clon), np.cos(clat) * np.sin(clon), np.sin(clat)]
-            lon = np.radians(GRID['lon0'] + np.arange(GRID['W']) * GRID['d']); lat = np.radians(GRID['lat0'] - np.arange(GRID['H']) * GRID['d'])
-            LON, LAT = np.meshgrid(lon, lat)
-            q = np.c_[(np.cos(LAT) * np.cos(LON)).ravel(), (np.cos(LAT) * np.sin(LON)).ravel(), np.sin(LAT).ravel()]
-            self.idx = cKDTree(xyz).query(q)[1]
+            tree = cKDTree(xyz); self.idx = []
+            for G_ in self.grids:
+                lon = np.radians(G_['lon0'] + np.arange(G_['W']) * G_['d']); lat = np.radians(G_['lat0'] - np.arange(G_['H']) * G_['d'])
+                LON, LAT = np.meshgrid(lon, lat)
+                q = np.c_[(np.cos(LAT) * np.cos(LON)).ravel(), (np.cos(LAT) * np.sin(LON)).ravel(), np.sin(LAT).ravel()]
+                self.idx.append(tree.query(q)[1])
             log('icon grid ok', len(clat))
         except Exception as e:
             log('icon disabled:', e)
@@ -124,11 +129,11 @@ class Icon:
         raw = get(f'{DWD}/{h}/tot_prec/icon_global_icosahedral_single-level_{tag}_{step:03d}_TOT_PREC.grib2.bz2')
         if not raw: return None
         v = eccodes.codes_get_values(eccodes.codes_new_from_message(bz2.decompress(raw)))
-        cur = v[self.idx].reshape(GRID['H'], GRID['W']).astype(np.float32)
+        cur = [v[ix].reshape(G_['H'], G_['W']).astype(np.float32) for ix, G_ in zip(self.idx, self.grids)]
         p = self.prev; self.prev = (step, cur)
         if step == win: return cur
         if p is None or p[0] != step - win: return None
-        return np.maximum(cur - p[1], 0)
+        return [np.maximum(c - q, 0) for c, q in zip(cur, p[1])]
 
 
 def pick_run(want=None):
@@ -152,6 +157,7 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('out'); ap.add_argument('--run'); ap.add_argument('--max-step', type=int, default=360)
     ap.add_argument('--workers', type=int, default=12)
     ap.add_argument('--step3-until', type=int, default=144, help='3-hour windows up to this lead time (0 = 6-hour windows only)')
+    ap.add_argument('--glob', default='glob.npz', help='also save the same probabilities for the whole world at 0.5° (globe layer); empty to skip')
     ap.add_argument('--wx', default='wx.npz', help='also save GEFS ensemble-mean 2 m temperature and cloud cover here')
     a = ap.parse_args()
     run = pick_run(a.run); log('run', run)
@@ -160,12 +166,12 @@ def main():
     steps = [x for x in range(3, min(a.step3_until, a.max_step) + 1, 3)] + [x for x in range(6, a.max_step + 1, 6) if x > a.step3_until]
     wins = [s - (steps[i - 1] if i else 0) for i, s in enumerate(steps)]
     ENS = ['ifs', 'aifs', 'gefs']; DET = ['hres', 'aifss', 'gfs', 'icon']
-    cnt = {k: np.zeros((len(steps), GRID['H'], GRID['W']), np.uint8) for k in ENS}
-    nmem = {k: np.zeros(len(steps), np.int16) for k in ENS}
-    det = np.zeros((len(steps), GRID['H'], GRID['W']), np.uint8); avail = np.zeros((len(steps), len(DET)), bool)
-    amt = np.zeros((len(steps), GRID['H'], GRID['W']), np.uint8)
+    GRIDS = [GRID] + ([GLOBAL] if a.glob else [])  # regional maps (0.25°) and, for the globe, the whole world (0.5°)
+    Z = lambda G_, dt_=np.uint8: np.zeros((len(steps), G_['H'], G_['W']), dt_)
+    cnt = [{k: Z(G_) for k in ENS} for G_ in GRIDS]; det = [Z(G_) for G_ in GRIDS]; amt = [Z(G_) for G_ in GRIDS]
+    nmem = {k: np.zeros(len(steps), np.int16) for k in ENS}; avail = np.zeros((len(steps), len(DET)), bool)
     prev = {}
-    icon = Icon(run)
+    icon = Icon(run, GRIDS)
     pool = cf.ThreadPoolExecutor(a.workers)
     for si, s in enumerate(steps):
         win = wins[si]; jobs = []
@@ -183,47 +189,54 @@ def main():
             sys_, j = item
             buf = get(j['url'], j['rng'])
             if not buf: return sys_, j, None
-            return sys_, j, regrid(decode(buf)) * j['scale']
-        sums = {k: np.zeros((GRID['H'], GRID['W']), np.float32) for k in ENS}
+            g = decode(buf)
+            return sys_, j, [regrid(g, G_) * j['scale'] for G_ in GRIDS]
+        sums = [{k: np.zeros((G_['H'], G_['W']), np.float32) for k in ENS} for G_ in GRIDS]
         for sys_, j, f in pool.map(work, jobs):
             if f is None: continue
             # every field is an accumulation from j['start'] to s; the window is (s − win, s]
             key = (sys_, j['member']); p = prev.get(key); prev[key] = (j['start'], s, f)
             if j['start'] == s - win: amount = f
-            elif p is not None and p[0] == j['start'] and p[1] == s - win: amount = np.maximum(f - p[2], 0)
+            elif p is not None and p[0] == j['start'] and p[1] == s - win: amount = [np.maximum(x - y, 0) for x, y in zip(f, p[2])]
             else: continue  # this model has no output at s − win (e.g. AIFS is 6-hourly): leave it out of this window
-            if sys_ in cnt:
-                cnt[sys_][si] += (amount >= THR); nmem[sys_][si] += 1; sums[sys_] += amount
+            if sys_ in ENS:
+                nmem[sys_][si] += 1
+                for gi in range(len(GRIDS)): cnt[gi][sys_][si] += (amount[gi] >= THR); sums[gi][sys_] += amount[gi]
             else:
-                b = DET.index(sys_); det[si] |= ((amount >= THR) << b).astype(np.uint8); avail[si, b] = True
+                b = DET.index(sys_); avail[si, b] = True
+                for gi in range(len(GRIDS)): det[gi][si] |= ((amount[gi] >= THR) << b).astype(np.uint8)
         ia = icon.amount(s, win)
         if ia is not None:
-            b = DET.index('icon'); det[si] |= ((ia >= THR) << b).astype(np.uint8); avail[si, b] = True
+            b = DET.index('icon'); avail[si, b] = True
+            for gi in range(len(GRIDS)): det[gi][si] |= ((ia[gi] >= THR) << b).astype(np.uint8)
         have = [k for k in ENS if nmem[k][si]]
-        mean = sum(sums[k] / nmem[k][si] for k in have) / max(1, len(have))
-        amt[si] = np.clip(np.round(np.log1p(mean) * 40), 0, 255).astype(np.uint8)
+        for gi in range(len(GRIDS)):
+            mean = sum(sums[gi][k] / nmem[k][si] for k in have) / max(1, len(have))
+            amt[gi][si] = np.clip(np.round(np.log1p(mean) * 40), 0, 255).astype(np.uint8)
         log(f'+{s}h ({win} h)', {k: int(nmem[k][si]) for k in ENS}, dict(zip(DET, avail[si].tolist())))
-    np.savez_compressed(a.out, run=run.strftime('%Y-%m-%dT%H:00:00Z'), steps=np.array(steps), win=np.array(wins), grid=np.array(GRID, dtype=object),
-                        ens_names=np.array(ENS), det_names=np.array(DET), det=det, det_avail=avail, amt=amt,
-                        **{f'ens_{k}': cnt[k] for k in ENS}, **{f'n_{k}': nmem[k] for k in ENS})
-    log('saved', a.out)
-    # GEFS ensemble mean: 2 m temperature and total cloud cover every 6 h (for snow, clouds and temperature maps)
-    WG = dict(lon0=20.0, lat0=82.0, d=0.5, W=341, H=(GRID['H'] - 1) // 2 + 1)
-    wsteps = sorted({0} | set(steps)); Tw = np.full((len(wsteps), WG['H'], WG['W']), np.nan, np.float32); Cw = Tw.copy()
-    keep = GRID; GRID = WG; _maps.clear()
-    for i, s in enumerate(wsteps):
-        url = f'{GEFS}/gefs.{d}/{h}/atmos/pgrb2ap5/geavg.t{h}z.pgrb2a.0p50.f{s:03d}'
-        idx = get(url + '.idx')
-        if not idx: continue
-        L = idx.decode().strip().split('\n')
-        for key, arr, conv in ((':TMP:2 m above ground:', Tw, lambda v: v - 273.15), (':TCDC:entire atmosphere:', Cw, lambda v: v)):
-            j = next((k for k, l in enumerate(L) if key in l), None)
-            if j is None or j + 1 >= len(L): continue
-            buf = get(url, (int(L[j].split(':')[1]), int(L[j + 1].split(':')[1]) - 1))
-            if buf: arr[i] = conv(regrid(decode(buf)))
-    GRID = keep
-    np.savez_compressed(a.wx, run=run.strftime('%Y-%m-%dT%H:00:00Z'), steps=np.array(wsteps), grid=np.array(WG, dtype=object), T=Tw.astype(np.float16), C=Cw.astype(np.float16))
-    log('saved', a.wx)
+    for gi, (G_, out) in enumerate(zip(GRIDS, [a.out, a.glob])):
+        np.savez_compressed(out, run=run.strftime('%Y-%m-%dT%H:00:00Z'), steps=np.array(steps), win=np.array(wins), grid=np.array(G_, dtype=object),
+                            ens_names=np.array(ENS), det_names=np.array(DET), det=det[gi], det_avail=avail, amt=amt[gi],
+                            **{f'ens_{k}': cnt[gi][k] for k in ENS}, **{f'n_{k}': nmem[k] for k in ENS})
+        log('saved', out)
+    if a.wx:
+        # GEFS ensemble mean: 2 m temperature and total cloud cover every 6 h (for snow, clouds and temperature maps)
+        WG = dict(GLOBAL)  # GEFS mean temperature / cloud for the whole world at 0.5° (the maps interpolate their own box from it)
+        wsteps = sorted({0} | set(steps)); Tw = np.full((len(wsteps), WG['H'], WG['W']), np.nan, np.float32); Cw = Tw.copy()
+        keep = GRID; GRID = WG; _maps.clear()
+        for i, s in enumerate(wsteps):
+            url = f'{GEFS}/gefs.{d}/{h}/atmos/pgrb2ap5/geavg.t{h}z.pgrb2a.0p50.f{s:03d}'
+            idx = get(url + '.idx')
+            if not idx: continue
+            L = idx.decode().strip().split('\n')
+            for key, arr, conv in ((':TMP:2 m above ground:', Tw, lambda v: v - 273.15), (':TCDC:entire atmosphere:', Cw, lambda v: v)):
+                j = next((k for k, l in enumerate(L) if key in l), None)
+                if j is None or j + 1 >= len(L): continue
+                buf = get(url, (int(L[j].split(':')[1]), int(L[j + 1].split(':')[1]) - 1))
+                if buf: arr[i] = conv(regrid(decode(buf)))
+        GRID = keep
+        np.savez_compressed(a.wx, run=run.strftime('%Y-%m-%dT%H:00:00Z'), steps=np.array(wsteps), grid=np.array(WG, dtype=object), T=Tw.astype(np.float16), C=Cw.astype(np.float16))
+        log('saved', a.wx)
 
 
 if __name__ == '__main__':

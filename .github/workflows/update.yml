@@ -43,7 +43,7 @@ jobs:
           pip install scipy matplotlib pyproj
           python prob/fetch.py prob.npz
           python prob/render.py prob.npz site/prob --wx wx.npz
-          python prob/export_5d.py prob.npz wx.npz site/prob/d5
+          python prob/export_5d.py glob.npz wx.npz site/prob/d5
           rm -rf site/prob/frames
       - name: Send Telegram summary
         if: github.event_name != 'push'
@@ -61,6 +61,9 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           PROB_TG: ${{ vars.PROB_TG }}
         run: python prob/telegram_send.py site/prob
+      - name: Point the site at the bot worker (visit counter, Telegram)
+        if: vars.BOT_URL != ''
+        run: sed -i 's|<meta name="osmon-api" content="">|<meta name="osmon-api" content="${{ vars.BOT_URL }}">|' site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

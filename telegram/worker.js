@@ -33,6 +33,7 @@ export default {
       const me = await tg(env, 'getMe', {});
       return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
     }
+    if (url.pathname === '/hit' || url.pathname === '/stats') return visits(req, env, url);
     if (req.method !== 'POST') return new Response('Osmon bot is running. Open /setup once to connect it to Telegram.');
     const up = await req.json().catch(() => ({}));
     try { await handle(up, env); } catch (e) { console.log('error', e && e.stack); }
@@ -105,4 +106,29 @@ async function handle(up, env) {
     await tg(env, 'sendMediaGroup', { chat_id: chat, media });
     return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].menu, reply_markup: menuKb(env, lang, id) });
   }
+}
+
+/* ---------- visit counter for the website (by country and city) ----------
+   The site sends one POST /hit per visitor per day; Cloudflare already knows the visitor's country and city
+   (request.cf), so nothing is stored about the person: only daily totals per city. GET /stats returns the totals.
+   Needs a D1 database bound as DB (Workers → Settings → Bindings → D1 database, name: DB). */
+const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' };
+async function visits(req, env, url) {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+  const json = (o, extra = {}) => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json; charset=utf-8', ...CORS, ...extra } });
+  if (!env.DB) return json({ ok: false, error: 'no database (bind a D1 database as DB)' });
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS hits (day TEXT, country TEXT, city TEXT, n INTEGER, PRIMARY KEY (day, country, city))');
+  if (url.pathname === '/hit' && req.method === 'POST') {
+    const cf = req.cf || {}, day = new Date().toISOString().slice(0, 10);
+    const country = String(cf.country || '??').slice(0, 2), city = String(cf.city || '').slice(0, 60);
+    await env.DB.prepare('INSERT INTO hits (day, country, city, n) VALUES (?1, ?2, ?3, 1) ON CONFLICT(day, country, city) DO UPDATE SET n = n + 1').bind(day, country, city).run();
+    return json({ ok: true });
+  }
+  const day = new Date().toISOString().slice(0, 10);
+  const one = async (q, ...a) => (await env.DB.prepare(q).bind(...a).all()).results;
+  const [tot] = await one('SELECT COALESCE(SUM(n),0) AS n FROM hits');
+  const [today] = await one('SELECT COALESCE(SUM(n),0) AS n FROM hits WHERE day = ?1', day);
+  const countries = await one('SELECT country, SUM(n) AS n FROM hits GROUP BY country ORDER BY n DESC LIMIT 12');
+  const cities = await one("SELECT country, city, SUM(n) AS n FROM hits WHERE city <> '' GROUP BY country, city ORDER BY n DESC LIMIT 12");
+  return json({ ok: true, total: tot.n, today: today.n, countries, cities }, { 'cache-control': 'public, max-age=300' });
 }

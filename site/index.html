@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- address of the Telegram-bot worker (telegram/worker.js): it also counts visits by country and city; filled in by the GitHub workflow from the BOT_URL variable -->
+<meta name="osmon-api" content="">
 <title>Osmon · ob-havo</title>
 <meta name="description" content="ECMWF prognozi 3D relyefda: harorat, yog‘in, qor, kuchli shamol va quyosh. Ma’lumotlar charts.ecmwf.int dan.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,6 +61,7 @@
       <div class="model-run" id="runInfo">—</div>
       <a href="https://charts.ecmwf.int" target="_blank" rel="noopener" data-i18n="loc.src">charts.ecmwf.int →</a>
     </section>
+    <section class="block visits" id="visits" hidden></section>
   </aside>
 
   <main class="stage" id="stage">
