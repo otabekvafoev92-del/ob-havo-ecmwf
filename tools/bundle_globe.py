@@ -6,7 +6,7 @@ html = (root / 'site/index.html').read_text()
 css = (root / 'site/style.css').read_text()
 js = (root / 'site/app.js').read_text()
 body = re.search(r'<!--APP-->(.*)<!--/APP-->', html, re.S).group(1)
-head = f"""<title>Osmon ECMWF 3D</title>
+head = f"""<title>Osmon · ob-havo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>{css}</style>

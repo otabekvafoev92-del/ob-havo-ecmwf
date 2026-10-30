@@ -22,7 +22,7 @@ const ASSET = (window.__ASSET_BASE__ || '') ;
 /* ------------------------------ i18n ------------------------------ */
 const I18N = {
   uz: {
-    tagline: 'ECMWF 3D', 'nav.map': '3D globus', 'nav.forecast': 'Prognoz sharhi', 'nav.maps': 'ECMWF xaritalari', 'nav.prob': 'Yog‘in ehtimolligi', 'nav.guide': 'Qo‘llanma', 'nav.about': 'Ma’lumotlar haqida',
+    tagline: 'ob-havo', 'nav.map': 'Globus', 'nav.forecast': 'Prognoz sharhi', 'nav.maps': 'ECMWF xaritalari', 'nav.prob': 'Yog‘in ehtimolligi', 'nav.guide': 'Qo‘llanma', 'nav.about': 'Ma’lumotlar haqida',
     'loc.title': 'Joyni tanlash', 'loc.main': 'Asosiy nuqta', 'loc.compare': 'Taqqoslash', 'loc.search': 'Shahar, davlat yoki 41.31, 69.28', 'loc.mine': '⌖ Mening joylashuvim', 'loc.save': '☆ Saqlash',
     'loc.saved': 'Saqlangan nuqtalar', 'loc.savedEmpty': 'Hali yo‘q. Globusda nuqtani tanlab «Saqlash»ni bosing.', 'loc.src': 'charts.ecmwf.int →',
     'loc.geoFail': 'Joylashuvni aniqlab bo‘lmadi. Shaharni tanlang yoki globusni bosing.', 'loc.cmpHint': 'Ikkinchi nuqtani tanlang (ro‘yxat yoki globus).', 'loc.country': 'davlat', 'loc.here': 'Siz shu yerdasiz', 'bld.proc': 'Binolar shartli (OSM ga ulanib bo‘lmadi)', 'zen.sun': 'Quyosh tik turgan joy', 'zen.moon': 'Oy tik turgan joy',
@@ -30,7 +30,7 @@ const I18N = {
     'fx.precip': 'Yomg‘ir va qor', 'fx.wind': 'Shamol oqimi', 'lvl.10m': 'Yer usti', 'lvl.850': '1,5 km', 'lvl.500': '5,5 km', 'lvl.250': '10 km',
     'lvl.title': 'Shamol balandligi: yer usti (10 m), 850 gPa (~1,5 km), 500 gPa (~5,5 km), 250 gPa (~10 km, reaktiv oqim)', 'windNow': 'Shamol (ECMWF)', 'dir': ['shim.', 'shim.-sharq', 'sharq', 'jan.-sharq', 'jan.', 'jan.-g‘arb', 'g‘arb', 'shim.-g‘arb'], 'fx.clouds': 'Bulutlar', 'fx.exag': 'Tog‘ balandligi', 'fx.sun': 'Kun va tun', 'fx.borders': 'Chegaralar',
     'view.globe': 'Butun dunyo', 'view.shot': 'Rasmni saqlash', 'view.tour': 'Sayohat: shaharlar bo‘ylab', 'view.fly': 'Nuqtaga uchish', 'view.top': 'Yuqoridan',
-    'glLost': 'Videokarta 3D sahnani to‘xtatdi (yuklama juda katta). Sahifani qayta yuklang.', 'glReload': 'Qayta yuklash', 'fx.more': '⚙ Sozlamalar', 'layer.d5': '5D prognoz', 'd5.title': '5D: 15 kunlik multimodel prognoz', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 5D videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'd5.outside': 'Mintaqadan tashqarida — ECMWF ma’lumotlari (10 kungacha).', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
+    'glLost': 'Videokarta 3D sahnani to‘xtatdi (yuklama juda katta). Sahifani qayta yuklang.', 'glReload': 'Qayta yuklash', 'fx.more': '⚙ Sozlamalar', 'layer.d5': 'Ehtimollik · 15 kun', 'd5.title': 'Yog‘in ehtimolligi, 15 kun (6 model)', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 Videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'd5.outside': 'Mintaqadan tashqarida — ECMWF ma’lumotlari (10 kungacha).', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
     'leg.relief': 'Sentinel-2 va NASA sun’iy yo‘ldosh tasviri, relyef', 'leg.temp': '2 m harorat, °C', 'leg.rain': 'So‘nggi 6 soatdagi yog‘in, mm', 'leg.wind': '10 m shamol tezligi, m/s (10 dan yuqori)', 'leg.sun': 'Quyosh nuri davomiyligi, 24 soatda, soat',
     'panel.point': 'Tanlangan nuqta', 'panel.more': 'Batafsil prognoz →',
     'mob.map': '⌖ Globus', 'mob.forecast': '☀ Prognoz', 'mob.menu': '☰ Joylar',
@@ -44,7 +44,7 @@ const I18N = {
     'maps.title': 'ECMWF xaritalari', 'maps.note': 'Asl xaritalar charts.ecmwf.int dan, har kuni 12:00 UTC (17:00 Toshkent) holatiga.', 'maps.empty': 'Bu namoyish versiyasida asl xaritalar yo‘q — ular saytning to‘liq versiyasida GitHub Actions orqali yuklanadi.',
   },
   ru: {
-    tagline: 'ECMWF 3D', 'nav.map': '3D-глобус', 'nav.forecast': 'Обзор прогноза', 'nav.maps': 'Карты ECMWF', 'nav.prob': 'Вероятность осадков', 'nav.guide': 'Руководство', 'nav.about': 'О данных',
+    tagline: 'погода', 'nav.map': 'Глобус', 'nav.forecast': 'Обзор прогноза', 'nav.maps': 'Карты ECMWF', 'nav.prob': 'Вероятность осадков', 'nav.guide': 'Руководство', 'nav.about': 'О данных',
     'loc.title': 'Выбор места', 'loc.main': 'Основная точка', 'loc.compare': 'Сравнение', 'loc.search': 'Город, страна или 41.31, 69.28', 'loc.mine': '⌖ Моё местоположение', 'loc.save': '☆ Сохранить',
     'loc.saved': 'Сохранённые точки', 'loc.savedEmpty': 'Пока пусто. Выберите точку на глобусе и нажмите «Сохранить».', 'loc.src': 'charts.ecmwf.int →',
     'loc.geoFail': 'Не удалось определить местоположение. Выберите город или нажмите на глобус.', 'loc.cmpHint': 'Выберите вторую точку (в списке или на глобусе).', 'loc.country': 'страна', 'loc.here': 'Вы здесь', 'bld.proc': 'Здания условные (нет доступа к OSM)', 'zen.sun': 'Солнце в зените', 'zen.moon': 'Луна в зените',
@@ -52,7 +52,7 @@ const I18N = {
     'fx.precip': 'Дождь и снег', 'fx.wind': 'Потоки ветра', 'lvl.10m': 'У земли', 'lvl.850': '1,5 км', 'lvl.500': '5,5 км', 'lvl.250': '10 км',
     'lvl.title': 'Высота ветра: у земли (10 м), 850 гПа (~1,5 км), 500 гПа (~5,5 км), 250 гПа (~10 км, струйное течение)', 'windNow': 'Ветер (ECMWF)', 'dir': ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'], 'fx.clouds': 'Облака', 'fx.exag': 'Высота гор', 'fx.sun': 'День и ночь', 'fx.borders': 'Границы',
     'view.globe': 'Весь мир', 'view.shot': 'Сохранить снимок', 'view.tour': 'Экскурсия по городам', 'view.fly': 'Перелететь к точке', 'view.top': 'Сверху',
-    'glLost': 'Видеокарта остановила 3D-сцену (слишком большая нагрузка). Перезагрузите страницу.', 'glReload': 'Перезагрузить', 'fx.more': '⚙ Настройки', 'layer.d5': '5D-прогноз', 'd5.title': '5D: мультимодельный прогноз на 15 дней', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать 5D-видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'd5.outside': 'За пределами региона — данные ECMWF (до 10 дней).', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
+    'glLost': 'Видеокарта остановила 3D-сцену (слишком большая нагрузка). Перезагрузите страницу.', 'glReload': 'Перезагрузить', 'fx.more': '⚙ Настройки', 'layer.d5': 'Вероятность · 15 дней', 'd5.title': 'Вероятность осадков, 15 дней (6 моделей)', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'd5.outside': 'За пределами региона — данные ECMWF (до 10 дней).', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
     'leg.relief': 'Спутниковые снимки Sentinel-2 и NASA, рельеф', 'leg.temp': 'Температура 2 м, °C', 'leg.rain': 'Осадки за 6 часов, мм', 'leg.wind': 'Ветер 10 м, м/с (от 10 и выше)', 'leg.sun': 'Солнечное сияние за 24 часа, ч',
     'panel.point': 'Выбранная точка', 'panel.more': 'Подробный прогноз →',
     'mob.map': '⌖ Глобус', 'mob.forecast': '☀ Прогноз', 'mob.menu': '☰ Места',
@@ -66,7 +66,7 @@ const I18N = {
     'maps.title': 'Карты ECMWF', 'maps.note': 'Оригинальные карты с charts.ecmwf.int на 12:00 UTC (17:00 по Ташкенту) каждого дня.', 'maps.empty': 'В демо-версии оригинальных карт нет — на полном сайте их загружает GitHub Actions.',
   },
 };
-const UZ_PLACE = {"Moscow": "Moskva", "Saint Petersburg": "Sankt-Peterburg", "Almaty": "Olmaota", "Ashgabat": "Ashxobod", "Baku": "Boku", "Chișinău": "Kishinyov", "Kyiv": "Kiyev", "Ankara": "Anqara", "Tehran": "Tehron", "Kabul": "Kobul", "Beijing": "Pekin", "Ürümqi": "Urumchi", "Kashgar": "Qashqar", "Herat": "Hirot", "Mazar-i-Sharif": "Mozori Sharif", "Kandahar": "Qandahor", "Kunduz": "Qunduz", "Khujand": "Xo‘jand", "Osh": "O‘sh", "Jalal-Abad": "Jalolobod", "Shymkent": "Chimkent", "Turkistan": "Turkiston", "Taraz": "Taroz", "Kyzylorda": "Qizilo‘rda", "Mary": "Marv", "Türkmenabat": "Turkmanobod", "Daşoguz": "Dashoguz", "Konye-Urgench": "Ko‘hna Urganch", "Kulob": "Ko‘lob", "Istarawshan": "Istaravshan", "Konibodom": "Konibodom", "Tashkent": "Toshkent", "Samarkand": "Samarqand", "Bukhara": "Buxoro", "Andijan": "Andijon", "Fergana": "Farg‘ona", "Kokand": "Qo‘qon", "Termez": "Termiz", "Jizzakh": "Jizzax", "Urgench": "Urganch", "Khiva": "Xiva", "Kagan": "Kogon", "Katta-Kurgan": "Kattaqo‘rg‘on", "Zarafshan": "Zarafshon", "Chirchiq": "Chirchiq", "Olmaliq": "Olmaliq", "Denov": "Denov", "Shahrisabz": "Shahrisabz", "Iskandar": "Iskandar", "Urgut": "Urgut", "Chimboy": "Chimboy", "Mashhad": "Mashhad", "Istanbul": "Istanbul", "Delhi": "Dehli", "Tbilisi": "Tbilisi", "Yerevan": "Yerevan", "Minsk": "Minsk", "Dushanbe": "Dushanbe", "Bishkek": "Bishkek", "Astana": "Astana", "Karakol": "Qoraqo‘l", "Naryn": "Norin", "Talas": "Talas", "Tokmok": "To‘qmoq", "Aral": "Orol", "Kazan": "Qozon", "Astrakhan": "Astraxan", "Orenburg": "Orenburg", "Lahore": "Lahor", "Islamabad": "Islomobod", "Karachi": "Karachi", "Cairo": "Qohira", "Riyadh": "Ar-Riyod", "Mecca": "Makka", "Medina": "Madina", "Dubai": "Dubay", "Baghdad": "Bag‘dod", "Damascus": "Damashq", "Tokyo": "Tokio", "Seoul": "Seul", "London": "London", "Paris": "Parij", "Berlin": "Berlin", "Rome": "Rim", "New York City": "Nyu-York", "Washington, D.C.": "Vashington", "Bamyan": "Bomiyon", "Balkh": "Balx", "Ghazni": "G‘azni", "Nukus": "Nukus", "Navoiy": "Navoiy", "Qarshi": "Qarshi", "Guliston": "Guliston", "Angren": "Angren", "Namangan": "Namangan", "Mo‘ynoq": "Mo‘ynoq", "Qo‘ng‘irot": "Qo‘ng‘irot", "Xo‘jayli": "Xo‘jayli"}; // Uzbek spellings for the globe labels
+const UZ_PLACE = {"Moscow": "Moskva", "Saint Petersburg": "Sankt-Peterburg", "Almaty": "Olmaota", "Ashgabat": "Ashxobod", "Baku": "Boku", "Chișinău": "Kishinyov", "Kyiv": "Kiyev", "Ankara": "Anqara", "Tehran": "Tehron", "Kabul": "Kobul", "Beijing": "Pekin", "Ürümqi": "Urumchi", "Kashgar": "Qashqar", "Herat": "Hirot", "Mazar-i-Sharif": "Mozori Sharif", "Kandahar": "Qandahor", "Kunduz": "Qunduz", "Khujand": "Xo‘jand", "Osh": "O‘sh", "Jalal-Abad": "Jalolobod", "Shymkent": "Chimkent", "Turkistan": "Turkiston", "Taraz": "Taroz", "Kyzylorda": "Qizilo‘rda", "Mary": "Marv", "Türkmenabat": "Turkmanobod", "Daşoguz": "Dashoguz", "Konye-Urgench": "Ko‘hna Urganch", "Kulob": "Ko‘lob", "Istarawshan": "Istaravshan", "Konibodom": "Konibodom", "Tashkent": "Toshkent", "Samarkand": "Samarqand", "Bukhara": "Buxoro", "Andijan": "Andijon", "Fergana": "Farg‘ona", "Kokand": "Qo‘qon", "Termez": "Termiz", "Jizzakh": "Jizzax", "Urgench": "Urganch", "Khiva": "Xiva", "Kagan": "Kogon", "Katta-Kurgan": "Kattaqo‘rg‘on", "Zarafshan": "Zarafshon", "Chirchiq": "Chirchiq", "Olmaliq": "Olmaliq", "Denov": "Denov", "Shahrisabz": "Shahrisabz", "Iskandar": "Iskandar", "Urgut": "Urgut", "Chimboy": "Chimboy", "Mashhad": "Mashhad", "Istanbul": "Istanbul", "Delhi": "Dehli", "Tbilisi": "Tbilisi", "Yerevan": "Yerevan", "Minsk": "Minsk", "Dushanbe": "Dushanbe", "Bishkek": "Bishkek", "Astana": "Astana", "Karakol": "Qoraqo‘l", "Naryn": "Norin", "Talas": "Talas", "Tokmok": "To‘qmoq", "Aral": "Orol", "Kazan": "Qozon", "Astrakhan": "Astraxan", "Orenburg": "Orenburg", "Lahore": "Lahor", "Islamabad": "Islomobod", "Karachi": "Karachi", "Cairo": "Qohira", "Riyadh": "Ar-Riyod", "Mecca": "Makka", "Medina": "Madina", "Dubai": "Dubay", "Baghdad": "Bag‘dod", "Damascus": "Damashq", "Tokyo": "Tokio", "Seoul": "Seul", "London": "London", "Paris": "Parij", "Berlin": "Berlin", "Rome": "Rim", "New York City": "Nyu-York", "Washington, D.C.": "Vashington", "Bamyan": "Bomiyon", "Balkh": "Balx", "Ghazni": "G‘azni", "Nukus": "Nukus", "Navoiy": "Navoiy", "Qarshi": "Qarshi", "Guliston": "Guliston", "Angren": "Angren", "Namangan": "Namangan", "Mo‘ynoq": "Mo‘ynoq", "Qo‘ng‘irot": "Qo‘ng‘irot", "Xo‘jayli": "Xo‘jayli", "Kuwait City": "Quvayt", "Jeddah": "Jidda", "Doha": "Doha", "Muscat": "Maskat", "Abu Dhabi": "Abu-Dabi", "Athens": "Afina", "Bucharest": "Buxarest", "Warsaw": "Varshava", "Vienna": "Vena", "Prague": "Praga", "Budapest": "Budapesht", "Kolkata": "Kalkutta", "Mumbai": "Mumbay", "Hanoi": "Xanoy", "Shanghai": "Shanxay", "Hong Kong": "Gonkong", "Sana'a": "San’a", "Aleppo": "Halab", "Mosul": "Mosul", "Basra": "Basra", "Tabriz": "Tabriz", "Isfahan": "Isfahon", "Shiraz": "Sheroz", "Nishapur": "Nishopur", "Merv": "Marv", "Khorugh": "Xorug‘", "Bokhtar": "Bohtar", "Jalalabad": "Jalolobod", "Sukhumi": "Suxumi", "Batumi": "Batumi", "Nakhchivan": "Naxchivon", "Ganja": "Ganja", "Novosibirsk": "Novosibirsk", "Yekaterinburg": "Yekaterinburg", "Chelyabinsk": "Chelyabinsk", "Omsk": "Omsk", "Ufa": "Ufa", "Samara": "Samara", "Volgograd": "Volgograd", "Kaliningrad": "Kaliningrad", "Krasnodar": "Krasnodar", "Rostov-on-Don": "Rostov-na-Donu", "Grozny": "Grozniy", "Makhachkala": "Maxachqal’a", "Atyrau": "Atirau", "Aktobe": "Aqto‘be", "Aktau": "Aqtau", "Oral": "Oral", "Kostanay": "Qo‘stanay", "Pavlodar": "Pavlodar", "Semey": "Semey", "Oskemen": "O‘skemen", "Karaganda": "Qarag‘anda", "Konaev": "Qonayev", "Taldykorgan": "Taldiqo‘rg‘on", "Ekibastuz": "Ekibastuz", "Zhezkazgan": "Jezqazg‘an", "Baikonur": "Boyqo‘ng‘ir", "Balkhash": "Balxash", "Peshawar": "Peshovar", "Quetta": "Kvetta", "Kathmandu": "Katmandu", "Lhasa": "Lxasa", "Xi'an": "Sian", "Lanzhou": "Lanchjou", "Hotan": "Xo‘tan", "Yarkant": "Yorkent", "Aksu": "Oqsuv", "Turpan": "Turfon", "Yining": "G‘ulja", "Ulaanbaatar": "Ulan-Bator"}; // Uzbek spellings for the globe labels
 const CTY_UZ = { UZ: 'O‘zbekiston', KZ: 'Qozog‘iston', KG: 'Qirg‘iziston', TJ: 'Tojikiston', TM: 'Turkmaniston', AF: 'Afg‘oniston', RU: 'Rossiya', TR: 'Turkiya',
   AZ: 'Ozarbayjon', AM: 'Armaniston', GE: 'Gruziya', BY: 'Belarus', UA: 'Ukraina', MD: 'Moldova', CN: 'Xitoy', IN: 'Hindiston', PK: 'Pokiston', IR: 'Eron',
   MN: 'Mo‘g‘uliston', JP: 'Yaponiya', KR: 'Janubiy Koreya', KP: 'Shimoliy Koreya', US: 'AQSH', CA: 'Kanada', MX: 'Meksika', BR: 'Braziliya', AR: 'Argentina',
@@ -1650,7 +1650,7 @@ function d5RecStart() {
   mr.ondataavailable = e => e.data.size && chunks.push(e.data);
   mr.onstop = async () => {
     const ext = type.includes('mp4') ? 'mp4' : 'webm', blob = new Blob(chunks, { type: type.split(';')[0] || 'video/webm' });
-    const name = `osmon-5d-${D5.prod}-${D5.idx.run.slice(0, 10)}.${ext}`;
+    const name = `osmon-ehtimol-${D5.prod}-${D5.idx.run.slice(0, 10)}.${ext}`;
     const m = $('d5RecMsg'); if (m) m.textContent = '…';
     let ok = false;
     try { const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; if (dl) { await dl.save({ filename: name, data: blob }); ok = true; } } catch (e) { ok = e && e.code === 'declined' ? 'no' : false; }
@@ -1668,7 +1668,7 @@ function d5RecFrame() {
   const x = r.ctx, W = r.W, H = r.H, s = W / 1280;
   x.drawImage($('scene'), 0, 0, W, H);
   x.fillStyle = 'rgba(8,14,24,0.62)'; x.fillRect(0, 0, W, 70 * s);
-  x.fillStyle = '#fff'; x.font = `600 ${26 * s}px Golos Text, system-ui, sans-serif`; x.fillText(`Osmon 5D · ${tr('d5.' + D5.prod)}`, 20 * s, 32 * s);
+  x.fillStyle = '#fff'; x.font = `600 ${26 * s}px Golos Text, system-ui, sans-serif`; x.fillText(`Osmon · ${tr('layer.d5')} · ${tr('d5.' + D5.prod)}`, 20 * s, 32 * s);
   x.font = `500 ${20 * s}px Golos Text, system-ui, sans-serif`; x.fillStyle = '#cfe3ff'; x.fillText(fmtTime(S.t), 20 * s, 58 * s);
   x.textAlign = 'right'; x.fillStyle = 'rgba(255,255,255,0.75)'; x.font = `${13 * s}px Golos Text, system-ui, sans-serif`;
   x.fillText((D5.idx.models || []).join(', '), W - 20 * s, 30 * s); x.fillText('ECMWF (CC BY 4.0) · NOAA', W - 20 * s, 52 * s); x.textAlign = 'left';
@@ -2059,6 +2059,7 @@ function route(keepSheet) {
   if (S.route === 'maps') renderMapsPage();
   if (S.route === 'guide' || S.route === 'about') $('page-' + S.route).innerHTML = `<div class="inner">${PAGES[S.route][S.lang]}</div>`;
   if (keepSheet !== true) showSheet(null);
+  tgBack();
   requestAnimationFrame(resize);
 }
 function showSheet(which) {
@@ -2145,7 +2146,32 @@ function bindUI() {
 
 /* ---------- boot ---------- */
 function setLoading(text) { const s = $('loading').querySelector('span'); if (s) s.textContent = text; }
+/* ---------- Telegram Mini App: the same site opened from the bot ---------- */
+// Telegram opens the page with #tgWebAppData=… in the address; the bot passes the wanted view as ?view=prob/UZ/ru/temp
+const TG = { app: null };
+async function initTelegram() {
+  const q = new URLSearchParams(location.search), inTg = /tgWebApp/.test(location.hash) || q.has('tg');
+  if (inTg) {
+    await new Promise(res => { const sc = document.createElement('script'); sc.src = 'https://telegram.org/js/telegram-web-app.js'; sc.onload = sc.onerror = res; document.head.appendChild(sc); setTimeout(res, 4000); });
+    const W = window.Telegram && window.Telegram.WebApp;
+    if (W && W.initData !== undefined) {
+      TG.app = W; W.ready(); W.expand();
+      try { W.disableVerticalSwipes && W.disableVerticalSwipes(); } catch {}
+      document.documentElement.classList.add('in-tg');
+      if (!store.get('theme', null) && W.colorScheme) document.documentElement.dataset.theme = W.colorScheme;
+      const lc = (W.initDataUnsafe && W.initDataUnsafe.user && W.initDataUnsafe.user.language_code) || '';
+      if (!store.get('lang', null) && (lc === 'ru' || lc === 'uz')) S.lang = lc;
+      if (lc === 'tr') PROB.lang = 'tr';
+      W.BackButton && W.BackButton.onClick(() => { if (S.route !== 'map') location.hash = '#map'; else W.close(); });
+    }
+  }
+  const view = q.get('view') || (TG.app && TG.app.initDataUnsafe && TG.app.initDataUnsafe.start_param ? TG.app.initDataUnsafe.start_param.replace(/-/g, '/') : '');
+  if (view || inTg) history.replaceState(null, '', location.pathname + '#' + (view || 'map'));
+}
+function tgBack() { if (TG.app && TG.app.BackButton) { if (S.route === 'map') TG.app.BackButton.hide(); else TG.app.BackButton.show(); } }
+
 async function boot() {
+  await initTelegram();
   initTheme(); applyLang();
   const getJson = async u => (await fetch(u, { cache: 'no-cache' })).json();
   [D, GEO] = await Promise.all([window.__FORECAST__ || getJson('data/forecast.json'), getJson(ASSET + 'assets/geo.json')]);

@@ -51,6 +51,19 @@ PLACES = {
     'Wanzhou': ('Wanzhou', 'Ваньчжоу', None), 'Lianshan': ('Lianshan', 'Ляньшань', None),
     # Mongolia
     'Öndörkhaan': ('Chinggis', 'Чингис', None),              # renamed 2013
+    # elsewhere: old names
+    'Utqiagvik': ('Utqiagvik', 'Уткиагвик', None), 'Naujaat': ('Naujaat', 'Науджаат', None), 'Kinngait': ('Kinngait', 'Киннгаит', None),
+    'Adama': ('Adama', 'Адама', None), 'Bago': ('Bago', 'Баго', None), 'Jayapura': ('Jayapura', 'Джаяпура', None),
+    'Moçâmedes': ('Moçâmedes', 'Мосамедиш', None), 'Allahabad': ('Prayagraj', 'Праяградж', None),
+    'Al Wajh governorate': ('Al Wajh', 'Эль-Ваджх', None), 'Bilwi': ('Bilwi', 'Билви', None),
+    'Neskantaga First Nation': ('Neskantaga', 'Нескантага', None),
+}
+# places whose English name in Natural Earth belongs to another town (checked by coordinates): (lon, lat) -> (English, Russian)
+PLACE_AT = {
+    (7.096, 13.492): ('Maradi', 'Маради'), (-106.42, 23.221): ('Mazatlán', 'Масатлан'), (30.483, 19.167): ('Dongola', 'Донгола'),
+    (85.89, 20.47): ('Cuttack', 'Каттак'), (-1.91, 34.69): ('Oujda', 'Уджда'), (-79.875, 9.365): ('Colón', 'Колон'),
+    (-70.76, -28.57): ('Vallenar', 'Вальенар'), (-97.87, 22.3): ('Tampico', 'Тампико'), (47.151, 31.842): ('Al-Amarah', 'Эль-Амара'),
+    (2.115, 13.519): ('Niamey', 'Ниамей'), (-73.128, 7.132): ('Bucaramanga', 'Букараманга'), (-106.492, 31.692): ('Ciudad Juárez', 'Сьюдад-Хуарес'),
 }
 # fix wrong country codes of single places
 PLACE_ISO = {'Kapan': 'AM'}
@@ -66,6 +79,8 @@ COUNTRIES = {  # ISO -> (English, Russian)
 def fix_list_place(x):  # [lon, lat, en, ru, rank, pop, iso, cap]
     if x[2] in PLACE_ISO: x[6] = PLACE_ISO[x[2]]
     if x[2] in PLACES: en, ru, _ = PLACES[x[2]]; x[2], x[3] = en, ru
+    at = PLACE_AT.get((round(x[0], 3), round(x[1], 3)))
+    if at: x[2], x[3] = at
 
 
 def fix_dict_place(x):  # {'en', 'ru', 'tr', 'iso', ...}

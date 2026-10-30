@@ -17,9 +17,9 @@ const NAMES = {
   RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' },
 };
 const T = {
-  uz: { d15: '15 kunlik prognoz', hi: 'Assalomu alaykum! Tilni tanlang:', pick: 'Davlatni tanlang:', menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 3D globus', back: '↩ Davlatlar', none: 'Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.' },
-  ru: { d15: 'прогноз на 15 дней', hi: 'Здравствуйте! Выберите язык:', pick: 'Выберите страну:', menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 3D-глобус', back: '↩ Страны', none: 'Данные ещё не готовы, попробуйте чуть позже.' },
-  tr: { d15: '15 günlük tahmin', hi: 'Merhaba! Dil seçin:', pick: 'Ülke seçin:', menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 3B küre', back: '↩ Ülkeler', none: 'Veriler henüz hazır değil, biraz sonra deneyin.' },
+  uz: { d15: '15 kunlik prognoz', hi: 'Assalomu alaykum! Tilni tanlang:', pick: 'Davlatni tanlang:', menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 Globus', rep: '📊 Hisobot (sayt)', open: 'Saytni ochish', back: '↩ Davlatlar', none: 'Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.' },
+  ru: { d15: 'прогноз на 15 дней', hi: 'Здравствуйте! Выберите язык:', pick: 'Выберите страну:', menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 Глобус', rep: '📊 Отчёт (сайт)', open: 'Открыть сайт', back: '↩ Страны', none: 'Данные ещё не готовы, попробуйте чуть позже.' },
+  tr: { d15: '15 günlük tahmin', hi: 'Merhaba! Dil seçin:', pick: 'Ülke seçin:', menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 Küre', rep: '📊 Rapor (site)', open: 'Siteyi aç', back: '↩ Ülkeler', none: 'Veriler henüz hazır değil, biraz sonra deneyin.' },
 };
 const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], tr: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] };
 
@@ -29,6 +29,7 @@ export default {
     if (req.method === 'GET' && url.pathname === '/setup') {
       const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, allowed_updates: ['message', 'callback_query'] });
       await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga (O‘zbekiston)' }, { command: 'prognoz', description: '15 kunlik prognoz' }, { command: 'today', description: 'Сегодня и завтра' }] });
+      await tg(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: 'Osmon', web_app: { url: site(env, 'map') } } });
       const me = await tg(env, 'getMe', {});
       return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
     }
@@ -53,11 +54,14 @@ function countryKb(lang) {
   for (let i = 0; i < ids.length; i += 3) rows.push(ids.slice(i, i + 3).map(id => ({ text: NAMES[id][lang], callback_data: `C:${lang}:${id}` })));
   return { inline_keyboard: rows };
 }
+// the website opens inside Telegram (Mini App): ?view= picks the page, country, language and tab
+const site = (env, view) => `${env.SITE_URL.replace(/\/$/, '')}/?tg=1&view=${encodeURIComponent(view)}`;
 function menuKb(env, lang, id) {
   return { inline_keyboard: [
     [{ text: T[lang].today, callback_data: `T:${lang}:${id}` }, { text: T[lang].days, callback_data: `D:${lang}:${id}` }],
     [{ text: T[lang].all, callback_data: `V:${lang}:${id}` }],
-    [{ text: T[lang].site, url: `${env.SITE_URL.replace(/\/$/, '')}/#prob` }, { text: T[lang].back, callback_data: `L:${lang}` }],
+    [{ text: T[lang].rep, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].site, web_app: { url: site(env, 'map') } }],
+    [{ text: T[lang].back, callback_data: `L:${lang}` }],
   ] };
 }
 function dayLines(item, lang, from, count) {

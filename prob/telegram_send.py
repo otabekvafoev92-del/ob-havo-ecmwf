@@ -22,7 +22,7 @@ FOOT = {
     'tr': '<i>{n} tahmin: {m}. Çalıştırma {run} UTC.</i>',
 }
 BTN = {
-    'uz': ('🌍 3D globus', '📊 To‘liq hisobot'), 'ru': ('🌍 3D-глобус', '📊 Полный отчёт'), 'tr': ('🌍 3B küre', '📊 Tam rapor'),
+    'uz': ('🌍 Globus', '📊 To‘liq hisobot'), 'ru': ('🌍 Глобус', '📊 Полный отчёт'), 'tr': ('🌍 Küre', '📊 Tam rapor'),
 }
 WD = {'uz': ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak'], 'ru': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], 'tr': ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']}
 
@@ -60,7 +60,8 @@ def main():
         r = requests.post(f'https://api.telegram.org/bot{tok}/sendMediaGroup', data={'chat_id': chat, 'media': json.dumps(media)}, files=files, timeout=600)
         print(region, lang, 'album', r.status_code, r.text[:160])
         if site:  # an album cannot carry buttons, so the links follow as a short message
-            kb = {'inline_keyboard': [[{'text': BTN[lang][0], 'url': f'{site}/#map'}, {'text': BTN[lang][1], 'url': f'{site}/#prob'}]]}
+            # channels cannot open Mini Apps from buttons, so these are plain links (the bot's menu opens the site inside Telegram)
+            kb = {'inline_keyboard': [[{'text': BTN[lang][0], 'url': f'{site}/?view=map'}, {'text': BTN[lang][1], 'url': f'{site}/?view=prob/{region}/{lang}/prob'}]]}
             requests.post(f'https://api.telegram.org/bot{tok}/sendMessage', data={'chat_id': chat, 'text': '👇', 'reply_markup': json.dumps(kb)}, timeout=60)
 
 
