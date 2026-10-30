@@ -30,7 +30,7 @@ const I18N = {
     'fx.precip': 'Yomg‘ir va qor', 'fx.wind': 'Shamol oqimi', 'lvl.10m': 'Yer usti', 'lvl.850': '1,5 km', 'lvl.500': '5,5 km', 'lvl.250': '10 km',
     'lvl.title': 'Shamol balandligi: yer usti (10 m), 850 gPa (~1,5 km), 500 gPa (~5,5 km), 250 gPa (~10 km, reaktiv oqim)', 'windNow': 'Shamol (ECMWF)', 'dir': ['shim.', 'shim.-sharq', 'sharq', 'jan.-sharq', 'jan.', 'jan.-g‘arb', 'g‘arb', 'shim.-g‘arb'], 'fx.clouds': 'Bulutlar', 'fx.exag': 'Tog‘ balandligi', 'fx.sun': 'Kun va tun', 'fx.borders': 'Chegaralar',
     'view.globe': 'Butun dunyo', 'view.shot': 'Rasmni saqlash', 'view.tour': 'Sayohat: shaharlar bo‘ylab', 'view.fly': 'Nuqtaga uchish', 'view.top': 'Yuqoridan',
-    'fx.more': '⚙ Sozlamalar', 'layer.d5': '5D prognoz', 'd5.title': '5D: 15 kunlik multimodel prognoz', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Balandlik va rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 5D videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
+    'fx.more': '⚙ Sozlamalar', 'layer.d5': '5D prognoz', 'd5.title': '5D: 15 kunlik multimodel prognoz', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Balandlik va rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 5D videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'd5.outside': 'Mintaqadan tashqarida — ECMWF bo‘yicha yog‘in (mm / 6 soat, 10 kungacha).', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
     'leg.relief': 'Sentinel-2 va NASA sun’iy yo‘ldosh tasviri, relyef', 'leg.temp': '2 m harorat, °C', 'leg.rain': 'So‘nggi 6 soatdagi yog‘in, mm', 'leg.wind': '10 m shamol tezligi, m/s (10 dan yuqori)', 'leg.sun': 'Quyosh nuri davomiyligi, 24 soatda, soat',
     'panel.point': 'Tanlangan nuqta', 'panel.more': 'Batafsil prognoz →',
     'mob.map': '⌖ Globus', 'mob.forecast': '☀ Prognoz', 'mob.menu': '☰ Joylar',
@@ -52,7 +52,7 @@ const I18N = {
     'fx.precip': 'Дождь и снег', 'fx.wind': 'Потоки ветра', 'lvl.10m': 'У земли', 'lvl.850': '1,5 км', 'lvl.500': '5,5 км', 'lvl.250': '10 км',
     'lvl.title': 'Высота ветра: у земли (10 м), 850 гПа (~1,5 км), 500 гПа (~5,5 км), 250 гПа (~10 км, струйное течение)', 'windNow': 'Ветер (ECMWF)', 'dir': ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'], 'fx.clouds': 'Облака', 'fx.exag': 'Высота гор', 'fx.sun': 'День и ночь', 'fx.borders': 'Границы',
     'view.globe': 'Весь мир', 'view.shot': 'Сохранить снимок', 'view.tour': 'Экскурсия по городам', 'view.fly': 'Перелететь к точке', 'view.top': 'Сверху',
-    'fx.more': '⚙ Настройки', 'layer.d5': '5D-прогноз', 'd5.title': '5D: мультимодельный прогноз на 15 дней', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Высота и цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать 5D-видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
+    'fx.more': '⚙ Настройки', 'layer.d5': '5D-прогноз', 'd5.title': '5D: мультимодельный прогноз на 15 дней', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Высота и цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать 5D-видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'd5.outside': 'За пределами региона — осадки ECMWF (мм за 6 ч, до 10 дней).', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
     'leg.relief': 'Спутниковые снимки Sentinel-2 и NASA, рельеф', 'leg.temp': 'Температура 2 м, °C', 'leg.rain': 'Осадки за 6 часов, мм', 'leg.wind': 'Ветер 10 м, м/с (от 10 и выше)', 'leg.sun': 'Солнечное сияние за 24 часа, ч',
     'panel.point': 'Выбранная точка', 'panel.more': 'Подробный прогноз →',
     'mob.map': '⌖ Глобус', 'mob.forecast': '☀ Прогноз', 'mob.menu': '☰ Места',
@@ -373,7 +373,7 @@ const GLOBE_FRAG = /* glsl */`
   precision highp float; precision highp usampler2D;
   ${COMMON}
   uniform sampler2D uDemW; uniform vec2 uDemSize; uniform vec2 uGSize;
-  uniform vec4 uProj; uniform vec4 uReg; uniform float uPatchOn;
+  uniform vec4 uProj; uniform vec4 uReg; uniform float uPatchOn; uniform vec4 uMask; uniform float uMaskOn;
   in vec2 vUv; in vec3 vN; in vec3 vW;
   out vec4 outColor;
   vec4 cellColor(vec2 c){
@@ -401,6 +401,11 @@ const GLOBE_FRAG = /* glsl */`
     vec3 albedo = texture(uDay, vUv).rgb;
     vec4 wx = uAlpha > 0.0 ? cellColor(vec2((lon + 180.0) * 2.0, (90.0 - lat) * 2.0)) : vec4(0.0);
     if (wx.a > 0.0) wx.rgb /= wx.a;
+    if (uMaskOn > 0.5) { // 5D layer: the world's rain shows outside the multimodel box, fading into it
+      float L = lon < 0.0 ? lon + 360.0 : lon;
+      float inside = smoothstep(uMask.x, uMask.x + 3.4, L) * smoothstep(uMask.z, uMask.z - 3.4, L) * smoothstep(uMask.y, uMask.y + 2.5, lat) * smoothstep(uMask.w, uMask.w - 4.0, lat);
+      wx.a *= 1.0 - inside;
+    }
     gShadow = cloudShadow(lon, lat, n);
     float h0 = texture(uDemW, t).r;
     gWater = 1.0 - smoothstep(-30.0, 2.0, h0); gDepth = -h0; gW = vW;
@@ -469,7 +474,7 @@ const CLOUD_VERT = /* glsl */`
 const CLOUD_FRAG = /* glsl */`
   precision highp float; precision highp usampler2D;
   ${COMMON}
-  uniform float uH; uniform float uOp;
+  uniform float uH; uniform float uOp; uniform vec4 uCMask; uniform float uCMaskOn;
   in vec3 vP; out vec4 outColor;
   // a cloud column reaches from ~1 km up to its top (colder IR top = higher); every shell is one slice
   // of that volume, with 3-D noise that changes with height, so the stack reads as real cumulus and cloud decks
@@ -478,6 +483,7 @@ const CLOUD_FRAG = /* glsl */`
     vec3 n = normalize(vP);
     float lat = asin(clamp(n.y, -1.0, 1.0)) / DEG, lon = atan(-n.z, n.x) / DEG;
     float c = cloudAt(lon, lat);
+    if (uCMaskOn > 0.5) { float L = lon < 0.0 ? lon + 360.0 : lon; c *= 1.0 - smoothstep(uCMask.x, uCMask.x + 3.4, L) * smoothstep(uCMask.z, uCMask.z - 3.4, L) * smoothstep(uCMask.y, uCMask.y + 2.5, lat) * smoothstep(uCMask.w, uCMask.w - 4.0, lat); }
     if (c < 0.015) discard;
     vec3 wp = n * 220.0 + vec3(uTime * 0.004, uH * 0.9, uTime * 0.003);
     float big = fbm(wp * 0.35), det = fbm(wp * 1.6 + big * 2.0);
@@ -588,7 +594,7 @@ async function initScene() {
     glslVersion: THREE.GLSL3, vertexShader: GLOBE_VERT, fragmentShader: GLOBE_FRAG,
     uniforms: { ...common(), uDemW: { value: tex.demW }, uDemSize: { value: new THREE.Vector2(DEM.w.W, DEM.w.H) }, uGSize: { value: new THREE.Vector2(gW, gH) },
       uProj: { value: new THREE.Vector4(D.region.proj.lon0, D.region.proj.k, D.region.proj.x0, D.region.proj.y0) },
-      uReg: { value: new THREE.Vector4(rg.X0, rg.Y0, rg.W, rg.H) }, uPatchOn: { value: 1 } },
+      uReg: { value: new THREE.Vector4(rg.X0, rg.Y0, rg.W, rg.H) }, uPatchOn: { value: 1 }, uMask: { value: new THREE.Vector4(20, 33, 190, 82) }, uMaskOn: { value: 0 } },
   });
   mats.globe.uniforms.uA.value = mats.globe.uniforms.uB.value = tex.blankG;
   globe = new THREE.Mesh(new THREE.SphereGeometry(R, segs[0], segs[1]), mats.globe);
@@ -1040,6 +1046,7 @@ function initCloudUniforms() {
   Object.assign(CU, {
     uCGA: { value: b }, uCGB: { value: b }, uCRA: { value: b }, uCRB: { value: b }, uCMix: { value: 0 }, uCOn: { value: 1 }, uCHasR: { value: 0 },
     uCShift: { value: 0 }, uCProj: { value: new THREE.Vector4(P.lon0, P.k, P.x0, P.y0) }, uCReg: { value: new THREE.Vector4(rg.X0, rg.Y0, rg.W, rg.H) }, uHaze: { value: 0 },
+    uCMask: { value: new THREE.Vector4(20, 33, 190, 82) }, uCMaskOn: { value: 0 },
     uTime: { value: 0 }, uMoon: { value: new THREE.Vector3(0, 1, 0) }, uMoonLit: { value: 0.5 },
   });
 }
@@ -1295,16 +1302,23 @@ function updateUniforms(now) {
   const [slon, slat] = subsolar(timeAt(S.t)), sv = vecLL(slon, slat, 1);
   for (const [m, src] of [[mats.globe, 'glo'], [mats.patch, 'reg']]) {
     const u = m.uniforms; u.uSun.value.copy(sv); u.uSunOn.value = sunOn;
-    if (S.layer === 'relief' || S.layer === 'd5') { u.uAlpha.value = 0; continue; }
-    const fr = frameAt(S.layer, S.t);
-    u.uA.value = classTex(src, S.layer, fr.i0); u.uB.value = classTex(src, S.layer, fr.i1);
-    u.uMix.value = S.layer === 'sun' ? 0 : fr.f; u.uRow.value = LAYER_ROWS[S.layer]; u.uAlpha.value = LAYER_ALPHA[S.layer];
+    if (u.uMaskOn) u.uMaskOn.value = 0;
+    if (S.layer === 'relief') { u.uAlpha.value = 0; continue; }
+    const L = S.layer === 'd5' ? 'rain' : S.layer;
+    // 5D: outside the multimodel box (and within ECMWF's 10 days) the globe shows ECMWF rain, so the world is not empty
+    if (S.layer === 'd5' && (src === 'reg' || G.missing?.rain || S.t > D.global.layers.rain.steps.at(-1))) { u.uAlpha.value = 0; continue; }
+    if (S.layer === 'd5') { u.uMaskOn.value = 1; if (D5.idx) u.uMask.value.set(D5.idx.lon0, D5.idx.lat0 - (D5.idx.H - 1) * D5.idx.d, D5.idx.lon0 + (D5.idx.W - 1) * D5.idx.d, D5.idx.lat0); }
+    const fr = frameAt(L, S.t);
+    u.uA.value = classTex(src, L, fr.i0); u.uB.value = classTex(src, L, fr.i1);
+    u.uMix.value = L === 'sun' ? 0 : fr.f; u.uRow.value = LAYER_ROWS[L]; u.uAlpha.value = LAYER_ALPHA[L];
   }
   mats.atmo.uniforms.uSun.value.copy(sv); mats.atmo.uniforms.uSunOn.value = sunOn;
   for (const m of mats.clouds) { const u = m.uniforms; u.uSun.value.copy(sv); u.uSunOn.value = sunOn; }
   CU.uTime.value = now / 1000;
   updateSky(sv, now);
-  const cOn = S.fxClouds && S.layer !== 'd5';
+  const cOn = S.fxClouds;
+  CU.uCMaskOn.value = S.layer === 'd5' ? 1 : 0;
+  if (D5.idx) CU.uCMask.value.set(D5.idx.lon0, D5.idx.lat0 - (D5.idx.H - 1) * D5.idx.d, D5.idx.lon0 + (D5.idx.W - 1) * D5.idx.d, D5.idx.lat0);
   CU.uCOn.value = cOn ? 1 : 0; clouds.visible = cOn;
   d5Update();
   updateClouds();
@@ -1608,6 +1622,7 @@ function renderD5Legend(el) {
     <div class="seg small d5prod">${['all', 'temp', 'cloud'].map(k => `<button data-p="${k}" aria-pressed="${D5.prod === k}">${P(k)}</button>`).join('')}</div>
     <div class="lt muted">${P('leg_' + D5.prod)}</div>${bar}
     <div class="muted d5src">${(D5.idx.models || []).join(', ')}</div>
+    <div class="muted d5src">${P('outside')}</div>
     <button class="btn d5rec" id="d5Rec">${D5.rec ? P('recStop') : P('rec')}</button> <span class="muted" id="d5RecMsg"></span>`;
   el.querySelectorAll('.d5prod button').forEach(b => b.onclick = () => { D5.prod = b.dataset.p; store.set('d5prod', D5.prod); renderLegend(); labelEls.forEach(e => e._id = null); labelTick = 7; });
   $('d5Rec').onclick = () => D5.rec ? d5RecStop() : d5RecStart();
