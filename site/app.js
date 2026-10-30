@@ -1480,16 +1480,19 @@ const D5 = { idx: null, img: [], tex: [], off: 0, prod: store.get('d5prod', 'all
 const D5_VERT = /* glsl */`
 in vec3 aDir; in vec2 aUV;
 uniform sampler2D uA; uniform sampler2D uB; uniform float uF; uniform float uK; uniform float uBase; uniform int uMode;
-out vec3 vW; out vec3 vD; out float vP; out float vT; out float vC;
+out vec3 vW; out vec3 vD; out float vP; out float vT; out float vC; out float vE;
 void main(){
+  // soft edges: the data covers 33–82°N, 20–190°E only; fade out over ~3° instead of a hard cut
+  vE = smoothstep(0.0, 0.02, aUV.x) * smoothstep(1.0, 0.98, aUV.x) * smoothstep(0.0, 0.05, aUV.y) * smoothstep(1.0, 0.92, aUV.y);
   vec3 v = mix(texture(uA, aUV).rgb, texture(uB, aUV).rgb, uF) * 255.0;
   vP = v.r / 250.0; vT = v.g / 2.0 - 60.0; vC = v.b / 250.0;
   float h = uMode == 0 ? smoothstep(0.06, 1.0, vP) * uK : uMode == 1 ? clamp((vT + 40.0) / 80.0, 0.0, 1.0) * uK * 0.6 : vC * uK * 0.25;
+  h *= vE;
   vD = aDir; vec4 w = modelMatrix * vec4(aDir * (uBase + h), 1.0); vW = w.xyz;
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
 const D5_FRAG = /* glsl */`precision highp float;
-in vec3 vW; in vec3 vD; in float vP; in float vT; in float vC; uniform int uMode; uniform float uOp; uniform float uCT; out vec4 outColor;
+in vec3 vW; in vec3 vD; in float vP; in float vT; in float vC; in float vE; uniform int uMode; uniform float uOp; uniform float uCT; out vec4 outColor;
 vec3 ramp3(vec3 a, vec3 b, vec3 c, float x){ return x < 0.5 ? mix(a, b, x * 2.0) : mix(b, c, x * 2.0 - 1.0); }
 vec3 tcol(float t){
   float x = clamp((t + 40.0) / 80.0, 0.0, 1.0);
@@ -1507,6 +1510,7 @@ void main(){
     a = smoothstep(0.08, 0.2, p) * 0.94;
   } else if (uMode == 1) { c = tcol(vT); a = 0.86; }
   else { c = mix(vec3(.72,.76,.82), vec3(.98), vC); a = smoothstep(uCT, 1.0, vC) * 0.62; lit = 0.75 + 0.35 * lit; }
+  a *= vE;
   if (a < 0.01) discard;
   outColor = vec4(c * lit, a * uOp);
 }`;

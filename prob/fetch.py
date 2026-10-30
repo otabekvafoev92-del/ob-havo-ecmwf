@@ -12,7 +12,7 @@ import argparse, bz2, datetime as dt, io, json, sys, time, concurrent.futures as
 import numpy as np, requests
 import eccodes
 
-GRID = dict(lon0=20.0, lat0=82.0, d=0.25, W=681, H=197)  # 20°E…190°E, 82°N…33°N
+GRID = dict(lon0=20.0, lat0=82.0, d=0.25, W=681, H=229)  # 20°E…190°E, 82°N…25°N (south edge beyond the maps so the 5D layer is not cut)
 N = GRID['W'] * GRID['H']
 THR = 0.2  # mm per 6 h
 # ECMWF open data mirrors (the same files); the Google Cloud copy is used first, AWS is the fallback
@@ -200,7 +200,7 @@ def main():
                         **{f'ens_{k}': cnt[k] for k in ENS}, **{f'n_{k}': nmem[k] for k in ENS})
     log('saved', a.out)
     # GEFS ensemble mean: 2 m temperature and total cloud cover every 6 h (for snow, clouds and temperature maps)
-    WG = dict(lon0=20.0, lat0=82.0, d=0.5, W=341, H=197 // 2 + 1)
+    WG = dict(lon0=20.0, lat0=82.0, d=0.5, W=341, H=(GRID['H'] - 1) // 2 + 1)
     wsteps = list(range(0, a.max_step + 1, 6)); Tw = np.full((len(wsteps), WG['H'], WG['W']), np.nan, np.float32); Cw = Tw.copy()
     keep = GRID; GRID = WG; _maps.clear()
     for i, s in enumerate(wsteps):
