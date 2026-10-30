@@ -74,9 +74,9 @@ for f in pp['features']:
     places.append([round(lon, 3), round(lat, 3), p.get('NAME_EN') or p['NAME'], p.get('NAME_RU') or p['NAME'],
                    p['SCALERANK'], int(p.get('POP_MAX') or 0), p.get('ISO_A2') or '', cap])
 # Natural Earth still has some outdated names
-RENAME = {'Nur-Sultan': ('Astana', 'Астана'), 'Almaty': ('Almaty', 'Алматы')}
-for x in places:
-    if x[2] in RENAME: x[2], x[3] = RENAME[x[2]]
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from names_current import fix_list_place
+for x in places: fix_list_place(x)
 places.sort(key=lambda x: (x[4], -x[5]))
 geo['places'] = places
 txt = json.dumps(geo, separators=(',', ':'), ensure_ascii=False)

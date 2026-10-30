@@ -1,5 +1,3 @@
 node_modules/
 site/data/
-site/prob/
-*.npz
-__pycache__/
+tmp/

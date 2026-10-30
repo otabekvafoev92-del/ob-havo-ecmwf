@@ -34,10 +34,7 @@ site/                  статический сайт (three.js, 3D-глобу�
    - переменную `SITE_URL` — адрес сайта, например `https://<логин>.github.io/<репозиторий>/`;
    - переменную `TG_LANG` — `uz` или `ru`;
    - переменную `TG_CITIES` — список городов через запятую, например `toshkent,samarqand,buxoro`.
-   - переменную `PROB_TG` — какие видео-отчёты слать в канал, например `UZ:uz,cis:ru,TR:tr` (страна:язык).
-4. **Actions → Update ECMWF forecast → Run workflow.** Первый запуск идёт около 1–1,5 часа (скачивание ~3 ГБ моделей и рисование 108 видео), потом сайт появится по адресу `https://<логин>.github.io/<репозиторий>/`.
-
-GitHub Pages бесплатен только для **публичных** репозиториев: для приватного нужен GitHub Pro, иначе сделайте репозиторий публичным (Settings → General → Danger Zone → Change visibility).
+4. **Actions → Update ECMWF forecast → Run workflow.** Первый запуск идёт около 15–20 минут, потом сайт появится по адресу из шага 3.
 
 Узнать `TELEGRAM_CHAT_ID` можно так: напишите боту любое сообщение и откройте `https://api.telegram.org/bot<ТОКЕН>/getUpdates`, там будет `"chat":{"id":...}`.
 

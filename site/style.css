@@ -276,3 +276,30 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .legend .d5src { font-size: 10px; margin: 2px 0 8px; line-height: 1.3; }
 .legend .d5rec { width: 100%; font-size: 12px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); cursor: pointer; }
 .legend .d5rec + span { font-size: 11px; }
+/* report: today / tomorrow card, past days, share */
+.prob-now { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; max-width: 1100px; }
+.prob-now > div { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 12px; padding: 10px 14px; display: grid; gap: 4px; }
+.prob-now b { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+.prob-now span { font-size: 15px; line-height: 1.4; }
+.prob-days li.past { opacity: .5; }
+.prob a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+@media (max-width: 760px) {
+  .prob-ctl .btn { flex: 1 1 auto; justify-content: center; text-align: center; }
+  .prob-days li { grid-template-columns: 74px 1fr; font-size: 13.5px; }
+  .prob .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .prob .chips button { flex: 0 0 auto; }
+}
+/* phones: settings folded away so the globe (and the 5D layer) stays visible */
+.fx-toggle { display: none; }
+@media (max-width: 760px) {
+  .fx-toggle { display: inline-flex; align-self: flex-start; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--fg); border-radius: 10px; padding: 5px 10px; font-size: 12.5px; backdrop-filter: blur(8px); }
+  .hud-tl .fx { display: none; }
+  .hud-tl.open .fx { display: flex; }
+  .hud-tl .layers { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: calc(100vw - 24px); }
+  .hud-tl .layers button { flex: 0 0 auto; }
+  .legend { width: min(220px, 60vw); max-height: 46vh; overflow: auto; }
+  .legend.mini > :not(.lt:first-child):not(.d5prod) { display: none; }
+  .legend .lt:first-child { cursor: pointer; }
+  .legend .lt:first-child::after { content: ' ▾'; }
+  .legend.mini .lt:first-child::after { content: ' ▸'; }
+}

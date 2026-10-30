@@ -30,7 +30,7 @@ const I18N = {
     'fx.precip': 'Yomg‘ir va qor', 'fx.wind': 'Shamol oqimi', 'lvl.10m': 'Yer usti', 'lvl.850': '1,5 km', 'lvl.500': '5,5 km', 'lvl.250': '10 km',
     'lvl.title': 'Shamol balandligi: yer usti (10 m), 850 gPa (~1,5 km), 500 gPa (~5,5 km), 250 gPa (~10 km, reaktiv oqim)', 'windNow': 'Shamol (ECMWF)', 'dir': ['shim.', 'shim.-sharq', 'sharq', 'jan.-sharq', 'jan.', 'jan.-g‘arb', 'g‘arb', 'shim.-g‘arb'], 'fx.clouds': 'Bulutlar', 'fx.exag': 'Tog‘ balandligi', 'fx.sun': 'Kun va tun', 'fx.borders': 'Chegaralar',
     'view.globe': 'Butun dunyo', 'view.shot': 'Rasmni saqlash', 'view.tour': 'Sayohat: shaharlar bo‘ylab', 'view.fly': 'Nuqtaga uchish', 'view.top': 'Yuqoridan',
-    'layer.d5': '5D prognoz', 'd5.title': '5D: 15 kunlik multimodel prognoz', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Balandlik va rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 5D videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
+    'fx.more': '⚙ Sozlamalar', 'layer.d5': '5D prognoz', 'd5.title': '5D: 15 kunlik multimodel prognoz', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Balandlik va rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 5D videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
     'leg.relief': 'Sentinel-2 va NASA sun’iy yo‘ldosh tasviri, relyef', 'leg.temp': '2 m harorat, °C', 'leg.rain': 'So‘nggi 6 soatdagi yog‘in, mm', 'leg.wind': '10 m shamol tezligi, m/s (10 dan yuqori)', 'leg.sun': 'Quyosh nuri davomiyligi, 24 soatda, soat',
     'panel.point': 'Tanlangan nuqta', 'panel.more': 'Batafsil prognoz →',
     'mob.map': '⌖ Globus', 'mob.forecast': '☀ Prognoz', 'mob.menu': '☰ Joylar',
@@ -52,7 +52,7 @@ const I18N = {
     'fx.precip': 'Дождь и снег', 'fx.wind': 'Потоки ветра', 'lvl.10m': 'У земли', 'lvl.850': '1,5 км', 'lvl.500': '5,5 км', 'lvl.250': '10 км',
     'lvl.title': 'Высота ветра: у земли (10 м), 850 гПа (~1,5 км), 500 гПа (~5,5 км), 250 гПа (~10 км, струйное течение)', 'windNow': 'Ветер (ECMWF)', 'dir': ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'], 'fx.clouds': 'Облака', 'fx.exag': 'Высота гор', 'fx.sun': 'День и ночь', 'fx.borders': 'Границы',
     'view.globe': 'Весь мир', 'view.shot': 'Сохранить снимок', 'view.tour': 'Экскурсия по городам', 'view.fly': 'Перелететь к точке', 'view.top': 'Сверху',
-    'layer.d5': '5D-прогноз', 'd5.title': '5D: мультимодельный прогноз на 15 дней', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Высота и цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать 5D-видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
+    'fx.more': '⚙ Настройки', 'layer.d5': '5D-прогноз', 'd5.title': '5D: мультимодельный прогноз на 15 дней', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Высота и цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать 5D-видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
     'leg.relief': 'Спутниковые снимки Sentinel-2 и NASA, рельеф', 'leg.temp': 'Температура 2 м, °C', 'leg.rain': 'Осадки за 6 часов, мм', 'leg.wind': 'Ветер 10 м, м/с (от 10 и выше)', 'leg.sun': 'Солнечное сияние за 24 часа, ч',
     'panel.point': 'Выбранная точка', 'panel.more': 'Подробный прогноз →',
     'mob.map': '⌖ Глобус', 'mob.forecast': '☀ Прогноз', 'mob.menu': '☰ Места',
@@ -66,6 +66,7 @@ const I18N = {
     'maps.title': 'Карты ECMWF', 'maps.note': 'Оригинальные карты с charts.ecmwf.int на 12:00 UTC (17:00 по Ташкенту) каждого дня.', 'maps.empty': 'В демо-версии оригинальных карт нет — на полном сайте их загружает GitHub Actions.',
   },
 };
+const UZ_PLACE = {"Moscow": "Moskva", "Saint Petersburg": "Sankt-Peterburg", "Almaty": "Olmaota", "Ashgabat": "Ashxobod", "Baku": "Boku", "Chișinău": "Kishinyov", "Kyiv": "Kiyev", "Ankara": "Anqara", "Tehran": "Tehron", "Kabul": "Kobul", "Beijing": "Pekin", "Ürümqi": "Urumchi", "Kashgar": "Qashqar", "Herat": "Hirot", "Mazar-i-Sharif": "Mozori Sharif", "Kandahar": "Qandahor", "Kunduz": "Qunduz", "Khujand": "Xo‘jand", "Osh": "O‘sh", "Jalal-Abad": "Jalolobod", "Shymkent": "Chimkent", "Turkistan": "Turkiston", "Taraz": "Taroz", "Kyzylorda": "Qizilo‘rda", "Mary": "Marv", "Türkmenabat": "Turkmanobod", "Daşoguz": "Dashoguz", "Konye-Urgench": "Ko‘hna Urganch", "Kulob": "Ko‘lob", "Istarawshan": "Istaravshan", "Konibodom": "Konibodom", "Tashkent": "Toshkent", "Samarkand": "Samarqand", "Bukhara": "Buxoro", "Andijan": "Andijon", "Fergana": "Farg‘ona", "Kokand": "Qo‘qon", "Termez": "Termiz", "Jizzakh": "Jizzax", "Urgench": "Urganch", "Khiva": "Xiva", "Kagan": "Kogon", "Katta-Kurgan": "Kattaqo‘rg‘on", "Zarafshan": "Zarafshon", "Chirchiq": "Chirchiq", "Olmaliq": "Olmaliq", "Denov": "Denov", "Shahrisabz": "Shahrisabz", "Iskandar": "Iskandar", "Urgut": "Urgut", "Chimboy": "Chimboy", "Mashhad": "Mashhad", "Istanbul": "Istanbul", "Delhi": "Dehli", "Tbilisi": "Tbilisi", "Yerevan": "Yerevan", "Minsk": "Minsk", "Dushanbe": "Dushanbe", "Bishkek": "Bishkek", "Astana": "Astana", "Karakol": "Qoraqo‘l", "Naryn": "Norin", "Talas": "Talas", "Tokmok": "To‘qmoq", "Aral": "Orol", "Kazan": "Qozon", "Astrakhan": "Astraxan", "Orenburg": "Orenburg", "Lahore": "Lahor", "Islamabad": "Islomobod", "Karachi": "Karachi", "Cairo": "Qohira", "Riyadh": "Ar-Riyod", "Mecca": "Makka", "Medina": "Madina", "Dubai": "Dubay", "Baghdad": "Bag‘dod", "Damascus": "Damashq", "Tokyo": "Tokio", "Seoul": "Seul", "London": "London", "Paris": "Parij", "Berlin": "Berlin", "Rome": "Rim", "New York City": "Nyu-York", "Washington, D.C.": "Vashington", "Bamyan": "Bomiyon", "Balkh": "Balx", "Ghazni": "G‘azni", "Nukus": "Nukus", "Navoiy": "Navoiy", "Qarshi": "Qarshi", "Guliston": "Guliston", "Angren": "Angren", "Namangan": "Namangan", "Mo‘ynoq": "Mo‘ynoq", "Qo‘ng‘irot": "Qo‘ng‘irot", "Xo‘jayli": "Xo‘jayli"}; // Uzbek spellings for the globe labels
 const CTY_UZ = { UZ: 'O‘zbekiston', KZ: 'Qozog‘iston', KG: 'Qirg‘iziston', TJ: 'Tojikiston', TM: 'Turkmaniston', AF: 'Afg‘oniston', RU: 'Rossiya', TR: 'Turkiya',
   AZ: 'Ozarbayjon', AM: 'Armaniston', GE: 'Gruziya', BY: 'Belarus', UA: 'Ukraina', MD: 'Moldova', CN: 'Xitoy', IN: 'Hindiston', PK: 'Pokiston', IR: 'Eron',
   MN: 'Mo‘g‘uliston', JP: 'Yaponiya', KR: 'Janubiy Koreya', KP: 'Shimoliy Koreya', US: 'AQSH', CA: 'Kanada', MX: 'Meksika', BR: 'Braziliya', AR: 'Argentina',
@@ -1369,7 +1370,7 @@ function buildLabels() {
   const uzIds = new Set(D.cities.map(c => c.ru));
   candidates = [
     ...D.cities.map(c => ({ ...c, rank: c.country === 'UZ' ? 1 : 3, pop: 1e6, preset: true })),
-    ...GEO.places.filter(p => !uzIds.has(p[3])).map(p => ({ id: 'np' + p[0] + p[1], lon: p[0], lat: p[1], uz: p[2], ru: p[3], rank: p[4], pop: p[5], country: p[6], cap: p[7] })),
+    ...GEO.places.filter(p => !uzIds.has(p[3])).map(p => ({ id: 'np' + p[0] + p[1], lon: p[0], lat: p[1], uz: UZ_PLACE[p[2]] || p[2], ru: p[3], rank: p[4], pop: p[5], country: p[6], cap: p[7] })),
   ];
   for (const c of candidates) c.v = vecLL(c.lon, c.lat, 1);
 }
@@ -1568,10 +1569,13 @@ function d5Update() {
   for (let k = 2; k < 6; k++) if (fr.i0 + k < D5.idx.steps.length) d5Tex(fr.i0 + k);
   const mode = D5.prod === 'temp' ? 1 : D5.prod === 'cloud' ? -1 : 0;
   D5.mesh.visible = mode >= 0;
-  const exK = 0.7 + S.exag * 0.1;
+  // the relief scales with the camera height, so it never turns into a fog when you zoom in close
+  const alt = camera.position.length() - R, zk = Math.max(0.03, Math.min(1, alt / 45));
+  const exK = (0.7 + S.exag * 0.1) * zk, base = R + 0.02 + 0.43 * zk;
   for (const m of [D5.mesh.material, D5.cloud.material]) { const u = m.uniforms; u.uA.value = A; u.uB.value = B; u.uF.value = fr.f; u.uK.value = 2.6 * exK; }
+  D5.mesh.material.uniforms.uBase.value = base;
   D5.mesh.material.uniforms.uMode.value = Math.max(0, mode);
-  D5.cloud.material.uniforms.uBase.value = D5.prod === 'cloud' ? R + 0.6 : R + 0.45 + 2.6 * exK + 0.6;
+  D5.cloud.material.uniforms.uBase.value = D5.prod === 'cloud' ? base + 0.15 * zk : base + 2.6 * exK + 0.6 * zk;
   D5.cloud.material.uniforms.uOp.value = D5.prod === 'cloud' ? 1.25 : 0.55; D5.cloud.material.uniforms.uCT.value = D5.prod === 'cloud' ? 0.2 : 0.6;
 }
 // values under the cursor / labels: read the current window's pixels once
@@ -1642,7 +1646,7 @@ function d5RecFrame() {
   x.fillStyle = 'rgba(255,255,255,0.25)'; x.fillRect(0, H - 6 * s, W, 6 * s); x.fillStyle = '#5aa9ff'; x.fillRect(0, H - 6 * s, W * f, 6 * s);
   if (S.t >= r.end - 0.5 || (r.lastT != null && S.t < r.lastT)) d5RecStop(); else r.lastT = S.t;
 }
-function d5Enter() { flyTo(66, 41, { dist: MOBILE ? 60 : 46, tilt: 1.0 }); setPlaying(true); }
+function d5Enter() { D5.entered = true; flyTo(66, 41, { dist: MOBILE ? 60 : 46, tilt: 1.0 }); setPlaying(true); }
 
 /* ------------------------------ UI ------------------------------ */
 const LAYERS = [
@@ -1703,7 +1707,7 @@ function searchPlaces(q) {
   if (!q) return D.cities.map(c => ({ ...c, preset: true }));
   const out = [];
   for (const c of D.cities) if (c.uz.toLowerCase().includes(q) || c.ru.toLowerCase().includes(q)) out.push({ ...c, preset: true });
-  for (const p of GEO.places) { if (out.length > 14) break; if (p[2].toLowerCase().includes(q) || p[3].toLowerCase().includes(q)) { if (!out.some(o => o.ru === p[3])) out.push({ id: 'np' + p[0] + p[1], lon: p[0], lat: p[1], uz: p[2], ru: p[3], country: p[6] }); } }
+  for (const p of GEO.places) { if (out.length > 14) break; if (p[2].toLowerCase().includes(q) || p[3].toLowerCase().includes(q) || (UZ_PLACE[p[2]] || '').toLowerCase().includes(q)) { if (!out.some(o => o.ru === p[3])) out.push({ id: 'np' + p[0] + p[1], lon: p[0], lat: p[1], uz: UZ_PLACE[p[2]] || p[2], ru: p[3], country: p[6] }); } }
   return out;
 }
 function renderPlaces() {
@@ -1895,9 +1899,9 @@ const PROB_NAMES = { cis: { uz: 'MDH va Turkiya', ru: 'СНГ и Турция', 
   BY: { uz: 'Belarus', ru: 'Беларусь', tr: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', tr: 'Moldova' }, RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' } };
 const PROB = { M: null, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate', 1), product: store.get('probProduct', 'prob') };
 const PROB_UI = {
-  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', days: 'Kunlar bo‘yicha izoh', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
-  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', days: 'Комментарии по дням', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
-  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', days: 'Günlük yorumlar', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
+  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
+  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
+  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
 };
 async function saveVideo(url, name) {
   // inside claude.ai the page may only hand files over through the downloads capability; elsewhere a plain link works
@@ -1908,6 +1912,11 @@ async function saveVideo(url, name) {
     }
   } catch (e) { if (e && e.code === 'declined') return false; }
   const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); return true;
+}
+function probLink() { return `${location.href.split('#')[0]}#prob/${PROB.region}/${PROB.lang || S.lang}/${PROB.product}`; }
+function probNowFrame(M) { // the 6-h window that contains the current moment
+  if (!M.steps || !M.run) return 0; const h = (Date.now() - Date.parse(M.run)) / 3600e3;
+  const i = M.steps.findIndex(s => h <= s); return i < 0 ? M.steps.length - 1 : Math.max(0, i);
 }
 async function renderProbPage() {
   const el = $('page-prob');
@@ -1925,11 +1934,18 @@ async function renderProbPage() {
   const days = M.items.find(i => i.region === PROB.region && i.lang === lang && i.product === 'days');
   const n = it ? it.frames : 0, fps = M.fps || 1;
   const dayOf = f => { if (!M.steps || !days) return null; const d = new Date(Date.parse(M.run) + (M.steps[f] - 3 + (days.off || 0)) * 3600e3); return d.toISOString().slice(0, 10); };
+  const today = new Date(Date.now() + ((days && days.off) || 5) * 3600e3).toISOString().slice(0, 10);
+  const tmrw = new Date(Date.now() + (((days && days.off) || 5) + 24) * 3600e3).toISOString().slice(0, 10);
+  const ageH = M.run ? Math.max(0, Math.round((Date.now() - Date.parse(M.run)) / 3600e3)) : null;
+  if (history.replaceState && S.route === 'prob') history.replaceState(null, '', '#prob/' + PROB.region + '/' + lang + '/' + PROB.product);
+  const dd = days && days.days ? days.days : {};
+  const card = (dd[today] || dd[tmrw]) ? `<div class="prob-now">${[[today, U.today], [tmrw, U.tomorrow]].filter(([d]) => dd[d]).map(([d, lbl]) => `<div><b>${lbl}</b><span>${dd[d]}</span></div>`).join('')}</div>` : '';
   el.innerHTML = `<div class="inner prob">
-    <div class="prob-head"><div><h1>${t.title}</h1><div class="muted mono">${M.run ? `${t.run}: ${M.run.slice(0, 16).replace('T', ' ')} UTC · ${(M.models || []).join(', ')}` : ''}</div></div>
+    <div class="prob-head"><div><h1>${t.title.split(' · ')[0]} · ${PROB_NAMES[PROB.region][lang]}</h1><div class="muted mono">${M.run ? `${t.run}: ${M.run.slice(0, 16).replace('T', ' ')} UTC (${U.ago(ageH)}) · ${(M.models || []).join(', ')}` : ''}</div></div>
       <div class="seg" id="probLang">${['uz', 'ru', 'tr'].map(l => `<button data-l="${l}" aria-pressed="${l === lang}">${l === 'uz' ? 'O‘zbek' : l === 'ru' ? 'Русский' : 'Türkçe'}</button>`).join('')}</div></div>
     <div class="chips" id="probRegions">${['cis', 'UZ', 'KZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'BY', 'MD', 'RU', 'TR'].filter(r => have.includes(r)).map(r => `<button data-r="${r}" aria-pressed="${r === PROB.region}">${PROB_NAMES[r][lang]}</button>`).join('')}</div>
     ${prods.length > 1 ? `<div class="seg" id="probProd">${prods.map(pr => `<button data-p="${pr}" aria-pressed="${pr === PROB.product}">${U[pr]}</button>`).join('')}</div>` : ''}
+    ${card}
     ${it ? `<div class="prob-stage"><video id="probVideo" src="prob/${it.video}" muted loop playsinline autoplay preload="auto"></video></div>
     <div class="prob-ctl">
       <button class="icon-btn" id="probPlay" aria-label="Play">❚❚</button>
@@ -1938,11 +1954,12 @@ async function renderProbPage() {
       <button class="icon-btn" id="probNext" aria-label="+6 h">›</button>
       <span class="mono muted" id="probIdx">1 / ${n}</span>
       <span class="seg small" id="probRate" aria-label="${t.speed}">${[0.5, 1, 2].map(r => `<button data-r="${r}" aria-pressed="${r === PROB.rate}">${r}×</button>`).join('')}</span>
-      <button class="btn" id="probDl">${U.dl}</button> <span class="muted mono" id="probDlMsg"></span>
+      <button class="btn" id="probDl">${U.dl}</button> <a class="btn" id="probShare" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(probLink())}&text=${encodeURIComponent(t.title + ' · ' + PROB_NAMES[PROB.region][lang])}">${U.share}</a> <button class="btn" id="probCopy">${U.copy}</button> <span class="muted mono" id="probDlMsg"></span>
     </div>` : `<p class="muted">${t.none}</p>`}
-    ${days && days.days ? `<section class="prob-days"><h2>${U.days}${days.city ? ' · ' + days.city : ''}</h2><ol id="probDays">${Object.entries(days.days).map(([d, txt]) => { const dt_ = new Date(d + 'T12:00:00Z'); return `<li data-d="${d}"><b>${U.wd[dt_.getUTCDay()]}, ${String(dt_.getUTCDate()).padStart(2, '0')}.${String(dt_.getUTCMonth() + 1).padStart(2, '0')}</b><span>${txt}</span></li>`; }).join('')}</ol></section>` : ''}
+    ${days && days.days ? `<section class="prob-days"><h2>${U.days}${days.city ? ' · ' + days.city : ''}</h2><ol id="probDays">${Object.entries(days.days).map(([d, txt]) => { const dt_ = new Date(d + 'T12:00:00Z'); return `<li data-d="${d}"${d < today ? ` class="past" title="${U.past}"` : ''}><b>${U.wd[dt_.getUTCDay()]}, ${String(dt_.getUTCDate()).padStart(2, '0')}.${String(dt_.getUTCMonth() + 1).padStart(2, '0')}</b><span>${txt}</span></li>`; }).join('')}</ol></section>` : ''}
     <div class="prob-notes"><div><h2>${t.h1}</h2><p>${t.p1}</p></div><div><h2>${t.h2}</h2><p>${t.p2}</p></div><div><h2>${t.h3}</h2><p>${t.p3}</p></div></div>
   </div>`;
+  const selChip = el.querySelector('#probRegions [aria-pressed="true"]'); if (selChip) selChip.scrollIntoView({ block: 'nearest', inline: 'center' });
   el.querySelectorAll('#probLang button').forEach(b => b.onclick = () => { PROB.lang = b.dataset.l; renderProbPage(); });
   el.querySelectorAll('#probRegions button').forEach(b => b.onclick = () => { PROB.region = b.dataset.r; store.set('probRegion', PROB.region); renderProbPage(); });
   el.querySelectorAll('#probProd button').forEach(b => b.onclick = () => { PROB.product = b.dataset.p; store.set('probProduct', PROB.product); renderProbPage(); });
@@ -1951,7 +1968,9 @@ async function renderProbPage() {
   const v = $('probVideo'), seek = $('probSeek'), idx = $('probIdx');
   const frameOf = () => Math.min(n - 1, Math.floor(v.currentTime * fps + 1e-3));
   v.playbackRate = PROB.rate;
-  v.addEventListener('loadedmetadata', () => { v.playbackRate = PROB.rate; });
+  v.addEventListener('loadedmetadata', () => { v.playbackRate = PROB.rate; const f0 = probNowFrame(M); if (f0 > 0 && f0 < n) v.currentTime = (f0 + 0.5) / fps; }, { once: true });
+  $('probCopy').onclick = async () => { const msg = $('probDlMsg'); try { await navigator.clipboard.writeText(probLink()); msg.textContent = U.copied; } catch { msg.textContent = probLink(); } setTimeout(() => msg.textContent = '', 3000); };
+  el.onkeydown = null;
   let lastDay = '';
   v.addEventListener('timeupdate', () => { const f = frameOf(); seek.value = f; idx.textContent = `${f + 1} / ${n}`;
     const d = dayOf(f); if (d !== lastDay) { lastDay = d; el.querySelectorAll('#probDays li').forEach(li => li.classList.toggle('now', li.dataset.d === d)); } });
@@ -1997,7 +2016,8 @@ const PAGES = {
 
 /* ---------- routing, sheets, i18n ---------- */
 function route(keepSheet) {
-  const r = (location.hash || '#map').slice(1);
+  const [r, ...rest] = (location.hash || '#map').slice(1).split('/');
+  if (r === 'prob' && rest.length) { const [rg, lg, pr] = rest; if (PROB_NAMES[rg]) PROB.region = rg; if (PROB_UI[lg]) PROB.lang = lg; if (['prob', 'temp', 'cloud'].includes(pr)) PROB.product = pr; }
   S.route = ['map', 'forecast', 'prob', 'maps', 'guide', 'about'].includes(r) ? r : 'map';
   document.querySelectorAll('.nav a').forEach(a => a.setAttribute('aria-current', a.dataset.route === S.route ? 'page' : 'false'));
   for (const p of ['forecast', 'prob', 'maps', 'guide', 'about']) $('page-' + p).hidden = S.route !== p;
@@ -2047,6 +2067,9 @@ function bindUI() {
   $('tl').max = G.tMax;
   $('tl').oninput = e => { S.t = +e.target.value; setPlaying(false); syncTimeUI(); };
   $('playBtn').onclick = () => setPlaying(!S.playing);
+  $('fxToggle').onclick = () => { const h = document.querySelector('.hud-tl'), o = !h.classList.contains('open'); h.classList.toggle('open', o); $('fxToggle').setAttribute('aria-expanded', String(o)); };
+  if (MOBILE) $('legend').classList.add('mini');
+  $('legend').addEventListener('click', e => { if (e.target.classList.contains('lt') && MOBILE) $('legend').classList.toggle('mini'); });
   document.querySelectorAll('.speed button').forEach(b => b.onclick = () => { S.speed = +b.dataset.speed; document.querySelectorAll('.speed button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   $('fxPrecip').onchange = e => { S.fxPrecip = e.target.checked; };
   $('fxWind').onchange = e => { S.fxWind = e.target.checked; };
@@ -2081,6 +2104,8 @@ function bindUI() {
   window.addEventListener('hashchange', route);
   window.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
+    if (S.route === 'prob') { const k = { ArrowLeft: 'probPrev', ArrowRight: 'probNext', ' ': 'probPlay' }[e.key]; if (k && $(k)) { e.preventDefault(); $(k).click(); } return; }
+    if (S.route !== 'map') return;
     if (e.key === ' ') { e.preventDefault(); setPlaying(!S.playing); }
     if (e.key === 'ArrowRight') { S.t = Math.min(G.tMax, Math.round(S.t / 6) * 6 + 6); syncTimeUI(); }
     if (e.key === 'ArrowLeft') { S.t = Math.max(0, Math.round(S.t / 6) * 6 - 6); syncTimeUI(); }
@@ -2107,7 +2132,7 @@ async function boot() {
   $('loading').hidden = true;
   requestAnimationFrame(loop);
   window.__osmon = { S, flyTo, BLD, WIND, CU, cam: () => ({ d: camera.position.distanceTo(controls.target), mode, fly: !!fly }), setT: t => { S.t = t; syncTimeUI(); } }; // small hook for tests / console
-  setTimeout(() => flyTo(S.A.lon, S.A.lat, { dist: inReg(S.A.lon, S.A.lat) ? 5 : 10 }), 900);
+  setTimeout(() => { if (S.layer === 'd5') d5Enter(); else if (!D5.entered) flyTo(S.A.lon, S.A.lat, { dist: inReg(S.A.lon, S.A.lat) ? 5 : 10 }); }, 900);
   // first visit: ask for the location once (or silently reuse an existing permission)
   if (!a && !store.get('geoDone', false)) setTimeout(() => locateMe(false), 1200);
   else if (navigator.permissions) navigator.permissions.query({ name: 'geolocation' }).then(st => { if (st.state === 'granted' && a && a.here) locateMe(false); }).catch(() => {});

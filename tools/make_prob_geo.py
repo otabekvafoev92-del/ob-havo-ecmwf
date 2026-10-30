@@ -51,9 +51,9 @@ for f in json.load(open(src / 'ne_10m_populated_places.geojson'))['features']:
     cap = 2 if p.get('ADM0CAP') else (1 if (p.get('FEATURECLA') or '').startswith('Admin-1 capital') else 0)
     places.append({'en': p.get('NAME_EN') or p['NAME'], 'ru': p.get('NAME_RU') or p['NAME'], 'tr': p.get('NAME_TR') or p.get('NAME_EN') or p['NAME'],
                    'lon': round(lon, 3), 'lat': round(lat, 3), 'iso': iso, 'pop': int(p.get('POP_MAX') or 0), 'cap': cap, 'rank': p['SCALERANK']})
-RENAME = {'Nur-Sultan': ('Astana', 'Астана', 'Astana'), 'Almaty': ('Almaty', 'Алматы', 'Almatı')}
-for x in places:
-    if x['en'] in RENAME: x['en'], x['ru'], x['tr'] = RENAME[x['en']]
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from names_current import fix_dict_place
+for x in places: fix_dict_place(x)
 places.sort(key=lambda x: -x['pop'])
 json.dump({'countries': countries, 'admin1': admin1, 'places': places}, open(out, 'w'), ensure_ascii=False, separators=(',', ':'))
 print(len(countries), {k: len(v) for k, v in admin1.items()}, len(places), out.stat().st_size)
