@@ -1,0 +1,17 @@
+{
+  "name": "osmon-ecmwf-3d",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ECMWF OpenCharts forecast on 3D terrain for Uzbekistan and Central Asia, with Telegram summaries.",
+  "scripts": {
+    "build:data": "node pipeline/build.mjs site/data",
+    "telegram": "node pipeline/telegram.mjs site/data",
+    "serve": "npx --yes http-server site -p 8080 -c-1"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0",
+    "sharp": "^0.33.5"
+  },
+  "engines": { "node": ">=20" }
+}

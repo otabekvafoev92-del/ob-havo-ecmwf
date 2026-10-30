@@ -1,0 +1,21 @@
+// Preset points. Meteograms are pre-fetched for these.
+export const CITIES = [
+  { id: 'toshkent', uz: 'Toshkent', ru: 'Ташкент', lat: 41.311, lon: 69.280, country: 'UZ' },
+  { id: 'samarqand', uz: 'Samarqand', ru: 'Самарканд', lat: 39.655, lon: 66.960, country: 'UZ' },
+  { id: 'buxoro', uz: 'Buxoro', ru: 'Бухара', lat: 39.768, lon: 64.421, country: 'UZ' },
+  { id: 'andijon', uz: 'Andijon', ru: 'Андижан', lat: 40.783, lon: 72.344, country: 'UZ' },
+  { id: 'namangan', uz: 'Namangan', ru: 'Наманган', lat: 40.998, lon: 71.672, country: 'UZ' },
+  { id: 'fargona', uz: 'Farg‘ona', ru: 'Фергана', lat: 40.384, lon: 71.784, country: 'UZ' },
+  { id: 'qarshi', uz: 'Qarshi', ru: 'Карши', lat: 38.861, lon: 65.789, country: 'UZ' },
+  { id: 'termiz', uz: 'Termiz', ru: 'Термез', lat: 37.224, lon: 67.278, country: 'UZ' },
+  { id: 'navoiy', uz: 'Navoiy', ru: 'Навои', lat: 40.084, lon: 65.379, country: 'UZ' },
+  { id: 'jizzax', uz: 'Jizzax', ru: 'Джизак', lat: 40.116, lon: 67.842, country: 'UZ' },
+  { id: 'guliston', uz: 'Guliston', ru: 'Гулистан', lat: 40.490, lon: 68.781, country: 'UZ' },
+  { id: 'urganch', uz: 'Urganch', ru: 'Ургенч', lat: 41.550, lon: 60.631, country: 'UZ' },
+  { id: 'nukus', uz: 'Nukus', ru: 'Нукус', lat: 42.460, lon: 59.603, country: 'UZ' },
+  { id: 'chimyon', uz: 'Chimyon (tog‘)', ru: 'Чимган (горы)', lat: 41.553, lon: 70.017, country: 'UZ' },
+  { id: 'dushanbe', uz: 'Dushanbe', ru: 'Душанбе', lat: 38.560, lon: 68.787, country: 'TJ' },
+  { id: 'bishkek', uz: 'Bishkek', ru: 'Бишкек', lat: 42.875, lon: 74.604, country: 'KG' },
+  { id: 'almaty', uz: 'Olmaota', ru: 'Алматы', lat: 43.238, lon: 76.946, country: 'KZ' },
+  { id: 'ashgabat', uz: 'Ashxobod', ru: 'Ашхабад', lat: 37.960, lon: 58.326, country: 'TM' },
+];
