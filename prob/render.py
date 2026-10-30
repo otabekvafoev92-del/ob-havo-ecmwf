@@ -46,7 +46,15 @@ def load(path):
     z = np.load(path, allow_pickle=True)
     D = {k: z[k] for k in z.files}
     D['run'] = str(D['run']); D['ens_names'] = [str(x) for x in D['ens_names']]; D['det_names'] = [str(x) for x in D['det_names']]
+    if 'win' not in D:  # older files: windows were always 6 h
+        st = [int(x) for x in D['steps']]; D['win'] = np.array([s - (st[i - 1] if i else 0) for i, s in enumerate(st)])
     return D
+
+
+def hours_text(lang, h):
+    h = int(h)
+    if lang == 'ru': return f'{h} ' + ('час' if h % 10 == 1 and h % 100 != 11 else 'часа' if h % 10 in (2, 3, 4) and h % 100 not in (12, 13, 14) else 'часов')
+    return f"{h} {'soat' if lang == 'uz' else 'saat'}"
 
 
 def probability(D):
@@ -138,7 +146,8 @@ def load_wx_npz(D, path):
     S = len(D['steps']); T = np.full((S, g['H'], g['W']), np.nan, np.float32); C = np.full_like(T, np.nan)
     for i, s_ in enumerate(D['steps']):
         s_ = int(s_)
-        a = [st.index(h) for h in (s_ - 6, s_) if h in st]
+        w_ = int(D['win'][i]) if 'win' in D else 6
+        a = [st.index(h) for h in (s_ - w_, s_) if h in st]
         if a: T[i] = up(np.nanmean([Tw[k] for k in a], 0))
         if s_ in st and np.isfinite(Cw[st.index(s_)]).any(): C[i] = up(Cw[st.index(s_)]) / 100  # GEFS cloud cover is already a 6-h mean
     return {'T': T, 'C': C}
@@ -182,11 +191,11 @@ def tz_label(lang, region, off):
     return T[lang]['utc'].format(o=off)
 
 
-def window_text(lang, region, run, step, off):
-    t1 = run + dt.timedelta(hours=int(step) - 6 + off); t2 = run + dt.timedelta(hours=int(step) + off)
+def window_text(lang, region, run, step, off, win=6):
+    t1 = run + dt.timedelta(hours=int(step) - int(win) + off); t2 = run + dt.timedelta(hours=int(step) + off)
     f = lambda t: t.strftime('%d.%m')
     tz = tz_label(lang, region, off)
-    if t1.date() == t2.date() or t2.hour == 0 and (t2 - t1).seconds == 6 * 3600 and t1.date() == (t2 - dt.timedelta(minutes=1)).date():
+    if t1.date() == t2.date() or t2.hour == 0 and (t2 - t1).seconds == int(win) * 3600 and t1.date() == (t2 - dt.timedelta(minutes=1)).date():
         h2 = t2.hour if t2.hour else 24
         return T[lang]['window'].format(d1=f(t1), h1=f'{t1.hour:02d}', h2=f'{h2:02d}', tz=tz)
     return T[lang]['window2'].format(d1=f(t1), h1=f'{t1.hour:02d}', d2=f(t2), h2=f'{t2.hour:02d}', tz=tz)
@@ -301,9 +310,9 @@ def bilinear(a, x, y):
     return a[j, i] * (1 - fx) * (1 - fy) + a[j, i + 1] * fx * (1 - fy) + a[j + 1, i] * (1 - fx) * fy + a[j + 1, i + 1] * fx * fy
 
 
-def local_day(run, step, off):
-    """Local calendar day of a 6-h window (by its middle)."""
-    return (run + dt.timedelta(hours=int(step) - 3 + off)).date()
+def local_day(run, step, off, win=6):
+    """Local calendar day of a window (by its middle)."""
+    return (run + dt.timedelta(hours=int(step) - int(win) / 2 + off)).date()
 
 
 def fmt_t(v): return f'{v:+.0f}°'.replace('+0°', '0°').replace('-0°', '0°')
@@ -317,7 +326,7 @@ def daily_comments(R, D, lang, off):
     P = R.series(p); Tm = R.tseries(p); Cm = R.cseries(p); A = R.aseries(p)
     days = {}
     for i, st in enumerate(D['steps']):
-        days.setdefault(local_day(run, st, off), []).append(i)
+        days.setdefault(local_day(run, st, off, D['win'][i]), []).append(i)
     out = {}
     for d_, idx in days.items():
         pm = float(np.nanmax(P[idx])); mm = float(np.nansum(A[idx]))
@@ -355,7 +364,7 @@ def _header(fig, R, D, s, lang, title):
     run = dt.datetime.fromisoformat(D['run'].replace('Z', '+00:00')).replace(tzinfo=None)
     step = int(D['steps'][s]); off = R.off if R.off is not None else OVERVIEW_TZ[lang]; L = T[lang]
     fig.text(0.04, 0.955, f"{title} · {NAMES[R.id][lang]}", fontsize=21, fontweight='bold', color=INK, va='center')
-    fig.text(0.04, 0.915, window_text(lang, R.id, run, step, off), fontsize=19, color='#1a3e8c', fontweight='bold', va='center')
+    fig.text(0.04, 0.915, window_text(lang, R.id, run, step, off, D['win'][s]), fontsize=19, color='#1a3e8c', fontweight='bold', va='center')
     fig.text(0.96, 0.955, 'Osmon · multimodel', fontsize=11, color=MUTED, ha='right', va='center')
     fig.text(0.96, 0.925, L['run'].format(run=run.strftime('%d.%m.%Y %H:%M')), fontsize=10.5, color=MUTED, ha='right', va='center')
     fig.text(0.96, 0.898, 'ECMWF (CC BY 4.0), NOAA, DWD · Natural Earth', fontsize=8, color='#9aa5b1', ha='right', va='center')
@@ -410,15 +419,18 @@ def _swatches(fig, y, x, cols, labels, step=0.094, edge='#7a8794'):
 
 def _timeline(fig, R, D, s, run, off, values, colors, ylim, yfmt, title, line=None):
     bx = fig.add_axes([0.06, 0.075, 0.88, 0.075])
-    S = len(D['steps'])
-    if values is not None: bx.bar(np.arange(S), values, width=0.82, color=colors, zorder=2)
-    bx.bar([s], [ylim[1] - ylim[0]], bottom=ylim[0], width=0.95, fill=False, edgecolor=INK, lw=1.6, zorder=3)
-    bx.set_ylim(*ylim); bx.set_xlim(-0.7, S - 0.3)
+    st_ = np.array([int(x) for x in D['steps']], float); wn = np.array([int(x) for x in D['win']], float)
+    X = st_ - wn / 2  # middle of each window, hours from the run
+    if values is not None: bx.bar(X, values, width=wn * 0.82, color=colors, zorder=2)
+    bx.bar([X[s]], [ylim[1] - ylim[0]], bottom=ylim[0], width=wn[s] * 0.95, fill=False, edgecolor=INK, lw=1.6, zorder=3)
+    bx.set_ylim(*ylim); bx.set_xlim(st_[0] - wn[0] - 1, st_[-1] + 1)
     bx.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(yfmt)); bx.tick_params(labelsize=8.5, colors=MUTED, length=0)
     ticks, labs = [], []
-    for i, st in enumerate(D['steps']):
-        t1 = run + dt.timedelta(hours=int(st) - 6 + off)
-        if t1.hour < 6: ticks.append(i - (t1.hour / 6) - 0.5); labs.append((t1 - dt.timedelta(hours=t1.hour)).strftime('%d.%m'))
+    t0 = run + dt.timedelta(hours=off); first = (t0 + dt.timedelta(days=1)).replace(hour=0, minute=0)
+    if t0.hour == 0: first = t0
+    k = first
+    while (k - t0).total_seconds() / 3600 <= st_[-1]:
+        ticks.append((k - t0).total_seconds() / 3600); labs.append(k.strftime('%d.%m')); k += dt.timedelta(days=1)
     bx.set_xticks(ticks); bx.set_xticklabels(labs, fontsize=8.5, color=MUTED)
     for tk in ticks: bx.axvline(tk, color='#e3e8ee', lw=0.8, zorder=1)
     for sp in ('top', 'right'): bx.spines[sp].set_visible(False)
@@ -426,7 +438,7 @@ def _timeline(fig, R, D, s, run, off, values, colors, ylim, yfmt, title, line=No
     if line is not None and np.isfinite(line[0]).any():
         ys, col, fmt = line
         tx = bx if values is None else bx.twinx()
-        tx.plot(np.arange(S), ys, color=col, lw=1.5, zorder=4); tx.plot([s], [ys[s]], 'o', ms=4.5, color=col, zorder=5)
+        tx.plot(X, ys, color=col, lw=1.5, zorder=4); tx.plot([X[s]], [ys[s]], 'o', ms=4.5, color=col, zorder=5)
         if tx is not bx:
             lo, hi = np.nanmin(ys), np.nanmax(ys); pad = max(2, (hi - lo) * 0.15); tx.set_ylim(lo - pad, hi + pad)
             tx.tick_params(length=0, labelsize=8.5, colors=col); tx.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(fmt))
@@ -474,7 +486,7 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='')
     _cities(fig, ax, R, label)
     # legend
     if product == 'prob':
-        fig.text(0.04, 0.25, L['legend'] + ':', fontsize=11.5, color=INK, va='center')
+        fig.text(0.04, 0.25, L['legend'].format(h=hours_text(lang, D['win'][s])) + ':', fontsize=11.5, color=INK, va='center')
         for pal, name, y in ((COLORS, L['rain'], 0.226), (SNOW, L['snow'], 0.201)):
             fig.text(0.04, y, name, fontsize=10.5, color=INK, va='center', fontweight='bold'); _swatches(fig, y, 0.115, pal, LABELS)
         xr = 0.62
@@ -485,10 +497,10 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='')
         fig.add_artist(matplotlib.lines.Line2D([xr + 0.024, xr + 0.046], [0.226, 0.226], color='#1d4ed8', lw=1.8, transform=fig.transFigure))
         fig.text(xr + 0.051, 0.226, L['iso'], fontsize=9.6, color=INK, va='center')
         fig.add_artist(matplotlib.lines.Line2D([xr, xr + 0.046], [0.201, 0.201], color='#5b1f8f', lw=1.3, ls='--', transform=fig.transFigure))
-        fig.text(xr + 0.051, 0.201, L['heavy'], fontsize=9.6, color=INK, va='center')
+        fig.text(xr + 0.051, 0.201, L['heavy'].format(h=hours_text(lang, D['win'][s])), fontsize=9.6, color=INK, va='center')
         fig.text(0.04, 0.176, L['models'].format(m=', '.join(models)) + ' · ' + L['method'].format(n=members), fontsize=9, color=MUTED, va='center')
     elif product == 'temp':
-        fig.text(0.04, 0.25, L['legend_temp'] + ':', fontsize=11.5, color=INK, va='center')
+        fig.text(0.04, 0.25, L['legend_temp'].format(h=hours_text(lang, D['win'][s])) + ':', fontsize=11.5, color=INK, va='center')
         cb = fig.add_axes([0.04, 0.218, 0.92, 0.018])
         cb.imshow([np.arange(len(T_COL) - 0)], cmap=ListedColormap(T_COL), aspect='auto', extent=(T_LV[0] - 4, T_LV[-1], 0, 1))
         cb.set_yticks([]); cb.set_xticks(list(range(-40, 41, 8))); cb.set_xticklabels([fmt_t(v) for v in range(-40, 41, 8)], fontsize=8.5, color=MUTED)
@@ -542,7 +554,7 @@ def _job(args):
             suf = '' if product == 'prob' else '_' + product
             fdir = out / 'frames' / f'{region}_{lang}{suf}'; fdir.mkdir(parents=True, exist_ok=True)
             for i, s in enumerate(sel):
-                day = local_day(run, D['steps'][s], off)
+                day = local_day(run, D['steps'][s], off, D['win'][s])
                 draw_frame(R, D, s, lang, models, members, fdir / f'{i:03d}.png', product, com.get(day.isoformat(), ''))
             mp4 = out / f'{region}_{lang}{suf}.mp4'
             subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(fps), '-i', str(fdir / '%03d.png'),
@@ -577,7 +589,7 @@ def main():
             for res in pool.imap(_job, tasks): manifest += res
     else:
         for t in tasks: manifest += _job(t)
-    json.dump({'run': D['run'], 'models': models, 'members': members, 'fps': a.fps, 'steps': [int(D['steps'][i]) for i in sel], 'items': manifest}, open(out / 'manifest.json', 'w'), ensure_ascii=False, indent=1)
+    json.dump({'run': D['run'], 'models': models, 'members': members, 'fps': a.fps, 'steps': [int(D['steps'][i]) for i in sel], 'win': [int(D['win'][i]) for i in sel], 'items': manifest}, open(out / 'manifest.json', 'w'), ensure_ascii=False, indent=1)
 
 
 if __name__ == '__main__':

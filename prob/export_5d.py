@@ -27,7 +27,7 @@ def main():
         rgba = np.stack([np.clip(p * 2.5, 0, 250), np.clip((T + 60) * 2, 0, 255), np.clip(gaussian_filter(C, 0.8) * 250, 0, 250)], -1)
         Image.fromarray(np.round(rgba).astype(np.uint8), 'RGB').save(out / f's{s:03d}.png', optimize=True)
     json.dump({'run': D['run'], 'steps': steps, 'lon0': float(g['lon0']), 'lat0': float(g['lat0']), 'd': float(g['d']), 'W': int(g['W']), 'H': int(g['H']),
-               'models': models, 'members': members}, open(out / 'index.json', 'w'))
+               'win': [int(x) for x in D['win']], 'models': models, 'members': members}, open(out / 'index.json', 'w'))
     print('5D', len(steps), 'windows →', out)
 
 

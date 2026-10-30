@@ -30,7 +30,7 @@ const I18N = {
     'fx.precip': 'Yomg‘ir va qor', 'fx.wind': 'Shamol oqimi', 'lvl.10m': 'Yer usti', 'lvl.850': '1,5 km', 'lvl.500': '5,5 km', 'lvl.250': '10 km',
     'lvl.title': 'Shamol balandligi: yer usti (10 m), 850 gPa (~1,5 km), 500 gPa (~5,5 km), 250 gPa (~10 km, reaktiv oqim)', 'windNow': 'Shamol (ECMWF)', 'dir': ['shim.', 'shim.-sharq', 'sharq', 'jan.-sharq', 'jan.', 'jan.-g‘arb', 'g‘arb', 'shim.-g‘arb'], 'fx.clouds': 'Bulutlar', 'fx.exag': 'Tog‘ balandligi', 'fx.sun': 'Kun va tun', 'fx.borders': 'Chegaralar',
     'view.globe': 'Butun dunyo', 'view.shot': 'Rasmni saqlash', 'view.tour': 'Sayohat: shaharlar bo‘ylab', 'view.fly': 'Nuqtaga uchish', 'view.top': 'Yuqoridan',
-    'fx.more': '⚙ Sozlamalar', 'layer.d5': '5D prognoz', 'd5.title': '5D: 15 kunlik multimodel prognoz', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Balandlik va rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 5D videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'd5.outside': 'Mintaqadan tashqarida — ECMWF bo‘yicha yog‘in (mm / 6 soat, 10 kungacha).', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
+    'glLost': 'Videokarta 3D sahnani to‘xtatdi (yuklama juda katta). Sahifani qayta yuklang.', 'glReload': 'Qayta yuklash', 'fx.more': '⚙ Sozlamalar', 'layer.d5': '5D prognoz', 'd5.title': '5D: 15 kunlik multimodel prognoz', 'd5.all': 'Yog‘in + bulut', 'd5.temp': 'Harorat', 'd5.cloud': 'Bulutlar', 'd5.rain': 'yomg‘ir', 'd5.snow': 'qor', 'd5.leg_all': 'Balandlik va rang — 6 soatda yog‘in ehtimoli; tepada — bulutlar', 'd5.leg_temp': 'Rang — havo harorati (2 m)', 'd5.leg_cloud': 'Umumiy bulutlilik', 'd5.rec': '🎬 5D videoni yozib olish', 'd5.recStop': '■ To‘xtatish va saqlash', 'd5.recNo': 'Bu brauzer video yozolmaydi', 'd5.saved': 'Saqlandi', 'd5.outside': 'Mintaqadan tashqarida — ECMWF ma’lumotlari (10 kungacha).', 'layer.relief': 'Relyef', 'layer.temp': 'Harorat', 'layer.rain': 'Yog‘in', 'layer.wind': 'Kuchli shamol', 'layer.sun': 'Quyosh',
     'leg.relief': 'Sentinel-2 va NASA sun’iy yo‘ldosh tasviri, relyef', 'leg.temp': '2 m harorat, °C', 'leg.rain': 'So‘nggi 6 soatdagi yog‘in, mm', 'leg.wind': '10 m shamol tezligi, m/s (10 dan yuqori)', 'leg.sun': 'Quyosh nuri davomiyligi, 24 soatda, soat',
     'panel.point': 'Tanlangan nuqta', 'panel.more': 'Batafsil prognoz →',
     'mob.map': '⌖ Globus', 'mob.forecast': '☀ Prognoz', 'mob.menu': '☰ Joylar',
@@ -52,7 +52,7 @@ const I18N = {
     'fx.precip': 'Дождь и снег', 'fx.wind': 'Потоки ветра', 'lvl.10m': 'У земли', 'lvl.850': '1,5 км', 'lvl.500': '5,5 км', 'lvl.250': '10 км',
     'lvl.title': 'Высота ветра: у земли (10 м), 850 гПа (~1,5 км), 500 гПа (~5,5 км), 250 гПа (~10 км, струйное течение)', 'windNow': 'Ветер (ECMWF)', 'dir': ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'], 'fx.clouds': 'Облака', 'fx.exag': 'Высота гор', 'fx.sun': 'День и ночь', 'fx.borders': 'Границы',
     'view.globe': 'Весь мир', 'view.shot': 'Сохранить снимок', 'view.tour': 'Экскурсия по городам', 'view.fly': 'Перелететь к точке', 'view.top': 'Сверху',
-    'fx.more': '⚙ Настройки', 'layer.d5': '5D-прогноз', 'd5.title': '5D: мультимодельный прогноз на 15 дней', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Высота и цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать 5D-видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'd5.outside': 'За пределами региона — осадки ECMWF (мм за 6 ч, до 10 дней).', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
+    'glLost': 'Видеокарта остановила 3D-сцену (слишком большая нагрузка). Перезагрузите страницу.', 'glReload': 'Перезагрузить', 'fx.more': '⚙ Настройки', 'layer.d5': '5D-прогноз', 'd5.title': '5D: мультимодельный прогноз на 15 дней', 'd5.all': 'Осадки + облака', 'd5.temp': 'Температура', 'd5.cloud': 'Облачность', 'd5.rain': 'дождь', 'd5.snow': 'снег', 'd5.leg_all': 'Высота и цвет — вероятность осадков за 6 ч; сверху — облака', 'd5.leg_temp': 'Цвет — температура воздуха (2 м)', 'd5.leg_cloud': 'Общая облачность', 'd5.rec': '🎬 Записать 5D-видео', 'd5.recStop': '■ Остановить и сохранить', 'd5.recNo': 'Этот браузер не умеет записывать видео', 'd5.saved': 'Сохранено', 'd5.outside': 'За пределами региона — данные ECMWF (до 10 дней).', 'layer.relief': 'Рельеф', 'layer.temp': 'Температура', 'layer.rain': 'Осадки', 'layer.wind': 'Сильный ветер', 'layer.sun': 'Солнце',
     'leg.relief': 'Спутниковые снимки Sentinel-2 и NASA, рельеф', 'leg.temp': 'Температура 2 м, °C', 'leg.rain': 'Осадки за 6 часов, мм', 'leg.wind': 'Ветер 10 м, м/с (от 10 и выше)', 'leg.sun': 'Солнечное сияние за 24 часа, ч',
     'panel.point': 'Выбранная точка', 'panel.more': 'Подробный прогноз →',
     'mob.map': '⌖ Глобус', 'mob.forecast': '☀ Прогноз', 'mob.menu': '☰ Места',
@@ -562,7 +562,15 @@ async function loadTex(url) {
 
 async function initScene() {
   const canvas = $('scene');
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: false });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: false, powerPreference: 'high-performance' });
+  // if the graphics card drops the scene (too much load, sleep, driver reset) say so instead of a black screen, and come back by itself
+  canvas.addEventListener('webglcontextlost', e => {
+    e.preventDefault(); setPlaying(false);
+    const box = document.createElement('div'); box.className = 'gl-lost'; box.id = 'glLost';
+    box.innerHTML = `<p>${tr('glLost')}</p><button class="btn" onclick="location.reload()">↻ ${tr('glReload')}</button>`;
+    $('sceneWrap').appendChild(box);
+  });
+  canvas.addEventListener('webglcontextrestored', () => location.reload());
   renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(40, 1, 0.02, 4000);
@@ -1304,9 +1312,9 @@ function updateUniforms(now) {
     const u = m.uniforms; u.uSun.value.copy(sv); u.uSunOn.value = sunOn;
     if (u.uMaskOn) u.uMaskOn.value = 0;
     if (S.layer === 'relief') { u.uAlpha.value = 0; continue; }
-    const L = S.layer === 'd5' ? 'rain' : S.layer;
+    const L = S.layer === 'd5' ? (D5.prod === 'temp' ? 'temp' : 'rain') : S.layer;
     // 5D: outside the multimodel box (and within ECMWF's 10 days) the globe shows ECMWF rain, so the world is not empty
-    if (S.layer === 'd5' && (src === 'reg' || G.missing?.rain || S.t > D.global.layers.rain.steps.at(-1))) { u.uAlpha.value = 0; continue; }
+    if (S.layer === 'd5' && (src === 'reg' || D5.prod === 'cloud' || G.missing?.[L] || S.t > D.global.layers[L].steps.at(-1))) { u.uAlpha.value = 0; continue; }
     if (S.layer === 'd5') { u.uMaskOn.value = 1; if (D5.idx) u.uMask.value.set(D5.idx.lon0, D5.idx.lat0 - (D5.idx.H - 1) * D5.idx.d, D5.idx.lon0 + (D5.idx.W - 1) * D5.idx.d, D5.idx.lat0); }
     const fr = frameAt(L, S.t);
     u.uA.value = classTex(src, L, fr.i0); u.uB.value = classTex(src, L, fr.i1);
@@ -1346,7 +1354,7 @@ function adaptQuality(now, dtMs) {
   else if (PERF.ms < 20 && r < max) r = Math.min(max, r + 0.25);
   if (r !== PERF.ratio) { PERF.ratio = r; renderer.setPixelRatio(r); resize(); PERF.lastChange = now; }
   // very slow: fewer cloud layers
-  if (clouds) clouds.children.forEach((c, i) => { c.visible = PERF.ms < 60 || i === 0 || i === clouds.children.length - 1; });
+  if (clouds) clouds.children.forEach((c, i) => { c.visible = (PERF.ms < 60 || i === 0 || i === clouds.children.length - 1) && (S.layer !== 'd5' || i % 2 === 0); });
 }
 function loop(now) {
   const dtMs = now - last, dt = Math.min(0.05, dtMs / 1000); last = now;
@@ -1500,7 +1508,7 @@ void main(){
   vE = smoothstep(0.0, 0.02, aUV.x) * smoothstep(1.0, 0.98, aUV.x) * smoothstep(0.0, 0.05, aUV.y) * smoothstep(1.0, 0.92, aUV.y);
   vec3 v = mix(texture(uA, aUV).rgb, texture(uB, aUV).rgb, uF) * 255.0;
   vP = v.r / 250.0; vT = v.g / 2.0 - 60.0; vC = v.b / 250.0;
-  float h = uMode == 0 ? smoothstep(0.06, 1.0, vP) * uK : uMode == 1 ? clamp((vT + 40.0) / 80.0, 0.0, 1.0) * uK * 0.6 : vC * uK * 0.25;
+  float h = uMode == 0 ? smoothstep(0.06, 1.0, vP) * uK : uMode == 1 ? 0.0 : vC * uK * 0.25;
   h *= vE;
   vD = aDir; vec4 w = modelMatrix * vec4(aDir * (uBase + h), 1.0); vW = w.xyz;
   gl_Position = projectionMatrix * viewMatrix * w;
@@ -1522,7 +1530,7 @@ void main(){
     float p = clamp(vP, 0.0, 1.0);
     c = vT <= 0.5 ? ramp3(vec3(.95,.87,.96), vec3(.76,.50,.86), vec3(.43,.14,.59), p) : ramp3(vec3(.78,.89,.97), vec3(.24,.55,.88), vec3(.04,.18,.45), p);
     a = smoothstep(0.08, 0.2, p) * 0.94;
-  } else if (uMode == 1) { c = tcol(vT); a = 0.86; }
+  } else if (uMode == 1) { c = tcol(vT); a = 0.72; lit = 1.0; }
   else { c = mix(vec3(.72,.76,.82), vec3(.98), vC); a = smoothstep(uCT, 1.0, vC) * 0.62; lit = 0.75 + 0.35 * lit; }
   a *= vE;
   if (a < 0.01) discard;
@@ -1557,7 +1565,7 @@ async function d5Init() {
   D5.cloud = new THREE.Mesh(geo, d5Mat(2)); D5.cloud.renderOrder = 7; D5.cloud.frustumCulled = false; D5.cloud.visible = false;
   D5.cloud.material.uniforms.uBase.value = R + 3.6;
   scene.add(D5.mesh, D5.cloud);
-  G.tMax = Math.max(G.tMax, D5.off + D5.idx.steps.at(-1) - 3);
+  G.tMax = Math.max(G.tMax, D5.off + D5.idx.steps.at(-1) - (D5.idx.win ? D5.idx.win.at(-1) / 2 : 3));
   renderTimelineDays();
 }
 function d5Tex(i) {
@@ -1571,10 +1579,10 @@ function d5Tex(i) {
   for (let k = 1; k < D5.idx.steps.length; k++) { if (D5.tex[i - k]) return D5.tex[i - k]; if (D5.tex[i + k]) return D5.tex[i + k]; }
   return D5.blank;
 }
-function d5Frame(t) { // windows are drawn at their centre (end − 3 h)
-  const st = D5.idx.steps, x = t - D5.off + 3;
-  if (x <= st[0]) return { i0: 0, i1: 0, f: 0 };
-  for (let i = 0; i < st.length - 1; i++) if (x <= st[i + 1]) return { i0: i, i1: i + 1, f: (x - st[i]) / (st[i + 1] - st[i]) };
+function d5Frame(t) { // windows (3 or 6 h) are drawn at their middle
+  const st = D5.idx.steps, w = D5.idx.win || [], c = i => st[i] - (w[i] || 6) / 2, x = t - D5.off;
+  if (x <= c(0)) return { i0: 0, i1: 0, f: 0 };
+  for (let i = 0; i < st.length - 1; i++) if (x <= c(i + 1)) return { i0: i, i1: i + 1, f: (x - c(i)) / (c(i + 1) - c(i)) };
   return { i0: st.length - 1, i1: st.length - 1, f: 0 };
 }
 function d5Update() {
@@ -1588,7 +1596,11 @@ function d5Update() {
   const mode = D5.prod === 'temp' ? 1 : D5.prod === 'cloud' ? -1 : 0;
   D5.mesh.visible = mode >= 0;
   // the relief scales with the camera height, so it never turns into a fog when you zoom in close
-  const alt = camera.position.length() - R, zk = Math.max(0.03, Math.min(1, alt / 45));
+  // steady height: follow big zoom changes slowly, ignore the tiny camera wobble (otherwise the relief "breathes")
+  const alt = camera.position.length() - R, want = Math.max(0.03, Math.min(1, alt / 45));
+  if (!D5.zkT || Math.abs(want / D5.zkT - 1) > 0.3) D5.zkT = want;
+  D5.zk = D5.zk ? D5.zk + (D5.zkT - D5.zk) * 0.06 : D5.zkT;
+  const zk = D5.zk;
   const exK = (0.7 + S.exag * 0.1) * zk, base = R + 0.02 + 0.43 * zk;
   for (const m of [D5.mesh.material, D5.cloud.material]) { const u = m.uniforms; u.uA.value = A; u.uB.value = B; u.uF.value = fr.f; u.uK.value = 2.6 * exK; }
   D5.mesh.material.uniforms.uBase.value = base;
@@ -1645,7 +1657,7 @@ function d5RecStart() {
     if (ok === false) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); ok = true; }
     const m2 = $('d5RecMsg'); if (m2) { m2.textContent = ok === true ? tr('d5.saved') : ''; setTimeout(() => m2.textContent = '', 4000); }
   };
-  const t0 = Math.max(0, D5.off + D5.idx.steps[0] - 3);
+  const t0 = Math.max(0, D5.off + D5.idx.steps[0] - (D5.idx.win ? D5.idx.win[0] / 2 : 3));
   D5.rec = { mr, cv, ctx: cv.getContext('2d'), W, H, speed: S.speed, end: G.tMax };
   S.t = t0; S.speed = 6; setPlaying(true); syncTimeUI();
   mr.start(500); renderLegend();
@@ -1661,7 +1673,7 @@ function d5RecFrame() {
   x.textAlign = 'right'; x.fillStyle = 'rgba(255,255,255,0.75)'; x.font = `${13 * s}px Golos Text, system-ui, sans-serif`;
   x.fillText((D5.idx.models || []).join(', '), W - 20 * s, 30 * s); x.fillText('ECMWF (CC BY 4.0) · NOAA', W - 20 * s, 52 * s); x.textAlign = 'left';
   // progress bar
-  const t0 = Math.max(0, D5.off + D5.idx.steps[0] - 3), f = Math.max(0, Math.min(1, (S.t - t0) / (r.end - t0)));
+  const t0 = Math.max(0, D5.off + D5.idx.steps[0] - (D5.idx.win ? D5.idx.win[0] / 2 : 3)), f = Math.max(0, Math.min(1, (S.t - t0) / (r.end - t0)));
   x.fillStyle = 'rgba(255,255,255,0.25)'; x.fillRect(0, H - 6 * s, W, 6 * s); x.fillStyle = '#5aa9ff'; x.fillRect(0, H - 6 * s, W * f, 6 * s);
   if (S.t >= r.end - 0.5 || (r.lastT != null && S.t < r.lastT)) d5RecStop(); else r.lastT = S.t;
 }
@@ -1952,7 +1964,7 @@ async function renderProbPage() {
   const it = M.items.find(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === PROB.product);
   const days = M.items.find(i => i.region === PROB.region && i.lang === lang && i.product === 'days');
   const n = it ? it.frames : 0, fps = M.fps || 1;
-  const dayOf = f => { if (!M.steps || !days) return null; const d = new Date(Date.parse(M.run) + (M.steps[f] - 3 + (days.off || 0)) * 3600e3); return d.toISOString().slice(0, 10); };
+  const dayOf = f => { if (!M.steps || !days) return null; const d = new Date(Date.parse(M.run) + (M.steps[f] - (M.win ? M.win[f] / 2 : 3) + (days.off || 0)) * 3600e3); return d.toISOString().slice(0, 10); };
   const today = new Date(Date.now() + ((days && days.off) || 5) * 3600e3).toISOString().slice(0, 10);
   const tmrw = new Date(Date.now() + (((days && days.off) || 5) + 24) * 3600e3).toISOString().slice(0, 10);
   const ageH = M.run ? Math.max(0, Math.round((Date.now() - Date.parse(M.run)) / 3600e3)) : null;
@@ -1968,9 +1980,9 @@ async function renderProbPage() {
     ${it ? `<div class="prob-stage"><video id="probVideo" src="prob/${it.video}" muted loop playsinline autoplay preload="auto"></video></div>
     <div class="prob-ctl">
       <button class="icon-btn" id="probPlay" aria-label="Play">❚❚</button>
-      <button class="icon-btn" id="probPrev" aria-label="−6 h">‹</button>
+      <button class="icon-btn" id="probPrev" aria-label="−">‹</button>
       <input type="range" id="probSeek" min="0" max="${n - 1}" step="1" value="0" aria-label="${t.frame}">
-      <button class="icon-btn" id="probNext" aria-label="+6 h">›</button>
+      <button class="icon-btn" id="probNext" aria-label="+">›</button>
       <span class="mono muted" id="probIdx">1 / ${n}</span>
       <span class="seg small" id="probRate" aria-label="${t.speed}">${[0.25, 0.5, 1].map(r => `<button data-r="${r}" aria-pressed="${r === PROB.rate}">${r}×</button>`).join('')}</span>
       <button class="btn" id="probDl">${U.dl}</button> <a class="btn" id="probShare" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(probLink())}&text=${encodeURIComponent(t.title + ' · ' + PROB_NAMES[PROB.region][lang])}">${U.share}</a> <button class="btn" id="probCopy">${U.copy}</button> <span class="muted mono" id="probDlMsg"></span>
