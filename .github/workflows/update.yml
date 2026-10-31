@@ -21,7 +21,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,6 +43,7 @@ jobs:
           pip install scipy matplotlib pyproj
           python prob/fetch.py prob.npz
           python prob/render.py prob.npz site/prob --wx wx.npz
+          python prob/render.py glob.npz site/prob --wx wx.npz --geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --append
           python prob/export_5d.py glob.npz wx.npz site/prob/d5
           rm -rf site/prob/frames
       - name: Send Telegram summary

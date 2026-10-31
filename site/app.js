@@ -1684,7 +1684,6 @@ function d5Enter() { D5.entered = true; flyTo(66, 41, { dist: MOBILE ? 60 : 46, 
 
 /* ------------------------------ UI ------------------------------ */
 const LAYERS = [
-  { id: 'd5', sw: 'linear-gradient(90deg,#3d8ce0,#0a2e73,#c27fdb,#f7b852)' },
   { id: 'relief', sw: 'linear-gradient(90deg,#2b5a8a,#6b8a4a,#b9a27a,#eef)' },
   { id: 'temp', sw: 'linear-gradient(90deg,#007fff,#d9ff00,#ffb000,#ff2500)' },
   { id: 'rain', sw: 'linear-gradient(90deg,#00ffff,#0000ff,#ff00ff)' },
@@ -1927,15 +1926,19 @@ const PROB_TXT = {
     h2: 'Nasıl hesaplanıyor', p2: 'Her model sistemi eşit ağırlık alır: ECMWF IFS topluluğu, ECMWF AIFS topluluğu, NOAA GEFS topluluğu ve deterministik modeller (ECMWF IFS, ECMWF AIFS, GFS, ICON) birlikte. Sıcaklık ve bulutlar ECMWF haritalarından (charts.ecmwf.int).',
     h3: 'Kaynaklar', p3: 'ECMWF açık verileri (CC BY 4.0), NOAA (GEFS, GFS), DWD (ICON), sınırlar: Natural Earth. Her 12 saatte otomatik güncellenir.' },
 };
-const PROB_NAMES = { cis: { uz: 'MDH va Turkiya', ru: 'СНГ и Турция', tr: 'BDT ve Türkiye' }, UZ: { uz: 'O‘zbekiston', ru: 'Узбекистан', tr: 'Özbekistan' },
+const PROB_NAMES = {
+  world: { uz: 'Butun dunyo', ru: 'Весь мир', tr: 'Tüm dünya' }, EU: { uz: 'Yevropa', ru: 'Европа', tr: 'Avrupa' }, AS: { uz: 'Osiyo', ru: 'Азия', tr: 'Asya' },
+  AF: { uz: 'Afrika', ru: 'Африка', tr: 'Afrika' }, NA: { uz: 'Shimoliy Amerika', ru: 'Северная Америка', tr: 'Kuzey Amerika' },
+  SA: { uz: 'Janubiy Amerika', ru: 'Южная Америка', tr: 'Güney Amerika' }, OC: { uz: 'Avstraliya va Okeaniya', ru: 'Австралия и Океания', tr: 'Avustralya ve Okyanusya' },
+  cis: { uz: 'MDH va Turkiya', ru: 'СНГ и Турция', tr: 'BDT ve Türkiye' }, UZ: { uz: 'O‘zbekiston', ru: 'Узбекистан', tr: 'Özbekistan' },
   KZ: { uz: 'Qozog‘iston', ru: 'Казахстан', tr: 'Kazakistan' }, KG: { uz: 'Qirg‘iziston', ru: 'Кыргызстан', tr: 'Kırgızistan' }, TJ: { uz: 'Tojikiston', ru: 'Таджикистан', tr: 'Tacikistan' },
   TM: { uz: 'Turkmaniston', ru: 'Туркменистан', tr: 'Türkmenistan' }, AZ: { uz: 'Ozarbayjon', ru: 'Азербайджан', tr: 'Azerbaycan' }, AM: { uz: 'Armaniston', ru: 'Армения', tr: 'Ermenistan' },
   BY: { uz: 'Belarus', ru: 'Беларусь', tr: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', tr: 'Moldova' }, RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' } };
 const PROB = { M: null, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate2', 0.5), product: store.get('probProduct', 'prob') };
 const PROB_UI = {
-  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
-  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
-  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
+  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', grp: ['Qit’alar', 'MDH va Turkiya'], today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
+  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', grp: ['Континенты', 'СНГ и Турция'], today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
+  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', grp: ['Kıtalar', 'BDT ve Türkiye'], today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
 };
 async function saveVideo(url, name) {
   // inside claude.ai the page may only hand files over through the downloads capability; elsewhere a plain link works
@@ -1977,7 +1980,7 @@ async function renderProbPage() {
   el.innerHTML = `<div class="inner prob">
     <div class="prob-head"><div><h1>${t.title.split(' · ')[0]} · ${PROB_NAMES[PROB.region][lang]}</h1><div class="muted mono">${M.run ? `${t.run}: ${M.run.slice(0, 16).replace('T', ' ')} UTC (${U.ago(ageH)}) · ${(M.models || []).join(', ')}` : ''}</div></div>
       <div class="seg" id="probLang">${['uz', 'ru', 'tr'].map(l => `<button data-l="${l}" aria-pressed="${l === lang}">${l === 'uz' ? 'O‘zbek' : l === 'ru' ? 'Русский' : 'Türkçe'}</button>`).join('')}</div></div>
-    <div class="chips" id="probRegions">${['cis', 'UZ', 'KZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'BY', 'MD', 'RU', 'TR'].filter(r => have.includes(r)).map(r => `<button data-r="${r}" aria-pressed="${r === PROB.region}">${PROB_NAMES[r][lang]}</button>`).join('')}</div>
+    ${[['world', 'EU', 'AS', 'AF', 'NA', 'SA', 'OC'], ['cis', 'UZ', 'KZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'BY', 'MD', 'RU', 'TR']].map((grp, gi) => grp.filter(r => have.includes(r)).length ? `<div class="chip-group"><span class="muted">${U.grp[gi]}</span><div class="chips" ${gi ? 'id="probRegions"' : 'id="probConts"'}>${grp.filter(r => have.includes(r)).map(r => `<button data-r="${r}" aria-pressed="${r === PROB.region}">${PROB_NAMES[r][lang]}</button>`).join('')}</div></div>` : '').join('')}
     ${prods.length > 1 ? `<div class="seg" id="probProd">${prods.map(pr => `<button data-p="${pr}" aria-pressed="${pr === PROB.product}">${U[pr]}</button>`).join('')}</div>` : ''}
     ${card}
     ${it ? `<div class="prob-stage"><video id="probVideo" src="prob/${it.video}" muted loop playsinline autoplay preload="auto"></video></div>
@@ -1994,9 +1997,9 @@ async function renderProbPage() {
     <section class="visits prob-visits" id="probVisits"${VIS.data ? '' : ' hidden'}>${visitsHtml(8)}</section>
     <div class="prob-notes"><div><h2>${t.h1}</h2><p>${t.p1}</p></div><div><h2>${t.h2}</h2><p>${t.p2}</p></div><div><h2>${t.h3}</h2><p>${t.p3}</p></div></div>
   </div>`;
-  const selChip = el.querySelector('#probRegions [aria-pressed="true"]'); if (selChip) selChip.scrollIntoView({ block: 'nearest', inline: 'center' });
+  const selChip = el.querySelector('.chip-group [aria-pressed="true"]'); if (selChip) selChip.scrollIntoView({ block: 'nearest', inline: 'center' });
   el.querySelectorAll('#probLang button').forEach(b => b.onclick = () => { PROB.lang = b.dataset.l; renderProbPage(); });
-  el.querySelectorAll('#probRegions button').forEach(b => b.onclick = () => { PROB.region = b.dataset.r; store.set('probRegion', PROB.region); renderProbPage(); });
+  el.querySelectorAll('#probRegions button, #probConts button').forEach(b => b.onclick = () => { PROB.region = b.dataset.r; store.set('probRegion', PROB.region); renderProbPage(); });
   el.querySelectorAll('#probProd button').forEach(b => b.onclick = () => { PROB.product = b.dataset.p; store.set('probProduct', PROB.product); renderProbPage(); });
   el.querySelectorAll('#probDays li').forEach(li => li.onclick = () => { const v = $('probVideo'); if (!v || !M.steps) return; const f = M.steps.findIndex((_, i) => dayOf(i) === li.dataset.d); if (f >= 0) { v.pause(); $('probPlay').textContent = '▶'; v.currentTime = (f + 0.5) / fps; } });
   if (!it) return;
@@ -2214,8 +2217,7 @@ async function boot() {
   const a = store.get('pointA', null);
   S.A = a && a.lat != null ? { ...a } : { ...D.cities.find(c => c.id === 'toshkent') };
   await initScene();
-  await d5Init();
-  if (S.layer === 'd5' && !D5.idx) S.layer = 'temp';
+  if (S.layer === 'd5') S.layer = 'temp'; // the probability layer moved off the globe
   buildLabels(); bindUI(); applyLang();
   $('loading').hidden = true;
   requestAnimationFrame(loop);

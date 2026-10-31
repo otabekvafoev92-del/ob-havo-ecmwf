@@ -20,7 +20,7 @@ from scipy.ndimage import gaussian_filter
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from regions import REGIONS, ORDER, CIS, NAMES, UZ_CITY, OVERVIEW_TZ, T
+from regions import REGIONS, ORDER, CIS, NAMES, UZ_CITY, OVERVIEW_TZ, T, CONT, CONT_ORDER
 
 LEVELS = [10, 30, 50, 70, 90, 101]
 COLORS = ['#c6e2f7', '#7fbdec', '#3b8de0', '#1658b8', '#0b2f73']        # rain
@@ -154,8 +154,8 @@ def load_wx_npz(D, path):
 
 
 class Geo:
-    def __init__(self):
-        g = json.load(open(HERE / 'geo_prob.json'))
+    def __init__(self, path=None):
+        g = json.load(open(path or HERE / 'geo_prob.json'))
         self.countries, self.admin1, self.places = g['countries'], g['admin1'], g['places']
 
 
@@ -166,6 +166,15 @@ def city_name(p, lang):
 
 
 def pick_cities(geo, region, n):
+    if region in CONT:  # continent / world: capitals and the biggest cities, spread out
+        lon0, lon1, lat0, lat1 = CONT[region][:4]; mains = set(CONT[region][7].values())
+        cand = [p for p in geo.places if lon0 <= p['lon'] <= lon1 and lat0 <= p['lat'] <= lat1]
+        cand.sort(key=lambda p: (p['en'] not in mains, -(p['pop'] + (3_000_000 if p['cap'] == 2 else 0))))
+        out, gap = [], (lon1 - lon0) / 11
+        for p in cand:
+            if len(out) >= n: break
+            if all(abs(p['lon'] - q['lon']) * max(0.4, np.cos(np.radians(p['lat']))) + abs(p['lat'] - q['lat']) > gap for q in out): out.append(p)
+        return out
     iso = REGIONS[region][0]
     if iso is None:  # overview: capitals
         caps = [p for p in geo.places if p['cap'] == 2 and p['iso'] in CIS]
@@ -203,19 +212,25 @@ def window_text(lang, region, run, step, off, win=6):
 
 class Region:
     def __init__(self, D, geo, region, P, amt):
-        iso, lon0, lon1, lat0, lat1, clon, off, cap = REGIONS[region]
+        self.cont = region in CONT
+        if self.cont:
+            lon0, lon1, lat0, lat1, clon, clat, off, mains = CONT[region]; iso, cap = None, None
+        else:
+            iso, lon0, lon1, lat0, lat1, clon, off, cap = REGIONS[region]
         self.id, self.iso, self.off, self.cap = region, iso, off, cap
         g = D['grid'].item() if hasattr(D['grid'], 'item') else D['grid']
         glon0, glat0, d, W, H = g['lon0'], g['lat0'], g['d'], g['W'], g['H']
-        m = 1.5
+        m = 14 if self.cont and region != 'world' else 1.5  # azimuthal continent maps reach past their lon/lat box at the corners
         x0 = max(0, int((lon0 - m - glon0) / d)); x1 = min(W, int((lon1 + m - glon0) / d) + 2)
         y0 = max(0, int((glat0 - lat1 - m) / d)); y1 = min(H, int((glat0 - lat0 + m) / d) + 2)
         lons = glon0 + np.arange(x0, x1) * d; lats = glat0 - np.arange(y0, y1) * d
         self.LON, self.LAT = np.meshgrid(lons, lats)
         lat_1, lat_2 = lat0 + (lat1 - lat0) / 6, lat1 - (lat1 - lat0) / 6
-        self.proj = Proj(proj='lcc', lat_1=lat_1, lat_2=lat_2, lat_0=(lat0 + lat1) / 2, lon_0=clon, ellps='WGS84')
+        if region == 'world': self.proj = Proj(proj='robin', lon_0=clon, ellps='WGS84')
+        elif self.cont: self.proj = Proj(proj='laea', lat_0=clat, lon_0=clon, ellps='WGS84')
+        else: self.proj = Proj(proj='lcc', lat_1=lat_1, lat_2=lat_2, lat_0=(lat0 + lat1) / 2, lon_0=clon, ellps='WGS84')
         self.X, self.Y = self.proj(self.LON, self.LAT)
-        sigma = 0.8 if region in ('cis', 'RU') else 1.2
+        sigma = 0.6 if self.cont else 0.8 if region in ('cis', 'RU') else 1.2
         self.P = np.stack([gaussian_filter(P[s, y0:y1, x0:x1], sigma) for s in range(P.shape[0])])
         self.A = np.expm1(amt[:, y0:y1, x0:x1] / 40.0)
         self.Araw = self.A
@@ -235,7 +250,7 @@ class Region:
             xs, ys = self.proj(np.r_[bl, bl], np.r_[np.full(60, lat0 + 2), np.full(60, lat1)])
             self.ext = (xs.min(), xs.max(), min(ys), max(ys))
         self.geo = geo
-        self.cities = pick_cities(geo, region, 9 if region not in ('cis', 'RU', 'KZ') else 12)
+        self.cities = pick_cities(geo, region, 14 if region == 'world' else 12 if self.cont else 9 if region not in ('cis', 'RU', 'KZ') else 12)
         # pre-project boundaries
         self.cpoly = {}
         for c, info in geo.countries.items():
@@ -253,7 +268,7 @@ class Region:
         # country mask on the data grid (for "share of the territory" in the daily comments)
         from matplotlib.path import Path as MPath
         self.mask = None
-        rings = geo.countries.get(iso, {}).get('rings', []) if iso else [r for c in CIS for r in geo.countries.get(c, {}).get('rings', [])]
+        rings = [] if self.cont else geo.countries.get(iso, {}).get('rings', []) if iso else [r for c in CIS for r in geo.countries.get(c, {}).get('rings', [])]
         if rings:
             pts = np.c_[self.LON.ravel(), self.LAT.ravel()]; m = np.zeros(len(pts), bool)
             for r in rings:
@@ -264,7 +279,7 @@ class Region:
         self.Pfull = P[:, y0:y1, x0:x1]
         self.mains = {}
         for lang in ('uz', 'ru', 'tr'):
-            want = cap if region != 'cis' else {'uz': 'Tashkent', 'ru': 'Moscow', 'tr': 'Istanbul'}[lang]
+            want = mains[lang] if self.cont else cap if region != 'cis' else {'uz': 'Tashkent', 'ru': 'Moscow', 'tr': 'Istanbul'}[lang]
             self.mains[lang] = next((p for p in self.cities if p['en'] == want), self.cities[0] if self.cities else None)
         self.main = self.mains['uz']
 
@@ -386,7 +401,7 @@ def _borders(ax, R):
         ax.add_collection(PolyCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], facecolor=(1, 1, 1, 0.42), edgecolor='none', zorder=4))
         ax.add_collection(LineCollection(R.a1, colors='#8492a1', linewidths=0.45, zorder=5))
     ax.add_collection(LineCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], colors=BORDER, linewidths=0.6, zorder=5))
-    focus = [R.iso] if R.iso else [c for c in CIS if c in R.cpoly]
+    focus = [] if R.cont else [R.iso] if R.iso else [c for c in CIS if c in R.cpoly]
     ax.add_collection(LineCollection([r for c in focus for r in R.cpoly.get(c, [])], colors=INK, linewidths=1.4 if R.iso else 0.9, zorder=6))
     ax.add_patch(Rectangle((x0, y0), x1 - x0, y1 - y0, facecolor='none', edgecolor='#c4ccd5', linewidth=0.8, zorder=9))
 
@@ -461,9 +476,9 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='')
         if Ps.max() >= LEVELS[0]: ax.contourf(R.X, R.Y, Ps, levels=LEVELS, cmap=ListedColormap(SNOW), norm=BoundaryNorm(LEVELS, 5), zorder=2.1, antialiased=True)
         if (R.Asm[s] >= 5).any(): ax.contour(R.X, R.Y, R.Asm[s], levels=[5], colors=['#5b1f8f'], linewidths=1.1, linestyles='--', zorder=3)
         if has_t:
-            lv = [0] if R.id in ('cis', 'RU') else list(range(-30, 45, 5))
+            lv = [0] if R.id in ('cis', 'RU') or R.cont else list(range(-30, 45, 5))
             cs = ax.contour(R.X, R.Y, np.ma.masked_invalid(R.T[s]), levels=lv, colors=[ISO_COL(v) for v in lv], linewidths=[1.6 if v == 0 else 0.7 for v in lv], zorder=3.2, alpha=0.9)
-            if R.id not in ('cis', 'RU'): ax.clabel(cs, fmt=fmt_t, fontsize=8, inline=True, inline_spacing=2)
+            if R.id not in ('cis', 'RU') and not R.cont: ax.clabel(cs, fmt=fmt_t, fontsize=8, inline=True, inline_spacing=2)
     elif product == 'temp' and has_t:
         Tm = np.ma.masked_invalid(R.T[s])
         ax.contourf(R.X, R.Y, Tm, levels=T_LV, colors=T_COL[:len(T_LV) - 1], extend='both', zorder=2, antialiased=True, alpha=0.92)
@@ -574,10 +589,12 @@ def main():
     ap.add_argument('--max-step', type=int, default=0)
     ap.add_argument('--wx', default='', help='wx.npz: GEFS mean temperature and cloud cover (preferred over --globe-data)')
     ap.add_argument('--products', default='prob,temp,cloud')
+    ap.add_argument('--geo', default='', help='boundary pack (default prob/geo_prob.json; continents: prob/geo_world.json)')
+    ap.add_argument('--append', action='store_true', help='add these maps to an existing manifest.json instead of replacing it')
     a = ap.parse_args()
     D = load(a.npz)
     P, models, members = probability(D)
-    _CTX.update(D=D, P=P, models=models, members=members, geo=Geo(), wx=load_wx_npz(D, a.wx) if a.wx else load_wx(D, a.globe_data))
+    _CTX.update(D=D, P=P, models=models, members=members, geo=Geo(a.geo or None), wx=load_wx_npz(D, a.wx) if a.wx else load_wx(D, a.globe_data))
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     sel = list(range(len(D['steps']))) if not a.steps else [list(D['steps']).index(int(x)) for x in a.steps.split(',')]
     if a.max_step: sel = [i for i in sel if int(D['steps'][i]) <= a.max_step]
@@ -589,7 +606,11 @@ def main():
             for res in pool.imap(_job, tasks): manifest += res
     else:
         for t in tasks: manifest += _job(t)
-    json.dump({'run': D['run'], 'models': models, 'members': members, 'fps': a.fps, 'steps': [int(D['steps'][i]) for i in sel], 'win': [int(D['win'][i]) for i in sel], 'items': manifest}, open(out / 'manifest.json', 'w'), ensure_ascii=False, indent=1)
+    M = {'run': D['run'], 'models': models, 'members': members, 'fps': a.fps, 'steps': [int(D['steps'][i]) for i in sel], 'win': [int(D['win'][i]) for i in sel], 'items': manifest}
+    if a.append and (out / 'manifest.json').exists():
+        old = json.load(open(out / 'manifest.json')); done = {i['region'] for i in manifest}
+        M['items'] = [i for i in old.get('items', []) if i['region'] not in done] + manifest
+    json.dump(M, open(out / 'manifest.json', 'w'), ensure_ascii=False, indent=1)
 
 
 if __name__ == '__main__':

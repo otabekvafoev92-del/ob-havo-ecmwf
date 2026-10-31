@@ -15,10 +15,26 @@ REGIONS = {
     'RU': ('RU', 25.0, 188.0, 40.0, 79.0, 95.0, 3, 'Moscow'),
     'TR': ('TR', 25.2, 45.5, 35.3, 42.6, 35.5, 3, 'Ankara'),
 }
+# continents and the whole world (rendered from the 0.5° world grid, glob.npz, with prob/geo_world.json)
+# id: (lon0, lon1, lat0, lat1, centre lon, centre lat, utc offset or None = the language's clock, main city per language)
+CONT = {
+    'world': (-180, 180, -58, 80, 0, 0, None, {'uz': 'Tashkent', 'ru': 'Moscow', 'tr': 'Istanbul'}),
+    'EU': (-25, 45, 34, 72, 12, 52, 1, {'uz': 'London', 'ru': 'Moscow', 'tr': 'Istanbul'}),
+    'AS': (25, 180, -10, 78, 95, 40, None, {'uz': 'Tashkent', 'ru': 'Novosibirsk', 'tr': 'Tashkent'}),
+    'AF': (-20, 55, -36, 38, 18, 2, 2, {'uz': 'Cairo', 'ru': 'Cairo', 'tr': 'Cairo'}),
+    'NA': (-170, -50, 7, 75, -100, 45, -5, {'uz': 'New York City', 'ru': 'New York City', 'tr': 'New York City'}),
+    'SA': (-85, -33, -56, 13, -60, -20, -3, {'uz': 'São Paulo', 'ru': 'São Paulo', 'tr': 'São Paulo'}),
+    'OC': (110, 180, -48, 0, 145, -25, 10, {'uz': 'Sydney', 'ru': 'Sydney', 'tr': 'Sydney'}),
+}
+CONT_ORDER = ['world', 'EU', 'AS', 'AF', 'NA', 'SA', 'OC']
 ORDER = ['cis', 'UZ', 'KZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'BY', 'MD', 'RU', 'TR']
 CIS = ['UZ', 'KZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'BY', 'MD', 'RU', 'TR']
 
 NAMES = {
+    'world': {'uz': 'Butun dunyo', 'ru': 'Весь мир', 'tr': 'Tüm dünya'},
+    'EU': {'uz': 'Yevropa', 'ru': 'Европа', 'tr': 'Avrupa'}, 'AS': {'uz': 'Osiyo', 'ru': 'Азия', 'tr': 'Asya'},
+    'AF': {'uz': 'Afrika', 'ru': 'Африка', 'tr': 'Afrika'}, 'NA': {'uz': 'Shimoliy Amerika', 'ru': 'Северная Америка', 'tr': 'Kuzey Amerika'},
+    'SA': {'uz': 'Janubiy Amerika', 'ru': 'Южная Америка', 'tr': 'Güney Amerika'}, 'OC': {'uz': 'Avstraliya va Okeaniya', 'ru': 'Австралия и Океания', 'tr': 'Avustralya ve Okyanusya'},
     'cis': {'uz': 'MDH va Turkiya', 'ru': 'СНГ и Турция', 'tr': 'BDT ve Türkiye'},
     'UZ': {'uz': 'O‘zbekiston', 'ru': 'Узбекистан', 'tr': 'Özbekistan'},
     'KZ': {'uz': 'Qozog‘iston', 'ru': 'Казахстан', 'tr': 'Kazakistan'},
@@ -40,6 +56,10 @@ UZ_CITY = {
     'Almaty': 'Olmaota', 'Astana': 'Astana', 'Bishkek': 'Bishkek', 'Dushanbe': 'Dushanbe', 'Ashgabat': 'Ashxobod', 'Baku': 'Boku',
     'Yerevan': 'Yerevan', 'Minsk': 'Minsk', 'Chisinau': 'Kishinyov', 'Ankara': 'Anqara', 'Istanbul': 'Istanbul', 'Khujand': 'Xo‘jand',
     'Osh': 'O‘sh', 'Shymkent': 'Chimkent', 'Turkistan': 'Turkiston',
+    'London': 'London', 'Cairo': 'Qohira', 'New York City': 'Nyu-York', 'São Paulo': 'San-Paulu', 'Sydney': 'Sidney', 'Paris': 'Parij', 'Berlin': 'Berlin', 'Rome': 'Rim', 'Madrid': 'Madrid',
+    'Beijing': 'Pekin', 'Tokyo': 'Tokio', 'Delhi': 'Dehli', 'New Delhi': 'Dehli', 'Mumbai': 'Mumbay', 'Shanghai': 'Shanxay', 'Tehran': 'Tehron', 'Kabul': 'Kobul', 'Riyadh': 'Ar-Riyod', 'Lagos': 'Lagos',
+    'Kinshasa': 'Kinshasa', 'Nairobi': 'Nayrobi', 'Johannesburg': 'Yoxannesburg', 'Mexico City': 'Mexiko', 'Los Angeles': 'Los-Anjeles', 'Chicago': 'Chikago', 'Toronto': 'Toronto', 'Buenos Aires': 'Buenos-Ayres',
+    'Lima': 'Lima', 'Bogotá': 'Bogota', 'Rio de Janeiro': 'Rio-de-Janeyro', 'Jakarta': 'Jakarta', 'Bangkok': 'Bangkok', 'Seoul': 'Seul', 'Melbourne': 'Melburn', 'Algiers': 'Jazoir', 'Athens': 'Afina', 'Kyiv': 'Kiyev', 'Budapest': 'Budapesht', 'Rabat': 'Rabot', 'Dhaka': 'Dakka', 'Khartoum': 'Xartum', 'Warsaw': 'Varshava', 'Vienna': 'Vena', 'Ankara': 'Anqara', 'Karachi': 'Karachi', 'Lahore': 'Lahor', 'Manila': 'Manila', 'Hanoi': 'Xanoy', 'Auckland': 'Oklend', 'Baghdad': 'Bag‘dod',
 }
 # whose clock the overview uses for each language
 OVERVIEW_TZ = {'uz': 5, 'ru': 3, 'tr': 3}
