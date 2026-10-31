@@ -1,0 +1,81 @@
+name: Update ECMWF forecast
+
+on:
+  schedule:
+    # 09:20 and 21:20 UTC = 14:20 and 02:20 in Tashkent (00/12 UTC runs are ready by then)
+    - cron: '20 9,21 * * *'
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ['site/**', 'pipeline/**', '.github/workflows/update.yml']
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - name: Fetch and decode ECMWF charts
+        run: node pipeline/build.mjs site/data
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Real wind (ECMWF open data, 4 heights)
+        run: |
+          pip install eccodes numpy requests pillow
+          python pipeline/wind.py site/data "$(node -p "require('./site/data/forecast.json').run")"
+      - name: Precipitation probability for the CIS and Turkey (multi-model)
+        run: |
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core >/dev/null
+          pip install scipy matplotlib pyproj
+          python prob/fetch.py prob.npz
+          python prob/render.py prob.npz site/prob --wx wx.npz
+          python prob/render.py glob.npz site/prob --wx wx.npz --geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --append
+          python prob/export_5d.py glob.npz wx.npz site/prob/d5
+          rm -rf site/prob/frames
+      - name: Send Telegram summary
+        if: github.event_name != 'push'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_LANG: ${{ vars.TG_LANG }}
+          TG_CITIES: ${{ vars.TG_CITIES }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: node pipeline/telegram.mjs site/data
+      - name: Send precipitation-probability videos to Telegram
+        if: github.event_name != 'push'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PROB_TG: ${{ vars.PROB_TG }}
+        run: python prob/telegram_send.py site/prob
+      - name: Point the site at the bot worker (visit counter, Telegram)
+        if: vars.BOT_URL != ''
+        run: sed -i 's|<meta name="osmon-api" content="">|<meta name="osmon-api" content="${{ vars.BOT_URL }}">|' site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

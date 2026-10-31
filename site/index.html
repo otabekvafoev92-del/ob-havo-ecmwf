@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="uz" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- address of the Telegram-bot worker (telegram/worker.js): it also counts visits by country and city; filled in by the GitHub workflow from the BOT_URL variable -->
+<meta name="osmon-api" content="">
+<title>Osmon · ob-havo</title>
+<meta name="description" content="ECMWF prognozi 3D relyefda: harorat, yog‘in, qor, kuchli shamol va quyosh. Ma’lumotlar charts.ecmwf.int dan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<!--APP-->
+<div class="app" id="app">
+  <header class="top">
+    <a class="logo" href="#map" aria-label="Osmon"><span class="logo-mark" aria-hidden="true"></span>osmon<span class="dot">.</span><small data-i18n="tagline">ob-havo</small></a>
+    <nav class="nav" aria-label="Bo‘limlar">
+      <a href="#map" data-route="map" data-i18n="nav.map">Globus</a>
+      <a href="#forecast" data-route="forecast" data-i18n="nav.forecast">Prognoz sharhi</a>
+      <a href="#prob" data-route="prob" data-i18n="nav.prob">Yog‘in ehtimolligi</a>
+      <a href="#maps" data-route="maps" data-i18n="nav.maps">ECMWF xaritalari</a>
+      <a href="#guide" data-route="guide" data-i18n="nav.guide">Qo‘llanma</a>
+      <a href="#about" data-route="about" data-i18n="nav.about">Ma’lumotlar haqida</a>
+    </nav>
+    <div class="top-tools">
+      <div class="seg" role="group" aria-label="Til / Язык">
+        <button id="langUz" aria-pressed="true">UZ</button>
+        <button id="langRu" aria-pressed="false">RU</button>
+      </div>
+      <button class="icon-btn" id="themeBtn" aria-label="Mavzu" title="Light / Dark">◐</button>
+    </div>
+  </header>
+
+  <aside class="side" id="side">
+    <section class="block">
+      <h2 data-i18n="loc.title">Joyni tanlash</h2>
+      <div class="seg wide" role="tablist">
+        <button id="tabMain" aria-pressed="true" data-i18n="loc.main">Asosiy nuqta</button>
+        <button id="tabCompare" aria-pressed="false" data-i18n="loc.compare">Taqqoslash</button>
+      </div>
+      <label class="search">
+        <input id="search" type="search" autocomplete="off" data-i18n-ph="loc.search" placeholder="Shahar yoki 41.31, 69.28">
+      </label>
+      <div class="row">
+        <button class="btn ghost" id="geoBtn" data-i18n="loc.mine">⌖ Mening joylashuvim</button>
+        <button class="btn ghost" id="saveBtn" data-i18n="loc.save">☆ Saqlash</button>
+      </div>
+      <p class="hint" id="geoMsg" hidden></p>
+      <ul class="places" id="places"></ul>
+    </section>
+    <section class="block">
+      <h2 data-i18n="loc.saved">Saqlangan nuqtalar</h2>
+      <ul class="places" id="saved"></ul>
+      <p class="hint" id="savedEmpty" data-i18n="loc.savedEmpty">Hali yo‘q. Xaritada nuqtani tanlab «Saqlash»ni bosing.</p>
+    </section>
+    <section class="block model">
+      <div class="model-name">ECMWF IFS HRES · 9 km</div>
+      <div class="model-run" id="runInfo">—</div>
+      <a href="https://charts.ecmwf.int" target="_blank" rel="noopener" data-i18n="loc.src">charts.ecmwf.int →</a>
+    </section>
+    <section class="block visits" id="visits" hidden></section>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="scene-wrap" id="sceneWrap">
+      <canvas id="scene" aria-label="3D globus va ob-havo"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="tip" id="tip" hidden></div>
+      <div class="pin" id="pin" hidden aria-hidden="true"></div>
+
+      <div class="hud hud-tl">
+        <div class="layers" role="group" aria-label="Qatlam" id="layerBtns"></div>
+        <button class="fx-toggle" id="fxToggle" aria-expanded="false" data-i18n="fx.more">⚙ Sozlamalar</button>
+        <div class="fx">
+          <label><input type="checkbox" id="fxWind" checked> <span data-i18n="fx.wind">Shamol oqimi</span></label>
+          <span class="lvl" id="windLvl" role="group" aria-label="Balandlik"></span>
+          <label><input type="checkbox" id="fxClouds" checked> <span data-i18n="fx.clouds">Bulutlar</span></label>
+          <label><input type="checkbox" id="fxSun" checked> <span data-i18n="fx.sun">Kun va tun</span></label>
+          <label><input type="checkbox" id="fxBorders" checked> <span data-i18n="fx.borders">Chegaralar</span></label>
+          <label class="exag"><span data-i18n="fx.exag">Tog‘ balandligi</span> <input type="range" id="exag" min="1" max="30" step="1" value="3"> <b id="exagVal">×3</b></label>
+        </div>
+      </div>
+      <div class="hud hud-tr legend" id="legend"></div>
+      <div class="hud hud-br view-btns">
+        <button class="icon-btn" id="viewGlobe" data-i18n-title="view.globe" title="Butun dunyo">🌐</button>
+        <button class="icon-btn" id="viewFly" data-i18n-title="view.fly" title="Nuqtaga uchish">⛰</button>
+        <button class="icon-btn" id="viewTop" data-i18n-title="view.top" title="Yuqoridan">⬒</button>
+        <button class="icon-btn" id="viewTour" data-i18n-title="view.tour" title="Sayohat" aria-pressed="false">✈</button>
+        <button class="icon-btn" id="viewShot" data-i18n-title="view.shot" title="Rasmni saqlash">📷</button>
+      </div>
+    </div>
+
+    <div class="timeline" id="timeline">
+      <button class="play" id="playBtn" aria-label="Play">▶</button>
+      <div class="tl-main">
+        <div class="tl-now"><b id="tlTime">—</b> <span id="tlRel"></span></div>
+        <input type="range" id="tl" min="0" max="240" step="1" value="0" aria-label="Vaqt">
+        <div class="tl-days" id="tlDays"></div>
+      </div>
+      <div class="seg speed" role="group" aria-label="Tezlik">
+        <button data-speed="0.5">0,5×</button><button data-speed="1" aria-pressed="true">1×</button><button data-speed="2">2×</button>
+      </div>
+    </div>
+
+    <section class="page" id="page-forecast" hidden></section>
+    <section class="page" id="page-prob" hidden></section>
+    <section class="page" id="page-maps" hidden></section>
+    <section class="page prose" id="page-guide" hidden></section>
+    <section class="page prose" id="page-about" hidden></section>
+  </main>
+
+  <aside class="panel" id="panel">
+    <div class="panel-head">
+      <div>
+        <div class="eyebrow" data-i18n="panel.point">Tanlangan nuqta</div>
+        <h2 id="pName">—</h2>
+        <div class="coords" id="pCoords"></div>
+      </div>
+      <button class="icon-btn" id="panelClose" aria-label="Yopish">✕</button>
+    </div>
+    <div id="pNow" class="now"></div>
+    <div id="pDays" class="days"></div>
+    <a class="btn wide" href="#forecast" data-i18n="panel.more">Batafsil prognoz →</a>
+  </aside>
+
+  <nav class="bottom-nav" aria-label="Mobil">
+    <button data-mob="map" aria-pressed="true" data-i18n="mob.map">⌖ Xarita</button>
+    <button data-mob="panel" data-i18n="mob.forecast">☀ Prognoz</button>
+    <button data-mob="side" data-i18n="mob.menu">☰ Joylar</button>
+  </nav>
+
+  <div class="loading" id="loading"><div class="spinner"></div><span data-i18n="loading">ECMWF ma’lumotlari yuklanmoqda…</span></div>
+</div>
+<!--/APP-->
+<script type="module" src="app.js"></script>
+</body>
+</html>

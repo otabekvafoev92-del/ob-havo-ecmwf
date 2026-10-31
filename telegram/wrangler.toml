@@ -1,0 +1,14 @@
+# Deploy with:  npx wrangler deploy   (from this folder), then:  npx wrangler secret put BOT_TOKEN
+name = "osmon-bot"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+# your GitHub Pages address, e.g. https://otabekvafoev92-del.github.io/ob-havo-ecmwf
+SITE_URL = "https://otabekvafoev92-del.github.io/ob-havo-ecmwf"
+
+# visit counter (by country / city): create once with  npx wrangler d1 create osmon  and paste the id here
+[[d1_databases]]
+binding = "DB"
+database_name = "osmon"
+database_id = "PASTE-ID-HERE"
