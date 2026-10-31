@@ -86,7 +86,7 @@ const S = {
   t: 0, playing: false, speed: 1, // forecast hours per second (1× = one 6-h step every 6 s)
   A: null, B: null, pickTarget: 'A',
   exag: store.get('exag5', 3),
-  fxPrecip: true, fxClouds: true, fxWind: true, windLvl: store.get('windLvl', '10m'), fxSun: store.get('sun', true), fxBorders: true,
+  fxPrecip: false, fxClouds: true, fxWind: true, windLvl: store.get('windLvl', '10m'), fxSun: store.get('sun', true), fxBorders: true,
   route: 'map',
 };
 const $ = id => document.getElementById(id);
@@ -1266,7 +1266,7 @@ function buildCdf(t, now) {
   P.cdf = cdf; P.total = s;
 }
 function stepPrecip(dt, t, now) {
-  const on = S.fxPrecip && S.route === 'map';
+  const on = false; // particles removed: the layers show rain and snow
   rainMesh.visible = snowMesh.visible = on && S.layer !== 'd5';
   if (!on) return;
   buildCdf(t, now);
@@ -1684,6 +1684,7 @@ function d5Enter() { D5.entered = true; flyTo(66, 41, { dist: MOBILE ? 60 : 46, 
 
 /* ------------------------------ UI ------------------------------ */
 const LAYERS = [
+  { id: 'd5', sw: 'linear-gradient(90deg,#3d8ce0,#0a2e73,#c27fdb,#f7b852)' },
   { id: 'relief', sw: 'linear-gradient(90deg,#2b5a8a,#6b8a4a,#b9a27a,#eef)' },
   { id: 'temp', sw: 'linear-gradient(90deg,#007fff,#d9ff00,#ffb000,#ff2500)' },
   { id: 'rain', sw: 'linear-gradient(90deg,#00ffff,#0000ff,#ff00ff)' },
@@ -1950,6 +1951,28 @@ async function saveVideo(url, name) {
   } catch (e) { if (e && e.code === 'declined') return false; }
   const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); return true;
 }
+// zoom the report video: wheel / pinch / double-tap / buttons, drag to move when zoomed
+function probZoom(stage, v) {
+  let k = 1, x = 0, y = 0; const pts = new Map(); let pinch = null, drag = null;
+  const apply = () => {
+    const r = stage.getBoundingClientRect(); k = Math.max(1, Math.min(6, k));
+    x = Math.min(0, Math.max(r.width * (1 - k), x)); y = Math.min(0, Math.max(r.height * (1 - k), y));
+    v.style.transform = `translate(${x}px, ${y}px) scale(${k})`; stage.classList.toggle('zoomed', k > 1.01);
+  };
+  const zoomAt = (f, cx, cy) => { const nk = Math.max(1, Math.min(6, k * f)); x = cx - (cx - x) * nk / k; y = cy - (cy - y) * nk / k; k = nk; apply(); };
+  const local = e => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  stage.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = local(e); zoomAt(Math.exp(-e.deltaY * 0.0015), cx, cy); }, { passive: false });
+  stage.addEventListener('dblclick', e => { const [cx, cy] = local(e); if (k > 1.01) { k = 1; x = y = 0; apply(); } else zoomAt(2.5, cx, cy); });
+  stage.addEventListener('pointerdown', e => { if (e.target.closest('.zoom-btns')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e));
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), k }; drag = null; } else drag = { p: local(e), x, y }; });
+  stage.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, local(e));
+    if (pinch && pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomAt(pinch.k * d / pinch.d / k, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+    else if (drag && k > 1.01) { const p = local(e); x = drag.x + p[0] - drag.p[0]; y = drag.y + p[1] - drag.p[1]; apply(); } });
+  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) drag = null; };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  const c = () => { const r = stage.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+  $('zIn').onclick = () => zoomAt(1.6, ...c()); $('zOut').onclick = () => zoomAt(1 / 1.6, ...c()); $('zReset').onclick = () => { k = 1; x = y = 0; apply(); };
+}
 function probLink() { return `${location.href.split('#')[0]}#prob/${PROB.region}/${PROB.lang || S.lang}/${PROB.product}`; }
 function probNowFrame(M) { // the 6-h window that contains the current moment
   if (!M.steps || !M.run) return 0; const h = (Date.now() - Date.parse(M.run)) / 3600e3;
@@ -1983,7 +2006,8 @@ async function renderProbPage() {
     ${[['world', 'EU', 'AS', 'AF', 'NA', 'SA', 'OC'], ['cis', 'UZ', 'KZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'BY', 'MD', 'RU', 'TR']].map((grp, gi) => grp.filter(r => have.includes(r)).length ? `<div class="chip-group"><span class="muted">${U.grp[gi]}</span><div class="chips" ${gi ? 'id="probRegions"' : 'id="probConts"'}>${grp.filter(r => have.includes(r)).map(r => `<button data-r="${r}" aria-pressed="${r === PROB.region}">${PROB_NAMES[r][lang]}</button>`).join('')}</div></div>` : '').join('')}
     ${prods.length > 1 ? `<div class="seg" id="probProd">${prods.map(pr => `<button data-p="${pr}" aria-pressed="${pr === PROB.product}">${U[pr]}</button>`).join('')}</div>` : ''}
     ${card}
-    ${it ? `<div class="prob-stage"><video id="probVideo" src="prob/${it.video}" muted loop playsinline autoplay preload="auto"></video></div>
+    ${it ? `<div class="prob-stage" id="probStage"><video id="probVideo" src="prob/${it.video}" muted loop playsinline autoplay preload="auto"></video>
+      <div class="zoom-btns"><button class="icon-btn" id="zIn" aria-label="+">＋</button><button class="icon-btn" id="zOut" aria-label="−">−</button><button class="icon-btn" id="zReset" aria-label="1:1">⟲</button></div></div>
     <div class="prob-ctl">
       <button class="icon-btn" id="probPlay" aria-label="Play">❚❚</button>
       <button class="icon-btn" id="probPrev" aria-label="−">‹</button>
@@ -2007,6 +2031,7 @@ async function renderProbPage() {
   const frameOf = () => Math.min(n - 1, Math.floor(v.currentTime * fps + 1e-3));
   v.playbackRate = PROB.rate;
   v.addEventListener('loadedmetadata', () => { v.playbackRate = PROB.rate; const f0 = probNowFrame(M); if (f0 > 0 && f0 < n) v.currentTime = (f0 + 0.5) / fps; }, { once: true });
+  probZoom($('probStage'), v);
   $('probCopy').onclick = async () => { const msg = $('probDlMsg'); try { await navigator.clipboard.writeText(probLink()); msg.textContent = U.copied; } catch { msg.textContent = probLink(); } setTimeout(() => msg.textContent = '', 3000); };
   el.onkeydown = null;
   let lastDay = '';
@@ -2111,7 +2136,6 @@ function bindUI() {
   if (MOBILE) $('legend').classList.add('mini');
   $('legend').addEventListener('click', e => { if (e.target.classList.contains('lt') && MOBILE) $('legend').classList.toggle('mini'); });
   document.querySelectorAll('.speed button').forEach(b => b.onclick = () => { S.speed = +b.dataset.speed; document.querySelectorAll('.speed button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
-  $('fxPrecip').onchange = e => { S.fxPrecip = e.target.checked; };
   $('fxWind').onchange = e => { S.fxWind = e.target.checked; };
   renderWindLevels();
   $('fxClouds').onchange = e => { S.fxClouds = e.target.checked; };
@@ -2217,7 +2241,8 @@ async function boot() {
   const a = store.get('pointA', null);
   S.A = a && a.lat != null ? { ...a } : { ...D.cities.find(c => c.id === 'toshkent') };
   await initScene();
-  if (S.layer === 'd5') S.layer = 'temp'; // the probability layer moved off the globe
+  await d5Init();
+  if (S.layer === 'd5' && !D5.idx) S.layer = 'temp';
   buildLabels(); bindUI(); applyLang();
   $('loading').hidden = true;
   requestAnimationFrame(loop);

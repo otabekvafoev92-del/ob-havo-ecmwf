@@ -1,6 +1,8 @@
-import json, glob, base64, sys, collections
+import json, glob, base64, sys, collections, os
+SINCE = float(sys.argv[2]) if len(sys.argv) > 2 else 0  # only result files newer than this (unix time)
 parts = collections.defaultdict(dict); totals = {}
 for f in glob.glob('/root/.claude/projects/-home-claude/5dd8bf11-c108-57bf-92b5-edd39b16fc5b/tool-results/*.txt'):
+    if os.path.getmtime(f) < SINCE: continue
     try: t = json.load(open(f))[0]['text']
     except Exception: continue
     if not t.startswith('"CHUNK|'): continue

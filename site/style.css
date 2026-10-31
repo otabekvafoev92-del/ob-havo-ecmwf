@@ -322,3 +322,10 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .prob-visits .vis-cols { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 28px; }
 .prob .chip-group { display: grid; gap: 4px; }
 .prob .chip-group > span { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; }
+/* zoomable report video */
+.prob-stage { position: relative; touch-action: none; }
+.prob-stage video { transform-origin: 0 0; will-change: transform; }
+.prob-stage.zoomed { cursor: grab; }
+.prob-stage.zoomed:active { cursor: grabbing; }
+.prob-stage .zoom-btns { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; z-index: 2; }
+.prob-stage .zoom-btns .icon-btn { background: rgba(255,255,255,.92); color: #13202e; border: 1px solid #c9d2dc; width: 32px; height: 32px; }

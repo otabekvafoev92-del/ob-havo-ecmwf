@@ -549,7 +549,7 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='')
     if comment:
         fig.patches.append(Rectangle((0.04, 0.008), 0.92, 0.042, transform=fig.transFigure, facecolor='#f1f5fa', edgecolor='#d8e0e8', lw=0.8))
         fig.text(0.05, 0.029, comment, fontsize=11.2, color=INK, va='center', wrap=True)
-    fig.savefig(path, dpi=100, facecolor='white')
+    fig.savefig(path, dpi=_CTX.get('dpi', 100), facecolor='white')
     plt.close(fig)
 
 
@@ -573,7 +573,7 @@ def _job(args):
                 draw_frame(R, D, s, lang, models, members, fdir / f'{i:03d}.png', product, com.get(day.isoformat(), ''))
             mp4 = out / f'{region}_{lang}{suf}.mp4'
             subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(fps), '-i', str(fdir / '%03d.png'),
-                            '-vf', 'fps=25,scale=1152:-2,format=yuv420p', '-c:v', 'libx264', '-crf', '26', '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
+                            '-vf', f"fps=25,scale={_CTX.get('width', 1152)}:-2,format=yuv420p", '-c:v', 'libx264', '-crf', str(_CTX.get('crf', 24)), '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
             res.append({'region': region, 'lang': lang, 'product': product, 'video': mp4.name, 'frames': len(sel), 'name': NAMES[region][lang]})
             print(region, lang, product, 'ok', flush=True)
         res.append({'region': region, 'lang': lang, 'product': 'days', 'days': com, 'off': off, 'city': city_name(R.mains[lang], lang) if R.mains[lang] else ''})
@@ -590,11 +590,14 @@ def main():
     ap.add_argument('--wx', default='', help='wx.npz: GEFS mean temperature and cloud cover (preferred over --globe-data)')
     ap.add_argument('--products', default='prob,temp,cloud')
     ap.add_argument('--geo', default='', help='boundary pack (default prob/geo_prob.json; continents: prob/geo_world.json)')
+    ap.add_argument('--dpi', type=int, default=150, help='frame resolution: 150 → 1920×1500, sharp when zoomed in')
+    ap.add_argument('--width', type=int, default=1920, help='video width in pixels')
+    ap.add_argument('--crf', type=int, default=24, help='video quality (lower = sharper, bigger files)')
     ap.add_argument('--append', action='store_true', help='add these maps to an existing manifest.json instead of replacing it')
     a = ap.parse_args()
     D = load(a.npz)
     P, models, members = probability(D)
-    _CTX.update(D=D, P=P, models=models, members=members, geo=Geo(a.geo or None), wx=load_wx_npz(D, a.wx) if a.wx else load_wx(D, a.globe_data))
+    _CTX.update(D=D, P=P, models=models, members=members, dpi=a.dpi, width=a.width, crf=a.crf, geo=Geo(a.geo or None), wx=load_wx_npz(D, a.wx) if a.wx else load_wx(D, a.globe_data))
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     sel = list(range(len(D['steps']))) if not a.steps else [list(D['steps']).index(int(x)) for x in a.steps.split(',')]
     if a.max_step: sel = [i for i in sel if int(D['steps'][i]) <= a.max_step]
