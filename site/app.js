@@ -2047,9 +2047,10 @@ async function renderProbPage() {
   if (!CT || PROB.city == null || PROB.city >= CT.cities.length) PROB.city = null;
   const city = CT && PROB.city != null ? CT.cities[PROB.city] : null;
   const U = PROB_UI[lang];
-  const prods = ['prob', 'temp', 'cloud', 'wind'].filter(pr => M.items.some(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === pr));
+  const vlang = M.items.some(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === 'prob') ? lang : 'ru';  // Turkish texts, Russian videos for most countries
+  const prods = ['prob', 'temp', 'cloud', 'wind'].filter(pr => M.items.some(i => i.region === PROB.region && i.lang === vlang && (i.product || 'prob') === pr));
   if (!prods.includes(PROB.product)) PROB.product = 'prob';
-  const it0 = M.items.find(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === PROB.product);
+  const it0 = M.items.find(i => i.region === PROB.region && i.lang === vlang && (i.product || 'prob') === PROB.product);
   // a chosen city: its own video (zoom-in of 1 s first) for the precipitation map, and its daily comments
   const it = it0 && city && city.video && PROB.product === 'prob' ? { ...it0, video: city.video, t0: 1 } : it0;
   const days = city ? { days: city.days, off: CT.off, city: city.name } : M.items.find(i => i.region === PROB.region && i.lang === lang && i.product === 'days');

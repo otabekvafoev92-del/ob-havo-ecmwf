@@ -313,7 +313,6 @@ class Region:
             xs, ys = self.proj(np.r_[bl, bl], np.r_[np.full(60, lat0 + 2), np.full(60, lat1)])
             self.ext = (xs.min(), xs.max(), min(ys), max(ys))
         self.geo = geo
-        self.relief = relief(self.proj, self.ext)
         self.cities = pick_cities(geo, region, 14 if region == 'world' else 12 if self.cont else 9 if region not in ('cis', 'RU', 'KZ') else 12)
         # pre-project boundaries
         self.cpoly = {}
@@ -324,6 +323,16 @@ class Region:
                 if a[:, 0].max() < lon0 - 25 or a[:, 0].min() > lon1 + 25 or a[:, 1].max() < lat0 - 15 or a[:, 1].min() > lat1 + 15: continue
                 x, y = self.proj(a[:, 0], a[:, 1]); rings.append(np.c_[x, y])
             if rings: self.cpoly[c] = rings
+        if iso and iso in self.cpoly and region != 'RU':  # the country fills the map: its own outline plus a small margin, in the map's proportions
+            xs = np.concatenate([r[:, 0] for r in self.cpoly[iso]]); ys = np.concatenate([r[:, 1] for r in self.cpoly[iso]])
+            big = max(len(r) for r in self.cpoly[iso]); main_ring = next(r for r in self.cpoly[iso] if len(r) == big)
+            if (xs.max() - xs.min()) > 3 * (main_ring[:, 0].max() - main_ring[:, 0].min()): xs, ys = main_ring[:, 0], main_ring[:, 1]  # far islands
+            e0, e1, f0, f1 = xs.min(), xs.max(), ys.min(), ys.max(); px, py = (e1 - e0) * 0.05, (f1 - f0) * 0.07
+            e0, e1, f0, f1 = e0 - px, e1 + px, f0 - py, f1 + py; asp = 1.58
+            if (e1 - e0) / (f1 - f0) < asp: c = (e0 + e1) / 2; w = (f1 - f0) * asp; e0, e1 = c - w / 2, c + w / 2
+            else: c = (f0 + f1) / 2; h = (e1 - e0) / asp; f0, f1 = c - h / 2, c + h / 2
+            self.ext = (e0, e1, f0, f1)
+        self.relief = relief(self.proj, self.ext)
         self.a1 = []
         if iso and iso in geo.admin1:
             for r in geo.admin1[iso]:
@@ -401,8 +410,8 @@ def relief(proj, ext, n=760):
         lon, lat = proj(X, Y, inverse=True)
         H, W = _DEM.shape
         z = map_coordinates(_DEM, [(90 - lat) / 180 * H - 0.5, ((lon + 180) % 360) / 360 * W - 0.5], order=1, mode='nearest')
-        z = gaussian_filter(z, 1.0)
         px = (x1 - x0) / n
+        z = gaussian_filter(z, max(1.0, 0.8 * 19500 / px))  # the height map has ~20 km cells: smooth them out on small countries
         gy, gx = np.gradient(z, px)
         az, alt = np.radians(315), np.radians(40)
         slope = np.arctan(np.hypot(gx, gy) * 30.0); aspect = np.arctan2(-gx, gy)
@@ -564,7 +573,7 @@ def _cities(fig, ax, R, label, extra=()):
     for p, (cx, cy) in sorted(pts, key=lambda t: t[0] is not R.main):
         if not (x0 < cx < x1 and y0 < cy < y1): continue
         main = p is R.main; sm = id(p) in small; txt = label(p, main)
-        fs = 11.5 if main else 7.2 if sm else 8.4
+        fs = 9.8 if main else 7.2 if sm else 8.4
         px, py = ax.transData.transform((cx, cy)); dpi_k = fig.dpi / 72
         w, h = (len(txt) * fs * 0.58 + 12) * dpi_k, (fs * 1.6 + 6) * dpi_k
         spot = None
@@ -581,8 +590,8 @@ def _cities(fig, ax, R, label, extra=()):
         if spot is None: continue
         dx, dy, ha, va, box_ = spot; placed.append(box_)
         ax.annotate(txt, (cx, cy), xytext=(dx, dy), textcoords='offset points', fontsize=fs, ha=ha, va=va, fontweight='bold' if main else 'medium',
-                    color=MAIN_INK if main else INK, zorder=12 if main else 11,
-                    bbox=dict(boxstyle='round,pad=0.38,rounding_size=0.7' if main else 'round,pad=0.25,rounding_size=0.5', fc=ACCENT if main else LABEL_BG, ec='none', alpha=1 if main else 0.8))
+                    color=ACCENT if main else INK, zorder=12 if main else 11,
+                    bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.6' if main else 'round,pad=0.25,rounding_size=0.5', fc=LABEL_BG, ec=ACCENT if main else 'none', lw=1.4, alpha=0.82 if main else 0.8))
 
 
 def _chips(fig, x, y, cols, labels, w=0.052, h=0.019, gap=0.004, dark_from=3):

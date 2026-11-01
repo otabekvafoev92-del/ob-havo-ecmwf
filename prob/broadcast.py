@@ -23,7 +23,7 @@ TX = {
                outro='Подписывайтесь', outro2='Прогноз для вашего города, видео и предупреждения — в Telegram', site='Сайт', days3='в ближайшие 3 дня',
                chapters=['Вступление', 'Мир', 'СНГ и Турция', 'Узбекистан', 'Города', 'Подписка'],
                ytitle='Прогноз погоды на 15 дней · {d} · мир, СНГ, Узбекистан | Osmon',
-               ydesc='Мультимодельный прогноз погоды на 15 дней: вероятность дождя и снега, температура, сильные осадки.\nМодели: {m}.\n\n{bul}\n\n⏱ Главы:\n{ch}\n\n🤖 Бот с прогнозом для вашего города и предупреждениями: https://t.me/ObHavo_ECMWF_bot\n🌍 3D-глобус и отчёт: https://{site}\n\n#погода #прогнозпогоды #Узбекистан #Ташкент #ECMWF',
+               ydesc='Мультимодельный прогноз погоды на 15 дней: вероятность дождя и снега, температура, сильные осадки.\nМодели: {m}.\n\n{bul}\n\n⏱ Главы:\n{ch}\n\n🤖 Бот с прогнозом для вашего города и предупреждениями: https://t.me/ObHavo_ECMWF_bot\n\n#погода #прогнозпогоды #Узбекистан #Ташкент #ECMWF',
                tags='погода, прогноз погоды, прогноз на 15 дней, Узбекистан, Ташкент, Казахстан, СНГ, ECMWF, осадки, дождь, снег, Osmon'),
     'uz': dict(title='15 kunlik ob-havo prognozi', sub='Dunyo · MDH va Turkiya · O‘zbekiston', run='Modellar hisobi {run} UTC', models='ECMWF · NOAA · DWD multimodel ansambli',
                world='Dunyo', cis='MDH va Turkiya', uz='O‘zbekiston', cities='O‘zbekiston shaharlari', main='Asosiysi', prob='Yog‘in ehtimoli', today='Bugun', tomorrow='Ertaga',
@@ -32,7 +32,7 @@ TX = {
                outro='Obuna bo‘ling', outro2='Shahringiz prognozi, videolar va ogohlantirishlar — Telegramda', site='Sayt', days3='yaqin 3 kunda',
                chapters=['Kirish', 'Dunyo', 'MDH va Turkiya', 'O‘zbekiston', 'Shaharlar', 'Obuna'],
                ytitle='15 kunlik ob-havo prognozi · {d} · dunyo, MDH, O‘zbekiston | Osmon',
-               ydesc='15 kunlik multimodel ob-havo prognozi: yomg‘ir va qor ehtimoli, harorat, kuchli yog‘in.\nModellar: {m}.\n\n{bul}\n\n⏱ Bo‘limlar:\n{ch}\n\n🤖 Shahringiz prognozi va ogohlantirishlar: https://t.me/ObHavo_ECMWF_bot\n🌍 3D globus va hisobot: https://{site}\n\n#obhavo #obhavoprognozi #Ozbekiston #Toshkent #ECMWF',
+               ydesc='15 kunlik multimodel ob-havo prognozi: yomg‘ir va qor ehtimoli, harorat, kuchli yog‘in.\nModellar: {m}.\n\n{bul}\n\n⏱ Bo‘limlar:\n{ch}\n\n🤖 Shahringiz prognozi va ogohlantirishlar: https://t.me/ObHavo_ECMWF_bot\n\n#obhavo #obhavoprognozi #Ozbekiston #Toshkent #ECMWF',
                tags='ob-havo, ob havo, ob-havo prognozi, 15 kunlik prognoz, O‘zbekiston, Toshkent, ECMWF, yomg‘ir, qor, Osmon'),
 }
 FPS = {'world': 3, 'cis': 3, 'uz': 4}
@@ -157,7 +157,7 @@ def card_frame(path, lang, kind, D, extra=None):
         fig.text(0.08, 0.6, X['outro'], fontsize=60, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
         fig.text(0.08, 0.48, X['outro2'], fontsize=28, color=Rn.MUTED, va='center')
         fig.text(0.08, 0.34, f't.me/{BOT[1:]}', fontsize=42, fontweight='bold', color=Rn.SKY, va='center')
-        fig.text(0.08, 0.24, f"{X['site']}: {SITE}", fontsize=24, color=Rn.MUTED, va='center')
+        fig.text(0.08, 0.24, X['models'], fontsize=22, color=Rn.MUTED, va='center')
     elif kind == 'cities':
         _brand(fig)
         fig.text(0.13, 0.955, X['cities'], fontsize=19, fontweight='bold', color=Rn.INK, va='center')

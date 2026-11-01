@@ -1,5 +1,5 @@
 import json, sys, html
-BOT='@ObHavo_ECMWF_bot'; SITE='otabekvafoev92-del.github.io/ob-havo-ecmwf'
+BOT='@ObHavo_ECMWF_bot'
 B=lambda *xs: '<div class="kb">'+''.join('<div class="row">'+''.join(f'<span class="b">{x}</span>' for x in r)+'</div>' for r in xs)+'</div>'
 L={}
 L['ru']=dict(title='Инструкция', sub='Прогноз погоды на 15 дней в Телеграме', lead='Osmon — бот и сайт с прогнозом погоды на 15 дней. Прогноз собирается из 6 моделей (ECMWF IFS и AIFS, NOAA GFS и GEFS, DWD ICON) и показывает вероятность осадков, температуру и облачность для стран СНГ, Турции и всего мира.',
@@ -29,7 +29,7 @@ s=[
 <li>Выбирает время отправки (по Ташкенту): 06:00 … 21:00. По умолчанию — 07:00.</li>{B(['06:00','✅ 07:00','08:00','09:00','10:00'])}</ol>
 <p>Сразу после настройки бот пришлёт первый прогноз. Затем каждый день в выбранное время по каждой стране приходит пост: три видео (осадки, температура, облака) с прогнозом на сегодня, завтра и ближайшие дни, и сообщение «🏙 Сегодня по городам» с кнопками на сайт.</p>
 <div class="note"><b>Почему «только администратор»?</b> Настройки группы (язык, страны, время) может менять только администратор этой группы — чтобы обычные участники случайно их не сбили. Если вы видите сообщение «Настройки меняет только администратор этой группы», попросите администратора написать /settings. Прогноз сейчас может запросить любой участник командой <b>/bugun</b>.</div>'''),
-('5. Сайт и глобус', f'''<p>Сайт: <b>{SITE}</b>. Он же открывается кнопками 📊 Отчёт и 🌍 Глобус.</p>
+('5. Сайт и глобус', f'''<p>Сайт открывается кнопками 📊 Отчёт и 🌍 Глобус. Данные берутся из ECMWF (Европейский центр среднесрочных прогнозов погоды), а также NOAA и DWD.</p>
 <ul><li><b>Глобус</b> — 3D-Земля. Слой «Вероятность · 15 дней» показывает осадки (высота и цвет), температуру или облачность. Внизу — шкала времени: ▶ запускает анимацию, ползунок выбирает день и час.</li>
 <li><b>Установка на телефон:</b> в браузере откройте меню и выберите «Добавить на главный экран» — сайт откроется как приложение.</li>
 <li><b>Панель с цветовой шкалой</b> на телефоне свёрнута в одну строку. Нажмите на заголовок, чтобы раскрыть или свернуть её; при касании глобуса она сворачивается сама.</li>
@@ -72,7 +72,7 @@ s=[
 <li>Yuborish vaqtini tanlaydi (Toshkent vaqti): 06:00 … 21:00. Odatiy — 07:00.</li>{B(['06:00','✅ 07:00','08:00','09:00','10:00'])}</ol>
 <p>Sozlangandan so‘ng bot darhol birinchi prognozni yuboradi. Keyin har kuni tanlangan vaqtda har bir davlat uchun post keladi: 3 ta video (yog‘in, harorat, bulutlar) bugun, ertaga va keyingi kunlar prognozi bilan, hamda saytga tugmalari bor «🏙 Bugun shaharlarda» xabari.</p>
 <div class="note"><b>Nega «faqat admin»?</b> Guruh sozlamalarini (til, davlatlar, vaqt) faqat shu guruhning admini o‘zgartira oladi — oddiy a’zolar tasodifan buzib qo‘ymasligi uchun. «Guruh sozlamalarini faqat shu guruhning admini o‘zgartira oladi» degan xabarni ko‘rsangiz, admindan /sozla yozishini so‘rang. Hozirgi prognozni istalgan a’zo <b>/bugun</b> buyrug‘i bilan so‘rashi mumkin.</div>'''),
-('5. Sayt va globus', f'''<p>Sayt: <b>{SITE}</b>. U 📊 Hisobot va 🌍 Globus tugmalari orqali ham ochiladi.</p>
+('5. Sayt va globus', f'''<p>Sayt 📊 Hisobot va 🌍 Globus tugmalari orqali ochiladi. Ma’lumotlar ECMWF (O‘rta muddatli ob-havo prognozlari Yevropa markazi), shuningdek NOAA va DWD dan olinadi.</p>
 <ul><li><b>Globus</b> — 3D Yer. «15 kunlik ehtimol» qatlami yog‘in (balandlik va rang), harorat yoki bulutlilikni ko‘rsatadi. Pastda vaqt shkalasi: ▶ animatsiyani boshlaydi, surgich kun va soatni tanlaydi.</li>
 <li><b>Telefonga o‘rnatish:</b> brauzer menyusida «Bosh ekranga qo‘shish»ni tanlang — sayt ilova kabi ochiladi.</li>
 <li><b>Rang shkalasi paneli</b> telefonda bir qatorga yig‘ilgan. Ochish yoki yig‘ish uchun sarlavhasini bosing; globusga tegsangiz, o‘zi yig‘iladi.</li>
@@ -115,7 +115,7 @@ s=[
 <li>Gönderme saatini seçer (Taşkent saati): 06:00 … 21:00. Varsayılan 07:00.</li>{B(['06:00','✅ 07:00','08:00','09:00','10:00'])}</ol>
 <p>Ayardan hemen sonra bot ilk tahmini gönderir. Ardından her gün seçilen saatte her ülke için bir gönderi gelir: bugün, yarın ve sonraki günlerin tahminiyle 3 video (yağış, sıcaklık, bulutlar) ve siteye düğmeli «🏙 Bugün şehirlerde» mesajı.</p>
 <div class="note"><b>Neden «yalnızca yönetici»?</b> Grup ayarlarını (dil, ülkeler, saat) yalnızca bu grubun yöneticisi değiştirebilir — sıradan üyeler yanlışlıkla bozmasın diye. «Ayarları yalnızca bu grubun yöneticisi değiştirebilir» mesajını görürseniz, yöneticiden /settings yazmasını isteyin. Güncel tahmini her üye <b>/bugun</b> komutuyla isteyebilir.</div>'''),
-('5. Site ve küre', f'''<p>Site: <b>{SITE}</b>. 📊 Rapor ve 🌍 Küre düğmeleriyle de açılır.</p>
+('5. Site ve küre', f'''<p>Site 📊 Rapor ve 🌍 Küre düğmeleriyle açılır. Veriler ECMWF’den (Avrupa Orta Vadeli Hava Tahminleri Merkezi) ve ayrıca NOAA ile DWD’den alınır.</p>
 <ul><li><b>Küre</b> — 3D Dünya. «Olasılık · 15 gün» katmanı yağışı (yükseklik ve renk), sıcaklığı veya bulutluluğu gösterir. Altta zaman çizelgesi: ▶ animasyonu başlatır, kaydırıcı gün ve saati seçer.</li>
 <li><b>Telefona kurulum:</b> tarayıcı menüsünde «Ana ekrana ekle»yi seçin — site bir uygulama gibi açılır.</li>
 <li><b>Renk ölçeği paneli</b> telefonda tek satıra katlanır. Açmak veya kapatmak için başlığına basın; küreye dokununca kendiliğinden katlanır.</li>
@@ -145,6 +145,6 @@ table{border-collapse:collapse;width:100%;margin:6px 0}td{border-bottom:1px soli
 dt{font-weight:600;margin-top:7px}dd{margin:1px 0 0 0;color:#334}
 .foot{margin-top:22px;font-size:9pt;color:#778;text-align:center}'''
 for k,d in L.items():
-    body=f'''<div class="cover"><div class="logo">osmon<i>.</i></div><h1>{d['title']}</h1><div class="sub">{d['sub']}</div><div class="meta"><span>🤖 {BOT}</span><span>🌍 {SITE}</span><span>ECMWF · NOAA · DWD</span></div></div>
+    body=f'''<div class="cover"><div class="logo">osmon<i>.</i></div><h1>{d['title']}</h1><div class="sub">{d['sub']}</div><div class="meta"><span>🤖 {BOT}</span><span>📡 ECMWF</span><span>ECMWF · NOAA · DWD</span></div></div>
 <p class="lead">{d['lead']}</p>'''+''.join(f'<section><h2>{h}</h2>{c}</section>' for h,c in d['s'])+f'<div class="foot">Osmon · {BOT}</div>'
     open(f'g_{k}.html','w').write(f'<!doctype html><html lang="{k}"><head><meta charset="utf-8"><style>{CSS}</style></head><body>{body}</body></html>')
