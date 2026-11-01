@@ -7,7 +7,7 @@ on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: ['site/**', 'pipeline/**', '.github/workflows/update.yml']
+    paths: ['site/**', 'pipeline/**', 'prob/**', '.github/workflows/update.yml']
 
 permissions:
   contents: read
