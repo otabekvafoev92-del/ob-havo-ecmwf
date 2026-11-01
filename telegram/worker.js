@@ -158,7 +158,14 @@ export default {
   },
 };
 
+// the admin's own command menu and buttons: /users, /admin, /yt
+const ADMIN_BTN = '👤 Пользователи';
+const ADMIN_KB = { inline_keyboard: [[{ text: ADMIN_BTN, callback_data: 'AU:ru' }, { text: '📺 YouTube', callback_data: 'AY:ru' }]] };
+async function adminMenu(env, chat) {
+  await tg(env, 'setMyCommands', { scope: { type: 'chat', chat_id: Number(chat) }, commands: [{ command: 'users', description: '👤 Пользователи бота' }, { command: 'admin', description: '👑 Статистика' }, { command: 'yt', description: '📺 Видеообзор для YouTube' }, { command: 'start', description: 'Меню' }] });
+}
 async function setup(env, url) {
+  { const a = await kv(env, 'admin'); if (a) await adminMenu(env, a); }
   const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, secret_token: await secret(env), allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post'] });
   await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga' }, { command: 'today', description: 'Сегодня и завтра' }, { command: 'prognoz', description: '15 kunlik video' }, { command: 'help', description: 'Yordam / Помощь' }, { command: 'guide', description: 'Yo‘riqnoma PDF / Инструкция PDF' }, { command: 'alerts', description: 'Ogohlantirishlar / Предупреждения' }, { command: 'admin', description: 'Adminga yozish / Написать админу' }] });
   await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'help', description: 'Yordam / Помощь' }] });
@@ -556,6 +563,7 @@ async function handle(up, env) {
     await tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].locHint, parse_mode: 'HTML', reply_markup: mainKb(lang) });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
   }
+  if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
   if (kind === 'Q') { const [, , la, lo] = cb.data.split(':'); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 5)); }
   if (kind === 'H') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
   if (kind === 'P') return sendGuide(env, chat.id, lang);
@@ -627,7 +635,7 @@ async function privateMsg(msg, env) {
     const t = await (await fetch(`${base(env)}/prob/${b.text}`)).text().catch(() => '');
     return tg(env, 'sendMessage', { chat_id: chat.id, text: (r.ok ? '' : `⚠️ ${r.description || ''}\n${url}\n\n`) + t.slice(0, 4000), disable_web_page_preview: true });
   }
-  if (cmd === 'users' && admin === String(chat.id)) {
+  if ((cmd === 'users' || text === ADMIN_BTN) && admin === String(chat.id)) {
     const rows = (await env.DB.prepare('SELECT * FROM users ORDER BY seen DESC LIMIT 100').all()).results;
     const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).n;
     const lines = rows.map((x, i) => `${i + 1}. ${esc(x.name || '—')}${x.username ? ' @' + esc(x.username) : ''} · ${x.lang || '?'}${x.region ? ' · ' + (FLAG[x.region] || x.region) : ''} · ${(x.seen || '').slice(5, 16).replace('T', ' ')}`);
@@ -637,13 +645,14 @@ async function privateMsg(msg, env) {
   }
   if (cmd === 'admin') {
     if (!admin && env.DB) {  // the first one to send /admin becomes the bot's admin
-      await setKv(env, 'admin', String(chat.id));
+      await setKv(env, 'admin', String(chat.id)); await adminMenu(env, chat.id);
       return tg(env, 'sendMessage', { chat_id: chat.id, text: '👑 Siz bot adminisiz / Вы — администратор бота.\n\nFoydalanuvchilar xabarlari shu yerga keladi. Javob berish uchun xabarga Reply qiling.\nСообщения пользователей будут приходить сюда. Чтобы ответить, нажмите «Ответить» (Reply) на сообщении.' });
     }
     if (admin === String(chat.id)) {
       const g = await env.DB.prepare("SELECT COUNT(*) AS n FROM subs WHERE type <> 'private'").first(), us = await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first();
       const list = (await env.DB.prepare('SELECT title, type, region, lang, post_hour FROM subs ORDER BY added DESC LIMIT 30').all()).results;
-      return tg(env, 'sendMessage', { chat_id: chat.id, text: `👑 Admin  (/users — list, /yt ru|uz — YouTube briefing)\n👤 Users: ${us.n}\n👥 Groups: ${g.n}\n🔔 Daily (private): ${(await env.DB.prepare("SELECT COUNT(*) AS n FROM subs WHERE type = 'private'").first()).n}\n\n${list.map(x => `• ${x.type === 'private' ? '👤' : '👥'} ${x.title || '?'} — ${x.region} · ${x.lang} · ${hh(x.post_hour ?? POST_HOUR)}`).join('\n')}`.slice(0, 4000) });
+      await adminMenu(env, chat.id);
+      return tg(env, 'sendMessage', { chat_id: chat.id, reply_markup: ADMIN_KB, text: `👑 Admin  (/users — list, /yt ru|uz — YouTube briefing)\n👤 Users: ${us.n}\n👥 Groups: ${g.n}\n🔔 Daily (private): ${(await env.DB.prepare("SELECT COUNT(*) AS n FROM subs WHERE type = 'private'").first()).n}\n\n${list.map(x => `• ${x.type === 'private' ? '👤' : '👥'} ${x.title || '?'} — ${x.region} · ${x.lang} · ${hh(x.post_hour ?? POST_HOUR)}`).join('\n')}`.slice(0, 4000) });
     }
     await saveUser(env, chat.id, { lang, mode: 'contact' });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk });
