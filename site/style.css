@@ -252,7 +252,7 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .prob .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .prob .chips button { font: 500 14px inherit; color: var(--fg); background: color-mix(in srgb, var(--panel) 70%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
 .prob .chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.prob-stage { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; width: 100%; max-width: min(1100px, calc((100vh - 240px) * 1.28)); }
+.prob-stage { background: #0b111b; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; width: 100%; max-width: min(720px, calc((100vh - 200px) * 0.8)); margin-inline: auto; }
 .prob-stage video { display: block; width: 100%; max-width: 100%; aspect-ratio: 1280 / 1000; background: #fff; }
 .prob-ctl { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; max-width: 1100px; }
 .prob-ctl input[type="range"] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
@@ -333,3 +333,13 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .prob-stage.zoomed:active { cursor: grabbing; }
 .prob-stage .zoom-btns { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; z-index: 2; }
 .prob-stage .zoom-btns .icon-btn { background: rgba(255,255,255,.92); color: #13202e; border: 1px solid #c9d2dc; width: 32px; height: 32px; }
+
+/* product switch on top of the forecast video */
+.prob-stage .prod-over { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 4px; padding: 4px; border-radius: 999px;
+  background: color-mix(in srgb, #0b111b 72%, transparent); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(8px); z-index: 3; max-width: calc(100% - 16px); overflow-x: auto; scrollbar-width: none; }
+.prob-stage .prod-over button { flex: 0 0 auto; border: 0; background: none; color: #dbe5f1; font: 600 13px/1 var(--f-body, inherit); padding: 8px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.prob-stage .prod-over button[aria-pressed="true"] { background: #ffad5c; color: #2a1600; }
+.prob-stage.zoomed .prod-over { opacity: .35; }
+.prob-stage.zoomed .prod-over:hover { opacity: 1; }
+.video-btn { display: inline-flex; margin-top: 8px; text-decoration: none; }
+@media (max-width: 760px) { .prob-stage .prod-over button { padding: 7px 9px; font-size: 12px; } }

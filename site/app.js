@@ -1800,6 +1800,11 @@ function showMsg(t) { const el = $('geoMsg'); el.textContent = t; el.hidden = fa
 function renderPanel() {
   const p = S.A; if (!p) return;
   $('pName').textContent = pname(p);
+  { // the place's country has forecast videos: one tap opens its video (the city's own video for Uzbekistan and Kazakhstan)
+    const b = $('pVideo'), cc = (p.country || '').toUpperCase(), lang = S.lang;
+    b.hidden = !PROB_NAMES[cc];
+    if (!b.hidden) { b.textContent = PROB_UI[lang].video; b.href = `#prob/${cc}/${lang}/prob/${encodeURIComponent(pname(p))}`; }
+  }
   $('pCoords').textContent = `${fmtLL(p.lat, p.lon)} · ${tr('elev')} ${fmtElev(p.lon, p.lat)} · ${tr('res')}: ${inReg(p.lon, p.lat) ? tr('resReg') : tr('resGlo')}`;
   renderPanelNow();
   const days = daily(series(p)).slice(0, 10);
@@ -1936,11 +1941,11 @@ const PROB_NAMES = {
   KZ: { uz: 'Qozog‘iston', ru: 'Казахстан', tr: 'Kazakistan' }, KG: { uz: 'Qirg‘iziston', ru: 'Кыргызстан', tr: 'Kırgızistan' }, TJ: { uz: 'Tojikiston', ru: 'Таджикистан', tr: 'Tacikistan' },
   TM: { uz: 'Turkmaniston', ru: 'Туркменистан', tr: 'Türkmenistan' }, AZ: { uz: 'Ozarbayjon', ru: 'Азербайджан', tr: 'Azerbaycan' }, AM: { uz: 'Armaniston', ru: 'Армения', tr: 'Ermenistan' },
   BY: { uz: 'Belarus', ru: 'Беларусь', tr: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', tr: 'Moldova' }, RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' } };
-const PROB = { M: null, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate2', 0.5), product: store.get('probProduct', 'prob') };
+const PROB = { M: null, city: null, cityName: null, C: {}, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate2', 0.5), product: store.get('probProduct', 'prob') };
 const PROB_UI = {
-  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', grp: ['Qit’alar', 'MDH va Turkiya'], today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
-  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', grp: ['Континенты', 'СНГ и Турция'], today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
-  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', grp: ['Kıtalar', 'BDT ve Türkiye'], today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
+  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', wind: '💨 Shamol', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', grp: ['Qit’alar', 'MDH va Turkiya'], today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', cities: '🏙 Shaharlar', whole: 'Butun davlat', video: '🎬 Ob-havo videosi', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
+  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', wind: '💨 Ветер', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', grp: ['Континенты', 'СНГ и Турция'], today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', cities: '🏙 Города', whole: 'Вся страна', video: '🎬 Видео погоды', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
+  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', wind: '💨 Rüzgâr', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', grp: ['Kıtalar', 'BDT ve Türkiye'], today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', cities: '🏙 Şehirler', whole: 'Tüm ülke', video: '🎬 Hava videosu', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
 };
 async function saveVideo(url, name) {
   // inside claude.ai the page may only hand files over through the downloads capability; elsewhere a plain link works
@@ -1964,7 +1969,7 @@ function probZoom(stage, v) {
   const local = e => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
   stage.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = local(e); zoomAt(Math.exp(-e.deltaY * 0.0015), cx, cy); }, { passive: false });
   stage.addEventListener('dblclick', e => { const [cx, cy] = local(e); if (k > 1.01) { k = 1; x = y = 0; apply(); } else zoomAt(2.5, cx, cy); });
-  stage.addEventListener('pointerdown', e => { if (e.target.closest('.zoom-btns')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e));
+  stage.addEventListener('pointerdown', e => { if (e.target.closest('.zoom-btns, .prod-over')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e));
     if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), k }; drag = null; } else drag = { p: local(e), x, y }; });
   stage.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, local(e));
     if (pinch && pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomAt(pinch.k * d / pinch.d / k, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
@@ -1974,7 +1979,8 @@ function probZoom(stage, v) {
   const c = () => { const r = stage.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
   $('zIn').onclick = () => zoomAt(1.6, ...c()); $('zOut').onclick = () => zoomAt(1 / 1.6, ...c()); $('zReset').onclick = () => { k = 1; x = y = 0; apply(); };
 }
-function probLink() { return `${location.href.split('#')[0]}#prob/${PROB.region}/${PROB.lang || S.lang}/${PROB.product}`; }
+function probCity() { const C = PROB.C[PROB.region + '_' + (PROB.lang || S.lang)]; return C && PROB.city != null ? C.cities[PROB.city] : null; }
+function probLink() { const c = probCity(); return `${location.href.split('#')[0]}#prob/${PROB.region}/${PROB.lang || S.lang}/${PROB.product}${c ? '/' + encodeURIComponent(c.name) : ''}`; }
 function probNowFrame(M) { // the 6-h window that contains the current moment
   if (!M.steps || !M.run) return 0; const h = (Date.now() - Date.parse(M.run)) / 3600e3;
   const i = M.steps.findIndex(s => h <= s); return i < 0 ? M.steps.length - 1 : Math.max(0, i);
@@ -1988,26 +1994,36 @@ async function renderProbPage() {
   const M = PROB.M, lang = PROB.lang || S.lang, t = PROB_TXT[lang];
   const have = [...new Set(M.items.map(i => i.region))];
   if (!have.includes(PROB.region)) PROB.region = have[0] || 'cis';
+  const ck = PROB.region + '_' + lang;
+  if (!(ck in PROB.C)) { PROB.C[ck] = null; try { const r = await fetch(`prob/cities/${ck}.json`, { cache: 'no-cache' }); if (r.ok) PROB.C[ck] = await r.json(); } catch { } }
+  const CT = PROB.C[ck];
+  if (PROB.cityName && CT) { const q = PROB.cityName.toLowerCase(); const i = CT.cities.findIndex(c => c.name.toLowerCase() === q); PROB.city = i >= 0 ? i : null; PROB.cityName = null; }
+  if (!CT || PROB.city == null || PROB.city >= CT.cities.length) PROB.city = null;
+  const city = CT && PROB.city != null ? CT.cities[PROB.city] : null;
   const U = PROB_UI[lang];
-  const prods = ['prob', 'temp', 'cloud'].filter(pr => M.items.some(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === pr));
+  const prods = ['prob', 'temp', 'cloud', 'wind'].filter(pr => M.items.some(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === pr));
   if (!prods.includes(PROB.product)) PROB.product = 'prob';
-  const it = M.items.find(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === PROB.product);
-  const days = M.items.find(i => i.region === PROB.region && i.lang === lang && i.product === 'days');
+  const it0 = M.items.find(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === PROB.product);
+  // a chosen city: its own video (zoom-in of 1 s first) for the precipitation map, and its daily comments
+  const it = it0 && city && city.video && PROB.product === 'prob' ? { ...it0, video: city.video, t0: 1 } : it0;
+  const days = city ? { days: city.days, off: CT.off, city: city.name } : M.items.find(i => i.region === PROB.region && i.lang === lang && i.product === 'days');
+  const t0 = (it && it.t0) || 0;
   const n = it ? it.frames : 0, fps = M.fps || 1;
   const dayOf = f => { if (!M.steps || !days) return null; const d = new Date(Date.parse(M.run) + (M.steps[f] - (M.win ? M.win[f] / 2 : 3) + (days.off || 0)) * 3600e3); return d.toISOString().slice(0, 10); };
   const today = new Date(Date.now() + ((days && days.off) || 5) * 3600e3).toISOString().slice(0, 10);
   const tmrw = new Date(Date.now() + (((days && days.off) || 5) + 24) * 3600e3).toISOString().slice(0, 10);
   const ageH = M.run ? Math.max(0, Math.round((Date.now() - Date.parse(M.run)) / 3600e3)) : null;
-  if (history.replaceState && S.route === 'prob') history.replaceState(null, '', '#prob/' + PROB.region + '/' + lang + '/' + PROB.product);
+  if (history.replaceState && S.route === 'prob') history.replaceState(null, '', '#prob/' + PROB.region + '/' + lang + '/' + PROB.product + (city ? '/' + encodeURIComponent(city.name) : ''));
   const dd = days && days.days ? days.days : {};
   const card = (dd[today] || dd[tmrw]) ? `<div class="prob-now">${[[today, U.today], [tmrw, U.tomorrow]].filter(([d]) => dd[d]).map(([d, lbl]) => `<div><b>${lbl}</b><span>${dd[d]}</span></div>`).join('')}</div>` : '';
   el.innerHTML = `<div class="inner prob">
-    <div class="prob-head"><div><h1>${t.title.split(' · ')[0]} · ${PROB_NAMES[PROB.region][lang]}</h1><div class="muted mono">${M.run ? `${t.run}: ${M.run.slice(0, 16).replace('T', ' ')} UTC (${U.ago(ageH)}) · ${(M.models || []).join(', ')}` : ''}</div></div>
+    <div class="prob-head"><div><h1>${t.title.split(' · ')[0]} · ${PROB_NAMES[PROB.region][lang]}${city ? ' · ' + city.name : ''}</h1><div class="muted mono">${M.run ? `${t.run}: ${M.run.slice(0, 16).replace('T', ' ')} UTC (${U.ago(ageH)}) · ${(M.models || []).join(', ')}` : ''}</div></div>
       <div class="seg" id="probLang">${['uz', 'ru', 'tr'].map(l => `<button data-l="${l}" aria-pressed="${l === lang}">${l === 'uz' ? 'O‘zbek' : l === 'ru' ? 'Русский' : 'Türkçe'}</button>`).join('')}</div></div>
     ${[['world', 'EU', 'AS', 'AF', 'NA', 'SA', 'OC'], ['cis', 'UZ', 'KZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'BY', 'MD', 'RU', 'TR']].map((grp, gi) => grp.filter(r => have.includes(r)).length ? `<div class="chip-group"><span class="muted">${U.grp[gi]}</span><div class="chips" ${gi ? 'id="probRegions"' : 'id="probConts"'}>${grp.filter(r => have.includes(r)).map(r => `<button data-r="${r}" aria-pressed="${r === PROB.region}">${PROB_NAMES[r][lang]}</button>`).join('')}</div></div>` : '').join('')}
-    ${prods.length > 1 ? `<div class="seg" id="probProd">${prods.map(pr => `<button data-p="${pr}" aria-pressed="${pr === PROB.product}">${U[pr]}</button>`).join('')}</div>` : ''}
+    ${CT && CT.cities.length ? `<div class="chip-group"><span class="muted">${U.cities}</span><div class="chips" id="probCities"><button data-c="-1" aria-pressed="${!city}">${U.whole}</button>${CT.cities.map((c, i) => `<button data-c="${i}" aria-pressed="${PROB.city === i}">${c.video ? '🎬 ' : ''}${c.name}</button>`).join('')}</div></div>` : ''}
     ${card}
     ${it ? `<div class="prob-stage" id="probStage"><video id="probVideo" src="prob/${it.video}" muted loop playsinline autoplay preload="auto"></video>
+      ${prods.length > 1 ? `<div class="prod-over" id="probProd">${prods.map(pr => `<button data-p="${pr}" aria-pressed="${pr === PROB.product}">${U[pr]}</button>`).join('')}</div>` : ''}
       <div class="zoom-btns"><button class="icon-btn" id="zIn" aria-label="+">＋</button><button class="icon-btn" id="zOut" aria-label="−">−</button><button class="icon-btn" id="zReset" aria-label="1:1">⟲</button></div></div>
     <div class="prob-ctl">
       <button class="icon-btn" id="probPlay" aria-label="Play">❚❚</button>
@@ -2024,14 +2040,15 @@ async function renderProbPage() {
   </div>`;
   const selChip = el.querySelector('.chip-group [aria-pressed="true"]'); if (selChip) selChip.scrollIntoView({ block: 'nearest', inline: 'center' });
   el.querySelectorAll('#probLang button').forEach(b => b.onclick = () => { PROB.lang = b.dataset.l; renderProbPage(); });
-  el.querySelectorAll('#probRegions button, #probConts button').forEach(b => b.onclick = () => { PROB.region = b.dataset.r; store.set('probRegion', PROB.region); renderProbPage(); });
+  el.querySelectorAll('#probCities button').forEach(b => b.onclick = () => { const i = +b.dataset.c; PROB.city = i < 0 ? null : i; renderProbPage(); });
+  el.querySelectorAll('#probRegions button, #probConts button').forEach(b => b.onclick = () => { PROB.city = null; PROB.region = b.dataset.r; store.set('probRegion', PROB.region); renderProbPage(); });
   el.querySelectorAll('#probProd button').forEach(b => b.onclick = () => { PROB.product = b.dataset.p; store.set('probProduct', PROB.product); renderProbPage(); });
-  el.querySelectorAll('#probDays li').forEach(li => li.onclick = () => { const v = $('probVideo'); if (!v || !M.steps) return; const f = M.steps.findIndex((_, i) => dayOf(i) === li.dataset.d); if (f >= 0) { v.pause(); $('probPlay').textContent = '▶'; v.currentTime = (f + 0.5) / fps; } });
+  el.querySelectorAll('#probDays li').forEach(li => li.onclick = () => { const v = $('probVideo'); if (!v || !M.steps) return; const f = M.steps.findIndex((_, i) => dayOf(i) === li.dataset.d); if (f >= 0) { v.pause(); $('probPlay').textContent = '▶'; v.currentTime = t0 + (f + 0.5) / fps; } });
   if (!it) return;
   const v = $('probVideo'), seek = $('probSeek'), idx = $('probIdx');
-  const frameOf = () => Math.min(n - 1, Math.floor(v.currentTime * fps + 1e-3));
+  const frameOf = () => Math.max(0, Math.min(n - 1, Math.floor((v.currentTime - t0) * fps + 1e-3)));
   v.playbackRate = PROB.rate;
-  v.addEventListener('loadedmetadata', () => { v.playbackRate = PROB.rate; const f0 = probNowFrame(M); if (f0 > 0 && f0 < n) v.currentTime = (f0 + 0.5) / fps; }, { once: true });
+  v.addEventListener('loadedmetadata', () => { v.playbackRate = PROB.rate; const f0 = probNowFrame(M); if (f0 > 0 && f0 < n && !t0) v.currentTime = (f0 + 0.5) / fps; }, { once: true });
   probZoom($('probStage'), v);
   $('probCopy').onclick = async () => { const msg = $('probDlMsg'); try { await navigator.clipboard.writeText(probLink()); msg.textContent = U.copied; } catch { msg.textContent = probLink(); } setTimeout(() => msg.textContent = '', 3000); };
   el.onkeydown = null;
@@ -2039,7 +2056,7 @@ async function renderProbPage() {
   v.addEventListener('timeupdate', () => { const f = frameOf(); seek.value = f; idx.textContent = `${f + 1} / ${n}`;
     const d = dayOf(f); if (d !== lastDay) { lastDay = d; el.querySelectorAll('#probDays li').forEach(li => li.classList.toggle('now', li.dataset.d === d)); } });
   $('probDl').onclick = async () => { const msg = $('probDlMsg'); msg.textContent = '…'; const ok = await saveVideo('prob/' + it.video, it.video); msg.textContent = ok ? U.dlOk : U.dlNo; setTimeout(() => msg.textContent = '', 4000); };
-  const go = f => { v.pause(); $('probPlay').textContent = '▶'; v.currentTime = (Math.max(0, Math.min(n - 1, f)) + 0.5) / fps; };
+  const go = f => { v.pause(); $('probPlay').textContent = '▶'; v.currentTime = t0 + (Math.max(0, Math.min(n - 1, f)) + 0.5) / fps; };
   seek.oninput = () => go(+seek.value);
   $('probPrev').onclick = () => go(frameOf() - 1); $('probNext').onclick = () => go(frameOf() + 1);
   $('probPlay').onclick = () => { if (v.paused) { v.play(); $('probPlay').textContent = '❚❚'; } else { v.pause(); $('probPlay').textContent = '▶'; } };
@@ -2081,7 +2098,7 @@ const PAGES = {
 /* ---------- routing, sheets, i18n ---------- */
 function route(keepSheet) {
   const [r, ...rest] = (location.hash || '#map').slice(1).split('/');
-  if (r === 'prob' && rest.length) { const [rg, lg, pr] = rest; if (PROB_NAMES[rg]) PROB.region = rg; if (PROB_UI[lg]) PROB.lang = lg; if (['prob', 'temp', 'cloud'].includes(pr)) PROB.product = pr; }
+  if (r === 'prob' && rest.length) { const [rg, lg, pr, ct] = rest; if (PROB_NAMES[rg]) { if (rg !== PROB.region) PROB.city = null; PROB.region = rg; } if (PROB_UI[lg]) PROB.lang = lg; if (['prob', 'temp', 'cloud', 'wind'].includes(pr)) PROB.product = pr; if (ct) { PROB.cityName = decodeURIComponent(ct); PROB.city = null; } }
   S.route = ['map', 'forecast', 'prob', 'maps', 'guide', 'about'].includes(r) ? r : 'map';
   document.querySelectorAll('.nav a').forEach(a => a.setAttribute('aria-current', a.dataset.route === S.route ? 'page' : 'false'));
   for (const p of ['forecast', 'prob', 'maps', 'guide', 'about']) $('page-' + p).hidden = S.route !== p;

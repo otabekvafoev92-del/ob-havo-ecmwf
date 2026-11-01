@@ -220,22 +220,23 @@ def main():
                             **{f'ens_{k}': cnt[gi][k] for k in ENS}, **{f'n_{k}': nmem[k] for k in ENS})
         log('saved', out)
     if a.wx:
-        # GEFS ensemble mean: 2 m temperature and total cloud cover every 6 h (for snow, clouds and temperature maps)
+        # GEFS ensemble mean: 2 m temperature, total cloud cover and 10 m wind every 6 h (for snow, clouds and temperature maps)
         WG = dict(GLOBAL)  # GEFS mean temperature / cloud for the whole world at 0.5° (the maps interpolate their own box from it)
-        wsteps = sorted({0} | set(steps)); Tw = np.full((len(wsteps), WG['H'], WG['W']), np.nan, np.float32); Cw = Tw.copy()
+        wsteps = sorted({0} | set(steps)); Tw = np.full((len(wsteps), WG['H'], WG['W']), np.nan, np.float32); Cw = Tw.copy(); Uw = Tw.copy(); Vw = Tw.copy()
         keep = GRID; GRID = WG; _maps.clear()
         for i, s in enumerate(wsteps):
             url = f'{GEFS}/gefs.{d}/{h}/atmos/pgrb2ap5/geavg.t{h}z.pgrb2a.0p50.f{s:03d}'
             idx = get(url + '.idx')
             if not idx: continue
             L = idx.decode().strip().split('\n')
-            for key, arr, conv in ((':TMP:2 m above ground:', Tw, lambda v: v - 273.15), (':TCDC:entire atmosphere:', Cw, lambda v: v)):
+            for key, arr, conv in ((':TMP:2 m above ground:', Tw, lambda v: v - 273.15), (':TCDC:entire atmosphere:', Cw, lambda v: v),
+                                   (':UGRD:10 m above ground:', Uw, lambda v: v), (':VGRD:10 m above ground:', Vw, lambda v: v)):
                 j = next((k for k, l in enumerate(L) if key in l), None)
                 if j is None or j + 1 >= len(L): continue
                 buf = get(url, (int(L[j].split(':')[1]), int(L[j + 1].split(':')[1]) - 1))
                 if buf: arr[i] = conv(regrid(decode(buf)))
         GRID = keep
-        np.savez_compressed(a.wx, run=run.strftime('%Y-%m-%dT%H:00:00Z'), steps=np.array(wsteps), grid=np.array(WG, dtype=object), T=Tw.astype(np.float16), C=Cw.astype(np.float16))
+        np.savez_compressed(a.wx, run=run.strftime('%Y-%m-%dT%H:00:00Z'), steps=np.array(wsteps), grid=np.array(WG, dtype=object), T=Tw.astype(np.float16), C=Cw.astype(np.float16), U=Uw.astype(np.float16), V=Vw.astype(np.float16))
         log('saved', a.wx)
 
 
