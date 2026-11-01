@@ -42,7 +42,7 @@ jobs:
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core >/dev/null
           pip install scipy matplotlib pyproj
           python prob/fetch.py prob.npz
-          python prob/render.py prob.npz site/prob --wx wx.npz
+          python prob/render.py prob.npz site/prob --wx wx.npz --city-videos UZ,KZ --city-langs ru,uz
           python prob/render.py glob.npz site/prob --wx wx.npz --geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --append
           python prob/export_5d.py glob.npz wx.npz site/prob/d5
           rm -rf site/prob/frames

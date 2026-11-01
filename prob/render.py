@@ -461,8 +461,8 @@ def _timeline(fig, R, D, s, run, off, values, colors, ylim, yfmt, title, line=No
     bx.set_title(title, fontsize=10.5, color=INK, loc='left', pad=4)
 
 
-def draw_frame(R, D, s, lang, models, members, path, product='prob', comment=''):
-    L = T[lang]; R.main = R.mains[lang]
+def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='', main=None):
+    L = T[lang]; R.main = main if main is not None else R.mains[lang]
     fig = plt.figure(figsize=(12.8, 10.0), dpi=100); fig.patch.set_facecolor('white')
     title = {'prob': L['title'], 'temp': L['title_temp'], 'cloud': L['title_cloud']}[product]
     run, step, off = _header(fig, R, D, s, lang, title)
@@ -553,6 +553,40 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='')
     plt.close(fig)
 
 
+def city_list(R, geo, lang):
+    """The cities of the bot's city menu for a region: the main city first, then the labelled ones, then the biggest towns."""
+    cities = [c for c in R.cities if not R.iso or c.get('iso') == R.iso]
+    if R.iso:  # plus the biggest towns of the country that are not labelled on the map
+        cities += sorted([c for c in geo.places if c['iso'] == R.iso and c not in cities], key=lambda c: -c['pop'])[:max(0, 14 - len(cities))]
+    if R.mains[lang] in cities: cities.remove(R.mains[lang])
+    return (([R.mains[lang]] if R.mains[lang] else []) + cities)[:15]
+
+
+def _video(fdir, mp4, fps, width=None, crf=None):
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(fps), '-i', str(fdir / '%03d.png'),
+                    '-vf', f"fps=25,scale={width or _CTX.get('width', 1152)}:-2,format=yuv420p", '-c:v', 'libx264', '-crf', str(crf or _CTX.get('crf', 24)), '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
+
+
+def _city_job(args):
+    """The precipitation video of one region with the timeline and the comments of a chosen city."""
+    region, lang, ci, sel, out, fps = args
+    D, P, models, members, geo = _CTX['D'], _CTX['P'], _CTX['models'], _CTX['members'], _CTX['geo']
+    R = Region(D, geo, region, P, D['amt'])
+    run = dt.datetime.fromisoformat(D['run'].replace('Z', '+00:00')).replace(tzinfo=None)
+    city = city_list(R, geo, lang)[ci]
+    if city not in R.cities: R.cities.append(city); R.cxy.append(R.proj(city['lon'], city['lat']))
+    off = R.off if R.off is not None else OVERVIEW_TZ[lang]
+    com = daily_comments(R, D, lang, off, city, area=False)
+    fdir = out / 'frames' / f'{region}_{lang}_c{ci:02d}'; fdir.mkdir(parents=True, exist_ok=True)
+    for i, s in enumerate(sel):
+        day = local_day(run, D['steps'][s], off, D['win'][s])
+        draw_frame(R, D, s, lang, models, members, fdir / f'{i:03d}.png', 'prob', com.get(day.isoformat(), ''), main=city)
+    mp4 = out / f'{region}_{lang}_c{ci:02d}.mp4'
+    _video(fdir, mp4, fps, _CTX.get('city_width'), _CTX.get('city_crf'))  # smaller files: dozens of them
+    print(region, lang, city_name(city, lang), 'city video ok', flush=True)
+    return region, lang, ci, mp4.name
+
+
 _CTX = {}
 def _job(args):
     region, langs, sel, out, fps, products = args
@@ -578,13 +612,9 @@ def _job(args):
             print(region, lang, product, 'ok', flush=True)
         res.append({'region': region, 'lang': lang, 'product': 'days', 'days': com, 'off': off, 'city': city_name(R.mains[lang], lang) if R.mains[lang] else ''})
         # the same daily comments for every labelled city of the country (the bot's city menu)
-        cities = [c for c in R.cities if not R.iso or c.get('iso') == R.iso]
-        if R.iso:  # plus the biggest towns of the country that are not labelled on the map
-            cities += sorted([c for c in geo.places if c['iso'] == R.iso and c not in cities], key=lambda c: -c['pop'])[:max(0, 14 - len(cities))]
-        if R.mains[lang] in cities: cities.remove(R.mains[lang])
-        cities = ([R.mains[lang]] if R.mains[lang] else []) + cities
+        cities = city_list(R, geo, lang)
         (out / 'cities').mkdir(exist_ok=True)
-        json.dump({'region': region, 'lang': lang, 'off': off, 'cities': [{'name': city_name(c, lang), 'days': daily_comments(R, D, lang, off, c, area=False)} for c in cities[:15]]},
+        json.dump({'region': region, 'lang': lang, 'off': off, 'cities': [{'name': city_name(c, lang), 'days': daily_comments(R, D, lang, off, c, area=False)} for c in cities]},
                   open(out / 'cities' / f'{region}_{lang}.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     return res
 
@@ -603,21 +633,37 @@ def main():
     ap.add_argument('--width', type=int, default=1920, help='video width in pixels')
     ap.add_argument('--crf', type=int, default=24, help='video quality (lower = sharper, bigger files)')
     ap.add_argument('--append', action='store_true', help='add these maps to an existing manifest.json instead of replacing it')
+    ap.add_argument('--city-videos', default='', help='regions that also get one precipitation video per city, e.g. UZ,KZ')
+    ap.add_argument('--city-langs', default='ru,uz', help='languages of the city videos')
+    ap.add_argument('--city-width', type=int, default=1280); ap.add_argument('--city-crf', type=int, default=28)
     a = ap.parse_args()
     D = load(a.npz)
     P, models, members = probability(D)
-    _CTX.update(D=D, P=P, models=models, members=members, dpi=a.dpi, width=a.width, crf=a.crf, geo=Geo(a.geo or None), wx=load_wx_npz(D, a.wx) if a.wx else load_wx(D, a.globe_data))
+    _CTX.update(D=D, P=P, models=models, members=members, dpi=a.dpi, width=a.width, crf=a.crf, city_width=a.city_width, city_crf=a.city_crf, geo=Geo(a.geo or None), wx=load_wx_npz(D, a.wx) if a.wx else load_wx(D, a.globe_data))
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     sel = list(range(len(D['steps']))) if not a.steps else [list(D['steps']).index(int(x)) for x in a.steps.split(',')]
     if a.max_step: sel = [i for i in sel if int(D['steps'][i]) <= a.max_step]
     tasks = [(r, a.langs.split(','), sel, out, a.fps, a.products.split(',')) for r in a.regions.split(',')]
     manifest = []
+    import multiprocessing as mp
     if a.jobs > 1:
-        import multiprocessing as mp
         with mp.get_context('fork').Pool(a.jobs) as pool:
             for res in pool.imap(_job, tasks): manifest += res
     else:
         for t in tasks: manifest += _job(t)
+    # one precipitation video per city (the bot's city menu); the cities/*.json files learn their video names
+    ctasks = []
+    for r in [x for x in a.city_videos.split(',') if x and x in a.regions.split(',')]:
+        for lang in [l for l in a.city_langs.split(',') if l in a.langs.split(',')]:
+            n = len(json.load(open(out / 'cities' / f'{r}_{lang}.json'))['cities'])
+            ctasks += [(r, lang, ci, sel, out, a.fps) for ci in range(n)]
+    if ctasks:
+        if a.jobs > 1:
+            with mp.get_context('fork').Pool(a.jobs) as pool: done = list(pool.imap_unordered(_city_job, ctasks))
+        else: done = [_city_job(t) for t in ctasks]
+        for r, lang, ci, name in done:
+            f = out / 'cities' / f'{r}_{lang}.json'; C = json.load(open(f)); C['cities'][ci]['video'] = name
+            json.dump(C, open(f, 'w'), ensure_ascii=False, separators=(',', ':'))
     M = {'run': D['run'], 'models': models, 'members': members, 'fps': a.fps, 'steps': [int(D['steps'][i]) for i in sel], 'win': [int(D['win'][i]) for i in sel], 'items': manifest}
     if a.append and (out / 'manifest.json').exists():
         old = json.load(open(out / 'manifest.json')); done = {i['region'] for i in manifest}

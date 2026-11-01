@@ -271,8 +271,25 @@ async function handle(up, env) {
       return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].cPick}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
     }
     const c = C.cities[+ci]; if (!c) return;
-    const text = forecastText({ days: c.days, off: C.off, city: c.name }, lang, NAMES[rid][lang], rid, { more: 5 });
-    return tg(env, 'sendMessage', { chat_id: chat.id, text: text || T[lang].none, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: T[lang].cities, callback_data: `Y:${lang}:${rid}` }, { text: T[lang].back, callback_data: `C:${lang}:${rid}` }]] } });
+    const kb = { inline_keyboard: [[{ text: T[lang].cities, callback_data: `Y:${lang}:${rid}` }, { text: T[lang].back, callback_data: `C:${lang}:${rid}` }]] };
+    const text = forecastText({ days: c.days, off: C.off, city: c.name }, lang, NAMES[rid][lang], rid, { more: c.video ? 4 : 5, limit: c.video ? 1024 : 4000 });
+    if (!text) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none, reply_markup: kb });
+    if (c.video) {  // the precipitation video with this city's timeline (Uzbekistan and Kazakhstan)
+      await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
+      const url = `${base(env)}/prob/${c.video}`;
+      let r = await tg(env, 'sendVideo', { chat_id: chat.id, video: url, caption: text, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
+      if (!r.ok) {
+        const f = await fetch(url);
+        if (f.ok) {
+          const fd = new FormData();
+          fd.append('chat_id', String(chat.id)); fd.append('caption', text); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true');
+          fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), c.video);
+          r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json();
+        }
+      }
+      if (r.ok) return;
+    }
+    return tg(env, 'sendMessage', { chat_id: chat.id, text, parse_mode: 'HTML', reply_markup: kb });
   }
   await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
   if (kind === 'L') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
