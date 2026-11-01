@@ -297,7 +297,7 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
   .hud-tl.open .fx { display: flex; }
   .hud-tl .layers { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: calc(100vw - 24px); }
   .hud-tl .layers button { flex: 0 0 auto; }
-  .legend { width: min(220px, 60vw); max-height: 46vh; overflow: auto; }
+  .legend { width: min(220px, 60vw); max-height: 46vh; overflow-y: auto; overflow-x: hidden; }
   .legend.mini > :not(.lt:first-child):not(.d5prod) { display: none; }
   .legend .lt:first-child { cursor: pointer; }
   .legend .lt:first-child::after { content: ' ▾'; }

@@ -12,6 +12,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const TZ = 5; // Asia/Tashkent, UTC+5
 const DEG = Math.PI / 180;
 const R = 100, EARTH_M = 6371000;
+const NARROW = () => matchMedia('(max-width: 760px)').matches;
 const MOBILE = matchMedia('(pointer: coarse)').matches || Math.min(screen.width, screen.height) < 700;
 const store = {
   get(k, d) { try { const v = localStorage.getItem('osmon.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
@@ -1475,7 +1476,7 @@ function setupPointer() {
     tip.style.left = h.x + 'px'; tip.style.top = h.y + 'px'; tip.hidden = false;
   });
   canvas.addEventListener('pointerleave', () => { tip.hidden = true; });
-  canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; dragging = true; if (MOBILE) $('legend').classList.add('mini'); if (TOUR.on) stopTour(); if (fly) { const f = fly; fly = null; if (f.goLocal) setLocalControls(camera.up.clone().lerp(f.end.up, 1).normalize(), f.end.target.clone()); else setGlobeControls(camera.position.clone()); } });
+  canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; dragging = true; if (MOBILE || NARROW()) $('legend').classList.add('mini'); if (TOUR.on) stopTour(); if (fly) { const f = fly; fly = null; if (f.goLocal) setLocalControls(camera.up.clone().lerp(f.end.up, 1).normalize(), f.end.target.clone()); else setGlobeControls(camera.position.clone()); } });
   window.addEventListener('pointerup', () => { dragging = false; });
   window.addEventListener('pointercancel', () => { dragging = false; });
   canvas.addEventListener('pointerup', e => {
@@ -2133,8 +2134,8 @@ function bindUI() {
   $('tl').oninput = e => { S.t = +e.target.value; setPlaying(false); syncTimeUI(); };
   $('playBtn').onclick = () => setPlaying(!S.playing);
   $('fxToggle').onclick = () => { const h = document.querySelector('.hud-tl'), o = !h.classList.contains('open'); h.classList.toggle('open', o); $('fxToggle').setAttribute('aria-expanded', String(o)); };
-  if (MOBILE) $('legend').classList.add('mini');
-  $('legend').addEventListener('click', e => { if (e.target.classList.contains('lt') && MOBILE) $('legend').classList.toggle('mini'); });
+  if (MOBILE || NARROW()) $('legend').classList.add('mini');
+  $('legend').addEventListener('click', e => { if (e.target.classList.contains('lt') && (MOBILE || NARROW())) $('legend').classList.toggle('mini'); });
   document.querySelectorAll('.speed button').forEach(b => b.onclick = () => { S.speed = +b.dataset.speed; document.querySelectorAll('.speed button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   $('fxWind').onchange = e => { S.fxWind = e.target.checked; };
   renderWindLevels();
