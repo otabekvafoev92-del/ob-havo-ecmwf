@@ -343,7 +343,7 @@ class Region:
         self.Pfull = P[:, y0:y1, x0:x1]
         self.mains = {}
         for lang in ('uz', 'ru', 'tr'):
-            want = mains[lang] if self.cont else cap if region != 'cis' else {'uz': 'Tashkent', 'ru': 'Moscow', 'tr': 'Istanbul'}[lang]
+            want = mains[lang] if self.cont else cap if region != 'cis' else 'Tashkent'
             self.mains[lang] = next((p for p in self.cities if p['en'] == want), self.cities[0] if self.cities else None)
         self.main = self.mains['uz']
 
@@ -550,6 +550,9 @@ def _borders(ax, R):
     rings = [r for c in focus for r in R.cpoly.get(c, [])]
     ax.add_collection(LineCollection(rings, colors=SKY, linewidths=4.5 if R.iso else 3, alpha=0.18, zorder=5.5))  # soft glow
     ax.add_collection(LineCollection(rings, colors=FOCUS, linewidths=1.3 if R.iso else 0.8, zorder=6))
+    if (R.cont or R.id == 'cis') and 'UZ' in R.cpoly:  # Uzbekistan stands out on the world, continent and CIS maps
+        ax.add_collection(PolyCollection(R.cpoly['UZ'], facecolor=matplotlib.colors.to_rgba(ACCENT, 0.12), edgecolor='none', zorder=4.5))
+        ax.add_collection(LineCollection(R.cpoly['UZ'], colors=ACCENT, linewidths=1.8, zorder=6.5))
     ax.text(0.99, 0.015, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, fontsize=7, color=FAINT, ha='right', va='bottom', zorder=13)
 
 

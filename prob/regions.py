@@ -18,9 +18,9 @@ REGIONS = {
 # continents and the whole world (rendered from the 0.5° world grid, glob.npz, with prob/geo_world.json)
 # id: (lon0, lon1, lat0, lat1, centre lon, centre lat, utc offset or None = the language's clock, main city per language)
 CONT = {
-    'world': (-180, 180, -58, 80, 0, 0, None, {'uz': 'Tashkent', 'ru': 'Moscow', 'tr': 'Istanbul'}),
+    'world': (-180, 180, -58, 80, 0, 0, None, {'uz': 'Tashkent', 'ru': 'Tashkent', 'tr': 'Tashkent'}),
     'EU': (-25, 45, 34, 72, 12, 52, 1, {'uz': 'London', 'ru': 'Moscow', 'tr': 'Istanbul'}),
-    'AS': (25, 180, -10, 78, 95, 40, None, {'uz': 'Tashkent', 'ru': 'Novosibirsk', 'tr': 'Tashkent'}),
+    'AS': (25, 180, -10, 78, 95, 40, None, {'uz': 'Tashkent', 'ru': 'Tashkent', 'tr': 'Tashkent'}),
     'AF': (-20, 55, -36, 38, 18, 2, 2, {'uz': 'Cairo', 'ru': 'Cairo', 'tr': 'Cairo'}),
     'NA': (-170, -50, 7, 75, -100, 45, -5, {'uz': 'New York City', 'ru': 'New York City', 'tr': 'New York City'}),
     'SA': (-85, -33, -56, 13, -60, -20, -3, {'uz': 'São Paulo', 'ru': 'São Paulo', 'tr': 'São Paulo'}),

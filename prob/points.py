@@ -52,7 +52,7 @@ def main():
             k = (p['en'], p['iso'])
             if k in seen: continue
             seen.add(k)
-            places.append([p['ru'], UZ_CITY.get(p['en'], ''), p['en'], p.get('tr') or '', p['iso'], round(p['lat'], 3), round(p['lon'], 3), int(p['pop'])])
+            places.append([p['ru'], UZ_CITY.get(p['en'], ''), p['en'], p.get('tr') or '', p['iso'], round(p['lat'], 3), round(p['lon'], 3), int(p['pop']), int(p.get('cap') or 0)])
     places.sort(key=lambda r: -r[7])
     json.dump(places, open(out / 'places.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     print('points:', n, 'tiles,', len(places), 'places')

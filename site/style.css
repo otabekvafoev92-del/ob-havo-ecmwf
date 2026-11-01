@@ -253,7 +253,7 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .prob .chips button { font: 500 14px inherit; color: var(--fg); background: color-mix(in srgb, var(--panel) 70%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
 .prob .chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .prob-stage { background: #0b111b; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; width: 100%; max-width: min(720px, calc((100vh - 200px) * 0.8)); margin-inline: auto; }
-.prob-stage video { display: block; width: 100%; max-width: 100%; aspect-ratio: 1280 / 1000; background: #fff; }
+.prob-stage video { display: block; width: 100%; max-width: 100%; aspect-ratio: 4 / 5; background: #e9edf1; }
 .prob-ctl { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; max-width: 1100px; }
 .prob-ctl input[type="range"] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
 .prob-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; color: var(--muted); font-size: 14px; max-width: 1100px; }
@@ -349,3 +349,14 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .yt-brief video { width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; background: #000; border: 1px solid var(--line); }
 .yt-brief .btn { margin: 0 6px 8px 0; text-decoration: none; display: inline-flex; }
 @media (max-width: 760px) { .yt-brief .yt-grid { grid-template-columns: 1fr; } }
+
+/* continent → countries: 15-day strip of the capital */
+.pt-card { margin: 14px 0 18px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.pt-card h2 { margin: 0 0 2px; font-size: 18px; }
+.pt-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(64px, 1fr); gap: 6px; overflow-x: auto; padding: 8px 2px 4px; scrollbar-width: thin; }
+.pt-day { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; border-radius: 10px; background: var(--panel-2); font-size: 12.5px; text-align: center; }
+.pt-day .ic { font-size: 22px; line-height: 1.2; }
+.pt-day .hi { font-weight: 700; font-size: 14px; }
+.pt-day .tbar { display: block; width: 6px; height: 46px; border-radius: 3px; background: linear-gradient(to top, transparent var(--a), #f39a4a var(--a), #f39a4a var(--b), transparent var(--b)), var(--line); }
+.pt-day .pp { font-weight: 600; padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, #2a7cba var(--p), transparent); }
+.pt-day .pp.sn { background: color-mix(in srgb, #c0548f var(--p), transparent); }

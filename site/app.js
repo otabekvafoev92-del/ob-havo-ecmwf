@@ -1941,11 +1941,11 @@ const PROB_NAMES = {
   KZ: { uz: 'Qozog‘iston', ru: 'Казахстан', tr: 'Kazakistan' }, KG: { uz: 'Qirg‘iziston', ru: 'Кыргызстан', tr: 'Kırgızistan' }, TJ: { uz: 'Tojikiston', ru: 'Таджикистан', tr: 'Tacikistan' },
   TM: { uz: 'Turkmaniston', ru: 'Туркменистан', tr: 'Türkmenistan' }, AZ: { uz: 'Ozarbayjon', ru: 'Азербайджан', tr: 'Azerbaycan' }, AM: { uz: 'Armaniston', ru: 'Армения', tr: 'Ermenistan' },
   BY: { uz: 'Belarus', ru: 'Беларусь', tr: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', tr: 'Moldova' }, RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' } };
-const PROB = { YT: undefined, M: null, city: null, cityName: null, C: {}, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate2', 0.5), product: store.get('probProduct', 'prob') };
+const PROB = { ctry: null, PL: undefined, YT: undefined, M: null, city: null, cityName: null, C: {}, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate2', 0.5), product: store.get('probProduct', 'prob') };
 const PROB_UI = {
-  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', wind: '💨 Shamol', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', grp: ['Qit’alar', 'MDH va Turkiya'], today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', cities: '🏙 Shaharlar', whole: 'Butun davlat', video: '🎬 Ob-havo videosi', yt: '📺 YouTube va kanallar uchun videosharh', ytV: '⬇ Video (Full HD)', ytT: '⬇ Muqova', ytD: '📋 Tavsifni nusxalash', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
-  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', wind: '💨 Ветер', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', grp: ['Континенты', 'СНГ и Турция'], today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', cities: '🏙 Города', whole: 'Вся страна', video: '🎬 Видео погоды', yt: '📺 Видеообзор для YouTube и каналов', ytV: '⬇ Видео (Full HD)', ytT: '⬇ Обложка', ytD: '📋 Скопировать описание', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
-  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', wind: '💨 Rüzgâr', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', grp: ['Kıtalar', 'BDT ve Türkiye'], today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', cities: '🏙 Şehirler', whole: 'Tüm ülke', video: '🎬 Hava videosu', yt: '📺 YouTube ve kanallar için video özet', ytV: '⬇ Video (Full HD)', ytT: '⬇ Kapak', ytD: '📋 Açıklamayı kopyala', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
+  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', wind: '💨 Shamol', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', grp: ['Qit’alar', 'MDH va Turkiya'], today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', cities: '🏙 Shaharlar', whole: 'Butun davlat', video: '🎬 Ob-havo videosi', countries: '🗺 Davlatlar', ptHead: '15 kunlik prognoz', noprec: 'yog‘insiz', rainw: 'yomg‘ir', snoww: 'qor', mm: 'mm', ms: 'm/s', capital: 'poytaxt', yt: '📺 YouTube va kanallar uchun videosharh', ytV: '⬇ Video (Full HD)', ytT: '⬇ Muqova', ytD: '📋 Tavsifni nusxalash', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
+  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', wind: '💨 Ветер', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', grp: ['Континенты', 'СНГ и Турция'], today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', cities: '🏙 Города', whole: 'Вся страна', video: '🎬 Видео погоды', countries: '🗺 Страны', ptHead: 'Прогноз на 15 дней', noprec: 'без осадков', rainw: 'дождь', snoww: 'снег', mm: 'мм', ms: 'м/с', capital: 'столица', yt: '📺 Видеообзор для YouTube и каналов', ytV: '⬇ Видео (Full HD)', ytT: '⬇ Обложка', ytD: '📋 Скопировать описание', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
+  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', wind: '💨 Rüzgâr', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', grp: ['Kıtalar', 'BDT ve Türkiye'], today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', cities: '🏙 Şehirler', whole: 'Tüm ülke', video: '🎬 Hava videosu', countries: '🗺 Ülkeler', ptHead: '15 günlük tahmin', noprec: 'yağışsız', rainw: 'yağmur', snoww: 'kar', mm: 'mm', ms: 'm/s', capital: 'başkent', yt: '📺 YouTube ve kanallar için video özet', ytV: '⬇ Video (Full HD)', ytT: '⬇ Kapak', ytD: '📋 Açıklamayı kopyala', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
 };
 async function saveVideo(url, name) {
   // inside claude.ai the page may only hand files over through the downloads capability; elsewhere a plain link works
@@ -1978,6 +1978,52 @@ function probZoom(stage, v) {
   stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
   const c = () => { const r = stage.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
   $('zIn').onclick = () => zoomAt(1.6, ...c()); $('zOut').onclick = () => zoomAt(1 / 1.6, ...c()); $('zReset').onclick = () => { k = 1; x = y = 0; apply(); };
+}
+/* ---------- continents by country: a 15-day strip for each capital from the point tiles (prob/points.py) ---------- */
+const CONT_BOX = { world: [-180, 180, -58, 80], EU: [-25, 45, 34, 72], AS: [25, 180, -10, 78], AF: [-20, 55, -36, 38], NA: [-170, -50, 7, 75], SA: [-85, -33, -56, 13], OC: [110, 180, -48, 0] };
+const flagOf = iso => /^[A-Z]{2}$/.test(iso) ? String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : '📍';
+const ctryName = (iso, lang) => { try { return new Intl.DisplayNames([lang === 'uz' ? 'uz-Latn' : lang], { type: 'region' }).of(iso); } catch { return iso; } };
+async function probCountries(lang, U) {
+  if (PROB.PL === undefined) { try { PROB.PL = await (await fetch('prob/places.json')).json(); } catch { PROB.PL = null; } }
+  const box = $('probCountries'); if (!box) return;
+  if (!PROB.PL) { box.closest('.chip-group').hidden = true; return; }
+  const [w, e, s_, n] = CONT_BOX[PROB.region];
+  const caps = PROB.PL.filter(p => p[8] === 2 && /^[A-Z]{2}$/.test(p[4]) && p[6] >= w && p[6] <= e && p[5] >= s_ && p[5] <= n);
+  const seen = new Set(), list = caps.filter(p => !seen.has(p[4]) && seen.add(p[4])).map(p => ({ p, name: ctryName(p[4], lang) })).sort((a, b) => a.name.localeCompare(b.name, lang));
+  box.innerHTML = list.map(({ p, name }) => `<button data-c="${p[4]}" aria-pressed="${PROB.ctry === p[4]}">${flagOf(p[4])} ${name}</button>`).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => { PROB.ctry = PROB.ctry === b.dataset.c ? null : b.dataset.c; box.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.c === PROB.ctry))); ptCard(list.find(x => x.p[4] === PROB.ctry), lang, U); });
+  if (PROB.ctry) ptCard(list.find(x => x.p[4] === PROB.ctry), lang, U);
+}
+async function pointDays(lat, lon) {
+  const I = PROB.PI || (PROB.PI = await (await fetch('prob/pt/index.json', { cache: 'no-cache' })).json());
+  const top = Math.ceil(lat / I.tile) * I.tile, left = Math.floor(lon / I.tile) * I.tile, n = I.n, S = I.steps.length;
+  const r = await fetch(`prob/pt/${top}_${left}.bin`); if (!r.ok) return null;
+  const B = new Uint8Array(await r.arrayBuffer()), fy = (top - lat) / I.d, fx = (lon - left) / I.d;
+  const y0 = Math.min(n - 2, Math.floor(fy)), x0 = Math.min(n - 2, Math.floor(fx)), ay = fy - y0, ax = fx - x0;
+  const val = (s, v) => { let sum = 0, w = 0; for (const [dy, dx, k] of [[0, 0, (1 - ay) * (1 - ax)], [0, 1, (1 - ay) * ax], [1, 0, ay * (1 - ax)], [1, 1, ay * ax]]) { const b = B[((s * 5 + v) * n + y0 + dy) * n + x0 + dx]; if (b !== 255) { sum += b * k; w += k; } } return w ? sum / w : NaN; };
+  const off = Math.max(-11, Math.min(12, Math.round(lon / 15))), run = Date.parse(I.run), days = new Map();
+  for (let s = 0; s < S; s++) {
+    const d = new Date(run + (I.steps[s] - I.win[s] / 2 + off) * 3600e3).toISOString().slice(0, 10), x = days.get(d) || { P: 0, T: [], A: 0, W: 0, wet: [] };
+    const p = val(s, 0) / 2.5, t = val(s, 1) / 2 - 60, w = val(s, 3) / 5, a = Math.expm1(val(s, 4) / 40);
+    if (isFinite(p)) x.P = Math.max(x.P, p); if (isFinite(t)) x.T.push(t); if (isFinite(a)) x.A += a; if (isFinite(w)) x.W = Math.max(x.W, w); if (p >= 30 && isFinite(t)) x.wet.push(t);
+    days.set(d, x);
+  }
+  const today = new Date(Date.now() + off * 3600e3).toISOString().slice(0, 10);
+  return [...days].filter(([d, x]) => d >= today && x.T.length).map(([d, x]) => ({ d, lo: Math.min(...x.T), hi: Math.max(...x.T), p: x.P, mm: x.A, w: x.W, snow: x.wet.length ? x.wet.reduce((a, b) => a + b) / x.wet.length <= 0.5 : false }));
+}
+async function ptCard(item, lang, U) {
+  const el = $('ptCard'); if (!el) return;
+  if (!item) { el.hidden = true; return; }
+  el.hidden = false; el.innerHTML = '<p class="muted">…</p>';
+  const p = item.p, D = await pointDays(p[5], p[6]).catch(() => null);
+  if (!D || !D.length) { el.innerHTML = `<p class="muted">—</p>`; return; }
+  const city = lang === 'uz' ? (p[1] || p[2]) : lang === 'tr' ? (p[3] || p[2]) : (p[0] || p[2]), t = v => `${v > 0.5 ? '+' : ''}${Math.round(v)}°`;
+  const lo = Math.min(...D.map(x => x.lo)), hi = Math.max(...D.map(x => x.hi)), sp = Math.max(1, hi - lo);
+  el.innerHTML = `<h2>${flagOf(p[4])} ${item.name} · ${city} <span class="muted">(${U.capital})</span></h2><p class="muted">${U.ptHead}</p>
+    <div class="pt-strip">${D.map(x => { const dt_ = new Date(x.d + 'T12:00:00Z'), ic = x.p >= 60 ? (x.snow ? '❄️' : '🌧') : x.p >= 35 ? (x.snow ? '🌨' : '🌦') : x.p >= 15 ? '⛅' : '☀️';
+      return `<div class="pt-day"><b>${U.wd[dt_.getUTCDay()]}</b><span class="muted">${String(dt_.getUTCDate()).padStart(2, '0')}.${String(dt_.getUTCMonth() + 1).padStart(2, '0')}</span><span class="ic">${ic}</span>
+        <span class="hi">${t(x.hi)}</span><i class="tbar" style="--a:${((x.lo - lo) / sp * 100).toFixed(0)}%;--b:${((x.hi - lo) / sp * 100).toFixed(0)}%"></i><span class="lo muted">${t(x.lo)}</span>
+        <span class="pp ${x.snow ? 'sn' : ''}" style="--p:${Math.round(x.p)}%">${Math.round(x.p)} %</span><small class="muted">${x.mm >= 0.5 ? `${x.mm.toFixed(x.mm < 9.5 ? 1 : 0)} ${U.mm}` : '·'}</small><small class="muted">💨 ${isFinite(x.w) && x.w ? Math.round(x.w) : '–'}</small></div>`; }).join('')}</div>`;
 }
 function probCity() { const C = PROB.C[PROB.region + '_' + (PROB.lang || S.lang)]; return C && PROB.city != null ? C.cities[PROB.city] : null; }
 function probLink() { const c = probCity(); return `${location.href.split('#')[0]}#prob/${PROB.region}/${PROB.lang || S.lang}/${PROB.product}${c ? '/' + encodeURIComponent(c.name) : ''}`; }
@@ -2021,6 +2067,7 @@ async function renderProbPage() {
       <div class="seg" id="probLang">${['uz', 'ru', 'tr'].map(l => `<button data-l="${l}" aria-pressed="${l === lang}">${l === 'uz' ? 'O‘zbek' : l === 'ru' ? 'Русский' : 'Türkçe'}</button>`).join('')}</div></div>
     ${[['world', 'EU', 'AS', 'AF', 'NA', 'SA', 'OC'], ['cis', 'UZ', 'KZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'BY', 'MD', 'RU', 'TR']].map((grp, gi) => grp.filter(r => have.includes(r)).length ? `<div class="chip-group"><span class="muted">${U.grp[gi]}</span><div class="chips" ${gi ? 'id="probRegions"' : 'id="probConts"'}>${grp.filter(r => have.includes(r)).map(r => `<button data-r="${r}" aria-pressed="${r === PROB.region}">${PROB_NAMES[r][lang]}</button>`).join('')}</div></div>` : '').join('')}
     ${CT && CT.cities.length ? `<div class="chip-group"><span class="muted">${U.cities}</span><div class="chips" id="probCities"><button data-c="-1" aria-pressed="${!city}">${U.whole}</button>${CT.cities.map((c, i) => `<button data-c="${i}" aria-pressed="${PROB.city === i}">${c.video ? '🎬 ' : ''}${c.name}</button>`).join('')}</div></div>` : ''}
+    ${CONT_BOX[PROB.region] ? `<div class="chip-group"><span class="muted">${U.countries}</span><div class="chips" id="probCountries"><span class="muted">…</span></div></div><section class="pt-card" id="ptCard" hidden></section>` : ''}
     ${card}
     ${it ? `<div class="prob-stage" id="probStage"><video id="probVideo" src="prob/${it.video}" muted loop playsinline autoplay preload="auto"></video>
       ${prods.length > 1 ? `<div class="prod-over" id="probProd">${prods.map(pr => `<button data-p="${pr}" aria-pressed="${pr === PROB.product}">${U[pr]}</button>`).join('')}</div>` : ''}
@@ -2039,6 +2086,7 @@ async function renderProbPage() {
     <section class="visits prob-visits" id="probVisits"${VIS.data ? '' : ' hidden'}>${visitsHtml(8)}</section>
     <div class="prob-notes"><div><h2>${t.h1}</h2><p>${t.p1}</p></div><div><h2>${t.h2}</h2><p>${t.p2}</p></div><div><h2>${t.h3}</h2><p>${t.p3}</p></div></div>
   </div>`;
+  if (CONT_BOX[PROB.region]) probCountries(lang, U);
   (async () => {  // the professional briefing (prob/broadcast.py): video, thumbnail and the YouTube text
     if (PROB.YT === undefined) { try { PROB.YT = await (await fetch('prob/yt/index.json', { cache: 'no-cache' })).json(); } catch { PROB.YT = null; } }
     const box = $('ytBrief'); if (!box || !PROB.YT) return;
@@ -2052,7 +2100,7 @@ async function renderProbPage() {
   const selChip = el.querySelector('.chip-group [aria-pressed="true"]'); if (selChip) selChip.scrollIntoView({ block: 'nearest', inline: 'center' });
   el.querySelectorAll('#probLang button').forEach(b => b.onclick = () => { PROB.lang = b.dataset.l; renderProbPage(); });
   el.querySelectorAll('#probCities button').forEach(b => b.onclick = () => { const i = +b.dataset.c; PROB.city = i < 0 ? null : i; renderProbPage(); });
-  el.querySelectorAll('#probRegions button, #probConts button').forEach(b => b.onclick = () => { PROB.city = null; PROB.region = b.dataset.r; store.set('probRegion', PROB.region); renderProbPage(); });
+  el.querySelectorAll('#probRegions button, #probConts button').forEach(b => b.onclick = () => { PROB.city = null; PROB.ctry = null; PROB.region = b.dataset.r; store.set('probRegion', PROB.region); renderProbPage(); });
   el.querySelectorAll('#probProd button').forEach(b => b.onclick = () => { PROB.product = b.dataset.p; store.set('probProduct', PROB.product); renderProbPage(); });
   el.querySelectorAll('#probDays li').forEach(li => li.onclick = () => { const v = $('probVideo'); if (!v || !M.steps) return; const f = M.steps.findIndex((_, i) => dayOf(i) === li.dataset.d); if (f >= 0) { v.pause(); $('probPlay').textContent = '▶'; v.currentTime = t0 + (f + 0.5) / fps; } });
   if (!it) return;
