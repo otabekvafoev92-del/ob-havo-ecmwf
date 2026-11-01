@@ -167,7 +167,9 @@ async function handle(up, env) {
     if (kind === 'GL') return tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].pick, reply_markup: countryKb(lang, 'GC') });
     await saveSub(env, chat, id, lang);
     await tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].gSet.replace('{name}', esc(NAMES[id][lang])).replace('{lang}', T[lang].lang), parse_mode: 'HTML' });
-    return sendToday(env, chat.id, lang, id, true);
+    const M = await manifest(env), me = await tg(env, 'getMe', {});
+    if (M) await post(env, M, chat.id, lang, id, me.ok ? me.result.username : '');
+    return;
   }
   await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
   if (kind === 'L') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
@@ -242,6 +244,31 @@ async function isAdmin(env, chat, user) {
   const r = await tg(env, 'getChatMember', { chat_id: chat.id, user_id: user.id });
   return r.ok && ['creator', 'administrator'].includes(r.result.status);
 }
+// one forecast post: the precipitation video with today, tomorrow and the next days in the caption, and link buttons
+async function post(env, M, chat, lang0, id0, bot) {
+  const lang = T[lang0] ? lang0 : 'uz', id = NAMES[id0] ? id0 : 'UZ';
+  const items = M.items.filter(i => i.region === id && i.lang === lang);
+  const days = items.find(i => i.product === 'days'), vid = items.find(i => (i.product || 'prob') === 'prob');
+  const updated = M.run.slice(8, 10) + '.' + M.run.slice(5, 7) + ' ' + M.run.slice(11, 16) + ' UTC';
+  const cap = forecastText(days, lang, NAMES[id][lang], id, { updated, more: 4, foot: T[lang].swipe, limit: 1024 });
+  if (!cap) return { ok: false, description: 'no data' };
+  const kb = postKb(env, lang, id, bot);
+  if (!vid) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
+  const url = `${base(env)}/prob/${vid.video}`;
+  let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
+  if (!r.ok && !/kicked|not a member|chat not found|have no rights|was deleted/i.test(r.description || '')) {
+    // Telegram could not fetch the video by link: upload the file
+    const f = await fetch(url);
+    if (f.ok) {
+      const fd = new FormData();
+      fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true');
+      fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), vid.video);
+      r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json();
+    }
+  }
+  return r;
+}
+
 async function broadcast(env) {
   if (!env.DB) return { ok: false, error: 'no DB' };
   await db(env);
@@ -249,17 +276,9 @@ async function broadcast(env) {
   if (!M) return { ok: false, error: 'no manifest' };
   const due = (await env.DB.prepare('SELECT * FROM subs WHERE last_run IS NULL OR last_run <> ?1 LIMIT ?2').bind(M.run, PER_TICK).all()).results;
   const me = await tg(env, 'getMe', {}), bot = me.ok ? me.result.username : '';
-  const updated = M.run.slice(8, 10) + '.' + M.run.slice(5, 7) + ' ' + M.run.slice(11, 16) + ' UTC';
   let sent = 0;
   for (const s of due) {
-    const lang = T[s.lang] ? s.lang : 'uz', id = NAMES[s.region] ? s.region : 'UZ';
-    const items = M.items.filter(i => i.region === id && i.lang === lang);
-    const days = items.find(i => i.product === 'days'), vid = items.find(i => (i.product || 'prob') === 'prob');
-    const cap = forecastText(days, lang, NAMES[id][lang], id, { updated, more: 4, foot: T[lang].swipe, limit: 1024 });
-    let r = { ok: false };
-    if (cap) r = vid
-      ? await tg(env, 'sendVideo', { chat_id: s.chat_id, video: `${base(env)}/prob/${vid.video}`, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: postKb(env, lang, id, bot) })
-      : await tg(env, 'sendMessage', { chat_id: s.chat_id, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot) });
+    const r = await post(env, M, s.chat_id, s.lang, s.region, bot);
     if (r.ok) sent++;
     // the bot was removed or cannot write there: forget the chat
     if (!r.ok && [400, 403].includes(r.error_code) && /kicked|not a member|chat not found|have no rights|was deleted/i.test(r.description || '')) await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(s.chat_id).run();
