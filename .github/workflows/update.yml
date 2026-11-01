@@ -71,8 +71,22 @@ jobs:
     timeout-minutes: 300
     strategy:
       fail-fast: false
-      matrix:
-        part: [cis-a, cis-b, cities, world]
+      matrix:  # 14 runners side by side: one language per job, one city set per job
+        include:
+          - { part: cis-a-uz, npz: prob.npz, args: '--regions cis,UZ,KZ,KG,TJ,TM --langs uz' }
+          - { part: cis-a-ru, npz: prob.npz, args: '--regions cis,UZ,KZ,KG,TJ,TM --langs ru' }
+          - { part: cis-a-tr, npz: prob.npz, args: '--regions cis,UZ,KZ,KG,TJ,TM --langs tr' }
+          - { part: cis-b-uz, npz: prob.npz, args: '--regions AZ,AM,BY,MD,RU,TR --langs uz' }
+          - { part: cis-b-ru, npz: prob.npz, args: '--regions AZ,AM,BY,MD,RU,TR --langs ru' }
+          - { part: cis-b-tr, npz: prob.npz, args: '--regions AZ,AM,BY,MD,RU,TR --langs tr' }
+          - { part: cities-UZ-ru, npz: prob.npz, args: "--regions UZ --langs ru --products '' --city-videos UZ --city-langs ru" }
+          - { part: cities-UZ-uz, npz: prob.npz, args: "--regions UZ --langs uz --products '' --city-videos UZ --city-langs uz" }
+          - { part: cities-KZ-ru, npz: prob.npz, args: "--regions KZ --langs ru --products '' --city-videos KZ --city-langs ru" }
+          - { part: cities-KZ-uz, npz: prob.npz, args: "--regions KZ --langs uz --products '' --city-videos KZ --city-langs uz" }
+          - { part: world-uz, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --langs uz' }
+          - { part: world-ru, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --langs ru' }
+          - { part: world-tr, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --langs tr' }
+          - { part: globe, args: '' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -85,14 +99,12 @@ jobs:
         run: |
           sudo apt-get install -y -qq ffmpeg >/dev/null
           pip install numpy scipy matplotlib pyproj pillow
-          case "${{ matrix.part }}" in
-            cis-a)  python prob/render.py prob.npz out --wx wx.npz --regions cis,UZ,KZ,KG,TJ,TM ;;
-            cis-b)  python prob/render.py prob.npz out --wx wx.npz --regions AZ,AM,BY,MD,RU,TR ;;
-            cities) python prob/render.py prob.npz out --wx wx.npz --regions UZ,KZ --products '' --city-videos UZ,KZ --city-langs ru,uz ;;
-            world)  python prob/render.py glob.npz out --wx wx.npz --geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp
-                    python prob/export_5d.py glob.npz wx.npz out/d5
-                    python prob/points.py glob.npz wx.npz out ;;
-          esac
+          if [ "${{ matrix.part }}" = globe ]; then
+            python prob/export_5d.py glob.npz wx.npz out/d5
+            python prob/points.py glob.npz wx.npz out
+          else
+            python prob/render.py ${{ matrix.npz }} out ${{ matrix.args }} --wx wx.npz
+          fi
           rm -rf out/frames
       - uses: actions/upload-artifact@v4
         with:
@@ -125,7 +137,7 @@ jobs:
       - name: Join the render parts (the city videos last)
         run: |
           ls parts
-          python prob/merge.py site/prob parts/prob-world parts/prob-cis-a parts/prob-cis-b parts/prob-cities
+          python prob/merge.py site/prob parts/prob-globe parts/prob-world-* parts/prob-cis-* parts/prob-cities-*
           test -f site/prob/manifest.json
           du -sh site site/prob site/prob/pt
       - name: Send Telegram summary
