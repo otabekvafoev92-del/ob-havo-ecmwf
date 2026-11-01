@@ -343,3 +343,9 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .prob-stage.zoomed .prod-over:hover { opacity: 1; }
 .video-btn { display: inline-flex; margin-top: 8px; text-decoration: none; }
 @media (max-width: 760px) { .prob-stage .prod-over button { padding: 7px 9px; font-size: 12px; } }
+
+.yt-brief { margin-top: 28px; }
+.yt-brief .yt-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.yt-brief video { width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; background: #000; border: 1px solid var(--line); }
+.yt-brief .btn { margin: 0 6px 8px 0; text-decoration: none; display: inline-flex; }
+@media (max-width: 760px) { .yt-brief .yt-grid { grid-template-columns: 1fr; } }

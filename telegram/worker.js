@@ -513,6 +513,18 @@ async function privateMsg(msg, env) {
     }
   }
   if (cmd === 'cancel') { await saveUser(env, chat.id, { mode: '' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].cancel }); }
+  if (cmd === 'yt' && admin === String(chat.id)) {  // the YouTube / channel briefing, ready to publish
+    const I = await (await fetch(`${base(env)}/prob/yt/index.json?t=${Date.now()}`)).json().catch(() => null);
+    const want = (text.split(/\s+/)[1] || lang).toLowerCase(), b = I && (I.items.find(i => i.lang === want) || I.items[0]);
+    if (!b) return tg(env, 'sendMessage', { chat_id: chat.id, text: '⏳ Видеообзора ещё нет.' });
+    await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
+    const url = `${base(env)}/prob/${b.video}`;
+    let r = await tg(env, 'sendVideo', { chat_id: chat.id, video: url, caption: b.title, supports_streaming: true });
+    if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat.id)); fd.append('caption', b.title); fd.append('supports_streaming', 'true'); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `osmon_${b.lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
+    await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${base(env)}/prob/${b.thumb}`, caption: 'YouTube thumbnail' });
+    const t = await (await fetch(`${base(env)}/prob/${b.text}`)).text().catch(() => '');
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: (r.ok ? '' : `⚠️ ${r.description || ''}\n${url}\n\n`) + t.slice(0, 4000), disable_web_page_preview: true });
+  }
   if (cmd === 'users' && admin === String(chat.id)) {
     const rows = (await env.DB.prepare('SELECT * FROM users ORDER BY seen DESC LIMIT 100').all()).results;
     const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).n;
@@ -529,7 +541,7 @@ async function privateMsg(msg, env) {
     if (admin === String(chat.id)) {
       const g = await env.DB.prepare("SELECT COUNT(*) AS n FROM subs WHERE type <> 'private'").first(), us = await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first();
       const list = (await env.DB.prepare('SELECT title, type, region, lang, post_hour FROM subs ORDER BY added DESC LIMIT 30').all()).results;
-      return tg(env, 'sendMessage', { chat_id: chat.id, text: `👑 Admin  (/users — list)\n👤 Users: ${us.n}\n👥 Groups: ${g.n}\n🔔 Daily (private): ${(await env.DB.prepare("SELECT COUNT(*) AS n FROM subs WHERE type = 'private'").first()).n}\n\n${list.map(x => `• ${x.type === 'private' ? '👤' : '👥'} ${x.title || '?'} — ${x.region} · ${x.lang} · ${hh(x.post_hour ?? POST_HOUR)}`).join('\n')}`.slice(0, 4000) });
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: `👑 Admin  (/users — list, /yt ru|uz — YouTube briefing)\n👤 Users: ${us.n}\n👥 Groups: ${g.n}\n🔔 Daily (private): ${(await env.DB.prepare("SELECT COUNT(*) AS n FROM subs WHERE type = 'private'").first()).n}\n\n${list.map(x => `• ${x.type === 'private' ? '👤' : '👥'} ${x.title || '?'} — ${x.region} · ${x.lang} · ${hh(x.post_hour ?? POST_HOUR)}`).join('\n')}`.slice(0, 4000) });
     }
     await saveUser(env, chat.id, { lang, mode: 'contact' });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk });

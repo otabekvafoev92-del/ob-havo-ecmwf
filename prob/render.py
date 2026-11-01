@@ -28,7 +28,7 @@ import textwrap
 # Osmon video style: the site's night palette, Golos Text / Unbounded (SIL OFL, prob/fonts), portrait layout:
 # header, map, a card for the chosen city, legend chips and the 15-day timeline
 for _f in sorted((HERE / 'fonts').glob('*.ttf')): _fm.fontManager.addfont(str(_f))
-matplotlib.rcParams.update({'font.family': 'Golos Text', 'font.size': 10})
+matplotlib.rcParams.update({'font.family': ['Golos Text', 'DejaVu Sans'], 'font.size': 10})
 DISPLAY = 'Unbounded'
 
 BG, CARD, CARD2, LINE = '#0b111b', '#121c2b', '#182435', '#233247'
@@ -527,9 +527,10 @@ def zoom_view(R, p, z):
 
 
 MAP_BOX = [0.018, 0.388, 0.964, 0.487]
-def _basemap(fig, R):
-    _card(fig, MAP_BOX[0] - 0.006, MAP_BOX[1] - 0.005, MAP_BOX[2] + 0.012, MAP_BOX[3] + 0.01, fc=SEA, ec=LINE)
-    ax = fig.add_axes(MAP_BOX)
+def _basemap(fig, R, box=None):
+    box = box or MAP_BOX
+    _card(fig, box[0] - 0.006, box[1] - 0.005, box[2] + 0.012, box[3] + 0.01, fc=SEA, ec=LINE)
+    ax = fig.add_axes(box)
     x0, x1, y0, y1 = getattr(R, 'view', None) or R.ext
     ax.set_xlim(x0, x1); ax.set_ylim(y0, y1); ax.set_aspect('equal', adjustable='box'); ax.axis('off')
     ax.add_patch(Rectangle((x0, y0), x1 - x0, y1 - y0, facecolor=SEA, edgecolor='none', zorder=0))
@@ -626,13 +627,8 @@ def _level_col(v, pal):
     return pal[int(np.clip(np.digitize(v, LEVELS[:-1]) - 1 + BIG_SHIFT, 0, 4))]
 
 
-def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='', main=None, zoom=1.0, dpi=None):
-    L = T[lang]; W2 = S2[lang]; R.main = main if main is not None else R.mains[lang]
-    R.view = zoom_view(R, R.main, zoom) if zoom > 1.001 else None
-    fig = plt.figure(figsize=(7.2, 9.0), dpi=100); fig.patch.set_facecolor(BG)
-    title = {'prob': L['title'], 'temp': L['title_temp'], 'cloud': L['title_cloud'], 'wind': W2['wt']}[product]
-    run, step, off = _header(fig, R, D, s, lang, title)
-    ax = _basemap(fig, R)
+def draw_fields(ax, R, s, product):
+    """The forecast layer of one window on a map: precipitation, temperature, wind or clouds."""
     has_w = getattr(R, 'Wd', None) is not None
     has_t = R.T is not None and np.isfinite(R.T[s]).any(); has_c = R.C is not None and np.isfinite(R.C[s]).any()
     near = R.id in ('cis', 'RU') or R.cont
@@ -661,6 +657,17 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
     elif product == 'cloud' and has_c:
         ax.contourf(XU, YU, U(np.nan_to_num(R.C[s]) * 100), levels=CL_LV, colors=CL_COL, zorder=2, antialiased=True, alpha=0.95)
         ax.contour(XU, YU, U(R.P[s]), levels=[50], colors=[SKY], linewidths=1.2, linestyles='dashed', zorder=3)
+    return has_t, has_c, has_w
+
+
+def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='', main=None, zoom=1.0, dpi=None):
+    L = T[lang]; W2 = S2[lang]; R.main = main if main is not None else R.mains[lang]
+    R.view = zoom_view(R, R.main, zoom) if zoom > 1.001 else None
+    fig = plt.figure(figsize=(7.2, 9.0), dpi=100); fig.patch.set_facecolor(BG)
+    title = {'prob': L['title'], 'temp': L['title_temp'], 'cloud': L['title_cloud'], 'wind': W2['wt']}[product]
+    run, step, off = _header(fig, R, D, s, lang, title)
+    ax = _basemap(fig, R)
+    has_t, has_c, has_w = draw_fields(ax, R, s, product)
     _borders(ax, R)
     def label(p, main):
         v = R.value_at(s, p); t = R.value_at(s, p, 'T') if has_t else np.nan

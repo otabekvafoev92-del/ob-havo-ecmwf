@@ -1,6 +1,6 @@
 name: Update ECMWF forecast
 
-# Parallel jobs (about 2 h instead of 3–4 h in one job):
+# Parallel jobs (about 40 min instead of 3–4 h in one job):
 #   charts ─────────────────────────────┐
 #   fetch ── render × 4 (cis-a, cis-b,  ├── assemble ── deploy
 #            cities, world) ────────────┘
@@ -87,6 +87,7 @@ jobs:
           - { part: world-ru, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --dpi 150 --width 1080 --crf 27 --langs ru' }
           - { part: world-tr, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --dpi 150 --width 1080 --crf 27 --langs tr' }
           - { part: globe, args: '' }
+          - { part: yt, args: '' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -99,7 +100,9 @@ jobs:
         run: |
           sudo apt-get install -y -qq ffmpeg >/dev/null
           pip install numpy scipy matplotlib pyproj pillow
-          if [ "${{ matrix.part }}" = globe ]; then
+          if [ "${{ matrix.part }}" = yt ]; then
+            python prob/broadcast.py prob.npz glob.npz wx.npz out --langs ru,uz
+          elif [ "${{ matrix.part }}" = globe ]; then
             python prob/export_5d.py glob.npz wx.npz out/d5
             python prob/points.py glob.npz wx.npz out
           else
@@ -137,7 +140,7 @@ jobs:
       - name: Join the render parts (the city videos last)
         run: |
           ls parts
-          python prob/merge.py site/prob parts/prob-globe parts/prob-world-* parts/prob-cis-* parts/prob-cities-*
+          python prob/merge.py site/prob parts/prob-globe parts/prob-yt parts/prob-world-* parts/prob-cis-* parts/prob-cities-*
           test -f site/prob/manifest.json
           du -sh site site/prob site/prob/pt
       - name: Send Telegram summary
