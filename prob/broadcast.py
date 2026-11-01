@@ -136,7 +136,7 @@ def map_frame(R, D, s, lang, path, seg, bullets, frames, k, warn=None):
                                       facecolor=Rn.ACCENT, edgecolor='none', mutation_aspect=W_IN / H_IN))
     fig.text(0.45, 0.047, X['models'], fontsize=12, color=Rn.MUTED, va='center')
     fig.text(0.97, 0.047, f't.me/{BOT[1:]}', fontsize=13, fontweight='bold', color=Rn.SKY, va='center', ha='right')
-    fig.savefig(path, dpi=100, facecolor=Rn.BG); plt.close(fig)
+    fig.savefig(path, dpi=200, facecolor=Rn.BG); plt.close(fig)  # 3840 × 2160 (4K) for YouTube
 
 
 def card_frame(path, lang, kind, D, extra=None):
@@ -178,7 +178,7 @@ def card_frame(path, lang, kind, D, extra=None):
                 fig.text(x + 0.07, y, f"{Rn.fmt_t(tmin)}…{Rn.fmt_t(tmax)}", fontsize=19, fontweight='bold', color=Rn.INK, va='center')
                 w = X['noprec'] if pm < 20 else f"{X['snoww'] if snow else X['rainw']} {pm:.0f} %" + (f", ~{mm:.0f} {X['mm']}" if mm >= 1 else '')
                 fig.text(x + 0.17, y, w, fontsize=17, color=Rn.MUTED, va='center')
-    fig.savefig(path, dpi=100 if kind != 'thumb' else 66.67, facecolor=Rn.BG); plt.close(fig)
+    fig.savefig(path, dpi=200 if kind != 'thumb' else 66.67, facecolor=Rn.BG); plt.close(fig)
 
 
 REG = {}
@@ -242,7 +242,7 @@ def main():
                 for j in range(i0, i0 + n): f.write(f"file '{order[j][0].resolve()}'\nduration {dur / n:.4f}\n")
                 f.write(f"file '{order[i0 + n - 1][0].resolve()}'\n")
             seg = fdir / f'seg_{gi}.mp4'
-            subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '24', '-preset', 'medium', str(seg)], check=True)
+            subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', str(seg)], check=True)
             parts.append(seg); chapters.append((t, X['chapters'][gi])); t += dur; i0 += n
         with open(fdir / 'all.txt', 'w') as f:
             for p in parts: f.write(f"file '{p.resolve()}'\n")

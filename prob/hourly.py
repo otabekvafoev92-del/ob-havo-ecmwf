@@ -1,4 +1,4 @@
-"""Today and tomorrow, hour by hour: one vertical Full HD video (1080 × 1920) per country and language.
+"""Today and tomorrow, hour by hour: one Full HD video (1920 × 1080) per country and language.
 The 3-hour model windows are interpolated to every hour; each hour stays on screen for one second (a calm,
 "0.25×" pace). Every frame: the map (rain/snow, clouds, temperature at the cities), the chosen city's numbers,
 when rain is likely today and tomorrow, what to wear, and a 48-hour strip.
@@ -74,66 +74,70 @@ def to_hours(R, D, run, off):
 
 
 def frame(R, k, lang, path, loc, info, city):
+    """Full HD 16:9, the same layout as the 15-day videos: map left, the city card right, 48 hours below."""
     X = TX[lang]; L = TT[lang]
-    fig = plt.figure(figsize=(7.2, 12.8), dpi=100); fig.patch.set_facecolor(Rn.BG)
-    kk = fig.get_figheight() / fig.get_figwidth()
-    for a0, a1, col in ((200, 20, Rn.ACCENT), (20, 200, Rn.SKY)):
-        w = matplotlib.patches.Wedge((0.055, 0.972), 0.016, a0, a1, width=0.007, facecolor=col, edgecolor='none')
-        w.set_transform(matplotlib.transforms.Affine2D().scale(1, 1 / kk).translate(0, 0.972 - 0.972 / kk) + fig.transFigure); fig.patches.append(w)
-    fig.text(0.085, 0.972, 'osmon', fontsize=17, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
-    fig.text(0.96, 0.972, X['title'].upper(), fontsize=8.6, fontweight='bold', color=Rn.SKY, ha='right', va='center')
+    fig = plt.figure(figsize=(12.8, 7.2), dpi=100); fig.patch.set_facecolor(Rn.BG)
+    x = Rn._brand(fig, 0.022, 0.948)
+    nm = fig.text(x + 0.012, 0.948, NAMES[R.id][lang], fontsize=18, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
+    bb = nm.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+    tx = fig.text(bb.x1 + 0.026, 0.948, X['title'].upper(), fontsize=8.6, fontweight='bold', color=Rn.SKY, va='center')
+    tb = tx.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+    Rn._card(fig, tb.x0 - 0.01, 0.93, tb.width + 0.02, 0.036, fc=Rn.CARD2, ec=Rn.LINE, r=0.012)
     t = loc[k]; day = X['today'] if t.date() == loc[0].date() else X['tomorrow'] if t.date() == loc[0].date() + dt.timedelta(days=1) else ''
-    fig.text(0.04, 0.935, NAMES[R.id][lang], fontsize=20, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
-    fig.text(0.04, 0.903, f"{day} · {L['wd'][t.weekday()]} {t:%d.%m}", fontsize=15, fontweight='bold', color=Rn.MUTED, va='center')
-    fig.text(0.96, 0.912, f"{t:%H}:00", fontsize=40, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.ACCENT, ha='right', va='center')
+    tm = fig.text(0.985, 0.95, f"{t:%H}:00", fontsize=26, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.ACCENT, ha='right', va='center')
+    tb2 = tm.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+    fig.text(tb2.x0 - 0.014, 0.95, f"{day} · {L['wd'][t.weekday()]} {t:%d.%m}", fontsize=13, fontweight='bold', color=Rn.MUTED, ha='right', va='center')
     R.main = city; R.view = None
-    ax = Rn._basemap(fig, R, [0.02, 0.5, 0.96, 0.375])
+    ax = Rn._basemap(fig, R)
     has_t, has_c, has_w = Rn.draw_fields(ax, R, k, 'prob')
     Rn._borders(ax, R)
     def label(p, main):
         v = R.value_at(k, p); tt = R.value_at(k, p, 'T') if has_t else np.nan
         return f"{Rn.city_name(p, lang)} {Rn.fmt_t(tt)}" + (f" · {int(round(v))} %" if v >= 15 else '') if np.isfinite(tt) else Rn.city_name(p, lang)
     Rn._cities(fig, ax, R, label)
-    # the city now
-    Rn._card(fig, 0.03, 0.335, 0.94, 0.15)
+    PX, PW = Rn.PANEL; X0, X1 = PX + 0.016, PX + PW - 0.014
+    Rn._card(fig, PX, 0.213, PW, 0.665)
     tt = R.value_at(k, city, 'T') if has_t else np.nan; v = max(0, min(100, R.value_at(k, city)))
     c = R.value_at(k, city, 'C') * 100 if has_c else np.nan; ws = R.value_at(k, city, 'Wd') if has_w else np.nan
     snow = np.isfinite(tt) and tt <= 0.5
-    fig.text(0.06, 0.462, Rn.city_name(city, lang), fontsize=15, fontweight='bold', color=Rn.INK, va='center')
-    fig.text(0.06, 0.398, Rn.fmt_t(tt) if np.isfinite(tt) else '—', fontsize=46, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
+    fig.text(X0, 0.845, Rn.city_name(city, lang), fontsize=13, fontweight='bold', color=Rn.INK, va='center')
+    fig.text(X0, 0.785, Rn.fmt_t(tt) if np.isfinite(tt) else '—', fontsize=26, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
     rows = [((X['snow'] if snow else X['rain']).capitalize(), f'{v:.0f} %')]
     if np.isfinite(c): rows.append((L['clouds'][0], f'{c:.0f} %'))
     if np.isfinite(ws): rows.append((X['wind'].capitalize(), f"{ws:.0f} {X['ms']}"))
-    for i, (a, b) in enumerate(rows):
-        y = 0.458 - i * 0.04
-        fig.text(0.5, y, a, fontsize=13, color=Rn.MUTED, va='center'); fig.text(0.94, y, b, fontsize=15, fontweight='bold', color=Rn.INK, va='center', ha='right')
-    # today / tomorrow: when it rains and what to wear
-    Rn._card(fig, 0.03, 0.15, 0.94, 0.17)
-    y = 0.298
+    for i, (a_, b_) in enumerate(rows):
+        y = 0.72 - i * 0.04
+        fig.text(X0, y, a_, fontsize=10, color=Rn.MUTED, va='center'); fig.text(X1, y, b_, fontsize=12, fontweight='bold', color=Rn.INK, va='center', ha='right')
+        fig.add_artist(matplotlib.lines.Line2D([X0, X1], [y - 0.02, y - 0.02], color=Rn.LINE, lw=0.6, transform=fig.transFigure))
+    y = 0.575
     for lbl, d in ((X['today'], info['today']), (X['tomorrow'], info['tomorrow'])):
         if not d: continue
-        fig.text(0.06, y, f"{lbl}  {d['range']}", fontsize=14, fontweight='bold', color=Rn.INK, va='center'); y -= 0.026
-        fig.text(0.06, y, d['rain'] if d['rain'] == X['none'] else f"{X['when']}: {d['rain']}", fontsize=12, color=Rn.MUTED, va='center'); y -= 0.023
-        for j, line in enumerate(textwrap.wrap(f"{X['wear']}: {d['wear']}", 58)[:2]):
-            fig.text(0.06, y, line, fontsize=12, color=Rn.ACCENT if j == 0 else Rn.MUTED, va='center'); y -= 0.021
-        y -= 0.008
-    # 48-hour strip
-    Rn._card(fig, 0.03, 0.03, 0.94, 0.105)
-    fig.text(0.05, 0.12, X['strip'], fontsize=10.5, color=Rn.MUTED, va='center')
-    bx = fig.add_axes([0.07, 0.05, 0.86, 0.055]); bx.set_facecolor('none')
+        fig.text(X0, y, f"{lbl}  {d['range']}", fontsize=11.5, fontweight='bold', color=Rn.INK, va='center'); y -= 0.034
+        for line in textwrap.wrap(d['rain'] if d['rain'] == X['none'] else f"{X['when']}: {d['rain']}", 34)[:2]:
+            fig.text(X0, y, line, fontsize=9.5, color=Rn.MUTED, va='center'); y -= 0.03
+        for j, line in enumerate(textwrap.wrap(f"{X['wear']}: {d['wear']}", 34)[:3]):
+            fig.text(X0, y, line, fontsize=9.5, color=Rn.ACCENT if j == 0 else Rn.MUTED, va='center'); y -= 0.03
+        y -= 0.02
+    # 48 hours
+    Rn._card(fig, 0.012, 0.04, 0.976, 0.155)
+    fig.text(0.024, 0.178, X['strip'], fontsize=9, color=Rn.MUTED, va='center')
+    bx = fig.add_axes([0.045, 0.072, 0.915, 0.088]); bx.set_facecolor('none')
     P = np.clip(R.series(city), 0, 100); Ts = R.tseries(city)
     cols = [Rn._level_col(p, Rn.SNOW if (Ts is not None and Ts[i] <= 0.5) else Rn.COLORS) if p >= 10 else Rn.LOW_BAR for i, p in enumerate(P)]
     bx.bar(np.arange(HOURS), P, width=0.8, color=cols, zorder=2); bx.set_ylim(0, 100); bx.set_xlim(-0.6, HOURS - 0.4)
     bx.axvspan(k - 0.5, k + 0.5, color=Rn.ACCENT, alpha=0.25, lw=0); bx.axvline(k, color=Rn.ACCENT, lw=1.4, zorder=4)
-    mids = [i for i, h in enumerate(loc) if h.hour == 0]
-    for m in mids: bx.axvline(m - 0.5, color=Rn.LINE, lw=1, zorder=1)
-    bx.set_xticks([i for i, h in enumerate(loc) if h.hour % 6 == 0]); bx.set_xticklabels([f"{loc[i]:%H}" for i, h in enumerate(loc) if h.hour % 6 == 0], fontsize=8, color=Rn.MUTED)
-    bx.set_yticks([]); bx.tick_params(length=0)
+    for m in [i for i, h in enumerate(loc) if h.hour == 0]: bx.axvline(m - 0.5, color=Rn.LINE, lw=1, zorder=1)
+    ticks = [i for i, h in enumerate(loc) if h.hour % 3 == 0]
+    bx.set_xticks(ticks); bx.set_xticklabels([f"{loc[i]:%H}" for i in ticks], fontsize=8, color=Rn.MUTED)
+    bx.set_yticks([0, 50, 100]); bx.set_yticklabels(['0', '50', '100 %'], fontsize=7.5, color=Rn.FAINT); bx.tick_params(length=0)
     for sp in bx.spines.values(): sp.set_visible(False)
     if Ts is not None:
-        tx = bx.twinx(); tx.plot(np.arange(HOURS), Ts, color=Rn.ACCENT, lw=1.4); tx.plot([k], [Ts[k]], 'o', ms=5, color=Rn.ACCENT, mec=Rn.BG)
-        lo, hi = np.nanmin(Ts), np.nanmax(Ts); tx.set_ylim(lo - 2, hi + 2); tx.set_yticks([]); [sp.set_visible(False) for sp in tx.spines.values()]
-    fig.text(0.96, 0.012, f't.me/ObHavo_ECMWF_bot · ECMWF · NOAA · DWD', fontsize=8, color=Rn.FAINT, ha='right', va='center')
+        tx2 = bx.twinx(); tx2.plot(np.arange(HOURS), Ts, color=Rn.ACCENT, lw=1.5); tx2.plot([k], [Ts[k]], 'o', ms=5, color=Rn.ACCENT, mec=Rn.BG)
+        lo, hi = np.nanmin(Ts), np.nanmax(Ts); tx2.set_ylim(lo - 2, hi + 2); tx2.tick_params(length=0, labelsize=7.5, colors=Rn.ACCENT)
+        tx2.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x_, _: Rn.fmt_t(x_))); tx2.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(3))
+        for sp in tx2.spines.values(): sp.set_visible(False)
+    fig.text(0.014, 0.018, 'ECMWF · NOAA · DWD', fontsize=6.6, color=Rn.FAINT, va='center')
+    fig.text(0.986, 0.018, 't.me/ObHavo_ECMWF_bot', fontsize=6.6, color=Rn.FAINT, va='center', ha='right')
     fig.savefig(path, dpi=150, facecolor=Rn.BG); plt.close(fig)
 
 

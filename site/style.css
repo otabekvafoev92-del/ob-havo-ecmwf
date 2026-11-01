@@ -252,8 +252,8 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .prob .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .prob .chips button { font: 500 14px inherit; color: var(--fg); background: color-mix(in srgb, var(--panel) 70%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
 .prob .chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.prob-stage { background: #0b111b; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; width: 100%; max-width: min(720px, calc((100vh - 200px) * 0.8)); margin-inline: auto; }
-.prob-stage video { display: block; width: 100%; max-width: 100%; aspect-ratio: 4 / 5; background: #e9edf1; }
+.prob-stage { background: #e9edf1; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; width: 100%; max-width: min(1400px, calc((100vh - 170px) * 16 / 9)); margin-inline: auto; }
+.prob-stage video { display: block; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; background: #e9edf1; }
 .prob-ctl { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; max-width: 1100px; }
 .prob-ctl input[type="range"] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
 .prob-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; color: var(--muted); font-size: 14px; max-width: 1100px; }
