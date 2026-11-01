@@ -26,7 +26,7 @@ const T = {
     d15: '15 kunlik prognoz', hi: '☀️ <b>Osmon</b> — ob-havo prognozi\n6 ta model (ECMWF, NOAA) asosida 15 kunga.\n\nTilni tanlang:', pick: '📍 Davlat yoki qit’ani tanlang:',
     menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 Globus', rep: '📊 Hisobot',
     back: '↩️ Davlatlar', none: '⏳ Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.', tdy: 'Bugun', tmw: 'Ertaga', next: 'Keyingi kunlar',
-    upd: 'Yangilandi', swipe: '🎬 Video: yog‘in ehtimoli. Harorat va bulutlar — saytda.', bot: '🤖 Bot',
+    upd: 'Yangilandi', swipe: '🎬 Videoni suring: 🌧 yog‘in · 🌡 harorat · ☁️ bulutlar', bot: '🤖 Bot',
     gHi: '👋 Salom! Men har kuni soat 07:00 da shu yerga ob-havoni video bilan yuboraman.\nAdmin: davlat va tilni tanlang 👇',
     gSet: '✅ Tayyor! Har kuni soat 07:00 da (Toshkent vaqti) bu chatga prognoz yuboriladi: <b>{name}</b> ({lang}).\nO‘zgartirish: /sozla', gMulti: '📍 Davlatlarni tanlang (bir nechtasini ham), so‘ng «Tayyor» tugmasini bosing:', done: '✅ Tayyor', gNone: 'Kamida bitta davlatni tanlang.', gAdm: 'Faqat adminlar o‘zgartira oladi.', gLang: 'Tilni tanlang:', lang: 'o‘zbekcha',
   },
@@ -34,7 +34,7 @@ const T = {
     d15: 'прогноз на 15 дней', hi: '☀️ <b>Osmon</b> — прогноз погоды\nна 15 дней по 6 моделям (ECMWF, NOAA).\n\nВыберите язык:', pick: '📍 Выберите страну или континент:',
     menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 Глобус', rep: '📊 Отчёт',
     back: '↩️ Страны', none: '⏳ Данные ещё не готовы, попробуйте чуть позже.', tdy: 'Сегодня', tmw: 'Завтра', next: 'Дальше',
-    upd: 'Обновлено', swipe: '🎬 На видео — вероятность осадков. Температура и облака — на сайте.', bot: '🤖 Бот',
+    upd: 'Обновлено', swipe: '🎬 Листайте видео: 🌧 осадки · 🌡 температура · ☁️ облака', bot: '🤖 Бот',
     gHi: '👋 Привет! Я буду каждый день в 07:00 присылать сюда прогноз погоды с видео.\nАдминистратор, выберите страну и язык 👇',
     gSet: '✅ Готово! Каждый день в 07:00 (по Ташкенту) в этот чат будет приходить прогноз: <b>{name}</b> ({lang}).\nИзменить: /settings', gMulti: '📍 Отметьте страны (можно несколько) и нажмите «Готово»:', done: '✅ Готово', gNone: 'Отметьте хотя бы одну страну.', gAdm: 'Менять настройки могут только администраторы.', gLang: 'Выберите язык:', lang: 'по-русски',
   },
@@ -42,7 +42,7 @@ const T = {
     d15: '15 günlük tahmin', hi: '☀️ <b>Osmon</b> — hava tahmini\n6 modele göre 15 günlük (ECMWF, NOAA).\n\nDil seçin:', pick: '📍 Ülke veya kıta seçin:',
     menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 Küre', rep: '📊 Rapor',
     back: '↩️ Ülkeler', none: '⏳ Veriler henüz hazır değil, biraz sonra deneyin.', tdy: 'Bugün', tmw: 'Yarın', next: 'Sonraki günler',
-    upd: 'Güncellendi', swipe: '🎬 Videoda yağış olasılığı. Sıcaklık ve bulutlar sitede.', bot: '🤖 Bot',
+    upd: 'Güncellendi', swipe: '🎬 Videoları kaydırın: 🌧 yağış · 🌡 sıcaklık · ☁️ bulutlar', bot: '🤖 Bot',
     gHi: '👋 Merhaba! Her gün 07:00’de buraya videolu hava tahmini göndereceğim.\nYönetici, ülke ve dili seçin 👇',
     gSet: '✅ Hazır! Her gün 07:00’de (Taşkent saati) bu sohbete tahmin gönderilecek: <b>{name}</b> ({lang}).\nDeğiştirmek için: /settings', gMulti: '📍 Ülkeleri işaretleyin (birden fazla olabilir) ve «Tamam»a basın:', done: '✅ Tamam', gNone: 'En az bir ülke seçin.', gAdm: 'Ayarları yalnızca yöneticiler değiştirebilir.', gLang: 'Dil seçin:', lang: 'Türkçe',
   },
@@ -140,7 +140,10 @@ function forecastText(item, lang, name, id, opt = {}) {
   }
   let s = out.join('\n');
   if (opt.foot) s += `\n\n${opt.foot}`;
-  return opt.limit && s.length > opt.limit ? s.slice(0, opt.limit - 1) + '…' : s;
+  // Telegram counts the visible characters (tags excluded): drop later days until the caption fits
+  const visible = x => x.replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt);/g, '_').length;
+  if (opt.limit && visible(s) > opt.limit) return (opt.more ?? 5) > 0 ? forecastText(item, lang, name, id, { ...opt, more: (opt.more ?? 5) - 1 }) : s.slice(0, opt.limit);
+  return s;
 }
 function allDays(item, lang) {
   return Object.entries((item && item.days) || {}).filter(([d]) => d >= localToday(item && item.off)).map(([d, t]) => `${icon(t)} <b>${dayLabel(d, lang)}</b> — ${esc(t)}`).join('\n');
@@ -255,24 +258,19 @@ async function isAdmin(env, chat, user) {
 async function post(env, M, chat, lang0, id0, bot) {
   const lang = T[lang0] ? lang0 : 'uz', id = NAMES[id0] ? id0 : 'UZ';
   const items = M.items.filter(i => i.region === id && i.lang === lang);
-  const days = items.find(i => i.product === 'days'), vid = items.find(i => (i.product || 'prob') === 'prob');
+  const days = items.find(i => i.product === 'days');
+  const vids = ['prob', 'temp', 'cloud'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
   const updated = M.run.slice(8, 10) + '.' + M.run.slice(5, 7) + ' ' + M.run.slice(11, 16) + ' UTC';
-  const cap = forecastText(days, lang, NAMES[id][lang], id, { updated, more: 4, foot: T[lang].swipe, limit: 1024 });
+  // an album cannot carry buttons, so the site links go into the caption
+  const links = `<a href="${link(env, `prob/${id}/${lang}/prob`)}">${T[lang].rep}</a> · <a href="${link(env, 'map')}">${T[lang].site}</a>${bot ? ` · <a href="https://t.me/${bot}">${T[lang].bot}</a>` : ''}`;
+  const cap = forecastText(days, lang, NAMES[id][lang], id, { updated, more: 4, foot: `${T[lang].swipe}\n${links}`, limit: 1024 });
   if (!cap) return { ok: false, description: 'no data' };
-  const kb = postKb(env, lang, id, bot);
-  if (!vid) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
-  const url = `${base(env)}/prob/${vid.video}`;
-  let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
-  if (!r.ok && !/kicked|not a member|chat not found|have no rights|was deleted/i.test(r.description || '')) {
-    // Telegram could not fetch the video by link: upload the file
-    const f = await fetch(url);
-    if (f.ok) {
-      const fd = new FormData();
-      fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true');
-      fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), vid.video);
-      r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json();
-    }
-  }
+  if (!vids.length) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot), disable_web_page_preview: true });
+  const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}`, supports_streaming: true }));
+  media[0].caption = cap; media[0].parse_mode = 'HTML';
+  let r = await tg(env, 'sendMediaGroup', { chat_id: chat, media });
+  // Telegram could not fetch the videos by link: upload the files
+  if (!r.ok && !/kicked|not a member|chat not found|have no rights|was deleted/i.test(r.description || '')) r = await uploadGroup(env, chat, media);
   return r;
 }
 
