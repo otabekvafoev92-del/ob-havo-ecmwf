@@ -83,9 +83,9 @@ jobs:
           - { part: cities-UZ-uz, npz: prob.npz, args: "--regions UZ --langs uz --products '' --city-videos UZ --city-langs uz" }
           - { part: cities-KZ-ru, npz: prob.npz, args: "--regions KZ --langs ru --products '' --city-videos KZ --city-langs ru" }
           - { part: cities-KZ-uz, npz: prob.npz, args: "--regions KZ --langs uz --products '' --city-videos KZ --city-langs uz" }
-          - { part: world-uz, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --langs uz' }
-          - { part: world-ru, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --langs ru' }
-          - { part: world-tr, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --langs tr' }
+          - { part: world-uz, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --dpi 150 --width 1080 --crf 27 --langs uz' }
+          - { part: world-ru, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --dpi 150 --width 1080 --crf 27 --langs ru' }
+          - { part: world-tr, npz: glob.npz, args: '--geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp --dpi 150 --width 1080 --crf 27 --langs tr' }
           - { part: globe, args: '' }
     steps:
       - uses: actions/checkout@v4
