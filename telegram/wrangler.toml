@@ -11,4 +11,8 @@ SITE_URL = "https://otabekvafoev92-del.github.io/ob-havo-ecmwf"
 [[d1_databases]]
 binding = "DB"
 database_name = "osmon"
-database_id = "PASTE-ID-HERE"
+database_id = "19e0f252-1086-4e37-9722-e63a9ccf730d"
+
+# automatic forecast posts to groups and channels after each website update
+[triggers]
+crons = ["*/20 * * * *"]

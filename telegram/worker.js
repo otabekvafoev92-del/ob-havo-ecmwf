@@ -1,17 +1,17 @@
-// Osmon Telegram bot — answers people on demand (Cloudflare Workers, free plan).
-// The scheduled posts come from GitHub Actions (prob/telegram_send.py); this worker lets anyone ask the bot:
-//   /start            choose language and country with buttons
-//   /bugun /today     today and tomorrow in words for the chosen country
-//   /prognoz          the 3 videos (rain & snow, temperature, clouds) + the next days in words
-// Everything is read from the website built by GitHub Actions (SITE_URL/prob/manifest.json and the .mp4 files),
-// so the bot needs no database: the choice travels inside the button data.
-// Settings (Workers → Settings → Variables): BOT_TOKEN (secret), SITE_URL (e.g. https://name.github.io/repo).
-// Connect once: open <worker URL>/setup in a browser (sets the webhook and the command menu).
+// Osmon Telegram bot (Cloudflare Workers, free plan).
+//  • Private chat: /start → language → country/continent → today & tomorrow, by days, 15-day videos, the site as a Mini App.
+//  • Groups and channels: add the bot (as admin in a channel) and it posts the forecast by itself after every update
+//    of the website (twice a day). An admin picks the country and language with /sozla (/settings) in the group.
+//  • /hit and /stats: anonymous visit counter for the website (daily totals per country and city).
+// Everything is read from the website built by GitHub Actions (SITE_URL/prob/manifest.json and the .mp4 files).
+// Settings (Workers → Settings): BOT_TOKEN (secret), SITE_URL (variable), D1 database bound as DB,
+// cron trigger (e.g. every 20 minutes) for the automatic group posts.
+// Connect once: open <worker URL>/setup in a browser (webhook, command menus, bot description).
 
 const NAMES = {
-  world: { uz: '🌍 Butun dunyo', ru: '🌍 Весь мир', tr: '🌍 Tüm dünya' }, EU: { uz: 'Yevropa', ru: 'Европа', tr: 'Avrupa' }, AS: { uz: 'Osiyo', ru: 'Азия', tr: 'Asya' },
-  AF: { uz: 'Afrika', ru: 'Африка', tr: 'Afrika' }, NA: { uz: 'Shim. Amerika', ru: 'Сев. Америка', tr: 'K. Amerika' },
-  SA: { uz: 'Jan. Amerika', ru: 'Юж. Америка', tr: 'G. Amerika' }, OC: { uz: 'Okeaniya', ru: 'Океания', tr: 'Okyanusya' },
+  world: { uz: 'Butun dunyo', ru: 'Весь мир', tr: 'Tüm dünya' }, EU: { uz: 'Yevropa', ru: 'Европа', tr: 'Avrupa' }, AS: { uz: 'Osiyo', ru: 'Азия', tr: 'Asya' },
+  AF: { uz: 'Afrika', ru: 'Африка', tr: 'Afrika' }, NA: { uz: 'Shimoliy Amerika', ru: 'Северная Америка', tr: 'Kuzey Amerika' },
+  SA: { uz: 'Janubiy Amerika', ru: 'Южная Америка', tr: 'Güney Amerika' }, OC: { uz: 'Okeaniya', ru: 'Океания', tr: 'Okyanusya' },
   cis: { uz: 'MDH va Turkiya', ru: 'СНГ и Турция', tr: 'BDT ve Türkiye' }, UZ: { uz: 'O‘zbekiston', ru: 'Узбекистан', tr: 'Özbekistan' },
   KZ: { uz: 'Qozog‘iston', ru: 'Казахстан', tr: 'Kazakistan' }, KG: { uz: 'Qirg‘iziston', ru: 'Кыргызстан', tr: 'Kırgızistan' },
   TJ: { uz: 'Tojikiston', ru: 'Таджикистан', tr: 'Tacikistan' }, TM: { uz: 'Turkmaniston', ru: 'Туркменистан', tr: 'Türkmenistan' },
@@ -19,47 +19,80 @@ const NAMES = {
   BY: { uz: 'Belarus', ru: 'Беларусь', tr: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', tr: 'Moldova' },
   RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' },
 };
+const FLAG = { world: '🌍', EU: '🌍', AF: '🌍', AS: '🌏', OC: '🌏', NA: '🌎', SA: '🌎', cis: '🗺', UZ: '🇺🇿', KZ: '🇰🇿', KG: '🇰🇬', TJ: '🇹🇯', TM: '🇹🇲', AZ: '🇦🇿', AM: '🇦🇲', BY: '🇧🇾', MD: '🇲🇩', RU: '🇷🇺', TR: '🇹🇷' };
+const GROUPS = [['UZ', 'KZ', 'KG'], ['TJ', 'TM', 'AZ'], ['AM', 'BY', 'MD'], ['RU', 'TR', 'cis'], ['world', 'EU', 'AS'], ['AF', 'NA', 'SA'], ['OC']];
 const T = {
-  uz: { d15: '15 kunlik prognoz', hi: 'Assalomu alaykum! Tilni tanlang:', pick: 'Davlatni tanlang:', menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 Globus', rep: '📊 Hisobot (sayt)', open: 'Saytni ochish', back: '↩ Davlatlar', none: 'Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.' },
-  ru: { d15: 'прогноз на 15 дней', hi: 'Здравствуйте! Выберите язык:', pick: 'Выберите страну:', menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 Глобус', rep: '📊 Отчёт (сайт)', open: 'Открыть сайт', back: '↩ Страны', none: 'Данные ещё не готовы, попробуйте чуть позже.' },
-  tr: { d15: '15 günlük tahmin', hi: 'Merhaba! Dil seçin:', pick: 'Ülke seçin:', menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 Küre', rep: '📊 Rapor (site)', open: 'Siteyi aç', back: '↩ Ülkeler', none: 'Veriler henüz hazır değil, biraz sonra deneyin.' },
+  uz: {
+    d15: '15 kunlik prognoz', hi: '☀️ <b>Osmon</b> — ob-havo prognozi\n6 ta model (ECMWF, NOAA) asosida 15 kunga.\n\nTilni tanlang:', pick: '📍 Davlat yoki qit’ani tanlang:',
+    menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 Globus', rep: '📊 Hisobot',
+    back: '↩️ Davlatlar', none: '⏳ Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.', tdy: 'Bugun', tmw: 'Ertaga', next: 'Keyingi kunlar',
+    upd: 'Yangilandi', swipe: '🎬 Video: yog‘in ehtimoli. Harorat va bulutlar — saytda.', bot: '🤖 Bot',
+    gHi: '👋 Salom! Men har kuni ikki marta (prognoz yangilanganda) shu yerga ob-havoni yuboraman.\nAdmin: davlat va tilni tanlang 👇',
+    gSet: '✅ Tayyor! Bu chatga <b>{name}</b> bo‘yicha prognoz yuboriladi ({lang}).\nO‘zgartirish: /sozla', gAdm: 'Faqat adminlar o‘zgartira oladi.', gLang: 'Tilni tanlang:', lang: 'o‘zbekcha',
+  },
+  ru: {
+    d15: 'прогноз на 15 дней', hi: '☀️ <b>Osmon</b> — прогноз погоды\nна 15 дней по 6 моделям (ECMWF, NOAA).\n\nВыберите язык:', pick: '📍 Выберите страну или континент:',
+    menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 Глобус', rep: '📊 Отчёт',
+    back: '↩️ Страны', none: '⏳ Данные ещё не готовы, попробуйте чуть позже.', tdy: 'Сегодня', tmw: 'Завтра', next: 'Дальше',
+    upd: 'Обновлено', swipe: '🎬 На видео — вероятность осадков. Температура и облака — на сайте.', bot: '🤖 Бот',
+    gHi: '👋 Привет! Я буду присылать сюда прогноз погоды два раза в день — сразу после обновления.\nАдминистратор, выберите страну и язык 👇',
+    gSet: '✅ Готово! В этот чат будет приходить прогноз: <b>{name}</b> ({lang}).\nИзменить: /settings', gAdm: 'Менять настройки могут только администраторы.', gLang: 'Выберите язык:', lang: 'по-русски',
+  },
+  tr: {
+    d15: '15 günlük tahmin', hi: '☀️ <b>Osmon</b> — hava tahmini\n6 modele göre 15 günlük (ECMWF, NOAA).\n\nDil seçin:', pick: '📍 Ülke veya kıta seçin:',
+    menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 Küre', rep: '📊 Rapor',
+    back: '↩️ Ülkeler', none: '⏳ Veriler henüz hazır değil, biraz sonra deneyin.', tdy: 'Bugün', tmw: 'Yarın', next: 'Sonraki günler',
+    upd: 'Güncellendi', swipe: '🎬 Videoda yağış olasılığı. Sıcaklık ve bulutlar sitede.', bot: '🤖 Bot',
+    gHi: '👋 Merhaba! Tahmin her güncellendiğinde (günde iki kez) buraya hava durumunu göndereceğim.\nYönetici, ülke ve dili seçin 👇',
+    gSet: '✅ Hazır! Bu sohbete <b>{name}</b> tahmini gönderilecek ({lang}).\nDeğiştirmek için: /settings', gAdm: 'Ayarları yalnızca yöneticiler değiştirebilir.', gLang: 'Dil seçin:', lang: 'Türkçe',
+  },
 };
 const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], tr: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] };
+const PER_TICK = 20;  // group posts per cron run (Workers free plan: 50 subrequests per run)
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
-    if (req.method === 'GET' && url.pathname === '/setup') {
-      const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, allowed_updates: ['message', 'callback_query'] });
-      await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga (O‘zbekiston)' }, { command: 'prognoz', description: '15 kunlik prognoz' }, { command: 'today', description: 'Сегодня и завтра' }] });
-      await tg(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: 'Osmon', web_app: { url: site(env, 'map') } } });
-      const me = await tg(env, 'getMe', {});
-      return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
-    }
+    if (req.method === 'GET' && url.pathname === '/setup') return setup(env, url);
     if (url.pathname === '/hit' || url.pathname === '/stats') return visits(req, env, url);
+    if (req.method === 'GET' && url.pathname === '/broadcast') { const r = await broadcast(env); return new Response(JSON.stringify(r), { headers: { 'content-type': 'application/json' } }); }
     if (req.method !== 'POST') return new Response('Osmon bot is running. Open /setup once to connect it to Telegram.');
     const up = await req.json().catch(() => ({}));
     try { await handle(up, env); } catch (e) { console.log('error', e && e.stack); }
     return new Response('ok');
   },
+  async scheduled(ev, env, ctx) { ctx.waitUntil(broadcast(env).catch(e => console.log('broadcast', e && e.stack))); },
 };
+
+async function setup(env, url) {
+  const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post'] });
+  await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga' }, { command: 'today', description: 'Сегодня и завтра' }, { command: 'prognoz', description: '15 kunlik video' }] });
+  await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }] });
+  await tg(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: 'Osmon', web_app: { url: site(env, 'map') } } });
+  await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода · Hava — 15 kun, 6 model (ECMWF, NOAA). Guruhlarga avtomatik prognoz.' });
+  await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 6 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 6 моделям. Добавьте в группу — бот сам будет присылать прогноз.' });
+  if (env.DB) await db(env);
+  const me = await tg(env, 'getMe', {});
+  return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+}
 
 async function tg(env, method, body) {
   const r = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   return r.json();
 }
-async function manifest(env) {
-  const r = await fetch(`${env.SITE_URL.replace(/\/$/, '')}/prob/manifest.json`, { cf: { cacheTtl: 600 } });
+async function manifest(env, fresh) {
+  const r = await fetch(`${base(env)}/prob/manifest.json${fresh ? '?t=' + Date.now() : ''}`, { cf: { cacheTtl: fresh ? 0 : 600 } });
   return r.ok ? r.json() : null;
 }
-const langKb = () => ({ inline_keyboard: [[{ text: 'O‘zbek', callback_data: 'L:uz' }, { text: 'Русский', callback_data: 'L:ru' }, { text: 'Türkçe', callback_data: 'L:tr' }]] });
-function countryKb(lang) {
-  const ids = Object.keys(NAMES), rows = [];
-  for (let i = 0; i < ids.length; i += 3) rows.push(ids.slice(i, i + 3).map(id => ({ text: NAMES[id][lang], callback_data: `C:${lang}:${id}` })));
-  return { inline_keyboard: rows };
-}
+const base = env => env.SITE_URL.replace(/\/$/, '');
 // the website opens inside Telegram (Mini App): ?view= picks the page, country, language and tab
-const site = (env, view) => `${env.SITE_URL.replace(/\/$/, '')}/?tg=1&view=${encodeURIComponent(view)}`;
+const site = (env, view) => `${base(env)}/?tg=1&view=${encodeURIComponent(view)}`;
+const link = (env, view) => `${base(env)}/?view=${encodeURIComponent(view)}`;
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/* ---------- keyboards ---------- */
+const langKb = (p = 'L') => ({ inline_keyboard: [[{ text: '🇺🇿 O‘zbekcha', callback_data: `${p}:uz` }, { text: '🇷🇺 Русский', callback_data: `${p}:ru` }, { text: '🇹🇷 Türkçe', callback_data: `${p}:tr` }]] });
+const countryKb = (lang, p = 'C') => ({ inline_keyboard: GROUPS.map(row => row.map(id => ({ text: `${FLAG[id]} ${NAMES[id][lang]}`, callback_data: `${p}:${lang}:${id}` }))) });
 function menuKb(env, lang, id) {
   return { inline_keyboard: [
     [{ text: T[lang].today, callback_data: `T:${lang}:${id}` }, { text: T[lang].days, callback_data: `D:${lang}:${id}` }],
@@ -68,53 +101,156 @@ function menuKb(env, lang, id) {
     [{ text: T[lang].back, callback_data: `L:${lang}` }],
   ] };
 }
-function dayLines(item, lang, from, count) {
-  const out = [];
-  for (const [d, txt] of Object.entries((item && item.days) || {})) {
-    if (d < from) continue;
-    const dt = new Date(d + 'T12:00:00Z');
-    out.push(`<b>${WD[lang][dt.getUTCDay()]} ${String(dt.getUTCDate()).padStart(2, '0')}.${String(dt.getUTCMonth() + 1).padStart(2, '0')}</b> — ${txt}`);
-    if (out.length >= count) break;
+// groups and channels cannot open Mini Apps from buttons: plain links
+const postKb = (env, lang, id, bot) => ({ inline_keyboard: [[{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
+
+/* ---------- forecast text ---------- */
+function icon(txt) {
+  const p = +((txt.match(/(\d+)\s*%/) || [])[1] || 0), snow = /снег|\bqor\b|\bkar\b/i.test(txt);
+  if (p >= 60) return snow ? '❄️' : '🌧';
+  if (p >= 35) return snow ? '🌨' : '🌦';
+  if (/ясно|ochiq havo|açık\./i.test(txt)) return '☀️';
+  if (/пасмурно|qalin bulutli|kapalı/i.test(txt)) return '☁️';
+  if (/переменная|qisman|parçalı/i.test(txt)) return '⛅';
+  if (/облачно|bulutl/i.test(txt)) return '🌥';
+  return '⛅';
+}
+const dayLabel = (d, lang) => { const dt = new Date(d + 'T12:00:00Z'); return `${WD[lang][dt.getUTCDay()]} ${String(dt.getUTCDate()).padStart(2, '0')}.${String(dt.getUTCMonth() + 1).padStart(2, '0')}`; };
+const localToday = off => new Date(Date.now() + (off || 0) * 3600e3).toISOString().slice(0, 10);
+function forecastText(item, lang, name, id, opt = {}) {
+  const days = Object.entries((item && item.days) || {}).filter(([d]) => d >= localToday(item && item.off));
+  if (!days.length) return null;
+  const city = item.city ? `${item.city}: ` : '';
+  const strip = t => (city && t.startsWith(city) ? t.slice(city.length) : t);
+  const out = [`${FLAG[id] || '🌍'} <b>${esc(name)}</b>${item.city ? ` · ${esc(item.city)}` : ''}`];
+  if (opt.updated) out.push(`<i>${T[lang].upd}: ${opt.updated}</i>`);
+  out.push('');
+  const [d0, d1] = days;
+  out.push(`${icon(d0[1])} <b>${T[lang].tdy}, ${dayLabel(d0[0], lang)}</b>\n${esc(strip(d0[1]))}`);
+  if (d1) out.push(`\n${icon(d1[1])} <b>${T[lang].tmw}, ${dayLabel(d1[0], lang)}</b>\n${esc(strip(d1[1]))}`);
+  const rest = days.slice(2, 2 + (opt.more ?? 5));
+  if (rest.length) {
+    out.push(`\n📆 <b>${T[lang].next}</b>`);
+    for (const [d, t] of rest) out.push(`${icon(t)} ${dayLabel(d, lang)} — ${esc(strip(t).replace(/\.\s.*$/, '.'))}`);
   }
-  return out.join('\n');
+  let s = out.join('\n');
+  if (opt.foot) s += `\n\n${opt.foot}`;
+  return opt.limit && s.length > opt.limit ? s.slice(0, opt.limit - 1) + '…' : s;
+}
+function allDays(item, lang) {
+  return Object.entries((item && item.days) || {}).filter(([d]) => d >= localToday(item && item.off)).map(([d, t]) => `${icon(t)} <b>${dayLabel(d, lang)}</b> — ${esc(t)}`).join('\n');
 }
 
+/* ---------- updates ---------- */
 async function handle(up, env) {
-  const msg = up.message, cb = up.callback_query;
+  if (up.my_chat_member) return memberChange(up.my_chat_member, env);
+  const msg = up.message || up.channel_post, cb = up.callback_query;
   if (msg && msg.text) {
-    const chat = msg.chat.id, text = msg.text.trim();
-    const lang = /^\/(bugun|prognoz)/.test(text) ? 'uz' : /^\/today/.test(text) ? 'ru' : null;
-    if (text.startsWith('/start') || !lang) return tg(env, 'sendMessage', { chat_id: chat, text: T.uz.hi + '\n' + T.ru.hi, reply_markup: langKb() });
-    return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].pick, reply_markup: countryKb(lang) });
+    const chat = msg.chat, group = chat.type !== 'private';
+    const cmd = (msg.text.trim().match(/^\/(\w+)(@\w+)?/) || [])[1];
+    if (group) {
+      if (cmd === 'sozla' || cmd === 'settings' || cmd === 'start') return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gLang + ' / ' + T.ru.gLang, reply_markup: langKb('GL') });
+      if (cmd === 'bugun' || cmd === 'today') { const s = await sub(env, chat.id); return sendToday(env, chat.id, s ? s.lang : cmd === 'today' ? 'ru' : 'uz', s ? s.region : 'UZ', true); }
+      return;
+    }
+    if (cmd === 'bugun') return sendToday(env, chat.id, 'uz', 'UZ');
+    if (cmd === 'today') return sendToday(env, chat.id, 'ru', 'UZ');
+    if (cmd === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.pick, reply_markup: countryKb('uz') });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.hi + '\n\n' + T.ru.hi.split('\n').slice(0, 2).join('\n') + '\nВыберите язык:', parse_mode: 'HTML', reply_markup: langKb() });
   }
   if (!cb) return;
-  const chat = cb.message.chat.id, [kind, lang, id] = cb.data.split(':');
+  const chat = cb.message.chat, [kind, lang, id] = cb.data.split(':');
+  if (kind === 'GL' || kind === 'GC') {  // group settings
+    if (!(await isAdmin(env, chat, cb.from))) return tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: T[lang].gAdm, show_alert: true });
+    await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
+    if (kind === 'GL') return tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].pick, reply_markup: countryKb(lang, 'GC') });
+    await saveSub(env, chat, id, lang);
+    await tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].gSet.replace('{name}', esc(NAMES[id][lang])).replace('{lang}', T[lang].lang), parse_mode: 'HTML' });
+    return sendToday(env, chat.id, lang, id, true);
+  }
   await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
-  if (kind === 'L') return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].pick, reply_markup: countryKb(lang) });
-  if (kind === 'C') return tg(env, 'sendMessage', { chat_id: chat, text: `<b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
+  if (kind === 'L') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
+  if (kind === 'C') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
+  if (kind === 'T') return sendToday(env, chat.id, lang, id);
   const M = await manifest(env);
   const items = M ? M.items.filter(i => i.region === id && i.lang === lang) : [];
-  if (!items.length) return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].none });
-  const days = items.find(i => i.product === 'days'), today = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
-  if (kind === 'T' || kind === 'D') {
-    const body = dayLines(days, lang, today, kind === 'T' ? 2 : 15);
-    return tg(env, 'sendMessage', { chat_id: chat, text: `<b>${NAMES[id][lang]}</b>\n\n${body}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
-  }
+  if (!items.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
+  const days = items.find(i => i.product === 'days');
+  if (kind === 'D') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b>\n\n${allDays(days, lang)}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
   if (kind === 'V') {
-    const base = env.SITE_URL.replace(/\/$/, '') + '/prob/';
     const vids = ['prob', 'temp', 'cloud'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
-    const media = vids.map(v => ({ type: 'video', media: base + v.video, supports_streaming: true }));
-    media[0].caption = `<b>${NAMES[id][lang]}</b> · ${T[lang].d15}\n\n${dayLines(days, lang, today, 5)}`.slice(0, 1000);
+    const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}`, supports_streaming: true }));
+    media[0].caption = forecastText(days, lang, NAMES[id][lang], id, { more: 3, limit: 1000 }) || `${NAMES[id][lang]} · ${T[lang].d15}`;
     media[0].parse_mode = 'HTML';
-    await tg(env, 'sendMediaGroup', { chat_id: chat, media });
-    return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].menu, reply_markup: menuKb(env, lang, id) });
+    await tg(env, 'sendMediaGroup', { chat_id: chat.id, media });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menu, reply_markup: menuKb(env, lang, id) });
   }
+}
+
+async function sendToday(env, chat, lang, id, group) {
+  const M = await manifest(env);
+  const days = M && M.items.find(i => i.region === id && i.lang === lang && i.product === 'days');
+  const text = days && forecastText(days, lang, NAMES[id][lang], id, { more: group ? 3 : 0 });
+  if (!text) return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].none });
+  return tg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML', reply_markup: group ? postKb(env, lang, id) : menuKb(env, lang, id), disable_web_page_preview: true });
+}
+
+/* ---------- groups: subscriptions and automatic posts ---------- */
+async function db(env) {
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS subs (chat_id INTEGER PRIMARY KEY, title TEXT, type TEXT, region TEXT, lang TEXT, last_run TEXT, added TEXT)');
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
+}
+async function sub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM subs WHERE chat_id = ?1').bind(chat).first(); }
+async function saveSub(env, chat, region, lang) {
+  if (!env.DB) return; await db(env);
+  // last_run = current run, so the group is not posted twice right away (it just got today's forecast)
+  const M = await manifest(env), run = M ? M.run : '';
+  await env.DB.prepare('INSERT INTO subs (chat_id, title, type, region, lang, last_run, added) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(chat_id) DO UPDATE SET title = ?2, region = ?4, lang = ?5, last_run = ?6')
+    .bind(chat.id, chat.title || '', chat.type, region, lang, run, new Date().toISOString()).run();
+}
+async function memberChange(m, env) {
+  const chat = m.chat, st = m.new_chat_member && m.new_chat_member.status;
+  if (chat.type === 'private') return;
+  if (st === 'left' || st === 'kicked') { if (env.DB) { await db(env); await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(chat.id).run(); } return; }
+  if ((st === 'member' || st === 'administrator') && !(await sub(env, chat.id))) {
+    await saveSub(env, chat, 'UZ', 'uz');  // default until an admin chooses
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gHi + '\n\n' + T.ru.gHi, reply_markup: langKb('GL') });
+  }
+}
+async function isAdmin(env, chat, user) {
+  if (chat.type === 'channel') return true;  // only admins can press buttons under a channel's own post anyway
+  const r = await tg(env, 'getChatMember', { chat_id: chat.id, user_id: user.id });
+  return r.ok && ['creator', 'administrator'].includes(r.result.status);
+}
+async function broadcast(env) {
+  if (!env.DB) return { ok: false, error: 'no DB' };
+  await db(env);
+  const M = await manifest(env, true);
+  if (!M) return { ok: false, error: 'no manifest' };
+  const due = (await env.DB.prepare('SELECT * FROM subs WHERE last_run IS NULL OR last_run <> ?1 LIMIT ?2').bind(M.run, PER_TICK).all()).results;
+  const me = await tg(env, 'getMe', {}), bot = me.ok ? me.result.username : '';
+  const updated = M.run.slice(8, 10) + '.' + M.run.slice(5, 7) + ' ' + M.run.slice(11, 16) + ' UTC';
+  let sent = 0;
+  for (const s of due) {
+    const lang = T[s.lang] ? s.lang : 'uz', id = NAMES[s.region] ? s.region : 'UZ';
+    const items = M.items.filter(i => i.region === id && i.lang === lang);
+    const days = items.find(i => i.product === 'days'), vid = items.find(i => (i.product || 'prob') === 'prob');
+    const cap = forecastText(days, lang, NAMES[id][lang], id, { updated, more: 4, foot: T[lang].swipe, limit: 1024 });
+    let r = { ok: false };
+    if (cap) r = vid
+      ? await tg(env, 'sendVideo', { chat_id: s.chat_id, video: `${base(env)}/prob/${vid.video}`, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: postKb(env, lang, id, bot) })
+      : await tg(env, 'sendMessage', { chat_id: s.chat_id, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot) });
+    if (r.ok) sent++;
+    // the bot was removed or cannot write there: forget the chat
+    if (!r.ok && [400, 403].includes(r.error_code) && /kicked|not a member|chat not found|have no rights|was deleted/i.test(r.description || '')) await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(s.chat_id).run();
+    else await env.DB.prepare('UPDATE subs SET last_run = ?2 WHERE chat_id = ?1').bind(s.chat_id, M.run).run();
+  }
+  return { ok: true, run: M.run, due: due.length, sent };
 }
 
 /* ---------- visit counter for the website (by country and city) ----------
    The site sends one POST /hit per visitor per day; Cloudflare already knows the visitor's country and city
-   (request.cf), so nothing is stored about the person: only daily totals per city. GET /stats returns the totals.
-   Needs a D1 database bound as DB (Workers → Settings → Bindings → D1 database, name: DB). */
+   (request.cf), so nothing is stored about the person: only daily totals per city. GET /stats returns the totals. */
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' };
 async function visits(req, env, url) {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
