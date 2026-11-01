@@ -51,14 +51,15 @@ const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['В
 const PER_TICK = 20;  // group posts per cron run (Workers free plan: 50 subrequests per run)
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname === '/setup') return setup(env, url);
     if (url.pathname === '/hit' || url.pathname === '/stats') return visits(req, env, url);
     if (req.method === 'GET' && url.pathname === '/broadcast') { const r = await broadcast(env); return new Response(JSON.stringify(r), { headers: { 'content-type': 'application/json' } }); }
     if (req.method !== 'POST') return new Response('Osmon bot is running. Open /setup once to connect it to Telegram.');
     const up = await req.json().catch(() => ({}));
-    try { await handle(up, env); } catch (e) { console.log('error', e && e.stack); }
+    // answer Telegram at once; sending videos can take longer than its webhook timeout
+    ctx.waitUntil(handle(up, env).catch(e => console.log('error', e && e.stack)));
     return new Response('ok');
   },
   async scheduled(ev, env, ctx) { ctx.waitUntil(broadcast(env).catch(e => console.log('broadcast', e && e.stack))); },
@@ -182,9 +183,28 @@ async function handle(up, env) {
     const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}`, supports_streaming: true }));
     media[0].caption = forecastText(days, lang, NAMES[id][lang], id, { more: 3, limit: 1000 }) || `${NAMES[id][lang]} · ${T[lang].d15}`;
     media[0].parse_mode = 'HTML';
-    await tg(env, 'sendMediaGroup', { chat_id: chat.id, media });
+    await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
+    let r = await tg(env, 'sendMediaGroup', { chat_id: chat.id, media });
+    // Telegram could not fetch the files by link: download them here and upload them
+    if (!r.ok) r = await uploadGroup(env, chat.id, media);
+    if (!r.ok) await tg(env, 'sendMessage', { chat_id: chat.id, text: `${T[lang].none}\n(${r.description || r.error_code || '?'})` });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menu, reply_markup: menuKb(env, lang, id) });
   }
+}
+
+async function uploadGroup(env, chat, media) {
+  const fd = new FormData();
+  fd.append('chat_id', String(chat));
+  const m2 = [];
+  for (let i = 0; i < media.length; i++) {
+    const f = await fetch(media[i].media);
+    if (!f.ok) return { ok: false, description: `site ${f.status}` };
+    fd.append(`v${i}`, new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `v${i}.mp4`);
+    m2.push({ ...media[i], media: `attach://v${i}` });
+  }
+  fd.append('media', JSON.stringify(m2));
+  const r = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMediaGroup`, { method: 'POST', body: fd });
+  return r.json();
 }
 
 async function sendToday(env, chat, lang, id, group) {
