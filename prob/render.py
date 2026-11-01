@@ -333,10 +333,10 @@ def local_day(run, step, off, win=6):
 def fmt_t(v): return f'{v:+.0f}°'.replace('+0°', '0°').replace('-0°', '0°')
 
 
-def daily_comments(R, D, lang, off):
-    """One short comment per local day for the region's main city (and the share of the country with rain)."""
+def daily_comments(R, D, lang, off, p=None, area=True):
+    """One short comment per local day for a city (default: the region's main city; with the share of the country with rain)."""
     run = dt.datetime.fromisoformat(D['run'].replace('Z', '+00:00')).replace(tzinfo=None)
-    L = T[lang]; p = R.mains[lang]
+    L = T[lang]; p = p or R.mains[lang]
     if p is None: return {}
     P = R.series(p); Tm = R.tseries(p); Cm = R.cseries(p); A = R.aseries(p)
     days = {}
@@ -350,8 +350,8 @@ def daily_comments(R, D, lang, off):
         if Tm is not None and np.isfinite(Tm[idx]).any():
             t = f"{fmt_t(np.nanmin(Tm[idx]))}…{fmt_t(np.nanmax(Tm[idx]))}"
         c = float(np.nanmean(Cm[idx])) if Cm is not None and np.isfinite(Cm[idx]).any() else None
-        area = R.area_share(idx)
-        out[d_.isoformat()] = make_comment(lang, city_name(p, lang), pm, mm, snow, t, c, area, NAMES[R.id][lang])
+        area_ = R.area_share(idx) if area else None
+        out[d_.isoformat()] = make_comment(lang, city_name(p, lang), pm, mm, snow, t, c, area_, NAMES[R.id][lang])
     return out
 
 
@@ -577,6 +577,15 @@ def _job(args):
             res.append({'region': region, 'lang': lang, 'product': product, 'video': mp4.name, 'frames': len(sel), 'name': NAMES[region][lang]})
             print(region, lang, product, 'ok', flush=True)
         res.append({'region': region, 'lang': lang, 'product': 'days', 'days': com, 'off': off, 'city': city_name(R.mains[lang], lang) if R.mains[lang] else ''})
+        # the same daily comments for every labelled city of the country (the bot's city menu)
+        cities = [c for c in R.cities if not R.iso or c.get('iso') == R.iso]
+        if R.iso:  # plus the biggest towns of the country that are not labelled on the map
+            cities += sorted([c for c in geo.places if c['iso'] == R.iso and c not in cities], key=lambda c: -c['pop'])[:max(0, 14 - len(cities))]
+        if R.mains[lang] in cities: cities.remove(R.mains[lang])
+        cities = ([R.mains[lang]] if R.mains[lang] else []) + cities
+        (out / 'cities').mkdir(exist_ok=True)
+        json.dump({'region': region, 'lang': lang, 'off': off, 'cities': [{'name': city_name(c, lang), 'days': daily_comments(R, D, lang, off, c, area=False)} for c in cities[:15]]},
+                  open(out / 'cities' / f'{region}_{lang}.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     return res
 
 

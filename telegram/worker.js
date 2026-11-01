@@ -1,7 +1,9 @@
 // Osmon Telegram bot (Cloudflare Workers, free plan).
 //  • Private chat: /start → language → country/continent → today & tomorrow, by days, 15-day videos, the site as a Mini App.
 //  • Groups and channels: add the bot (as admin in a channel) and it posts the forecast by itself after every update
-//    every day at 07:00 Tashkent. An admin picks one or several countries and the language with /sozla (/settings).
+//    every day at the hour the group picked (default 07:00 Tashkent). An admin picks the language, one or several
+//    countries and the hour with /sozla (/settings). Each post: 3 videos + today/tomorrow/next days + weather by city.
+//  • /help: instructions in Uzbek, Russian and Turkish.
 //  • /hit and /stats: anonymous visit counter for the website (daily totals per country and city).
 // Everything is read from the website built by GitHub Actions (SITE_URL/prob/manifest.json and the .mp4 files).
 // Settings (Workers → Settings): BOT_TOKEN (secret), SITE_URL (variable), D1 database bound as DB,
@@ -23,33 +25,93 @@ const FLAG = { world: '🌍', EU: '🌍', AF: '🌍', AS: '🌏', OC: '🌏', NA
 const GROUPS = [['UZ', 'KZ', 'KG'], ['TJ', 'TM', 'AZ'], ['AM', 'BY', 'MD'], ['RU', 'TR', 'cis'], ['world', 'EU', 'AS'], ['AF', 'NA', 'SA'], ['OC']];
 const T = {
   uz: {
+    cities: '🏙 Shaharlar', cPick: '🏙 Shaharni tanlang:', cTitle: '🏙 Bugun shaharlarda', time: '⏰ Guruhga prognoz qaysi vaqtda yuborilsin? (Toshkent vaqti)', help: 'ℹ️ Yordam',
     d15: '15 kunlik prognoz', hi: '☀️ <b>Osmon</b> — ob-havo prognozi\n6 ta model (ECMWF, NOAA) asosida 15 kunga.\n\nTilni tanlang:', pick: '📍 Davlat yoki qit’ani tanlang:',
     menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 Globus', rep: '📊 Hisobot',
     back: '↩️ Davlatlar', none: '⏳ Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.', tdy: 'Bugun', tmw: 'Ertaga', next: 'Keyingi kunlar',
     upd: 'Yangilandi', swipe: '🎬 Videoni suring: 🌧 yog‘in · 🌡 harorat · ☁️ bulutlar', bot: '🤖 Bot',
-    gHi: '👋 Salom! Men har kuni soat 07:00 da shu yerga ob-havoni video bilan yuboraman.\nAdmin: davlat va tilni tanlang 👇',
-    gSet: '✅ Tayyor! Har kuni soat 07:00 da (Toshkent vaqti) bu chatga prognoz yuboriladi: <b>{name}</b> ({lang}).\nO‘zgartirish: /sozla', gMulti: '📍 Davlatlarni tanlang (bir nechtasini ham), so‘ng «Tayyor» tugmasini bosing:', done: '✅ Tayyor', gNone: 'Kamida bitta davlatni tanlang.', gAdm: 'Faqat adminlar o‘zgartira oladi.', gLang: 'Tilni tanlang:', lang: 'o‘zbekcha',
+    gHi: '👋 Salom! Men har kuni shu yerga ob-havoni video bilan yuboraman.\nAdmin: til, davlat va vaqtni tanlang 👇',
+    gSet: '✅ Tayyor! Har kuni soat {time} da (Toshkent vaqti) bu chatga prognoz yuboriladi: <b>{name}</b> ({lang}).\nO‘zgartirish: /sozla', gMulti: '📍 Davlatlarni tanlang (bir nechtasini ham), so‘ng «Tayyor» tugmasini bosing:', done: '✅ Tayyor', gNone: 'Kamida bitta davlatni tanlang.', gAdm: 'Faqat adminlar o‘zgartira oladi.', gLang: 'Tilni tanlang:', lang: 'o‘zbekcha',
   },
   ru: {
+    cities: '🏙 Города', cPick: '🏙 Выберите город:', cTitle: '🏙 Сегодня по городам', time: '⏰ Во сколько присылать прогноз в группу? (по Ташкенту)', help: 'ℹ️ Помощь',
     d15: 'прогноз на 15 дней', hi: '☀️ <b>Osmon</b> — прогноз погоды\nна 15 дней по 6 моделям (ECMWF, NOAA).\n\nВыберите язык:', pick: '📍 Выберите страну или континент:',
     menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 Глобус', rep: '📊 Отчёт',
     back: '↩️ Страны', none: '⏳ Данные ещё не готовы, попробуйте чуть позже.', tdy: 'Сегодня', tmw: 'Завтра', next: 'Дальше',
     upd: 'Обновлено', swipe: '🎬 Листайте видео: 🌧 осадки · 🌡 температура · ☁️ облака', bot: '🤖 Бот',
-    gHi: '👋 Привет! Я буду каждый день в 07:00 присылать сюда прогноз погоды с видео.\nАдминистратор, выберите страну и язык 👇',
-    gSet: '✅ Готово! Каждый день в 07:00 (по Ташкенту) в этот чат будет приходить прогноз: <b>{name}</b> ({lang}).\nИзменить: /settings', gMulti: '📍 Отметьте страны (можно несколько) и нажмите «Готово»:', done: '✅ Готово', gNone: 'Отметьте хотя бы одну страну.', gAdm: 'Менять настройки могут только администраторы.', gLang: 'Выберите язык:', lang: 'по-русски',
+    gHi: '👋 Привет! Я буду каждый день присылать сюда прогноз погоды с видео.\nАдминистратор, выберите язык, страны и время 👇',
+    gSet: '✅ Готово! Каждый день в {time} (по Ташкенту) в этот чат будет приходить прогноз: <b>{name}</b> ({lang}).\nИзменить: /settings', gMulti: '📍 Отметьте страны (можно несколько) и нажмите «Готово»:', done: '✅ Готово', gNone: 'Отметьте хотя бы одну страну.', gAdm: 'Менять настройки могут только администраторы.', gLang: 'Выберите язык:', lang: 'по-русски',
   },
   tr: {
+    cities: '🏙 Şehirler', cPick: '🏙 Şehir seçin:', cTitle: '🏙 Bugün şehirlerde', time: '⏰ Tahmin gruba saat kaçta gönderilsin? (Taşkent saati)', help: 'ℹ️ Yardım',
     d15: '15 günlük tahmin', hi: '☀️ <b>Osmon</b> — hava tahmini\n6 modele göre 15 günlük (ECMWF, NOAA).\n\nDil seçin:', pick: '📍 Ülke veya kıta seçin:',
     menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 Küre', rep: '📊 Rapor',
     back: '↩️ Ülkeler', none: '⏳ Veriler henüz hazır değil, biraz sonra deneyin.', tdy: 'Bugün', tmw: 'Yarın', next: 'Sonraki günler',
     upd: 'Güncellendi', swipe: '🎬 Videoları kaydırın: 🌧 yağış · 🌡 sıcaklık · ☁️ bulutlar', bot: '🤖 Bot',
-    gHi: '👋 Merhaba! Her gün 07:00’de buraya videolu hava tahmini göndereceğim.\nYönetici, ülke ve dili seçin 👇',
-    gSet: '✅ Hazır! Her gün 07:00’de (Taşkent saati) bu sohbete tahmin gönderilecek: <b>{name}</b> ({lang}).\nDeğiştirmek için: /settings', gMulti: '📍 Ülkeleri işaretleyin (birden fazla olabilir) ve «Tamam»a basın:', done: '✅ Tamam', gNone: 'En az bir ülke seçin.', gAdm: 'Ayarları yalnızca yöneticiler değiştirebilir.', gLang: 'Dil seçin:', lang: 'Türkçe',
+    gHi: '👋 Merhaba! Her gün buraya videolu hava tahmini göndereceğim.\nYönetici: dil, ülke ve saati seçin 👇',
+    gSet: '✅ Hazır! Her gün {time}’da (Taşkent saati) bu sohbete tahmin gönderilecek: <b>{name}</b> ({lang}).\nDeğiştirmek için: /settings', gMulti: '📍 Ülkeleri işaretleyin (birden fazla olabilir) ve «Tamam»a basın:', done: '✅ Tamam', gNone: 'En az bir ülke seçin.', gAdm: 'Ayarları yalnızca yöneticiler değiştirebilir.', gLang: 'Dil seçin:', lang: 'Türkçe',
   },
 };
+const HELP = {
+  uz: `ℹ️ <b>Osmon bot — yo‘riqnoma</b>
+
+<b>Shaxsiy chatda</b>
+/start — til va davlatni tanlash
+📅 <b>Bugun va ertaga</b> — asosiy shahar bo‘yicha qisqa prognoz
+🗓 <b>Kunlar bo‘yicha</b> — 15 kun
+🏙 <b>Shaharlar</b> — istalgan shahar uchun prognoz
+🎬 <b>15 kunlik video</b> — yog‘in, harorat, bulutlar
+📊 Hisobot / 🌍 Globus — sayt Telegram ichida ochiladi
+/bugun — O‘zbekiston, bugun va ertaga
+
+<b>Guruh yoki kanalda</b>
+1. Botni guruhga qo‘shing (kanalda — admin qilib, «xabar yuborish» huquqi bilan).
+2. Admin /sozla yozadi: til → davlatlar (bir nechta) → «Tayyor» → yuborish vaqti.
+3. Har kuni tanlangan vaqtda har bir davlat uchun post keladi: 3 ta video + bugun/ertaga + shaharlar.
+/bugun — guruhda hozirgi prognoz.
+
+Ma’lumot: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Kuniga 2 marta yangilanadi.`,
+  ru: `ℹ️ <b>Бот Osmon — инструкция</b>
+
+<b>В личном чате</b>
+/start — выбрать язык и страну
+📅 <b>Сегодня и завтра</b> — коротко по главному городу
+🗓 <b>По дням</b> — все 15 дней
+🏙 <b>Города</b> — прогноз для любого города страны
+🎬 <b>Видео на 15 дней</b> — осадки, температура, облака
+📊 Отчёт / 🌍 Глобус — сайт открывается прямо в Телеграме
+/today — Узбекистан, сегодня и завтра
+
+<b>В группе или канале</b>
+1. Добавьте бота в группу (в канал — администратором с правом публикации).
+2. Администратор пишет /settings: язык → страны (можно несколько) → «Готово» → время отправки.
+3. Каждый день в выбранное время по каждой стране приходит пост: 3 видео + сегодня/завтра + погода по городам.
+/bugun — прогноз в группу прямо сейчас.
+
+Данные: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Обновление 2 раза в сутки.`,
+  tr: `ℹ️ <b>Osmon botu — kılavuz</b>
+
+<b>Özel sohbette</b>
+/start — dil ve ülke seçimi
+📅 <b>Bugün ve yarın</b> — ana şehir için kısa tahmin
+🗓 <b>Günlere göre</b> — 15 gün
+🏙 <b>Şehirler</b> — herhangi bir şehir için tahmin
+🎬 <b>15 günlük video</b> — yağış, sıcaklık, bulutlar
+📊 Rapor / 🌍 Küre — site Telegram içinde açılır
+
+<b>Grupta veya kanalda</b>
+1. Botu gruba ekleyin (kanalda yönetici olarak, gönderme izniyle).
+2. Yönetici /settings yazar: dil → ülkeler (birden fazla) → «Tamam» → gönderme saati.
+3. Her gün seçilen saatte her ülke için gönderi gelir: 3 video + bugün/yarın + şehirler.
+
+Veri: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Günde 2 kez güncellenir.`,
+};
 const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], tr: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] };
-const PER_TICK = 6;      // groups per cron run (Workers free plan: 50 subrequests per run; a group may want several countries)
-const POST_HOUR = 7, TZ = 5;  // daily post at 07:00 Tashkent (cron 0,20,40 2 * * * UTC)
+const PER_TICK = 4;      // groups per cron run (Workers free plan: 50 subrequests per run; a group may want several countries)
+const POST_HOUR = 7, TZ = 5;  // default daily post at 07:00 Tashkent; each group can pick its hour (hourly cron)
+const HOURS = [6, 7, 8, 9, 10, 12, 15, 18, 20, 21];
+const hh = h => `${String(h).padStart(2, '0')}:00`;
+const timeKb = (lang, cur) => ({ inline_keyboard: [HOURS.slice(0, 5), HOURS.slice(5)].map(row => row.map(h => ({ text: `${h === cur ? '✅ ' : ''}${hh(h)}`, callback_data: `GH:${lang}:${h}` }))) });
 const todayTZ = () => new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10);
 const multiKb = (lang, sel) => ({ inline_keyboard: [...GROUPS.map(row => row.map(id => ({ text: `${sel.includes(id) ? '✅' : FLAG[id]} ${NAMES[id][lang]}`, callback_data: `GT:${lang}:${id}` }))), [{ text: T[lang].done, callback_data: `GD:${lang}` }]] });
 const regionsOf = s => (s && s.region ? s.region.split(',').filter(r => NAMES[r]) : []);
@@ -71,8 +133,8 @@ export default {
 
 async function setup(env, url) {
   const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post'] });
-  await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga' }, { command: 'today', description: 'Сегодня и завтра' }, { command: 'prognoz', description: '15 kunlik video' }] });
-  await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }] });
+  await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga' }, { command: 'today', description: 'Сегодня и завтра' }, { command: 'prognoz', description: '15 kunlik video' }, { command: 'help', description: 'Yordam / Помощь' }] });
+  await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'help', description: 'Yordam / Помощь' }] });
   await tg(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: 'Osmon', web_app: { url: site(env, 'map') } } });
   await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода · Hava — 15 kun, 6 model (ECMWF, NOAA). Guruhlarga avtomatik prognoz.' });
   await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 6 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 6 моделям. Добавьте в группу — бот сам будет присылать прогноз.' });
@@ -90,6 +152,16 @@ async function manifest(env, fresh) {
   return r.ok ? r.json() : null;
 }
 const base = env => env.SITE_URL.replace(/\/$/, '');
+async function cities(env, id, lang) {
+  const r = await fetch(`${base(env)}/prob/cities/${id}_${lang}.json`, { cf: { cacheTtl: 600 } });
+  return r.ok ? r.json() : null;
+}
+// one line per city for today: "⛅ Ташкент: +11°…+16°, дождь маловероятен (24 %)"
+async function cityLines(env, id, lang, n = 10) {
+  const C = await cities(env, id, lang); if (!C) return '';
+  const d = localToday(C.off);
+  return C.cities.slice(0, n).map(c => c.days[d]).filter(Boolean).map(t => `${icon(t)} ${esc(t.replace(/, (ясно|переменная облачность|облачно|пасмурно|ochiq havo|qisman bulutli|bulutli|qalin bulutli|açık|parçalı bulutlu|bulutlu|kapalı)\.$/, '.'))}`).join('\n');
+}
 // the website opens inside Telegram (Mini App): ?view= picks the page, country, language and tab
 const site = (env, view) => `${base(env)}/?tg=1&view=${encodeURIComponent(view)}`;
 const link = (env, view) => `${base(env)}/?view=${encodeURIComponent(view)}`;
@@ -101,7 +173,7 @@ const countryKb = (lang, p = 'C') => ({ inline_keyboard: GROUPS.map(row => row.m
 function menuKb(env, lang, id) {
   return { inline_keyboard: [
     [{ text: T[lang].today, callback_data: `T:${lang}:${id}` }, { text: T[lang].days, callback_data: `D:${lang}:${id}` }],
-    [{ text: T[lang].all, callback_data: `V:${lang}:${id}` }],
+    [{ text: T[lang].cities, callback_data: `Y:${lang}:${id}` }, { text: T[lang].all, callback_data: `V:${lang}:${id}` }],
     [{ text: T[lang].rep, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].site, web_app: { url: site(env, 'map') } }],
     [{ text: T[lang].back, callback_data: `L:${lang}` }],
   ] };
@@ -158,9 +230,11 @@ async function handle(up, env) {
     const cmd = (msg.text.trim().match(/^\/(\w+)(@\w+)?/) || [])[1];
     if (group) {
       if (cmd === 'sozla' || cmd === 'settings' || cmd === 'start') return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gLang + ' / ' + T.ru.gLang, reply_markup: langKb('GL') });
+      if (cmd === 'help') { const s = await sub(env, chat.id); return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[(s && s.lang) || 'ru'], parse_mode: 'HTML' }); }
       if (cmd === 'bugun' || cmd === 'today') { const s = await sub(env, chat.id), regs = regionsOf(s).length ? regionsOf(s) : ['UZ']; for (const r of regs) await sendToday(env, chat.id, s ? s.lang : cmd === 'today' ? 'ru' : 'uz', r, true); return; }
       return;
     }
+    if (cmd === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP.ru + '\n\n' + HELP.uz, parse_mode: 'HTML' });
     if (cmd === 'bugun') return sendToday(env, chat.id, 'uz', 'UZ');
     if (cmd === 'today') return sendToday(env, chat.id, 'ru', 'UZ');
     if (cmd === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.pick, reply_markup: countryKb('uz') });
@@ -168,20 +242,37 @@ async function handle(up, env) {
   }
   if (!cb) return;
   const chat = cb.message.chat, [kind, lang, id] = cb.data.split(':');
-  if (kind[0] === 'G') {  // group settings: GL language, GT toggle a country, GD done
+  if (kind[0] === 'G') {  // group settings: GL language → GT toggle countries → GD done → GH hour
     if (!(await isAdmin(env, chat, cb.from))) return tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: T[lang].gAdm, show_alert: true });
     const cur = await sub(env, chat.id);
-    let sel = regionsOf(cur);
-    if (kind === 'GL') { await saveSub(env, chat, sel.length ? sel : ['UZ'], lang, cur && cur.last_run); sel = sel.length ? sel : ['UZ']; }
-    if (kind === 'GT') { sel = sel.includes(id) ? sel.filter(r => r !== id) : [...sel, id]; await saveSub(env, chat, sel, lang, cur && cur.last_run); }
+    let sel = regionsOf(cur); const hour = cur && cur.post_hour != null ? cur.post_hour : POST_HOUR, last = cur && cur.last_run;
+    if (kind === 'GL') { if (!sel.length) sel = ['UZ']; await saveSub(env, chat, sel, lang, last, hour); }
+    if (kind === 'GT') { sel = sel.includes(id) ? sel.filter(r => r !== id) : [...sel, id]; await saveSub(env, chat, sel, lang, last, hour); }
     if (kind === 'GD' && !sel.length) return tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: T[lang].gNone, show_alert: true });
     await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
-    if (kind !== 'GD') return tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].gMulti, reply_markup: multiKb(lang, sel) });
-    await saveSub(env, chat, sel, lang, todayTZ());  // today's post is sent right now
-    await tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].gSet.replace('{name}', sel.map(r => `${FLAG[r]} ${esc(NAMES[r][lang])}`).join(', ')).replace('{lang}', T[lang].lang), parse_mode: 'HTML' });
+    const edit = (text, kb, html) => tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text, ...(kb ? { reply_markup: kb } : {}), ...(html ? { parse_mode: 'HTML' } : {}) });
+    if (kind === 'GL' || kind === 'GT') return edit(T[lang].gMulti, multiKb(lang, sel));
+    if (kind === 'GD') return edit(T[lang].time, timeKb(lang, hour));
+    // GH: hour chosen. Today's post is sent right now; the daily ones start tomorrow
+    const h = +id;
+    await saveSub(env, chat, sel, lang, todayTZ(), h);
+    await edit(T[lang].gSet.replace('{time}', hh(h)).replace('{name}', sel.map(r => `${FLAG[r]} ${esc(NAMES[r][lang])}`).join(', ')).replace('{lang}', T[lang].lang), null, true);
     const M = await manifest(env), me = await tg(env, 'getMe', {});
     if (M) for (const r of sel) await post(env, M, chat.id, lang, r, me.ok ? me.result.username : '');
     return;
+  }
+  if (kind === 'Y' || kind === 'Z') {  // cities of a country: Y list, Z:lang:id:index one city
+    await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
+    const [, , rid, ci] = cb.data.split(':'), C = await cities(env, rid, lang);
+    if (!C || !C.cities.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
+    if (kind === 'Y') {
+      const rows = []; C.cities.forEach((c, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: c.name, callback_data: `Z:${lang}:${rid}:${i}` }); });
+      rows.push([{ text: T[lang].back, callback_data: `C:${lang}:${rid}` }]);
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].cPick}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
+    }
+    const c = C.cities[+ci]; if (!c) return;
+    const text = forecastText({ days: c.days, off: C.off, city: c.name }, lang, NAMES[rid][lang], rid, { more: 5 });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: text || T[lang].none, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: T[lang].cities, callback_data: `Y:${lang}:${rid}` }, { text: T[lang].back, callback_data: `C:${lang}:${rid}` }]] } });
   }
   await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
   if (kind === 'L') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
@@ -233,12 +324,13 @@ async function sendToday(env, chat, lang, id, group) {
 async function db(env) {
   await env.DB.exec('CREATE TABLE IF NOT EXISTS subs (chat_id INTEGER PRIMARY KEY, title TEXT, type TEXT, region TEXT, lang TEXT, last_run TEXT, added TEXT)');
   await env.DB.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
+  try { await env.DB.exec('ALTER TABLE subs ADD COLUMN post_hour INTEGER'); } catch (e) { /* already there */ }
 }
 async function sub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM subs WHERE chat_id = ?1').bind(chat).first(); }
-async function saveSub(env, chat, regions, lang, lastDay) {
+async function saveSub(env, chat, regions, lang, lastDay, hour = POST_HOUR) {
   if (!env.DB) return; await db(env);
-  await env.DB.prepare('INSERT INTO subs (chat_id, title, type, region, lang, last_run, added) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(chat_id) DO UPDATE SET title = ?2, region = ?4, lang = ?5, last_run = ?6')
-    .bind(chat.id, chat.title || '', chat.type, regions.join(','), lang, lastDay || '', new Date().toISOString()).run();
+  await env.DB.prepare('INSERT INTO subs (chat_id, title, type, region, lang, last_run, added, post_hour) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) ON CONFLICT(chat_id) DO UPDATE SET title = ?2, region = ?4, lang = ?5, last_run = ?6, post_hour = ?8')
+    .bind(chat.id, chat.title || '', chat.type, regions.join(','), lang, lastDay || '', new Date().toISOString(), hour).run();
 }
 async function memberChange(m, env) {
   const chat = m.chat, st = m.new_chat_member && m.new_chat_member.status;
@@ -261,9 +353,7 @@ async function post(env, M, chat, lang0, id0, bot) {
   const days = items.find(i => i.product === 'days');
   const vids = ['prob', 'temp', 'cloud'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
   const updated = M.run.slice(8, 10) + '.' + M.run.slice(5, 7) + ' ' + M.run.slice(11, 16) + ' UTC';
-  // an album cannot carry buttons, so the site links go into the caption
-  const links = `<a href="${link(env, `prob/${id}/${lang}/prob`)}">${T[lang].rep}</a> · <a href="${link(env, 'map')}">${T[lang].site}</a>${bot ? ` · <a href="https://t.me/${bot}">${T[lang].bot}</a>` : ''}`;
-  const cap = forecastText(days, lang, NAMES[id][lang], id, { updated, more: 4, foot: `${T[lang].swipe}\n${links}`, limit: 1024 });
+  const cap = forecastText(days, lang, NAMES[id][lang], id, { updated, more: 3, foot: T[lang].swipe, limit: 1024 });
   if (!cap) return { ok: false, description: 'no data' };
   if (!vids.length) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot), disable_web_page_preview: true });
   const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}`, supports_streaming: true }));
@@ -271,18 +361,21 @@ async function post(env, M, chat, lang0, id0, bot) {
   let r = await tg(env, 'sendMediaGroup', { chat_id: chat, media });
   // Telegram could not fetch the videos by link: upload the files
   if (!r.ok && !/kicked|not a member|chat not found|have no rights|was deleted/i.test(r.description || '')) r = await uploadGroup(env, chat, media);
+  if (!r.ok) return r;
+  // weather by city for today, with the buttons the album cannot carry
+  const lines = await cityLines(env, id, lang);
+  if (lines) await tg(env, 'sendMessage', { chat_id: chat, text: `${T[lang].cTitle} · ${FLAG[id]} <b>${esc(NAMES[id][lang])}</b>\n\n${lines}`.slice(0, 4000), parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot), disable_web_page_preview: true });
   return r;
 }
 
 async function broadcast(env) {
   if (!env.DB) return { ok: false, error: 'no DB' };
-  const now = new Date(Date.now() + TZ * 3600e3);
-  if (now.getUTCHours() < POST_HOUR) return { ok: true, wait: `posts start at 0${POST_HOUR}:00` };
   await db(env);
+  const hour = new Date(Date.now() + TZ * 3600e3).getUTCHours(), day = todayTZ();
+  const due = (await env.DB.prepare("SELECT * FROM subs WHERE COALESCE(last_run, '') <> ?1 AND COALESCE(post_hour, ?3) <= ?2 LIMIT ?4").bind(day, hour, POST_HOUR, PER_TICK).all()).results;
+  if (!due.length) return { ok: true, day, hour, due: 0 };
   const M = await manifest(env, true);
   if (!M) return { ok: false, error: 'no manifest' };
-  const day = todayTZ();
-  const due = (await env.DB.prepare("SELECT * FROM subs WHERE COALESCE(last_run, '') <> ?1 LIMIT ?2").bind(day, PER_TICK).all()).results;
   const me = await tg(env, 'getMe', {}), bot = me.ok ? me.result.username : '';
   let sent = 0;
   for (const s of due) {
