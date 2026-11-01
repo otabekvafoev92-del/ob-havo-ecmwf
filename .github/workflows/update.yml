@@ -89,7 +89,7 @@ jobs:
             cis-a)  python prob/render.py prob.npz out --wx wx.npz --regions cis,UZ,KZ,KG,TJ,TM ;;
             cis-b)  python prob/render.py prob.npz out --wx wx.npz --regions AZ,AM,BY,MD,RU,TR ;;
             cities) python prob/render.py prob.npz out --wx wx.npz --regions UZ,KZ --products '' --city-videos UZ,KZ --city-langs ru,uz ;;
-            world)  python prob/render.py glob.npz out --wx wx.npz --geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC
+            world)  python prob/render.py glob.npz out --wx wx.npz --geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --products prob,temp
                     python prob/export_5d.py glob.npz wx.npz out/d5
                     python prob/points.py glob.npz wx.npz out ;;
           esac
@@ -127,6 +127,7 @@ jobs:
           ls parts
           python prob/merge.py site/prob parts/prob-world parts/prob-cis-a parts/prob-cis-b parts/prob-cities
           test -f site/prob/manifest.json
+          du -sh site site/prob site/prob/pt
       - name: Send Telegram summary
         if: github.event_name != 'push'
         env:

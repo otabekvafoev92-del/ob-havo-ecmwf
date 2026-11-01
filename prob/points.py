@@ -31,9 +31,16 @@ def main():
     cube = np.stack([enc(P, 2.5), enc(W.get('T'), 2, 60), enc(W.get('C'), 250), enc(wind, 5), np.asarray(D['amt'], np.uint8)], 1)  # S, 5, H, W
     pt = out / 'pt'; pt.mkdir(parents=True, exist_ok=True)
     n = 0
+    boxes = []  # land only: tiles that touch a country
+    for f in ('geo_prob.json', 'geo_world.json'):
+        for c in json.load(open(HERE / f))['countries'].values():
+            for r in c['rings']:
+                a_ = np.array(r); boxes.append((a_[:, 0].min(), a_[:, 0].max(), a_[:, 1].min(), a_[:, 1].max()))
+    land = lambda l, t: any(b[0] <= l + TILE and b[1] >= l and b[2] <= t and b[3] >= t - TILE for b in boxes)
     for top in range(80, -60, -TILE):
         rows = [int(round((90 - top) / 0.5)) + i for i in range(N)]
         for left in range(-180, 180, TILE):
+            if not land(left, top): continue
             cols = [(int(round((left + 180) / 0.5)) + i) % Wd for i in range(N)]
             cube[:, :, rows][:, :, :, cols].tofile(pt / f'{top}_{left}.bin'); n += 1
     json.dump({'run': D['run'], 'steps': [int(s) for s in D['steps']], 'win': [int(x) for x in D['win']], 'tile': TILE, 'n': N, 'd': 0.5,
