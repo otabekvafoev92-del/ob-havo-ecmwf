@@ -74,9 +74,25 @@ S2 = {  # words of the city card and the legend
            'wt': 'Rüzgâr (10 m)', 'ws': 'm/s', 'w': 'Rüzgâr', 'wsub': 'rüzgâr hızı', 'wleg': 'Rüzgâr hızı, m/s · NOAA GEFS topluluk ortalaması', 'wbars': '{city}: rüzgâr, m/s',
            'dirs': ['kuzey', 'kuzeydoğu', 'doğu', 'güneydoğu', 'güney', 'güneybatı', 'batı', 'kuzeybatı']},
 }
-def ISO_COL(v):  # isotherms on the night map: sky blue for 0°, cool below, warm above
+ISO_COLD, ISO_WARM = '#7f9cff', '#f0a868'
+DIM_NEIGH, A1_COL, MAIN_INK, LOW_TXT, CLOUD_BIG, COMMENT, OUTLINE, LABEL_BG = (0.04, 0.07, 0.11, 0.45), '#3d5068', '#2a1600', '#b9c6d6', '#d5deea', '#c9d4e2', '#f6f0d8', BG
+RELIEF_HI, RELIEF_LO, CHIP_DARK, CHIP_LIGHT = '#cce0ff', '#000510', BG, INK
+BIG_SHIFT = 0  # the big number of the city card: a darker shade on the light theme
+# "day": the default since Nov 2026, a soft light-grey paper that is easy on the eyes; OSMON_THEME=night keeps the dark one
+DAY = dict(BG='#e9edf1', CARD='#f6f7f9', CARD2='#dfe5ec', LINE='#d0d8e1', INK='#1f2a36', MUTED='#5f6c7b', FAINT='#8693a1', ACCENT='#d9772b', SKY='#2f7fc1',
+           SEA='#d3dee7', LAND='#f2f0ea', BORDER='#aab5c1', FOCUS='#23303d',
+           COLORS=['#c4e4ee', '#8ccbe3', '#4fa9d6', '#2a7cba', '#18548f'], SNOW=['#f4dbe9', '#ebb4d1', '#dc86b3', '#c0548f', '#8d2c66'],
+           CLOUD_COL=[(0.33, 0.38, 0.45, 0.10), (0.33, 0.38, 0.45, 0.20)], CL_COL=['#e4e8ec', '#d0d6dd', '#b8c0ca', '#9ba5b2', '#7e8996'],
+           W_COL=['#eef1ee', '#d5ebe1', '#acdcc6', '#7cc3a4', '#bdd66b', '#efd14f', '#f2a843', '#e97741', '#cf4651', '#962c69'],
+           LOW_BAR='#dbe2e9', HEAVY='#b7740c', ISO_COLD='#4767c9', ISO_WARM='#cf7a2b',
+           DIM_NEIGH=(0.93, 0.94, 0.96, 0.55), A1_COL='#c3ccd6', MAIN_INK='#ffffff', LOW_TXT='#7d8997', CLOUD_BIG='#4f5d6c', COMMENT='#3b4855', OUTLINE='#2b3846', LABEL_BG='#ffffff',
+           RELIEF_HI='#ffffff', RELIEF_LO='#33302a', CHIP_DARK='#ffffff', CHIP_LIGHT='#1f2a36', BIG_SHIFT=2)
+if os.environ.get('OSMON_THEME', 'day') == 'day':
+    globals().update(DAY)
+    BAR_COLORS = [LOW_BAR] + COLORS; SNOW_BAR = [LOW_BAR] + SNOW
+def ISO_COL(v):  # isotherms: sky blue for 0°, cool below, warm above
     if v == 0: return SKY
-    return '#7f9cff' if v < 0 else '#f0a868'
+    return ISO_COLD if v < 0 else ISO_WARM
 
 
 def load(path):
@@ -393,7 +409,7 @@ def relief(proj, ext, n=760):
         shade = np.sin(alt) * np.cos(slope) + np.cos(alt) * np.sin(slope) * np.cos(az - aspect)
         out = np.zeros((m, n, 4))
         light = np.clip((shade - 0.70) * 2.5, 0, 1); dark = np.clip((0.66 - shade) * 1.8, 0, 1)
-        out[..., :3] = np.where(light[..., None] > 0, [0.80, 0.88, 1.0], [0.0, 0.02, 0.06])
+        out[..., :3] = np.where(light[..., None] > 0, matplotlib.colors.to_rgb(RELIEF_HI), matplotlib.colors.to_rgb(RELIEF_LO))
         hi = np.clip(z / 4500, 0, 1)
         out[..., 3] = np.clip(light * 0.28 + dark * 0.55 + hi * 0.06, 0, 0.6) * (z > 1)
         return out
@@ -510,7 +526,7 @@ def zoom_view(R, p, z):
     return (cx - w / 2, cx + w / 2, cy - h / 2, cy + h / 2)
 
 
-MAP_BOX = [0.025, 0.415, 0.95, 0.46]
+MAP_BOX = [0.018, 0.388, 0.964, 0.487]
 def _basemap(fig, R):
     _card(fig, MAP_BOX[0] - 0.006, MAP_BOX[1] - 0.005, MAP_BOX[2] + 0.012, MAP_BOX[3] + 0.01, fc=SEA, ec=LINE)
     ax = fig.add_axes(MAP_BOX)
@@ -526,8 +542,8 @@ def _basemap(fig, R):
 def _borders(ax, R):
     x0, x1, y0, y1 = getattr(R, 'view', None) or R.ext
     if R.iso:  # neighbours dimmed, provinces of the country drawn faintly
-        ax.add_collection(PolyCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], facecolor=(0.04, 0.07, 0.11, 0.45), edgecolor='none', zorder=4))
-        ax.add_collection(LineCollection(R.a1, colors='#3d5068', linewidths=0.4, zorder=5))
+        ax.add_collection(PolyCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], facecolor=DIM_NEIGH, edgecolor='none', zorder=4))
+        ax.add_collection(LineCollection(R.a1, colors=A1_COL, linewidths=0.4, zorder=5))
     ax.add_collection(LineCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], colors=BORDER, linewidths=0.55, zorder=5))
     focus = [] if R.cont else [R.iso] if R.iso else [c for c in CIS if c in R.cpoly]
     rings = [r for c in focus for r in R.cpoly.get(c, [])]
@@ -539,11 +555,12 @@ def _borders(ax, R):
 def _cities(fig, ax, R, label, extra=()):
     x0, x1, y0, y1 = getattr(R, 'view', None) or R.ext
     fig.canvas.draw(); placed = []; axb = ax.get_window_extent()
+    small = {id(p) for p, _ in extra}
     pts = list(zip(R.cities, R.cxy)) + list(extra)
     for p, (cx, cy) in sorted(pts, key=lambda t: t[0] is not R.main):
         if not (x0 < cx < x1 and y0 < cy < y1): continue
-        main = p is R.main; txt = label(p, main)
-        fs = 11.5 if main else 8.4
+        main = p is R.main; sm = id(p) in small; txt = label(p, main)
+        fs = 11.5 if main else 7.2 if sm else 8.4
         px, py = ax.transData.transform((cx, cy)); dpi_k = fig.dpi / 72
         w, h = (len(txt) * fs * 0.58 + 12) * dpi_k, (fs * 1.6 + 6) * dpi_k
         spot = None
@@ -556,19 +573,19 @@ def _cities(fig, ax, R, label, extra=()):
             ax.plot(cx, cy, 'o', ms=13, mfc='none', mec=ACCENT, mew=1.2, alpha=0.6, zorder=10)
             ax.plot(cx, cy, 'o', ms=6.5, mfc=ACCENT, mec=BG, mew=1.5, zorder=10)
         else:
-            ax.plot(cx, cy, 'o', ms=3.6, mfc=INK, mec=BG, mew=0.8, zorder=10)
+            ax.plot(cx, cy, 'o', ms=2.6 if sm else 3.6, mfc=MUTED if sm else INK, mec=BG, mew=0.6, zorder=10)
         if spot is None: continue
         dx, dy, ha, va, box_ = spot; placed.append(box_)
         ax.annotate(txt, (cx, cy), xytext=(dx, dy), textcoords='offset points', fontsize=fs, ha=ha, va=va, fontweight='bold' if main else 'medium',
-                    color='#2a1600' if main else INK, zorder=12 if main else 11,
-                    bbox=dict(boxstyle='round,pad=0.38,rounding_size=0.7' if main else 'round,pad=0.25,rounding_size=0.5', fc=ACCENT if main else BG, ec='none', alpha=1 if main else 0.72))
+                    color=MAIN_INK if main else INK, zorder=12 if main else 11,
+                    bbox=dict(boxstyle='round,pad=0.38,rounding_size=0.7' if main else 'round,pad=0.25,rounding_size=0.5', fc=ACCENT if main else LABEL_BG, ec='none', alpha=1 if main else 0.8))
 
 
 def _chips(fig, x, y, cols, labels, w=0.052, h=0.019, gap=0.004, dark_from=3):
     for i, (c, lab) in enumerate(zip(cols, labels)):
         _card(fig, x + i * (w + gap), y - h / 2, w, h, fc=c, ec='none', r=0.006)
         fig.text(x + i * (w + gap) + w / 2, y, lab, fontsize=7.6, fontweight='bold', ha='center', va='center',
-                 color=BG if i >= dark_from else INK)
+                 color=CHIP_DARK if i >= dark_from else CHIP_LIGHT)
 
 
 def _timeline(fig, R, D, s, run, off, values, colors, ylim, yfmt, title, line=None, lang='ru'):
@@ -605,8 +622,8 @@ def _timeline(fig, R, D, s, run, off, values, colors, ylim, yfmt, title, line=No
 
 
 def _level_col(v, pal):
-    if not np.isfinite(v) or v < LEVELS[0]: return '#b9c6d6'
-    return pal[int(np.clip(np.digitize(v, LEVELS[:-1]) - 1, 0, 4))]
+    if not np.isfinite(v) or v < LEVELS[0]: return LOW_TXT
+    return pal[int(np.clip(np.digitize(v, LEVELS[:-1]) - 1 + BIG_SHIFT, 0, 4))]
 
 
 def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='', main=None, zoom=1.0, dpi=None):
@@ -636,11 +653,11 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
         Tm = np.ma.masked_invalid(U(R.T[s]))
         ax.contourf(XU, YU, Tm, levels=T_LV, colors=T_COL[:len(T_LV) - 1], extend='both', zorder=2, antialiased=True, alpha=0.88)
         lv = list(range(-40, 45, 4))
-        cs = ax.contour(XU, YU, Tm, levels=lv, colors=[SKY if v == 0 else BG for v in lv], linewidths=[1.6 if v == 0 else 0.3 for v in lv], zorder=3, alpha=0.7)
-        ax.clabel(cs, levels=[v for v in lv if v % 8 == 0], fmt=fmt_t, fontsize=7, inline=True, colors=BG)
+        cs = ax.contour(XU, YU, Tm, levels=lv, colors=[SKY if v == 0 else OUTLINE for v in lv], linewidths=[1.6 if v == 0 else 0.3 for v in lv], zorder=3, alpha=0.7)
+        ax.clabel(cs, levels=[v for v in lv if v % 8 == 0], fmt=fmt_t, fontsize=7, inline=True, colors=OUTLINE)
     elif product == 'wind' and has_w:
         ax.contourf(XU, YU, U(R.Wd[s]), levels=W_LV, colors=W_COL, zorder=2, antialiased=True, alpha=0.9)
-        ax.contour(XU, YU, U(R.Wd[s]), levels=[10, 15, 20], colors=['#f6f0d8'], linewidths=[0.5, 0.7, 0.9], alpha=0.5, zorder=3)  # strong-wind outlines
+        ax.contour(XU, YU, U(R.Wd[s]), levels=[10, 15, 20], colors=[OUTLINE], linewidths=[0.5, 0.7, 0.9], alpha=0.5, zorder=3)  # strong-wind outlines
     elif product == 'cloud' and has_c:
         ax.contourf(XU, YU, U(np.nan_to_num(R.C[s]) * 100), levels=CL_LV, colors=CL_COL, zorder=2, antialiased=True, alpha=0.95)
         ax.contour(XU, YU, U(R.P[s]), levels=[50], colors=[SKY], linewidths=1.2, linestyles='dashed', zorder=3)
@@ -654,41 +671,42 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
         if np.isfinite(t): txt += f" · {fmt_t(t)}" + (' ❄' if t <= 0.5 and v >= 30 else '')
         return txt
     extra = []
-    if R.view is not None:  # zoomed in: the towns around the chosen city get labels too
-        vx0, vx1, vy0, vy1 = R.view; have = {id(p) for p in R.cities}
+    if R.view is not None or R.iso:  # smaller towns of the country (all towns around the city when zoomed in), placed where they fit
+        vx0, vx1, vy0, vy1 = R.view or R.ext; have = {p['en'] for p in R.cities}
         for p in sorted(R.geo.places, key=lambda q: -q['pop']):
-            if id(p) in have or len(extra) >= 10: continue
+            if p['en'] in have or len(extra) >= (16 if R.view is not None else 18): continue
+            if R.view is None and p.get('iso') != R.iso: continue
             x, y = R.proj(p['lon'], p['lat'])
             if vx0 < x < vx1 and vy0 < y < vy1: extra.append((p, (x, y)))
     _cities(fig, ax, R, label, extra)
     # the chosen city: one card with the numbers of this window
-    _card(fig, 0.025, 0.25, 0.95, 0.152)
+    _card(fig, 0.025, 0.247, 0.95, 0.13)
     if R.main is not None:
         p = R.main; v = max(0, min(100, R.value_at(s, p))); t = R.value_at(s, p, 'T') if has_t else np.nan
         c = R.value_at(s, p, 'C') * 100 if has_c else np.nan; mm = R.value_at(s, p, 'Araw')
         snowy = np.isfinite(t) and t <= 0.5
-        fig.text(0.05, 0.378, city_name(p, lang), fontsize=12.5, fontweight='bold', color=INK, va='center')
+        fig.text(0.05, 0.36, city_name(p, lang), fontsize=12.5, fontweight='bold', color=INK, va='center')
         if product == 'temp' and np.isfinite(t): big, bigc, sub = fmt_t(t), _tcol(t), W2['deg']
-        elif product == 'cloud' and np.isfinite(c): big, bigc, sub = f'{c:.0f} %', '#d5deea', W2['cl']
+        elif product == 'cloud' and np.isfinite(c): big, bigc, sub = f'{c:.0f} %', CLOUD_BIG, W2['cl']
         elif product == 'wind' and has_w:
             ws = R.value_at(s, p, 'Wd'); u_, v_ = R.value_at(s, p, 'U'), R.value_at(s, p, 'V')
             frm = (np.degrees(np.arctan2(-u_, -v_)) + 360) % 360
             big, bigc, sub = f"{ws:.0f} {W2['ws']}", W_COL[int(np.clip(np.digitize(ws, W_LV) - 1, 4, 9))], f"{W2['wsub']} · {W2['dirs'][int(round(frm / 45)) % 8]}"
         else: big, bigc, sub = f'{v:.0f} %', _level_col(v, SNOW if snowy else COLORS), W2['chance']
-        fig.text(0.05, 0.33, big, fontsize=29, fontfamily=DISPLAY, fontweight='bold', color=bigc, va='center')
-        fig.text(0.05, 0.288, sub, fontsize=8.5, color=MUTED, va='center')
+        fig.text(0.05, 0.322, big, fontsize=26, fontfamily=DISPLAY, fontweight='bold', color=bigc, va='center')
+        fig.text(0.05, 0.286, sub, fontsize=8.5, color=MUTED, va='center')
         stats = []
         if product != 'prob': stats.append((W2['p'], f'{v:.0f} %'))
         if product != 'temp' and np.isfinite(t): stats.append((W2['t'], fmt_t(t)))
         if product != 'cloud' and np.isfinite(c): stats.append((W2['c'], f'{c:.0f} %'))
         if product == 'prob' and mm >= 0.1: stats.append((W2['a'], f'≈ {mm:.1f} mm' if mm < 1.5 else f'≈ {mm:.0f} mm'))
         for i, (k, val) in enumerate(stats[:3]):
-            y = 0.372 - i * 0.034
+            y = 0.358 - i * 0.031
             fig.text(0.47, y, k, fontsize=9.5, color=MUTED, va='center')
             fig.text(0.95, y, val, fontsize=11, fontweight='bold', color=INK, va='center', ha='right')
-            if i < len(stats[:3]) - 1: fig.add_artist(matplotlib.lines.Line2D([0.47, 0.95], [y - 0.017, y - 0.017], color=LINE, lw=0.6, transform=fig.transFigure))
+            if i < len(stats[:3]) - 1: fig.add_artist(matplotlib.lines.Line2D([0.47, 0.95], [y - 0.0155, y - 0.0155], color=LINE, lw=0.6, transform=fig.transFigure))
     if comment:
-        fig.text(0.05, 0.262, textwrap.shorten(comment, 130, placeholder='…'), fontsize=8.6, color='#c9d4e2', va='center', style='italic')
+        fig.text(0.05, 0.261, textwrap.shorten(comment, 130, placeholder='…'), fontsize=8.6, color=COMMENT, va='center', style='italic')
     # legend
     if product == 'prob':
         fig.text(0.035, 0.226, f"{W2['scale']} · {hours_text(lang, D['win'][s])}", fontsize=8.2, color=MUTED, va='center')
