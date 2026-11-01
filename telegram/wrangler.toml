@@ -13,6 +13,6 @@ binding = "DB"
 database_name = "osmon"
 database_id = "19e0f252-1086-4e37-9722-e63a9ccf730d"
 
-# automatic forecast posts to groups and channels after each website update
+# daily forecast posts to groups and channels at 07:00 Tashkent (02:00 UTC; later runs finish big lists)
 [triggers]
-crons = ["*/20 * * * *"]
+crons = ["0 2 * * *", "20 2 * * *", "40 2 * * *"]

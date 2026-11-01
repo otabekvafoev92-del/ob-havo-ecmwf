@@ -1,7 +1,7 @@
 // Osmon Telegram bot (Cloudflare Workers, free plan).
 //  • Private chat: /start → language → country/continent → today & tomorrow, by days, 15-day videos, the site as a Mini App.
 //  • Groups and channels: add the bot (as admin in a channel) and it posts the forecast by itself after every update
-//    of the website (twice a day). An admin picks the country and language with /sozla (/settings) in the group.
+//    every day at 07:00 Tashkent. An admin picks one or several countries and the language with /sozla (/settings).
 //  • /hit and /stats: anonymous visit counter for the website (daily totals per country and city).
 // Everything is read from the website built by GitHub Actions (SITE_URL/prob/manifest.json and the .mp4 files).
 // Settings (Workers → Settings): BOT_TOKEN (secret), SITE_URL (variable), D1 database bound as DB,
@@ -27,28 +27,32 @@ const T = {
     menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 Globus', rep: '📊 Hisobot',
     back: '↩️ Davlatlar', none: '⏳ Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.', tdy: 'Bugun', tmw: 'Ertaga', next: 'Keyingi kunlar',
     upd: 'Yangilandi', swipe: '🎬 Video: yog‘in ehtimoli. Harorat va bulutlar — saytda.', bot: '🤖 Bot',
-    gHi: '👋 Salom! Men har kuni ikki marta (prognoz yangilanganda) shu yerga ob-havoni yuboraman.\nAdmin: davlat va tilni tanlang 👇',
-    gSet: '✅ Tayyor! Bu chatga <b>{name}</b> bo‘yicha prognoz yuboriladi ({lang}).\nO‘zgartirish: /sozla', gAdm: 'Faqat adminlar o‘zgartira oladi.', gLang: 'Tilni tanlang:', lang: 'o‘zbekcha',
+    gHi: '👋 Salom! Men har kuni soat 07:00 da shu yerga ob-havoni video bilan yuboraman.\nAdmin: davlat va tilni tanlang 👇',
+    gSet: '✅ Tayyor! Har kuni soat 07:00 da (Toshkent vaqti) bu chatga prognoz yuboriladi: <b>{name}</b> ({lang}).\nO‘zgartirish: /sozla', gMulti: '📍 Davlatlarni tanlang (bir nechtasini ham), so‘ng «Tayyor» tugmasini bosing:', done: '✅ Tayyor', gNone: 'Kamida bitta davlatni tanlang.', gAdm: 'Faqat adminlar o‘zgartira oladi.', gLang: 'Tilni tanlang:', lang: 'o‘zbekcha',
   },
   ru: {
     d15: 'прогноз на 15 дней', hi: '☀️ <b>Osmon</b> — прогноз погоды\nна 15 дней по 6 моделям (ECMWF, NOAA).\n\nВыберите язык:', pick: '📍 Выберите страну или континент:',
     menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 Глобус', rep: '📊 Отчёт',
     back: '↩️ Страны', none: '⏳ Данные ещё не готовы, попробуйте чуть позже.', tdy: 'Сегодня', tmw: 'Завтра', next: 'Дальше',
     upd: 'Обновлено', swipe: '🎬 На видео — вероятность осадков. Температура и облака — на сайте.', bot: '🤖 Бот',
-    gHi: '👋 Привет! Я буду присылать сюда прогноз погоды два раза в день — сразу после обновления.\nАдминистратор, выберите страну и язык 👇',
-    gSet: '✅ Готово! В этот чат будет приходить прогноз: <b>{name}</b> ({lang}).\nИзменить: /settings', gAdm: 'Менять настройки могут только администраторы.', gLang: 'Выберите язык:', lang: 'по-русски',
+    gHi: '👋 Привет! Я буду каждый день в 07:00 присылать сюда прогноз погоды с видео.\nАдминистратор, выберите страну и язык 👇',
+    gSet: '✅ Готово! Каждый день в 07:00 (по Ташкенту) в этот чат будет приходить прогноз: <b>{name}</b> ({lang}).\nИзменить: /settings', gMulti: '📍 Отметьте страны (можно несколько) и нажмите «Готово»:', done: '✅ Готово', gNone: 'Отметьте хотя бы одну страну.', gAdm: 'Менять настройки могут только администраторы.', gLang: 'Выберите язык:', lang: 'по-русски',
   },
   tr: {
     d15: '15 günlük tahmin', hi: '☀️ <b>Osmon</b> — hava tahmini\n6 modele göre 15 günlük (ECMWF, NOAA).\n\nDil seçin:', pick: '📍 Ülke veya kıta seçin:',
     menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 Küre', rep: '📊 Rapor',
     back: '↩️ Ülkeler', none: '⏳ Veriler henüz hazır değil, biraz sonra deneyin.', tdy: 'Bugün', tmw: 'Yarın', next: 'Sonraki günler',
     upd: 'Güncellendi', swipe: '🎬 Videoda yağış olasılığı. Sıcaklık ve bulutlar sitede.', bot: '🤖 Bot',
-    gHi: '👋 Merhaba! Tahmin her güncellendiğinde (günde iki kez) buraya hava durumunu göndereceğim.\nYönetici, ülke ve dili seçin 👇',
-    gSet: '✅ Hazır! Bu sohbete <b>{name}</b> tahmini gönderilecek ({lang}).\nDeğiştirmek için: /settings', gAdm: 'Ayarları yalnızca yöneticiler değiştirebilir.', gLang: 'Dil seçin:', lang: 'Türkçe',
+    gHi: '👋 Merhaba! Her gün 07:00’de buraya videolu hava tahmini göndereceğim.\nYönetici, ülke ve dili seçin 👇',
+    gSet: '✅ Hazır! Her gün 07:00’de (Taşkent saati) bu sohbete tahmin gönderilecek: <b>{name}</b> ({lang}).\nDeğiştirmek için: /settings', gMulti: '📍 Ülkeleri işaretleyin (birden fazla olabilir) ve «Tamam»a basın:', done: '✅ Tamam', gNone: 'En az bir ülke seçin.', gAdm: 'Ayarları yalnızca yöneticiler değiştirebilir.', gLang: 'Dil seçin:', lang: 'Türkçe',
   },
 };
 const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], tr: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] };
-const PER_TICK = 20;  // group posts per cron run (Workers free plan: 50 subrequests per run)
+const PER_TICK = 6;      // groups per cron run (Workers free plan: 50 subrequests per run; a group may want several countries)
+const POST_HOUR = 7, TZ = 5;  // daily post at 07:00 Tashkent (cron 0,20,40 2 * * * UTC)
+const todayTZ = () => new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10);
+const multiKb = (lang, sel) => ({ inline_keyboard: [...GROUPS.map(row => row.map(id => ({ text: `${sel.includes(id) ? '✅' : FLAG[id]} ${NAMES[id][lang]}`, callback_data: `GT:${lang}:${id}` }))), [{ text: T[lang].done, callback_data: `GD:${lang}` }]] });
+const regionsOf = s => (s && s.region ? s.region.split(',').filter(r => NAMES[r]) : []);
 
 export default {
   async fetch(req, env, ctx) {
@@ -151,7 +155,7 @@ async function handle(up, env) {
     const cmd = (msg.text.trim().match(/^\/(\w+)(@\w+)?/) || [])[1];
     if (group) {
       if (cmd === 'sozla' || cmd === 'settings' || cmd === 'start') return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gLang + ' / ' + T.ru.gLang, reply_markup: langKb('GL') });
-      if (cmd === 'bugun' || cmd === 'today') { const s = await sub(env, chat.id); return sendToday(env, chat.id, s ? s.lang : cmd === 'today' ? 'ru' : 'uz', s ? s.region : 'UZ', true); }
+      if (cmd === 'bugun' || cmd === 'today') { const s = await sub(env, chat.id), regs = regionsOf(s).length ? regionsOf(s) : ['UZ']; for (const r of regs) await sendToday(env, chat.id, s ? s.lang : cmd === 'today' ? 'ru' : 'uz', r, true); return; }
       return;
     }
     if (cmd === 'bugun') return sendToday(env, chat.id, 'uz', 'UZ');
@@ -161,14 +165,19 @@ async function handle(up, env) {
   }
   if (!cb) return;
   const chat = cb.message.chat, [kind, lang, id] = cb.data.split(':');
-  if (kind === 'GL' || kind === 'GC') {  // group settings
+  if (kind[0] === 'G') {  // group settings: GL language, GT toggle a country, GD done
     if (!(await isAdmin(env, chat, cb.from))) return tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: T[lang].gAdm, show_alert: true });
+    const cur = await sub(env, chat.id);
+    let sel = regionsOf(cur);
+    if (kind === 'GL') { await saveSub(env, chat, sel.length ? sel : ['UZ'], lang, cur && cur.last_run); sel = sel.length ? sel : ['UZ']; }
+    if (kind === 'GT') { sel = sel.includes(id) ? sel.filter(r => r !== id) : [...sel, id]; await saveSub(env, chat, sel, lang, cur && cur.last_run); }
+    if (kind === 'GD' && !sel.length) return tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: T[lang].gNone, show_alert: true });
     await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
-    if (kind === 'GL') return tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].pick, reply_markup: countryKb(lang, 'GC') });
-    await saveSub(env, chat, id, lang);
-    await tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].gSet.replace('{name}', esc(NAMES[id][lang])).replace('{lang}', T[lang].lang), parse_mode: 'HTML' });
+    if (kind !== 'GD') return tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].gMulti, reply_markup: multiKb(lang, sel) });
+    await saveSub(env, chat, sel, lang, todayTZ());  // today's post is sent right now
+    await tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: T[lang].gSet.replace('{name}', sel.map(r => `${FLAG[r]} ${esc(NAMES[r][lang])}`).join(', ')).replace('{lang}', T[lang].lang), parse_mode: 'HTML' });
     const M = await manifest(env), me = await tg(env, 'getMe', {});
-    if (M) await post(env, M, chat.id, lang, id, me.ok ? me.result.username : '');
+    if (M) for (const r of sel) await post(env, M, chat.id, lang, r, me.ok ? me.result.username : '');
     return;
   }
   await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
@@ -223,19 +232,17 @@ async function db(env) {
   await env.DB.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
 }
 async function sub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM subs WHERE chat_id = ?1').bind(chat).first(); }
-async function saveSub(env, chat, region, lang) {
+async function saveSub(env, chat, regions, lang, lastDay) {
   if (!env.DB) return; await db(env);
-  // last_run = current run, so the group is not posted twice right away (it just got today's forecast)
-  const M = await manifest(env), run = M ? M.run : '';
   await env.DB.prepare('INSERT INTO subs (chat_id, title, type, region, lang, last_run, added) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(chat_id) DO UPDATE SET title = ?2, region = ?4, lang = ?5, last_run = ?6')
-    .bind(chat.id, chat.title || '', chat.type, region, lang, run, new Date().toISOString()).run();
+    .bind(chat.id, chat.title || '', chat.type, regions.join(','), lang, lastDay || '', new Date().toISOString()).run();
 }
 async function memberChange(m, env) {
   const chat = m.chat, st = m.new_chat_member && m.new_chat_member.status;
   if (chat.type === 'private') return;
   if (st === 'left' || st === 'kicked') { if (env.DB) { await db(env); await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(chat.id).run(); } return; }
   if ((st === 'member' || st === 'administrator') && !(await sub(env, chat.id))) {
-    await saveSub(env, chat, 'UZ', 'uz');  // default until an admin chooses
+    await saveSub(env, chat, ['UZ'], 'uz', '');  // default until an admin chooses
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gHi + '\n\n' + T.ru.gHi, reply_markup: langKb('GL') });
   }
 }
@@ -271,20 +278,27 @@ async function post(env, M, chat, lang0, id0, bot) {
 
 async function broadcast(env) {
   if (!env.DB) return { ok: false, error: 'no DB' };
+  const now = new Date(Date.now() + TZ * 3600e3);
+  if (now.getUTCHours() < POST_HOUR) return { ok: true, wait: `posts start at 0${POST_HOUR}:00` };
   await db(env);
   const M = await manifest(env, true);
   if (!M) return { ok: false, error: 'no manifest' };
-  const due = (await env.DB.prepare('SELECT * FROM subs WHERE last_run IS NULL OR last_run <> ?1 LIMIT ?2').bind(M.run, PER_TICK).all()).results;
+  const day = todayTZ();
+  const due = (await env.DB.prepare("SELECT * FROM subs WHERE COALESCE(last_run, '') <> ?1 LIMIT ?2").bind(day, PER_TICK).all()).results;
   const me = await tg(env, 'getMe', {}), bot = me.ok ? me.result.username : '';
   let sent = 0;
   for (const s of due) {
-    const r = await post(env, M, s.chat_id, s.lang, s.region, bot);
-    if (r.ok) sent++;
-    // the bot was removed or cannot write there: forget the chat
-    if (!r.ok && [400, 403].includes(r.error_code) && /kicked|not a member|chat not found|have no rights|was deleted/i.test(r.description || '')) await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(s.chat_id).run();
-    else await env.DB.prepare('UPDATE subs SET last_run = ?2 WHERE chat_id = ?1').bind(s.chat_id, M.run).run();
+    let gone = false;
+    for (const r of (regionsOf(s).length ? regionsOf(s) : ['UZ'])) {
+      const res = await post(env, M, s.chat_id, s.lang, r, bot);
+      if (res.ok) sent++;
+      // the bot was removed or cannot write there: forget the chat
+      if (!res.ok && [400, 403].includes(res.error_code) && /kicked|not a member|chat not found|have no rights|was deleted/i.test(res.description || '')) { gone = true; break; }
+    }
+    if (gone) await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(s.chat_id).run();
+    else await env.DB.prepare('UPDATE subs SET last_run = ?2 WHERE chat_id = ?1').bind(s.chat_id, day).run();
   }
-  return { ok: true, run: M.run, due: due.length, sent };
+  return { ok: true, day, run: M.run, due: due.length, sent };
 }
 
 /* ---------- visit counter for the website (by country and city) ----------
