@@ -640,12 +640,7 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
         ax.clabel(cs, levels=[v for v in lv if v % 8 == 0], fmt=fmt_t, fontsize=7, inline=True, colors=BG)
     elif product == 'wind' and has_w:
         ax.contourf(XU, YU, U(R.Wd[s]), levels=W_LV, colors=W_COL, zorder=2, antialiased=True, alpha=0.9)
-        vx0, vx1 = (R.view or R.ext)[:2]; gx = R.X[0, 1] - R.X[0, 0] if R.X.shape[1] > 1 else 1
-        k = max(1, int(abs(vx1 - vx0) / 16 / max(abs(gx), 1)))
-        sl = (slice(k // 2, None, k), slice(k // 2, None, k))
-        Uq, Vq = R.U[s][sl], R.V[s][sl]; sp = np.hypot(Uq, Vq) + 1e-6
-        # arrows along the wind, all the same length: the colour shows the speed
-        ax.quiver(R.X[sl], R.Y[sl], Uq / sp, Vq / sp, color=(1, 1, 1, 0.6), scale=34, width=0.0026, headwidth=4, headlength=4.5, zorder=3, pivot='middle')
+        ax.contour(XU, YU, U(R.Wd[s]), levels=[10, 15, 20], colors=['#f6f0d8'], linewidths=[0.5, 0.7, 0.9], alpha=0.5, zorder=3)  # strong-wind outlines
     elif product == 'cloud' and has_c:
         ax.contourf(XU, YU, U(np.nan_to_num(R.C[s]) * 100), levels=CL_LV, colors=CL_COL, zorder=2, antialiased=True, alpha=0.95)
         ax.contour(XU, YU, U(R.P[s]), levels=[50], colors=[SKY], linewidths=1.2, linestyles='dashed', zorder=3)
