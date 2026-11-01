@@ -101,6 +101,20 @@ const kM = () => R / EARTH_M * S.exag; // scene units per metre of height
 
 /* ------------------------------ data ------------------------------ */
 let D, GEO; // forecast.json, geo.json
+// one look everywhere: the globe's temperature and rain layers use the same colour scales as the videos (prob/render.py)
+const T_ANCH = [[-40, '#2a1858'], [-24, '#2e4fb5'], [-12, '#2f8fd0'], [-4, '#7fd0e6'], [0, '#d9f3ee'], [6, '#f3e9a6'], [14, '#f7c46b'], [22, '#f3904f'], [30, '#d8524a'], [40, '#7a1530']];
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function tRgb(v) {
+  for (let i = 1; i < T_ANCH.length; i++) if (v <= T_ANCH[i][0]) { const [a0, c0] = T_ANCH[i - 1], [a1, c1] = T_ANCH[i], k = Math.max(0, (v - a0) / (a1 - a0)), A = hexRgb(c0), B = hexRgb(c1); return A.map((x, j) => Math.round(x + (B[j] - x) * k)); }
+  return hexRgb(T_ANCH[T_ANCH.length - 1][1]);
+}
+function unifyColors(D) {
+  try {
+    (D.classes.temp || []).forEach(c => { if (c.rgb) { const lo = isFinite(c.lo) ? c.lo : c.hi - 4, hi = isFinite(c.hi) ? c.hi : c.lo + 4; c.rgb = tRgb((lo + hi) / 2); } });
+    const rain = (D.classes.rain || []).filter(c => c.rgb), pal = ['#c4e4ee', '#8ccbe3', '#4fa9d6', '#2a7cba', '#18548f', '#8d2c66'].map(hexRgb);
+    rain.forEach((c, i) => { const f = rain.length > 1 ? i / (rain.length - 1) * (pal.length - 1) : 0, j = Math.min(pal.length - 2, Math.floor(f)), k = f - j; c.rgb = pal[j].map((x, n) => Math.round(x + (pal[j + 1][n] - x) * k)); });
+  } catch (e) { console.warn('colours', e); }
+}
 const G = { reg: {}, glo: {} };
 function unrle(s, n) {
   const out = new Uint8Array(n); let p = 0; const re = /([A-Z])(\d*)/g; let m;
@@ -1519,7 +1533,7 @@ in vec3 vW; in vec3 vD; in float vP; in float vT; in float vC; in float vE; unif
 vec3 ramp3(vec3 a, vec3 b, vec3 c, float x){ return x < 0.5 ? mix(a, b, x * 2.0) : mix(b, c, x * 2.0 - 1.0); }
 vec3 tcol(float t){
   float x = clamp((t + 40.0) / 80.0, 0.0, 1.0);
-  vec3 s[9] = vec3[9](vec3(.18,.04,.42), vec3(.24,.44,.88), vec3(.55,.80,.94), vec3(.86,.94,.95), vec3(.96,.92,.70), vec3(.97,.72,.32), vec3(.88,.38,.16), vec3(.63,.10,.10), vec3(.24,.02,.03));
+  vec3 s[9] = vec3[9](vec3(.16,.09,.35), vec3(.17,.23,.57), vec3(.18,.39,.75), vec3(.26,.62,.84), vec3(.85,.95,.93), vec3(.96,.84,.53), vec3(.96,.62,.34), vec3(.85,.32,.29), vec3(.48,.08,.19));  // same scale as the videos (prob/render.py)
   float f = x * 8.0; int i = int(min(floor(f), 7.0)); return mix(s[i], s[i + 1], f - float(i));
 }
 void main(){
@@ -1529,7 +1543,7 @@ void main(){
   vec3 c; float a;
   if (uMode == 0) {
     float p = clamp(vP, 0.0, 1.0);
-    c = vT <= 0.5 ? ramp3(vec3(.95,.87,.96), vec3(.76,.50,.86), vec3(.43,.14,.59), p) : ramp3(vec3(.78,.89,.97), vec3(.24,.55,.88), vec3(.04,.18,.45), p);
+    c = vT <= 0.5 ? ramp3(vec3(.96,.86,.91), vec3(.86,.53,.70), vec3(.55,.17,.40), p) : ramp3(vec3(.77,.89,.93), vec3(.31,.66,.84), vec3(.09,.33,.56), p);  // video palette
     a = smoothstep(0.08, 0.2, p) * 0.94;
   } else if (uMode == 1) { c = tcol(vT); a = 0.72; lit = 1.0; }
   else { c = mix(vec3(.72,.76,.82), vec3(.98), vC); a = smoothstep(uCT, 1.0, vC) * 0.62; lit = 0.75 + 0.35 * lit; }
@@ -1630,10 +1644,10 @@ function d5Label(lon, lat) {
 }
 function renderD5Legend(el) {
   const P = (k) => tr('d5.' + k);
-  const bar = D5.prod === 'temp' ? `<div class="bar"><i style="background:linear-gradient(90deg,#2e0a6b,#3d70e0,#8ccdf0,#dbf0f2,#f5ebb3,#f7b852,#e0612a,#a11a1a,#3d0508)"></i></div><div class="ticks"><span style="left:0">−40°</span><span style="left:50%">0°</span><span style="left:100%">+40°</span></div>`
+  const bar = D5.prod === 'temp' ? `<div class="bar"><i style="background:linear-gradient(90deg,#2a1858,#2c3a92,#2e64be,#439fd6,#d9f3ee,#f5d688,#f49d56,#d8524a,#7a1530)"></i></div><div class="ticks"><span style="left:0">−40°</span><span style="left:50%">0°</span><span style="left:100%">+40°</span></div>`
     : D5.prod === 'cloud' ? `<div class="bar"><i style="background:linear-gradient(90deg,#3a4250,#b8c2d1,#fafafa)"></i></div><div class="ticks"><span style="left:0">20%</span><span style="left:100%">100%</span></div>`
-    : `<div class="bar"><i style="background:linear-gradient(90deg,#c7e3f7,#3d8ce0,#0a2e73)"></i></div><div class="ticks"><span style="left:0">10%</span><span style="left:50%">${P('rain')}</span><span style="left:100%">100%</span></div>
-       <div class="bar"><i style="background:linear-gradient(90deg,#f2def5,#c27fdb,#6e2496)"></i></div><div class="ticks"><span style="left:0">10%</span><span style="left:50%">${P('snow')}</span><span style="left:100%">100%</span></div>`;
+    : `<div class="bar"><i style="background:linear-gradient(90deg,#c4e4ee,#8ccbe3,#4fa9d6,#2a7cba,#18548f)"></i></div><div class="ticks"><span style="left:0">10%</span><span style="left:50%">${P('rain')}</span><span style="left:100%">100%</span></div>
+       <div class="bar"><i style="background:linear-gradient(90deg,#f4dbe9,#ebb4d1,#dc86b3,#c0548f,#8d2c66)"></i></div><div class="ticks"><span style="left:0">10%</span><span style="left:50%">${P('snow')}</span><span style="left:100%">100%</span></div>`;
   el.innerHTML = `<div class="lt">${P('title')}</div>
     <div class="seg small d5prod">${['all', 'temp', 'cloud'].map(k => `<button data-p="${k}" aria-pressed="${D5.prod === k}">${P(k)}</button>`).join('')}</div>
     <div class="lt muted">${P('leg_' + D5.prod)}</div>${bar}
@@ -1685,10 +1699,10 @@ function d5Enter() { D5.entered = true; flyTo(66, 41, { dist: MOBILE ? 60 : 46, 
 
 /* ------------------------------ UI ------------------------------ */
 const LAYERS = [
-  { id: 'd5', sw: 'linear-gradient(90deg,#3d8ce0,#0a2e73,#c27fdb,#f7b852)' },
+  { id: 'd5', sw: 'linear-gradient(90deg,#4fa9d6,#18548f,#dc86b3,#f49d56)' },
   { id: 'relief', sw: 'linear-gradient(90deg,#2b5a8a,#6b8a4a,#b9a27a,#eef)' },
-  { id: 'temp', sw: 'linear-gradient(90deg,#007fff,#d9ff00,#ffb000,#ff2500)' },
-  { id: 'rain', sw: 'linear-gradient(90deg,#00ffff,#0000ff,#ff00ff)' },
+  { id: 'temp', sw: 'linear-gradient(90deg,#2e64be,#d9f3ee,#f49d56,#d8524a)' },
+  { id: 'rain', sw: 'linear-gradient(90deg,#8ccbe3,#2a7cba,#18548f)' },
   { id: 'wind', sw: 'linear-gradient(90deg,#ffff66,#93ff00,#00724b)' },
   { id: 'sun', sw: 'linear-gradient(90deg,#0d4144,#a8a84c,#ffff00,#fd8802)' },
 ];
@@ -2294,7 +2308,7 @@ async function initTelegram() {
       TG.app = W; W.ready(); W.expand();
       try { W.disableVerticalSwipes && W.disableVerticalSwipes(); } catch {}
       document.documentElement.classList.add('in-tg');
-      if (!store.get('theme', null) && W.colorScheme) document.documentElement.dataset.theme = W.colorScheme;
+      // one look everywhere: the light theme unless the viewer switched it (Telegram's dark mode no longer overrides it)
       const lc = (W.initDataUnsafe && W.initDataUnsafe.user && W.initDataUnsafe.user.language_code) || '';
       if (!store.get('lang', null) && (lc === 'ru' || lc === 'uz')) S.lang = lc;
       if (lc === 'tr') PROB.lang = 'tr';
@@ -2311,6 +2325,7 @@ async function boot() {
   initTheme(); applyLang();
   const getJson = async u => (await fetch(u, { cache: 'no-cache' })).json();
   [D, GEO] = await Promise.all([window.__FORECAST__ || getJson('data/forecast.json'), getJson(ASSET + 'assets/geo.json')]);
+  unifyColors(D);
   if (!D.wind) D.wind = await getJson('data/wind.json').catch(() => null); // real wind (pipeline/wind.py), optional
   prepare();
   await loadDem();
