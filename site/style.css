@@ -302,6 +302,10 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
   .legend .lt:first-child { cursor: pointer; }
   .legend .lt:first-child::after { content: ' ▾'; }
   .legend.mini .lt:first-child::after { content: ' ▸'; }
+  .legend.mini { width: auto; max-width: min(250px, 66vw); padding: 6px 8px; }
+  .legend.mini .lt:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+  .legend.mini .d5prod { margin: 0; }
+  .legend .d5prod button { font-size: 11px; padding: 3px 4px; line-height: 1.15; }
 }
 .gl-lost { position: absolute; inset: 0; display: grid; place-content: center; gap: 12px; text-align: center; background: rgba(6,10,18,.88); color: #fff; z-index: 30; padding: 24px; }
 .gl-lost p { max-width: 420px; margin: 0; line-height: 1.5; }

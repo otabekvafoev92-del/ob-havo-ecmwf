@@ -1475,7 +1475,7 @@ function setupPointer() {
     tip.style.left = h.x + 'px'; tip.style.top = h.y + 'px'; tip.hidden = false;
   });
   canvas.addEventListener('pointerleave', () => { tip.hidden = true; });
-  canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; dragging = true; if (TOUR.on) stopTour(); if (fly) { const f = fly; fly = null; if (f.goLocal) setLocalControls(camera.up.clone().lerp(f.end.up, 1).normalize(), f.end.target.clone()); else setGlobeControls(camera.position.clone()); } });
+  canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; dragging = true; if (MOBILE) $('legend').classList.add('mini'); if (TOUR.on) stopTour(); if (fly) { const f = fly; fly = null; if (f.goLocal) setLocalControls(camera.up.clone().lerp(f.end.up, 1).normalize(), f.end.target.clone()); else setGlobeControls(camera.position.clone()); } });
   window.addEventListener('pointerup', () => { dragging = false; });
   window.addEventListener('pointercancel', () => { dragging = false; });
   canvas.addEventListener('pointerup', e => {
