@@ -9,12 +9,13 @@ s=[
 <li>Выберите язык: O‘zbekcha, Русский или Türkçe.</li>{B(['🇺🇿 O‘zbekcha','🇷🇺 Русский','🇹🇷 Türkçe'])}
 <li>Бот пришлёт короткую инструкцию и кнопку <b>📄 Инструкция (PDF)</b> — этот файл.</li>
 <li>Выберите страну или континент.</li>{B(['🇺🇿 Узбекистан','🇰🇿 Казахстан','🇰🇬 Кыргызстан'],['🇹🇯 Таджикистан','🇹🇲 Туркменистан','🇦🇿 Азербайджан'],['…','🌍 Весь мир','…'])}</ol>'''),
-('2. Меню страны', f'''<p>После выбора страны появляется меню:</p>{B(['📅 Сегодня и завтра','🗓 По дням'],['🏙 Города','🎬 Видео на 15 дней'],['📊 Отчёт','🌍 Глобус'],['ℹ️ Помощь','✉️ Написать админу'],['↩️ Страны'])}
+('2. Меню страны', f'''<p>После выбора страны появляется меню:</p>{B(['📅 Сегодня и завтра','🗓 По дням'],['🏙 Города','🎬 Видео на 15 дней'],['📊 Отчёт','🌍 Глобус'],['🔔 Каждый день','ℹ️ Помощь'],['✉️ Написать админу','↩️ Страны'])}
 <table><tr><td>📅 Сегодня и завтра</td><td>Короткий прогноз по главному городу страны: температура, вероятность осадков, облачность.</td></tr>
 <tr><td>🗓 По дням</td><td>Все 15 дней списком, по одной строке на день.</td></tr>
 <tr><td>🏙 Города</td><td>Список городов страны. Нажмите на город — придёт прогноз именно для него.</td></tr>
 <tr><td>🎬 Видео на 15 дней</td><td>Три видео одним альбомом: 🌧 осадки, 🌡 температура, ☁️ облака. Листайте их пальцем.</td></tr>
 <tr><td>📊 Отчёт, 🌍 Глобус</td><td>Сайт Osmon открывается прямо внутри Телеграма.</td></tr>
+<tr><td>🔔 Каждый день</td><td>Личная рассылка: бот сам будет присылать прогноз этой страны каждый день в выбранное время. Там же — «🔕 Отключить».</td></tr>
 <tr><td>ℹ️ Помощь</td><td>Краткая инструкция и этот PDF.</td></tr>
 <tr><td>✉️ Написать админу</td><td>Вопрос, ошибка или предложение администратору бота.</td></tr></table>'''),
 ('3. Погода по городам и видео города', '''<p>Кнопка <b>🏙 Города</b> показывает до 15 городов выбранной страны — сначала столица, затем крупные города.</p>
@@ -30,6 +31,7 @@ s=[
 <div class="note"><b>Почему «только администратор»?</b> Настройки группы (язык, страны, время) может менять только администратор этой группы — чтобы обычные участники случайно их не сбили. Если вы видите сообщение «Настройки меняет только администратор этой группы», попросите администратора написать /settings. Прогноз сейчас может запросить любой участник командой <b>/bugun</b>.</div>'''),
 ('5. Сайт и глобус', f'''<p>Сайт: <b>{SITE}</b>. Он же открывается кнопками 📊 Отчёт и 🌍 Глобус.</p>
 <ul><li><b>Глобус</b> — 3D-Земля. Слой «Вероятность · 15 дней» показывает осадки (высота и цвет), температуру или облачность. Внизу — шкала времени: ▶ запускает анимацию, ползунок выбирает день и час.</li>
+<li><b>Установка на телефон:</b> в браузере откройте меню и выберите «Добавить на главный экран» — сайт откроется как приложение.</li>
 <li><b>Панель с цветовой шкалой</b> на телефоне свёрнута в одну строку. Нажмите на заголовок, чтобы раскрыть или свернуть её; при касании глобуса она сворачивается сама.</li>
 <li><b>Обзор прогноза</b> — прогноз по выбранному месту. <b>Вероятность осадков</b> — отчёт с видео по странам.</li></ul>'''),
 ('6. Когда обновляются данные', '''<p>Всё обновляется автоматически, 2 раза в сутки — по свежим расчётам моделей 00 и 12 UTC:</p>
@@ -50,12 +52,13 @@ s=[
 <li>Tilni tanlang: O‘zbekcha, Русский yoki Türkçe.</li>{B(['🇺🇿 O‘zbekcha','🇷🇺 Русский','🇹🇷 Türkçe'])}
 <li>Bot qisqa yo‘riqnoma va <b>📄 Yo‘riqnoma (PDF)</b> tugmasini yuboradi — bu shu fayl.</li>
 <li>Davlat yoki qit’ani tanlang.</li>{B(['🇺🇿 O‘zbekiston','🇰🇿 Qozog‘iston','🇰🇬 Qirg‘iziston'],['🇹🇯 Tojikiston','🇹🇲 Turkmaniston','🇦🇿 Ozarbayjon'],['…','🌍 Butun dunyo','…'])}</ol>'''),
-('2. Davlat menyusi', f'''<p>Davlat tanlangach, menyu chiqadi:</p>{B(['📅 Bugun va ertaga','🗓 Kunlar bo‘yicha'],['🏙 Shaharlar','🎬 15 kunlik video'],['📊 Hisobot','🌍 Globus'],['ℹ️ Yordam','✉️ Adminga yozish'],['↩️ Davlatlar'])}
+('2. Davlat menyusi', f'''<p>Davlat tanlangach, menyu chiqadi:</p>{B(['📅 Bugun va ertaga','🗓 Kunlar bo‘yicha'],['🏙 Shaharlar','🎬 15 kunlik video'],['📊 Hisobot','🌍 Globus'],['🔔 Har kuni','ℹ️ Yordam'],['✉️ Adminga yozish','↩️ Davlatlar'])}
 <table><tr><td>📅 Bugun va ertaga</td><td>Asosiy shahar bo‘yicha qisqa prognoz: harorat, yog‘in ehtimoli, bulutlilik.</td></tr>
 <tr><td>🗓 Kunlar bo‘yicha</td><td>15 kunning hammasi, har kunga bir qator.</td></tr>
 <tr><td>🏙 Shaharlar</td><td>Davlat shaharlari ro‘yxati. Shaharni bosing — aynan shu shahar uchun prognoz keladi.</td></tr>
 <tr><td>🎬 15 kunlik video</td><td>Bitta albomda 3 ta video: 🌧 yog‘in, 🌡 harorat, ☁️ bulutlar. Barmoq bilan suring.</td></tr>
 <tr><td>📊 Hisobot, 🌍 Globus</td><td>Osmon sayti to‘g‘ridan-to‘g‘ri Telegram ichida ochiladi.</td></tr>
+<tr><td>🔔 Har kuni</td><td>Shaxsiy yuborish: bot shu davlat prognozini har kuni tanlangan vaqtda o‘zi yuboradi. U yerda — «🔕 O‘chirish».</td></tr>
 <tr><td>ℹ️ Yordam</td><td>Qisqa yo‘riqnoma va shu PDF.</td></tr>
 <tr><td>✉️ Adminga yozish</td><td>Bot adminiga savol, xato yoki taklif.</td></tr></table>'''),
 ('3. Shaharlar bo‘yicha ob-havo va shahar videosi', '''<p><b>🏙 Shaharlar</b> tugmasi tanlangan davlatning 15 tagacha shahrini ko‘rsatadi — avval poytaxt, keyin yirik shaharlar.</p>
@@ -71,6 +74,7 @@ s=[
 <div class="note"><b>Nega «faqat admin»?</b> Guruh sozlamalarini (til, davlatlar, vaqt) faqat shu guruhning admini o‘zgartira oladi — oddiy a’zolar tasodifan buzib qo‘ymasligi uchun. «Guruh sozlamalarini faqat shu guruhning admini o‘zgartira oladi» degan xabarni ko‘rsangiz, admindan /sozla yozishini so‘rang. Hozirgi prognozni istalgan a’zo <b>/bugun</b> buyrug‘i bilan so‘rashi mumkin.</div>'''),
 ('5. Sayt va globus', f'''<p>Sayt: <b>{SITE}</b>. U 📊 Hisobot va 🌍 Globus tugmalari orqali ham ochiladi.</p>
 <ul><li><b>Globus</b> — 3D Yer. «15 kunlik ehtimol» qatlami yog‘in (balandlik va rang), harorat yoki bulutlilikni ko‘rsatadi. Pastda vaqt shkalasi: ▶ animatsiyani boshlaydi, surgich kun va soatni tanlaydi.</li>
+<li><b>Telefonga o‘rnatish:</b> brauzer menyusida «Bosh ekranga qo‘shish»ni tanlang — sayt ilova kabi ochiladi.</li>
 <li><b>Rang shkalasi paneli</b> telefonda bir qatorga yig‘ilgan. Ochish yoki yig‘ish uchun sarlavhasini bosing; globusga tegsangiz, o‘zi yig‘iladi.</li>
 <li><b>Prognoz sharhi</b> — tanlangan joy uchun prognoz. <b>Yog‘in ehtimoli</b> — davlatlar bo‘yicha videoli hisobot.</li></ul>'''),
 ('6. Ma’lumotlar qachon yangilanadi', '''<p>Hammasi avtomatik, sutkada 2 marta — modellarning 00 va 12 UTC hisoblari asosida yangilanadi:</p>
@@ -91,12 +95,13 @@ s=[
 <li>Dil seçin: O‘zbekcha, Русский veya Türkçe.</li>{B(['🇺🇿 O‘zbekcha','🇷🇺 Русский','🇹🇷 Türkçe'])}
 <li>Bot kısa bir kılavuz ve <b>📄 Kılavuz (PDF)</b> düğmesini gönderir — bu dosya.</li>
 <li>Bir ülke veya kıta seçin.</li>{B(['🇺🇿 Özbekistan','🇰🇿 Kazakistan','🇰🇬 Kırgızistan'],['🇹🇯 Tacikistan','🇹🇲 Türkmenistan','🇦🇿 Azerbaycan'],['…','🌍 Tüm dünya','…'])}</ol>'''),
-('2. Ülke menüsü', f'''<p>Ülke seçildikten sonra menü açılır:</p>{B(['📅 Bugün ve yarın','🗓 Günlere göre'],['🏙 Şehirler','🎬 15 günlük video'],['📊 Rapor','🌍 Küre'],['ℹ️ Yardım','✉️ Yöneticiye yaz'],['↩️ Ülkeler'])}
+('2. Ülke menüsü', f'''<p>Ülke seçildikten sonra menü açılır:</p>{B(['📅 Bugün ve yarın','🗓 Günlere göre'],['🏙 Şehirler','🎬 15 günlük video'],['📊 Rapor','🌍 Küre'],['🔔 Her gün','ℹ️ Yardım'],['✉️ Yöneticiye yaz','↩️ Ülkeler'])}
 <table><tr><td>📅 Bugün ve yarın</td><td>Ana şehir için kısa tahmin: sıcaklık, yağış olasılığı, bulutluluk.</td></tr>
 <tr><td>🗓 Günlere göre</td><td>15 günün tamamı, her gün için bir satır.</td></tr>
 <tr><td>🏙 Şehirler</td><td>Ülkenin şehir listesi. Bir şehre basın — o şehrin tahmini gelir.</td></tr>
 <tr><td>🎬 15 günlük video</td><td>Tek albümde 3 video: 🌧 yağış, 🌡 sıcaklık, ☁️ bulutlar. Parmağınızla kaydırın.</td></tr>
 <tr><td>📊 Rapor, 🌍 Küre</td><td>Osmon sitesi doğrudan Telegram içinde açılır.</td></tr>
+<tr><td>🔔 Her gün</td><td>Kişisel gönderim: bot bu ülkenin tahminini her gün seçilen saatte kendisi gönderir. Orada — «🔕 Kapat».</td></tr>
 <tr><td>ℹ️ Yardım</td><td>Kısa kılavuz ve bu PDF.</td></tr>
 <tr><td>✉️ Yöneticiye yaz</td><td>Bot yöneticisine soru, hata veya öneri.</td></tr></table>'''),
 ('3. Şehirlere göre hava ve şehir videosu', '''<p><b>🏙 Şehirler</b> düğmesi seçilen ülkenin en fazla 15 şehrini gösterir — önce başkent, sonra büyük şehirler.</p>
@@ -112,6 +117,7 @@ s=[
 <div class="note"><b>Neden «yalnızca yönetici»?</b> Grup ayarlarını (dil, ülkeler, saat) yalnızca bu grubun yöneticisi değiştirebilir — sıradan üyeler yanlışlıkla bozmasın diye. «Ayarları yalnızca bu grubun yöneticisi değiştirebilir» mesajını görürseniz, yöneticiden /settings yazmasını isteyin. Güncel tahmini her üye <b>/bugun</b> komutuyla isteyebilir.</div>'''),
 ('5. Site ve küre', f'''<p>Site: <b>{SITE}</b>. 📊 Rapor ve 🌍 Küre düğmeleriyle de açılır.</p>
 <ul><li><b>Küre</b> — 3D Dünya. «Olasılık · 15 gün» katmanı yağışı (yükseklik ve renk), sıcaklığı veya bulutluluğu gösterir. Altta zaman çizelgesi: ▶ animasyonu başlatır, kaydırıcı gün ve saati seçer.</li>
+<li><b>Telefona kurulum:</b> tarayıcı menüsünde «Ana ekrana ekle»yi seçin — site bir uygulama gibi açılır.</li>
 <li><b>Renk ölçeği paneli</b> telefonda tek satıra katlanır. Açmak veya kapatmak için başlığına basın; küreye dokununca kendiliğinden katlanır.</li>
 <li><b>Tahmin özeti</b> — seçilen yer için tahmin. <b>Yağış olasılığı</b> — ülkelere göre videolu rapor.</li></ul>'''),
 ('6. Veriler ne zaman güncellenir', '''<p>Her şey otomatik olarak, günde 2 kez — modellerin 00 ve 12 UTC çalıştırmalarına göre güncellenir:</p>
