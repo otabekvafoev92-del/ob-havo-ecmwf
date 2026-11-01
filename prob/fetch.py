@@ -15,7 +15,7 @@ import eccodes
 GRID = dict(lon0=20.0, lat0=82.0, d=0.25, W=681, H=229)  # 20°E…190°E, 82°N…25°N (south edge beyond the maps so the 5D layer is not cut)
 N = GRID['W'] * GRID['H']
 # the whole world at 0.5° for the globe's probability layer (same downloads, just a second regridding)
-GLOBAL = dict(lon0=0.0, lat0=90.0, d=0.5, W=720, H=361)
+GLOBAL = dict(lon0=-180.0, lat0=90.0, d=0.5, W=720, H=361)
 THR = 0.2  # mm per 6 h
 # ECMWF open data mirrors (the same files); the Google Cloud copy is used first, AWS is the fallback
 ECM = 'https://storage.googleapis.com/ecmwf-open-data'
