@@ -281,6 +281,23 @@ const PT = {
   ru: { locBtn: '📍 Погода у меня', locHint: '📍 Нажмите кнопку внизу — прогноз на 15 дней для вашего места.\nИли напишите название города, например: <i>Наманган</i>', nf: '🔎 Не нашла такой город. Попробуйте написать иначе или отправьте 📍 геолокацию.', pick: '🔎 Какой из них?', head: 'Прогноз на 15 дней', none: 'без осадков', rain: 'дождь', snow: 'снег', ms: 'м/с', mm: 'мм', vid: '🎬 Видео страны', src: 'Ансамбль ECMWF, NOAA, DWD · сетка ~50 км', far: 'Для этой точки нет данных.' },
   tr: { locBtn: '📍 Bulunduğum yerde hava', locHint: '📍 Alttaki düğmeye basın — konumunuz için 15 günlük tahmin.\nYa da şehir adı yazın, örneğin: <i>Antalya</i>', nf: '🔎 Şehir bulunamadı. Farklı yazmayı deneyin veya 📍 konum gönderin.', pick: '🔎 Hangisi?', head: '15 günlük tahmin', none: 'yağışsız', rain: 'yağmur', snow: 'kar', ms: 'm/s', mm: 'mm', vid: '🎬 Ülke videosu', src: 'ECMWF, NOAA, DWD topluluğu · ~50 km ızgara', far: 'Bu nokta için veri yok.' },
 };
+const PK = {  // words of the point forecast
+  ru: { brief: 'Коротко', allDry: 'Все 15 дней без существенных осадков', wetNow: 'Осадки возможны уже сегодня', dryUntil: 'Сухо до {d} включительно',
+    wetDays: 'Дней с осадками: {n}; сильнее всего {peak}', snowOn: 'Снег: {d}', cooler: 'Похолодание: днём с {a} до {b} к концу периода', warmer: 'Потепление: днём с {a} до {b} к концу периода',
+    steady: 'Без резких перемен температуры: днём от {a} до {b}', frost: 'Заморозки до {t} ({d})', wind: 'Сильный ветер до {w} м/с ({d})', windW: 'ветер',
+    dry: 'без осадков', rain: 'дождь', snow: 'снег', next: 'Дальше по дням', cDay: 'День', cT: 'Темп.', cP: 'Осадки', run: 'Расчёт',
+    note: 'Осадки: вероятность за сутки и среднее количество по ансамблю моделей.' },
+  uz: { brief: 'Qisqacha', allDry: '15 kun davomida sezilarli yog‘in kutilmaydi', wetNow: 'Bugunoq yog‘in bo‘lishi mumkin', dryUntil: '{d} gacha quruq',
+    wetDays: 'Yog‘inli kunlar: {n}; eng kuchlisi {peak}', snowOn: 'Qor: {d}', cooler: 'Sovish: kunduzi {a} dan {b} gacha', warmer: 'Isish: kunduzi {a} dan {b} gacha',
+    steady: 'Harorat keskin o‘zgarmaydi: kunduzi {a} … {b}', frost: 'Sovuq {t} gacha ({d})', wind: 'Kuchli shamol {w} m/s gacha ({d})', windW: 'shamol',
+    dry: 'yog‘insiz', rain: 'yomg‘ir', snow: 'qor', next: 'Keyingi kunlar', cDay: 'Kun', cT: 'Harorat', cP: 'Yog‘in', run: 'Hisob',
+    note: 'Yog‘in: sutkalik ehtimol va modellar ansamblining o‘rtacha miqdori.' },
+  tr: { brief: 'Özet', allDry: '15 gün boyunca kayda değer yağış yok', wetNow: 'Bugünden itibaren yağış olası', dryUntil: '{d} dahil kuru',
+    wetDays: 'Yağışlı gün: {n}; en kuvvetlisi {peak}', snowOn: 'Kar: {d}', cooler: 'Soğuma: gündüz {a} → {b}', warmer: 'Isınma: gündüz {a} → {b}',
+    steady: 'Sıcaklıkta sert değişim yok: gündüz {a} … {b}', frost: 'Don {t} ({d})', wind: 'Kuvvetli rüzgâr {w} m/s ({d})', windW: 'rüzgâr',
+    dry: 'yağışsız', rain: 'yağmur', snow: 'kar', next: 'Sonraki günler', cDay: 'Gün', cT: 'Sıcaklık', cP: 'Yağış', run: 'Hesaplama',
+    note: 'Yağış: günlük olasılık ve model topluluğunun ortalama miktarı.' },
+};
 const locKb = lang => ({ keyboard: [[{ text: PT[lang].locBtn, request_location: true }]], resize_keyboard: true, is_persistent: true });
 async function places(env) { const r = await fetch(`${base(env)}/prob/places.json`, { cf: { cacheTtl: 3600 } }); return r.ok ? r.json() : []; }
 const norm = t => String(t || '').toLowerCase().replace(/[‘’ʻʼ`´']/g, "'").replace(/ё/g, 'е').replace(/[^\p{L}\p{N}' -]/gu, '').trim();
@@ -320,22 +337,47 @@ async function pointForecast(env, chat, lang, lat, lon, place) {
     if (p >= 30 && isFinite(t)) d.wetT.push(t);
     days.set(mid, d);
   }
-  const today = new Date(Date.now() + off * 3600e3).toISOString().slice(0, 10), tmrw = new Date(Date.now() + (off + 24) * 3600e3).toISOString().slice(0, 10), f = v => `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace('-0°', '0°');
-  const lines = [];
+  const today = new Date(Date.now() + off * 3600e3).toISOString().slice(0, 10), tmrw = new Date(Date.now() + (off + 24) * 3600e3).toISOString().slice(0, 10);
+  const f = v => `${v > 0.5 ? '+' : ''}${Math.round(v)}`.replace(/^-0$/, '0'), deg = v => f(v) + '°';
+  const K = PK[lang], D = [];
   for (const [d, x] of days) {
     if (d < today || !x.T.length) continue;
     const snow = x.wetT.length ? x.wetT.reduce((a, b) => a + b) / x.wetT.length <= 0.5 : Math.min(...x.T) < -1;
     const cm = x.C.length ? x.C.reduce((a, b) => a + b) / x.C.length : 0, p = Math.round(x.P);
-    const ic = p >= 60 ? (snow ? '❄️' : '🌧') : p >= 35 ? (snow ? '🌨' : '🌦') : cm > 0.7 ? '☁️' : cm > 0.35 ? '⛅' : '☀️';
-    const pr = p < 20 ? L.none : `${snow ? L.snow : L.rain} ${p} %${x.A >= 0.5 ? ` (~${x.A < 9.5 ? x.A.toFixed(0) : Math.round(x.A)} ${L.mm})` : ''}`;
-    const wind = isFinite(x.W) && x.W > 0 ? `, 💨 ${Math.round(x.W)} ${L.ms}` : '';
-    const word = d === today ? T[lang].tdy : d === tmrw ? T[lang].tmw : '', lbl = word ? `${word}, ${dayLabel(d, lang)}` : dayLabel(d, lang);
-    lines.push(`${ic} <b>${lbl}</b> ${f(Math.min(...x.T))}…${f(Math.max(...x.T))}, ${pr}${wind}`);
+    D.push({ d, lo: Math.min(...x.T), hi: Math.max(...x.T), p, mm: x.A, w: x.W, snow, ic: p >= 60 ? (snow ? '❄️' : '🌧') : p >= 35 ? (snow ? '🌨' : '🌦') : cm > 0.7 ? '☁️' : cm > 0.35 ? '⛅' : '☀️' });
   }
-  if (!lines.length) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
+  if (!D.length) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
+  const wd = d => { const t = new Date(d + 'T12:00:00Z'); return `${WD[lang][t.getUTCDay()]} ${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`; };
+  const wet = x => x.p >= 40, pr = x => !wet(x) && x.p < 20 ? K.dry : `${x.snow ? K.snow : K.rain} ${x.p} %${x.mm >= 0.5 ? `, ~${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : ''}`;
+  // short analysis for the reader
+  const sum = [], firstWet = D.findIndex(wet), wetDays = D.filter(wet);
+  if (firstWet < 0) sum.push(K.allDry);
+  else {
+    sum.push(firstWet === 0 ? K.wetNow : K.dryUntil.replace('{d}', wd(D[firstWet - 1].d)));
+    const peak = wetDays.reduce((a, b) => (b.mm > a.mm || (b.mm === a.mm && b.p > a.p) ? b : a));
+    sum.push(K.wetDays.replace('{n}', wetDays.length).replace('{peak}', `${wd(peak.d)} — ${peak.p} %${peak.mm >= 1 ? `, ~${Math.round(peak.mm)} ${L.mm}` : ''}`));
+    if (wetDays.some(x => x.snow)) sum.push(K.snowOn.replace('{d}', wetDays.filter(x => x.snow).slice(0, 3).map(x => wd(x.d)).join(', ')));
+  }
+  const n3 = Math.min(3, D.length), hi0 = D.slice(0, n3).reduce((a, x) => a + x.hi, 0) / n3, hi1 = D.slice(-n3).reduce((a, x) => a + x.hi, 0) / n3;
+  if (hi1 - hi0 <= -4) sum.push(K.cooler.replace('{a}', deg(hi0)).replace('{b}', deg(hi1)));
+  else if (hi1 - hi0 >= 4) sum.push(K.warmer.replace('{a}', deg(hi0)).replace('{b}', deg(hi1)));
+  else sum.push(K.steady.replace('{a}', deg(Math.min(...D.map(x => x.hi)))).replace('{b}', deg(Math.max(...D.map(x => x.hi)))));
+  const frost = D.reduce((a, x) => (x.lo < a.lo ? x : a));
+  if (frost.lo < 0) sum.push(K.frost.replace('{t}', deg(frost.lo)).replace('{d}', wd(frost.d)));
+  const windy = D.reduce((a, x) => (x.w > a.w ? x : a));
+  if (isFinite(windy.w) && windy.w >= 10) sum.push(K.wind.replace('{w}', Math.round(windy.w)).replace('{d}', wd(windy.d)));
+  // the next days as an aligned table
+  const pad = (t, n) => t + ' '.repeat(Math.max(0, n - [...t].length));
+  const bar = p => { const k = Math.max(0, Math.min(5, Math.round(p / 20))); return '█'.repeat(k) + '░'.repeat(5 - k); };
+  const rows = D.slice(2).map(x => `${pad(wd(x.d), 9)}${pad(`${f(x.lo)}…${f(x.hi)}°`, 10)}${bar(x.p)} ${pad(x.p < 20 ? '—' : `${x.p}%`, 4)}${x.mm >= 0.5 ? ` ${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : ''}${x.snow && x.p >= 20 ? ' ❄' : ''}`);
   const nm = place ? `${FLAG[place[4]] || '📍'} <b>${esc(pname(place, lang))}</b>` : `📍 <b>${lat.toFixed(2)}, ${lon.toFixed(2)}</b>`;
-  const upd = new Date(run); const u = `${String(upd.getUTCDate()).padStart(2, '0')}.${String(upd.getUTCMonth() + 1).padStart(2, '0')} ${String(upd.getUTCHours()).padStart(2, '0')}:00 UTC`;
-  const text = `${nm} · ${L.head}\n<i>${T[lang].upd}: ${u}</i>\n\n${[lines.slice(0, 2).join('\n'), lines.slice(2).join('\n')].filter(Boolean).join('\n\n')}\n\n<i>${L.src}</i>`;
+  const loc = new Date(run + off * 3600e3), u = `${String(loc.getUTCDate()).padStart(2, '0')}.${String(loc.getUTCMonth() + 1).padStart(2, '0')} ${String(loc.getUTCHours()).padStart(2, '0')}:00`;
+  const day = (x, w) => `${x.ic} <b>${w}</b> · ${wd(x.d)}\n      ${deg(x.lo)}…${deg(x.hi)} · ${pr(x)}${isFinite(x.w) && x.w >= 5 ? ` · ${K.windW} ${Math.round(x.w)} ${L.ms}` : ''}`;
+  const text = [`${nm} · ${L.head}`, `<i>${K.run} ${u} (UTC${off >= 0 ? '+' : ''}${off}) · ECMWF, NOAA, DWD</i>`, '',
+    `<b>${K.brief}</b>`, ...sum.map(x => `▸ ${x}`), '',
+    day(D[0], D[0].d === today ? T[lang].tdy : wd(D[0].d)), ...(D[1] ? [day(D[1], D[1].d === tmrw ? T[lang].tmw : wd(D[1].d))] : []), '',
+    ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc(pad(K.cDay, 9) + pad(K.cT, 10) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
+    `<i>${K.note}</i>`].join('\n');
   const kb = place && NAMES[place[4]] ? { inline_keyboard: [[{ text: L.vid, callback_data: `C:${lang}:${place[4]}` }]] } : undefined;
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
 }
