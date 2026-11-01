@@ -63,6 +63,7 @@ const HELP = {
 
 <b>Shaxsiy chatda</b>
 /start — til va davlatni tanlash
+📍 <b>Joylashuv</b> yuboring yoki <b>shahar nomini</b> yozing — dunyoning istalgan joyi uchun 15 kunlik prognoz
 📅 <b>Bugun va ertaga</b> — asosiy shahar bo‘yicha qisqa prognoz
 🗓 <b>Kunlar bo‘yicha</b> — 15 kun
 🏙 <b>Shaharlar</b> — istalgan shahar uchun prognoz
@@ -86,6 +87,7 @@ Ma’lumot: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Kuniga 2 marta yangilanadi.
 
 <b>В личном чате</b>
 /start — выбрать язык и страну
+📍 Отправьте <b>геолокацию</b> или напишите <b>название города</b> — прогноз на 15 дней для любой точки мира
 📅 <b>Сегодня и завтра</b> — коротко по главному городу
 🗓 <b>По дням</b> — все 15 дней
 🏙 <b>Города</b> — прогноз для любого города страны
@@ -109,6 +111,7 @@ Ma’lumot: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Kuniga 2 marta yangilanadi.
 
 <b>Özel sohbette</b>
 /start — dil ve ülke seçimi
+📍 <b>Konum</b> gönderin veya <b>şehir adı</b> yazın — dünyanın her yeri için 15 günlük tahmin
 📅 <b>Bugün ve yarın</b> — ana şehir için kısa tahmin
 🗓 <b>Günlere göre</b> — 15 gün
 🏙 <b>Şehirler</b> — herhangi bir şehir için tahmin
@@ -151,7 +154,7 @@ export default {
     return new Response('ok');
   },
   async scheduled(ev, env, ctx) {
-    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) await alertTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
+    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await staleTick(env); } })().catch(e => console.log('broadcast', e && e.stack)));
   },
 };
 
@@ -272,6 +275,80 @@ async function alertTick(env) {
     await env.DB.prepare('UPDATE subs SET alert_run = ?2 WHERE chat_id = ?1').bind(s.chat_id, A.run).run();
   }
 }
+/* ---------- forecast for any point: the user's location or a searched town (site/prob/pt, prob/points.py) ---------- */
+const PT = {
+  uz: { locBtn: '📍 Mening joyimdagi ob-havo', locHint: '📍 Pastdagi tugmani bosing — joylashuvingiz bo‘yicha 15 kunlik prognoz.\nYoki shahar nomini yozing, masalan: <i>Namangan</i>', nf: '🔎 Bunday shahar topilmadi. Boshqacha yozib ko‘ring yoki 📍 joylashuvni yuboring.', pick: '🔎 Qaysi biri?', head: '15 kunlik prognoz', none: 'yog‘insiz', rain: 'yomg‘ir', snow: 'qor', ms: 'm/s', mm: 'mm', vid: '🎬 Davlat videosi', src: 'ECMWF, NOAA, DWD ansambli · ~50 km to‘r', far: 'Bu nuqta uchun ma’lumot yo‘q.' },
+  ru: { locBtn: '📍 Погода у меня', locHint: '📍 Нажмите кнопку внизу — прогноз на 15 дней для вашего места.\nИли напишите название города, например: <i>Наманган</i>', nf: '🔎 Не нашла такой город. Попробуйте написать иначе или отправьте 📍 геолокацию.', pick: '🔎 Какой из них?', head: 'Прогноз на 15 дней', none: 'без осадков', rain: 'дождь', snow: 'снег', ms: 'м/с', mm: 'мм', vid: '🎬 Видео страны', src: 'Ансамбль ECMWF, NOAA, DWD · сетка ~50 км', far: 'Для этой точки нет данных.' },
+  tr: { locBtn: '📍 Bulunduğum yerde hava', locHint: '📍 Alttaki düğmeye basın — konumunuz için 15 günlük tahmin.\nYa da şehir adı yazın, örneğin: <i>Antalya</i>', nf: '🔎 Şehir bulunamadı. Farklı yazmayı deneyin veya 📍 konum gönderin.', pick: '🔎 Hangisi?', head: '15 günlük tahmin', none: 'yağışsız', rain: 'yağmur', snow: 'kar', ms: 'm/s', mm: 'mm', vid: '🎬 Ülke videosu', src: 'ECMWF, NOAA, DWD topluluğu · ~50 km ızgara', far: 'Bu nokta için veri yok.' },
+};
+const locKb = lang => ({ keyboard: [[{ text: PT[lang].locBtn, request_location: true }]], resize_keyboard: true, is_persistent: true });
+async function places(env) { const r = await fetch(`${base(env)}/prob/places.json`, { cf: { cacheTtl: 3600 } }); return r.ok ? r.json() : []; }
+const norm = t => String(t || '').toLowerCase().replace(/[‘’ʻʼ`´']/g, "'").replace(/ё/g, 'е').replace(/[^\p{L}\p{N}' -]/gu, '').trim();
+const pname = (p, lang) => (lang === 'uz' ? p[1] || p[2] : lang === 'tr' ? p[3] || p[2] : p[0] || p[2]);
+async function searchPlaces(env, q) {
+  q = norm(q); if (q.length < 2) return [];
+  const P = await places(env), hit = [], part = [];
+  for (const p of P) {
+    const names = [p[0], p[1], p[2], p[3]].map(norm).filter(Boolean);
+    if (names.some(n => n === q)) hit.push(p); else if (names.some(n => n.startsWith(q))) part.push(p);
+  }
+  return [...hit, ...part].slice(0, 8);
+}
+async function nearestPlace(env, lat, lon, km = 35) {
+  let best = null, bd = km;
+  for (const p of await places(env)) { const d = Math.hypot((p[5] - lat) * 111, (p[6] - lon) * 111 * Math.cos(lat * Math.PI / 180)); if (d < bd) { bd = d; best = p; } }
+  return best;
+}
+async function pointForecast(env, chat, lang, lat, lon, place) {
+  const L = PT[lang], I = await (await fetch(`${base(env)}/prob/pt/index.json`, { cf: { cacheTtl: 600 } })).json().catch(() => null);
+  if (!I || lat > 80 || lat <= -60) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
+  const top = Math.ceil(lat / I.tile) * I.tile, left = Math.floor(lon / I.tile) * I.tile, n = I.n, S = I.steps.length;
+  const r = await fetch(`${base(env)}/prob/pt/${top}_${left}.bin`, { cf: { cacheTtl: 600 } });
+  if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
+  const B = new Uint8Array(await r.arrayBuffer()), fy = (top - lat) / I.d, fx = (lon - left) / I.d;
+  const y0 = Math.min(n - 2, Math.floor(fy)), x0 = Math.min(n - 2, Math.floor(fx)), ay = fy - y0, ax = fx - x0;
+  const val = (s, v) => { let sum = 0, w = 0;
+    for (const [dy, dx, k] of [[0, 0, (1 - ay) * (1 - ax)], [0, 1, (1 - ay) * ax], [1, 0, ay * (1 - ax)], [1, 1, ay * ax]]) { const b = B[((s * 5 + v) * n + y0 + dy) * n + x0 + dx]; if (b !== 255) { sum += b * k; w += k; } }
+    return w ? sum / w : NaN; };
+  const off = place && ['TR', 'RU', 'BY', 'MD'].includes(place[4]) ? (place[4] === 'RU' ? Math.max(2, Math.min(12, Math.round(lon / 15))) : 3) : Math.max(-11, Math.min(12, Math.round(lon / 15)));
+  const run = Date.parse(I.run), days = new Map();
+  for (let s = 0; s < S; s++) {
+    const mid = new Date(run + (I.steps[s] - I.win[s] / 2 + off) * 3600e3).toISOString().slice(0, 10);
+    const d = days.get(mid) || { P: 0, T: [], A: 0, C: [], W: 0, wetT: [] };
+    const p = val(s, 0) / 2.5, t = val(s, 1) / 2 - 60, c = val(s, 2) / 250, w = val(s, 3) / 5, a = Math.expm1(val(s, 4) / 40);
+    if (isFinite(p)) d.P = Math.max(d.P, p); if (isFinite(t)) d.T.push(t); if (isFinite(a)) d.A += a; if (isFinite(c)) d.C.push(c); if (isFinite(w)) d.W = Math.max(d.W, w);
+    if (p >= 30 && isFinite(t)) d.wetT.push(t);
+    days.set(mid, d);
+  }
+  const today = new Date(Date.now() + off * 3600e3).toISOString().slice(0, 10), tmrw = new Date(Date.now() + (off + 24) * 3600e3).toISOString().slice(0, 10), f = v => `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace('-0°', '0°');
+  const lines = [];
+  for (const [d, x] of days) {
+    if (d < today || !x.T.length) continue;
+    const snow = x.wetT.length ? x.wetT.reduce((a, b) => a + b) / x.wetT.length <= 0.5 : Math.min(...x.T) < -1;
+    const cm = x.C.length ? x.C.reduce((a, b) => a + b) / x.C.length : 0, p = Math.round(x.P);
+    const ic = p >= 60 ? (snow ? '❄️' : '🌧') : p >= 35 ? (snow ? '🌨' : '🌦') : cm > 0.7 ? '☁️' : cm > 0.35 ? '⛅' : '☀️';
+    const pr = p < 20 ? L.none : `${snow ? L.snow : L.rain} ${p} %${x.A >= 0.5 ? ` (~${x.A < 9.5 ? x.A.toFixed(0) : Math.round(x.A)} ${L.mm})` : ''}`;
+    const wind = isFinite(x.W) && x.W > 0 ? `, 💨 ${Math.round(x.W)} ${L.ms}` : '';
+    const word = d === today ? T[lang].tdy : d === tmrw ? T[lang].tmw : '', lbl = word ? `${word}, ${dayLabel(d, lang)}` : dayLabel(d, lang);
+    lines.push(`${ic} <b>${lbl}</b> ${f(Math.min(...x.T))}…${f(Math.max(...x.T))}, ${pr}${wind}`);
+  }
+  if (!lines.length) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
+  const nm = place ? `${FLAG[place[4]] || '📍'} <b>${esc(pname(place, lang))}</b>` : `📍 <b>${lat.toFixed(2)}, ${lon.toFixed(2)}</b>`;
+  const upd = new Date(run); const u = `${String(upd.getUTCDate()).padStart(2, '0')}.${String(upd.getUTCMonth() + 1).padStart(2, '0')} ${String(upd.getUTCHours()).padStart(2, '0')}:00 UTC`;
+  const text = `${nm} · ${L.head}\n<i>${T[lang].upd}: ${u}</i>\n\n${[lines.slice(0, 2).join('\n'), lines.slice(2).join('\n')].filter(Boolean).join('\n\n')}\n\n<i>${L.src}</i>`;
+  const kb = place && NAMES[place[4]] ? { inline_keyboard: [[{ text: L.vid, callback_data: `C:${lang}:${place[4]}` }]] } : undefined;
+  return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
+}
+// the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
+async function staleTick(env) {
+  const M = await manifest(env); if (!M || !M.run) return;
+  const age = (Date.now() - Date.parse(M.run)) / 3600e3;
+  if (age < 33) return;
+  const last = +(await kv(env, 'stale_at') || 0), admin = await kv(env, 'admin');
+  if (!admin || Date.now() - last < 12 * 3600e3) return;
+  await setKv(env, 'stale_at', String(Date.now()));
+  await tg(env, 'sendMessage', { chat_id: admin, text: `⚠️ Данные сайта и бота не обновлялись ${Math.round(age)} ч (последний расчёт ${M.run.slice(0, 16)} UTC).\nПроверьте GitHub Actions: https://github.com/otabekvafoev92-del/ob-havo-ecmwf/actions`, disable_web_page_preview: true });
+}
 const dayLabel = (d, lang) => { const dt = new Date(d + 'T12:00:00Z'); return `${WD[lang][dt.getUTCDay()]} ${String(dt.getUTCDate()).padStart(2, '0')}.${String(dt.getUTCMonth() + 1).padStart(2, '0')}`; };
 const localToday = off => new Date(Date.now() + (off || 0) * 3600e3).toISOString().slice(0, 10);
 function forecastText(item, lang, name, id, opt = {}) {
@@ -375,8 +452,10 @@ async function handle(up, env) {
   if (kind === 'S') {  // first language choice after /start: the guide, then the countries
     await saveUser(env, chat.id, { lang });
     await tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
+    await tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].locHint, parse_mode: 'HTML', reply_markup: locKb(lang) });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
   }
+  if (kind === 'Q') { const [, , la, lo] = cb.data.split(':'); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 5)); }
   if (kind === 'H') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
   if (kind === 'P') return sendGuide(env, chat.id, lang);
   if (kind === 'M') { await saveUser(env, chat.id, { lang, mode: 'contact' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk }); }
@@ -473,7 +552,19 @@ async function privateMsg(msg, env) {
   if (cmd === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
   if (cmd === 'bugun' || cmd === 'today') return sendToday(env, chat.id, u && u.lang && T[u.lang] ? u.lang : cmd === 'today' ? 'ru' : 'uz', (u && NAMES[u.region] && u.region) || 'UZ');
   if (cmd === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
+  if (msg.location) {  // weather right here
+    const { latitude: la, longitude: lo } = msg.location;
+    await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'typing' });
+    return pointForecast(env, chat.id, lang, la, lo, await nearestPlace(env, la, lo));
+  }
   if (!text) return;
+  if (!cmd && u && u.lang) {  // a town name: search it anywhere in the world
+    const found = await searchPlaces(env, text);
+    if (found.length === 1 || (found.length && norm([found[0][0], found[0][1], found[0][2], found[0][3]].find(x => norm(x) === norm(text)) || '') === norm(text) && !found.slice(1).some(p => [p[0], p[1], p[2], p[3]].some(x => norm(x) === norm(text)))))
+      return pointForecast(env, chat.id, lang, found[0][5], found[0][6], found[0]);
+    if (found.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].pick, reply_markup: { inline_keyboard: found.map(p => [{ text: `${FLAG[p[4]] || '📍'} ${pname(p, lang)}${NAMES[p[4]] ? ', ' + NAMES[p[4]][lang] : ' (' + p[4] + ')'}`, callback_data: `Q:${lang}:${p[5]}:${p[6]}` }]) } });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].nf, reply_markup: locKb(lang) });
+  }
   const kb = langKb('S');  // a returning user goes straight back to the country they chose last time
   if (u && u.region && NAMES[u.region] && T[u.lang]) kb.inline_keyboard.push([{ text: `▶️ ${FLAG[u.region]} ${NAMES[u.region][u.lang]}`, callback_data: `C:${u.lang}:${u.region}` }]);
   return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.hi + '\n\n' + T.ru.hi.split('\n').slice(0, 2).join('\n') + '\nВыберите язык:', parse_mode: 'HTML', reply_markup: kb });

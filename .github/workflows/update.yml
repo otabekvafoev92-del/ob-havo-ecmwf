@@ -1,5 +1,9 @@
 name: Update ECMWF forecast
 
+# Parallel jobs (about 2 h instead of 3–4 h in one job):
+#   charts ─────────────────────────────┐
+#   fetch ── render × 4 (cis-a, cis-b,  ├── assemble ── deploy
+#            cities, world) ────────────┘
 on:
   schedule:
     # 09:20 and 21:20 UTC = 14:20 and 02:20 in Tashkent (00/12 UTC runs are ready by then)
@@ -19,9 +23,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  charts:
     runs-on: ubuntu-latest
-    timeout-minutes: 355
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,15 +41,92 @@ jobs:
         run: |
           pip install eccodes numpy requests pillow
           python pipeline/wind.py site/data "$(node -p "require('./site/data/forecast.json').run")"
-      - name: Precipitation probability for the CIS and Turkey (multi-model)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: data
+          path: site/data
+          retention-days: 1
+
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Multimodel precipitation, temperature, clouds and wind (ECMWF, NOAA, DWD)
         run: |
-          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core >/dev/null
-          pip install scipy matplotlib pyproj
+          pip install eccodes numpy requests
           python prob/fetch.py prob.npz
-          python prob/render.py prob.npz site/prob --wx wx.npz --city-videos UZ,KZ --city-langs ru,uz
-          python prob/render.py glob.npz site/prob --wx wx.npz --geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC --append
-          python prob/export_5d.py glob.npz wx.npz site/prob/d5
-          rm -rf site/prob/frames
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npz
+          path: '*.npz'
+          retention-days: 1
+
+  render:
+    needs: fetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [cis-a, cis-b, cities, world]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npz
+      - name: Render ${{ matrix.part }}
+        run: |
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install numpy scipy matplotlib pyproj pillow
+          case "${{ matrix.part }}" in
+            cis-a)  python prob/render.py prob.npz out --wx wx.npz --regions cis,UZ,KZ,KG,TJ,TM ;;
+            cis-b)  python prob/render.py prob.npz out --wx wx.npz --regions AZ,AM,BY,MD,RU,TR ;;
+            cities) python prob/render.py prob.npz out --wx wx.npz --regions UZ,KZ --products '' --city-videos UZ,KZ --city-langs ru,uz ;;
+            world)  python prob/render.py glob.npz out --wx wx.npz --geo prob/geo_world.json --regions world,EU,AS,AF,NA,SA,OC
+                    python prob/export_5d.py glob.npz wx.npz out/d5
+                    python prob/points.py glob.npz wx.npz out ;;
+          esac
+          rm -rf out/frames
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prob-${{ matrix.part }}
+          path: out
+          retention-days: 1
+
+  assemble:
+    needs: [charts, render]
+    if: always() && needs.charts.result == 'success' && needs.render.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: data
+          path: site/data
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: prob-*
+          path: parts
+      - name: Join the render parts (the city videos last)
+        run: |
+          ls parts
+          python prob/merge.py site/prob parts/prob-world parts/prob-cis-a parts/prob-cis-b parts/prob-cities
+          test -f site/prob/manifest.json
       - name: Send Telegram summary
         if: github.event_name != 'push'
         env:
@@ -61,7 +142,9 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           PROB_TG: ${{ vars.PROB_TG }}
-        run: python prob/telegram_send.py site/prob
+        run: |
+          pip install requests
+          python prob/telegram_send.py site/prob
       - name: Point the site at the bot worker (visit counter, Telegram)
         if: vars.BOT_URL != ''
         run: sed -i 's|<meta name="osmon-api" content="">|<meta name="osmon-api" content="${{ vars.BOT_URL }}">|' site/index.html
@@ -71,7 +154,7 @@ jobs:
           path: site
 
   deploy:
-    needs: build
+    needs: assemble
     runs-on: ubuntu-latest
     environment:
       name: github-pages

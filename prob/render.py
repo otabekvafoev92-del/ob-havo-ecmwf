@@ -883,13 +883,13 @@ def main():
     ap.add_argument('--wx', default='', help='wx.npz: GEFS mean temperature and cloud cover (preferred over --globe-data)')
     ap.add_argument('--products', default='prob,temp,cloud,wind')
     ap.add_argument('--geo', default='', help='boundary pack (default prob/geo_prob.json; continents: prob/geo_world.json)')
-    ap.add_argument('--dpi', type=int, default=200, help='frame resolution: 200 → 1440×1800 (portrait 4:5), sharp when zoomed in')
-    ap.add_argument('--width', type=int, default=1440, help='video width in pixels')
-    ap.add_argument('--crf', type=int, default=24, help='video quality (lower = sharper, bigger files)')
+    ap.add_argument('--dpi', type=int, default=150, help='frame resolution: 150 → 1080×1350 (portrait 4:5, phone screens)')
+    ap.add_argument('--width', type=int, default=1080, help='video width in pixels')
+    ap.add_argument('--crf', type=int, default=25, help='video quality (lower = sharper, bigger files)')
     ap.add_argument('--append', action='store_true', help='add these maps to an existing manifest.json instead of replacing it')
     ap.add_argument('--city-videos', default='', help='regions that also get one precipitation video per city, e.g. UZ,KZ')
     ap.add_argument('--city-langs', default='ru,uz', help='languages of the city videos')
-    ap.add_argument('--city-width', type=int, default=1080); ap.add_argument('--city-crf', type=int, default=27); ap.add_argument('--city-dpi', type=int, default=150)
+    ap.add_argument('--city-width', type=int, default=1080); ap.add_argument('--city-crf', type=int, default=28); ap.add_argument('--city-dpi', type=int, default=150)
     a = ap.parse_args()
     D = load(a.npz)
     P, models, members = probability(D)
@@ -897,7 +897,7 @@ def main():
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     sel = list(range(len(D['steps']))) if not a.steps else [list(D['steps']).index(int(x)) for x in a.steps.split(',')]
     if a.max_step: sel = [i for i in sel if int(D['steps'][i]) <= a.max_step]
-    tasks = [(r, a.langs.split(','), sel, out, a.fps, a.products.split(',')) for r in a.regions.split(',')]
+    tasks = [(r, a.langs.split(','), sel, out, a.fps, [p for p in a.products.split(',') if p]) for r in a.regions.split(',')]
     manifest = []
     import multiprocessing as mp
     if a.jobs > 1:
