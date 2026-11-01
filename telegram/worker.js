@@ -30,8 +30,9 @@ const T = {
     menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 Globus', rep: '📊 Hisobot',
     back: '↩️ Davlatlar', none: '⏳ Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.', tdy: 'Bugun', tmw: 'Ertaga', next: 'Keyingi kunlar',
     upd: 'Yangilandi', swipe: '🎬 Videoni suring: 🌧 yog‘in · 🌡 harorat · ☁️ bulutlar', bot: '🤖 Bot',
-    gHi: '👋 Salom! Men har kuni shu yerga ob-havoni video bilan yuboraman.\nAdmin: til, davlat va vaqtni tanlang 👇',
-    gSet: '✅ Tayyor! Har kuni soat {time} da (Toshkent vaqti) bu chatga prognoz yuboriladi: <b>{name}</b> ({lang}).\nO‘zgartirish: /sozla', gMulti: '📍 Davlatlarni tanlang (bir nechtasini ham), so‘ng «Tayyor» tugmasini bosing:', done: '✅ Tayyor', gNone: 'Kamida bitta davlatni tanlang.', gAdm: 'Faqat adminlar o‘zgartira oladi.', gLang: 'Tilni tanlang:', lang: 'o‘zbekcha',
+    gHi: '👋 Salom! Men har kuni shu yerga ob-havoni video bilan yuboraman.\nGuruh admini: til, davlat va vaqtni tanlang 👇 (/sozla)',
+    gSet: '✅ Tayyor! Har kuni soat {time} da (Toshkent vaqti) bu chatga prognoz yuboriladi: <b>{name}</b> ({lang}).\nO‘zgartirish: /sozla', gMulti: '📍 Davlatlarni tanlang (bir nechtasini ham), so‘ng «Tayyor» tugmasini bosing:', done: '✅ Tayyor', gNone: 'Kamida bitta davlatni tanlang.', gAdm: '⚙️ Guruh sozlamalarini faqat shu guruhning admini o‘zgartira oladi. Undan /sozla yozishini so‘rang.', gLang: 'Tilni tanlang:', lang: 'o‘zbekcha',
+    pdf: '📄 Yo‘riqnoma (PDF)', adm: '✉️ Adminga yozish', admAsk: '✍️ Bot adminiga xabaringizni yozing (matn, rasm yoki ovozli xabar) — men uni yetkazaman.\nBekor qilish: /cancel', admSent: '✅ Xabaringiz adminga yuborildi. Javob shu chatga keladi.', admAns: '💬 Admin javobi:', admOff: 'Admin hali ulanmagan, keyinroq urinib ko‘ring.', cancel: 'Bekor qilindi.', guideCap: '📄 Osmon bot — to‘liq yo‘riqnoma',
   },
   ru: {
     cities: '🏙 Города', cPick: '🏙 Выберите город:', cTitle: '🏙 Сегодня по городам', time: '⏰ Во сколько присылать прогноз в группу? (по Ташкенту)', help: 'ℹ️ Помощь',
@@ -39,8 +40,9 @@ const T = {
     menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 Глобус', rep: '📊 Отчёт',
     back: '↩️ Страны', none: '⏳ Данные ещё не готовы, попробуйте чуть позже.', tdy: 'Сегодня', tmw: 'Завтра', next: 'Дальше',
     upd: 'Обновлено', swipe: '🎬 Листайте видео: 🌧 осадки · 🌡 температура · ☁️ облака', bot: '🤖 Бот',
-    gHi: '👋 Привет! Я буду каждый день присылать сюда прогноз погоды с видео.\nАдминистратор, выберите язык, страны и время 👇',
-    gSet: '✅ Готово! Каждый день в {time} (по Ташкенту) в этот чат будет приходить прогноз: <b>{name}</b> ({lang}).\nИзменить: /settings', gMulti: '📍 Отметьте страны (можно несколько) и нажмите «Готово»:', done: '✅ Готово', gNone: 'Отметьте хотя бы одну страну.', gAdm: 'Менять настройки могут только администраторы.', gLang: 'Выберите язык:', lang: 'по-русски',
+    gHi: '👋 Привет! Я буду каждый день присылать сюда прогноз погоды с видео.\nАдминистратор группы: выберите язык, страны и время 👇 (/settings)',
+    gSet: '✅ Готово! Каждый день в {time} (по Ташкенту) в этот чат будет приходить прогноз: <b>{name}</b> ({lang}).\nИзменить: /settings', gMulti: '📍 Отметьте страны (можно несколько) и нажмите «Готово»:', done: '✅ Готово', gNone: 'Отметьте хотя бы одну страну.', gAdm: '⚙️ Настройки меняет только администратор этой группы. Попросите его написать /settings.', gLang: 'Выберите язык:', lang: 'по-русски',
+    pdf: '📄 Инструкция (PDF)', adm: '✉️ Написать админу', admAsk: '✍️ Напишите сообщение администратору бота (текст, фото или голосовое) — я передам.\nОтмена: /cancel', admSent: '✅ Сообщение отправлено администратору. Ответ придёт в этот чат.', admAns: '💬 Ответ администратора:', admOff: 'Администратор бота ещё не подключён, попробуйте позже.', cancel: 'Отменено.', guideCap: '📄 Бот Osmon — полная инструкция',
   },
   tr: {
     cities: '🏙 Şehirler', cPick: '🏙 Şehir seçin:', cTitle: '🏙 Bugün şehirlerde', time: '⏰ Tahmin gruba saat kaçta gönderilsin? (Taşkent saati)', help: 'ℹ️ Yardım',
@@ -48,8 +50,9 @@ const T = {
     menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 Küre', rep: '📊 Rapor',
     back: '↩️ Ülkeler', none: '⏳ Veriler henüz hazır değil, biraz sonra deneyin.', tdy: 'Bugün', tmw: 'Yarın', next: 'Sonraki günler',
     upd: 'Güncellendi', swipe: '🎬 Videoları kaydırın: 🌧 yağış · 🌡 sıcaklık · ☁️ bulutlar', bot: '🤖 Bot',
-    gHi: '👋 Merhaba! Her gün buraya videolu hava tahmini göndereceğim.\nYönetici: dil, ülke ve saati seçin 👇',
-    gSet: '✅ Hazır! Her gün {time}’da (Taşkent saati) bu sohbete tahmin gönderilecek: <b>{name}</b> ({lang}).\nDeğiştirmek için: /settings', gMulti: '📍 Ülkeleri işaretleyin (birden fazla olabilir) ve «Tamam»a basın:', done: '✅ Tamam', gNone: 'En az bir ülke seçin.', gAdm: 'Ayarları yalnızca yöneticiler değiştirebilir.', gLang: 'Dil seçin:', lang: 'Türkçe',
+    gHi: '👋 Merhaba! Her gün buraya videolu hava tahmini göndereceğim.\nGrup yöneticisi: dil, ülke ve saati seçin 👇 (/settings)',
+    gSet: '✅ Hazır! Her gün {time}’da (Taşkent saati) bu sohbete tahmin gönderilecek: <b>{name}</b> ({lang}).\nDeğiştirmek için: /settings', gMulti: '📍 Ülkeleri işaretleyin (birden fazla olabilir) ve «Tamam»a basın:', done: '✅ Tamam', gNone: 'En az bir ülke seçin.', gAdm: '⚙️ Ayarları yalnızca bu grubun yöneticisi değiştirebilir. Ondan /settings yazmasını isteyin.', gLang: 'Dil seçin:', lang: 'Türkçe',
+    pdf: '📄 Kılavuz (PDF)', adm: '✉️ Yöneticiye yaz', admAsk: '✍️ Bot yöneticisine mesajınızı yazın (metin, fotoğraf veya sesli mesaj), ileteceğim.\nİptal: /cancel', admSent: '✅ Mesajınız yöneticiye gönderildi. Cevap bu sohbete gelecek.', admAns: '💬 Yönetici cevabı:', admOff: 'Bot yöneticisi henüz bağlanmadı, daha sonra deneyin.', cancel: 'İptal edildi.', guideCap: '📄 Osmon botu — tam kılavuz',
   },
 };
 const HELP = {
@@ -70,6 +73,9 @@ const HELP = {
 3. Har kuni tanlangan vaqtda har bir davlat uchun post keladi: 3 ta video + bugun/ertaga + shaharlar.
 /bugun — guruhda hozirgi prognoz.
 
+✉️ <b>Adminga yozish</b> — savol yoki taklif, javob shu yerga keladi (/admin)
+📄 /guide — to‘liq yo‘riqnoma PDF faylda
+
 Ma’lumot: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Kuniga 2 marta yangilanadi.`,
   ru: `ℹ️ <b>Бот Osmon — инструкция</b>
 
@@ -88,6 +94,9 @@ Ma’lumot: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Kuniga 2 marta yangilanadi.
 3. Каждый день в выбранное время по каждой стране приходит пост: 3 видео + сегодня/завтра + погода по городам.
 /bugun — прогноз в группу прямо сейчас.
 
+✉️ <b>Написать админу</b> — вопрос или предложение, ответ придёт сюда (/admin)
+📄 /guide — полная инструкция в PDF
+
 Данные: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Обновление 2 раза в сутки.`,
   tr: `ℹ️ <b>Osmon botu — kılavuz</b>
 
@@ -103,6 +112,9 @@ Ma’lumot: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Kuniga 2 marta yangilanadi.
 1. Botu gruba ekleyin (kanalda yönetici olarak, gönderme izniyle).
 2. Yönetici /settings yazar: dil → ülkeler (birden fazla) → «Tamam» → gönderme saati.
 3. Her gün seçilen saatte her ülke için gönderi gelir: 3 video + bugün/yarın + şehirler.
+
+✉️ <b>Yöneticiye yaz</b> — soru veya öneri, cevap buraya gelir (/admin)
+📄 /guide — PDF olarak tam kılavuz
 
 Veri: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Günde 2 kez güncellenir.`,
 };
@@ -133,7 +145,7 @@ export default {
 
 async function setup(env, url) {
   const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post'] });
-  await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga' }, { command: 'today', description: 'Сегодня и завтра' }, { command: 'prognoz', description: '15 kunlik video' }, { command: 'help', description: 'Yordam / Помощь' }] });
+  await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga' }, { command: 'today', description: 'Сегодня и завтра' }, { command: 'prognoz', description: '15 kunlik video' }, { command: 'help', description: 'Yordam / Помощь' }, { command: 'guide', description: 'Yo‘riqnoma PDF / Инструкция PDF' }, { command: 'admin', description: 'Adminga yozish / Написать админу' }] });
   await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'help', description: 'Yordam / Помощь' }] });
   await tg(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: 'Osmon', web_app: { url: site(env, 'map') } } });
   await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода · Hava — 15 kun, 6 model (ECMWF, NOAA). Guruhlarga avtomatik prognoz.' });
@@ -175,9 +187,11 @@ function menuKb(env, lang, id) {
     [{ text: T[lang].today, callback_data: `T:${lang}:${id}` }, { text: T[lang].days, callback_data: `D:${lang}:${id}` }],
     [{ text: T[lang].cities, callback_data: `Y:${lang}:${id}` }, { text: T[lang].all, callback_data: `V:${lang}:${id}` }],
     [{ text: T[lang].rep, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].site, web_app: { url: site(env, 'map') } }],
+    [{ text: T[lang].help, callback_data: `H:${lang}` }, { text: T[lang].adm, callback_data: `M:${lang}` }],
     [{ text: T[lang].back, callback_data: `L:${lang}` }],
   ] };
 }
+const helpKb = lang => ({ inline_keyboard: [[{ text: T[lang].pdf, callback_data: `P:${lang}` }], [{ text: T[lang].adm, callback_data: `M:${lang}` }]] });
 // groups and channels cannot open Mini Apps from buttons: plain links
 const postKb = (env, lang, id, bot) => ({ inline_keyboard: [[{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
 
@@ -225,20 +239,19 @@ function allDays(item, lang) {
 async function handle(up, env) {
   if (up.my_chat_member) return memberChange(up.my_chat_member, env);
   const msg = up.message || up.channel_post, cb = up.callback_query;
+  if (msg && msg.chat.type === 'private') return privateMsg(msg, env);
   if (msg && msg.text) {
     const chat = msg.chat, group = chat.type !== 'private';
     const cmd = (msg.text.trim().match(/^\/(\w+)(@\w+)?/) || [])[1];
     if (group) {
-      if (cmd === 'sozla' || cmd === 'settings' || cmd === 'start') return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gLang + ' / ' + T.ru.gLang, reply_markup: langKb('GL') });
+      if (cmd === 'sozla' || cmd === 'settings' || cmd === 'start') {
+        if (!(await isAdmin(env, chat, msg.from, msg.sender_chat))) { const s = await sub(env, chat.id); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[(s && s.lang) || 'ru'].gAdm, reply_to_message_id: msg.message_id }); }
+        return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gLang + ' / ' + T.ru.gLang, reply_markup: langKb('GL') });
+      }
       if (cmd === 'help') { const s = await sub(env, chat.id); return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[(s && s.lang) || 'ru'], parse_mode: 'HTML' }); }
       if (cmd === 'bugun' || cmd === 'today') { const s = await sub(env, chat.id), regs = regionsOf(s).length ? regionsOf(s) : ['UZ']; for (const r of regs) await sendToday(env, chat.id, s ? s.lang : cmd === 'today' ? 'ru' : 'uz', r, true); return; }
       return;
     }
-    if (cmd === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP.ru + '\n\n' + HELP.uz, parse_mode: 'HTML' });
-    if (cmd === 'bugun') return sendToday(env, chat.id, 'uz', 'UZ');
-    if (cmd === 'today') return sendToday(env, chat.id, 'ru', 'UZ');
-    if (cmd === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.pick, reply_markup: countryKb('uz') });
-    return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.hi + '\n\n' + T.ru.hi.split('\n').slice(0, 2).join('\n') + '\nВыберите язык:', parse_mode: 'HTML', reply_markup: langKb() });
   }
   if (!cb) return;
   const chat = cb.message.chat, [kind, lang, id] = cb.data.split(':');
@@ -292,6 +305,15 @@ async function handle(up, env) {
     return tg(env, 'sendMessage', { chat_id: chat.id, text, parse_mode: 'HTML', reply_markup: kb });
   }
   await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
+  if (kind === 'S') {  // first language choice after /start: the guide, then the countries
+    await saveUser(env, chat.id, { lang });
+    await tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
+  }
+  if (kind === 'H') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
+  if (kind === 'P') return sendGuide(env, chat.id, lang);
+  if (kind === 'M') { await saveUser(env, chat.id, { lang, mode: 'contact' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk }); }
+  if (kind === 'L') await saveUser(env, chat.id, { lang });
   if (kind === 'L') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
   if (kind === 'C') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
   if (kind === 'T') return sendToday(env, chat.id, lang, id);
@@ -312,6 +334,81 @@ async function handle(up, env) {
     if (!r.ok) await tg(env, 'sendMessage', { chat_id: chat.id, text: `${T[lang].none}\n(${r.description || r.error_code || '?'})` });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menu, reply_markup: menuKb(env, lang, id) });
   }
+}
+
+/* ---------- private chat: commands, guide and messages to the bot's admin ---------- */
+async function privateMsg(msg, env) {
+  const chat = msg.chat, text = msg.text || '', cmd = (text.trim().match(/^\/(\w+)(@\w+)?/) || [])[1];
+  const u = await getUser(env, chat.id), lang = (u && T[u.lang] && u.lang) || (/^ru/.test(msg.from && msg.from.language_code || '') ? 'ru' : /^tr/.test(msg.from && msg.from.language_code || '') ? 'tr' : 'uz');
+  const admin = await kv(env, 'admin');
+  // the admin answers a user: Reply to the forwarded message
+  if (admin && String(chat.id) === admin && msg.reply_to_message && !cmd) {
+    const to = env.DB && await env.DB.prepare('SELECT chat, lang FROM msgmap WHERE mid = ?1').bind(msg.reply_to_message.message_id).first();
+    if (to) {
+      const L = T[to.lang] ? to.lang : 'ru';
+      await tg(env, 'sendMessage', { chat_id: to.chat, text: T[L].admAns });
+      const r = await tg(env, 'copyMessage', { chat_id: to.chat, from_chat_id: chat.id, message_id: msg.message_id });
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: r.ok ? '✅' : `⚠️ ${r.description || ''}`, reply_to_message_id: msg.message_id });
+    }
+  }
+  if (cmd === 'cancel') { await saveUser(env, chat.id, { mode: '' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].cancel }); }
+  if (cmd === 'admin') {
+    if (!admin && env.DB) {  // the first one to send /admin becomes the bot's admin
+      await setKv(env, 'admin', String(chat.id));
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: '👑 Siz bot adminisiz / Вы — администратор бота.\n\nFoydalanuvchilar xabarlari shu yerga keladi. Javob berish uchun xabarga Reply qiling.\nСообщения пользователей будут приходить сюда. Чтобы ответить, нажмите «Ответить» (Reply) на сообщении.' });
+    }
+    if (admin === String(chat.id)) {
+      const g = await env.DB.prepare('SELECT COUNT(*) AS n FROM subs').first(), us = await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first();
+      const list = (await env.DB.prepare('SELECT title, region, lang, post_hour FROM subs ORDER BY added DESC LIMIT 30').all()).results;
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: `👑 Admin\n👤 Users: ${us.n}\n👥 Groups: ${g.n}\n\n${list.map(x => `• ${x.title || '?'} — ${x.region} · ${x.lang} · ${hh(x.post_hour ?? POST_HOUR)}`).join('\n')}`.slice(0, 4000) });
+    }
+    await saveUser(env, chat.id, { lang, mode: 'contact' });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk });
+  }
+  if (u && u.mode === 'contact' && !cmd) {  // pass the message on to the admin
+    await saveUser(env, chat.id, { mode: '' });
+    if (!admin) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admOff });
+    const f = msg.from || {}, who = `✉️ <b>${esc([f.first_name, f.last_name].filter(Boolean).join(' ') || '?')}</b>${f.username ? ' @' + esc(f.username) : ''} · <code>${chat.id}</code> · ${lang}`;
+    const ids = [];
+    if (text) { const r = await tg(env, 'sendMessage', { chat_id: admin, text: `${who}\n\n${esc(text)}`.slice(0, 4000), parse_mode: 'HTML' }); if (r.ok) ids.push(r.result.message_id); }
+    else {
+      const h = await tg(env, 'sendMessage', { chat_id: admin, text: who, parse_mode: 'HTML' }); if (h.ok) ids.push(h.result.message_id);
+      const r = await tg(env, 'copyMessage', { chat_id: admin, from_chat_id: chat.id, message_id: msg.message_id }); if (r.ok) ids.push(r.result.message_id);
+    }
+    for (const id of ids) await env.DB.prepare('INSERT OR REPLACE INTO msgmap (mid, chat, lang) VALUES (?1, ?2, ?3)').bind(id, chat.id, lang).run();
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: ids.length ? T[lang].admSent : T[lang].admOff, reply_markup: { inline_keyboard: [[{ text: T[lang].back, callback_data: `L:${lang}` }]] } });
+  }
+  if (cmd === 'guide') return sendGuide(env, chat.id, lang);
+  if (cmd === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
+  if (cmd === 'bugun') return sendToday(env, chat.id, 'uz', 'UZ');
+  if (cmd === 'today') return sendToday(env, chat.id, 'ru', 'UZ');
+  if (cmd === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
+  if (!text) return;
+  await saveUser(env, chat.id, { name: (msg.from && msg.from.first_name) || '' });
+  return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.hi + '\n\n' + T.ru.hi.split('\n').slice(0, 2).join('\n') + '\nВыберите язык:', parse_mode: 'HTML', reply_markup: langKb('S') });
+}
+async function kv(env, k) { if (!env.DB) return null; await db(env); const r = await env.DB.prepare('SELECT v FROM meta WHERE k = ?1').bind(k).first(); return r ? r.v : null; }
+async function setKv(env, k, v) { await db(env); await env.DB.prepare('INSERT OR REPLACE INTO meta (k, v) VALUES (?1, ?2)').bind(k, v).run(); }
+async function getUser(env, id) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM users WHERE chat_id = ?1').bind(id).first(); }
+async function saveUser(env, id, f) {
+  if (!env.DB) return; await db(env);
+  await env.DB.prepare('INSERT INTO users (chat_id, lang, mode, name, seen) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(chat_id) DO UPDATE SET lang = COALESCE(?2, lang), mode = COALESCE(?3, mode), name = COALESCE(?4, name), seen = ?5')
+    .bind(id, f.lang ?? null, f.mode ?? null, f.name ?? null, new Date().toISOString()).run();
+}
+// the PDF guide: uploaded once from the repository, then re-sent by Telegram's file_id
+const GUIDE_V = 1;
+async function sendGuide(env, chat, lang) {
+  const key = `guide${GUIDE_V}_${lang}`, fid = await kv(env, key);
+  if (fid) { const r = await tg(env, 'sendDocument', { chat_id: chat, document: fid, caption: T[lang].guideCap }); if (r.ok) return r; }
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_document' });
+  const f = await fetch(`https://raw.githubusercontent.com/otabekvafoev92-del/ob-havo-ecmwf/main/telegram/guide/osmon_guide_${lang}.pdf`);
+  if (!f.ok) return tg(env, 'sendMessage', { chat_id: chat, text: HELP[lang], parse_mode: 'HTML' });
+  const fd = new FormData();
+  fd.append('chat_id', String(chat)); fd.append('caption', T[lang].guideCap);
+  fd.append('document', new Blob([await f.arrayBuffer()], { type: 'application/pdf' }), `Osmon_${lang === 'ru' ? 'instrukciya' : lang === 'tr' ? 'kilavuz' : 'yoriqnoma'}.pdf`);
+  const r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd })).json();
+  if (r.ok && r.result.document && env.DB) await setKv(env, key, r.result.document.file_id);
+  return r;
 }
 
 async function uploadGroup(env, chat, media) {
@@ -341,6 +438,8 @@ async function sendToday(env, chat, lang, id, group) {
 async function db(env) {
   await env.DB.exec('CREATE TABLE IF NOT EXISTS subs (chat_id INTEGER PRIMARY KEY, title TEXT, type TEXT, region TEXT, lang TEXT, last_run TEXT, added TEXT)');
   await env.DB.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS users (chat_id INTEGER PRIMARY KEY, lang TEXT, mode TEXT, name TEXT, seen TEXT)');
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS msgmap (mid INTEGER PRIMARY KEY, chat INTEGER, lang TEXT)');
   try { await env.DB.exec('ALTER TABLE subs ADD COLUMN post_hour INTEGER'); } catch (e) { /* already there */ }
 }
 async function sub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM subs WHERE chat_id = ?1').bind(chat).first(); }
@@ -358,9 +457,13 @@ async function memberChange(m, env) {
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gHi + '\n\n' + T.ru.gHi, reply_markup: langKb('GL') });
   }
 }
-async function isAdmin(env, chat, user) {
-  if (chat.type === 'channel') return true;  // only admins can press buttons under a channel's own post anyway
+async function isAdmin(env, chat, user, senderChat) {
+  if (chat.type === 'channel') return true;
+  if (senderChat && senderChat.id === chat.id) return true;  // an anonymous admin writes as the group itself
+  if (!user) return false;
+  if (user.id === 1087968824) return true;  // @GroupAnonymousBot = anonymous admin  // only admins can press buttons under a channel's own post anyway
   const r = await tg(env, 'getChatMember', { chat_id: chat.id, user_id: user.id });
+  if (!r.ok) console.log('getChatMember', chat.id, user.id, r.description);
   return r.ok && ['creator', 'administrator'].includes(r.result.status);
 }
 // one forecast post: the precipitation video with today, tomorrow and the next days in the caption, and link buttons
