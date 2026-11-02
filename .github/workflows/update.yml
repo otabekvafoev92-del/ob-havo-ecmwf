@@ -6,8 +6,8 @@ name: Update ECMWF forecast
 #            cities, world) ────────────┘
 on:
   schedule:
-    # 09:20 and 21:20 UTC = 14:20 and 02:20 in Tashkent (00/12 UTC runs are ready by then)
-    - cron: '20 9,21 * * *'
+    # every 3 hours: the newest complete model run as soon as it is out, and fresh "today and tomorrow by the hour" videos
+    - cron: '7 */3 * * *'
   workflow_dispatch: {}
   push:
     branches: [main]
@@ -57,7 +57,7 @@ jobs:
           python-version: '3.12'
       - name: Multimodel precipitation, temperature, clouds and wind (ECMWF, NOAA, DWD)
         run: |
-          pip install eccodes numpy requests
+          pip install eccodes numpy requests scipy
           python prob/fetch.py prob.npz
       - uses: actions/upload-artifact@v4
         with:

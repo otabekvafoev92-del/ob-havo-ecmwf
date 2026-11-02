@@ -44,7 +44,7 @@ def main():
             cols = [(int(round((left + 180) / 0.5)) + i) % Wd for i in range(N)]
             cube[:, :, rows][:, :, :, cols].tofile(pt / f'{top}_{left}.bin'); n += 1
     json.dump({'run': D['run'], 'steps': [int(s) for s in D['steps']], 'win': [int(x) for x in D['win']], 'tile': TILE, 'n': N, 'd': 0.5,
-               'vars': ['P', 'T', 'C', 'W', 'A'], 'models': models}, open(pt / 'index.json', 'w'))
+               'vars': ['P', 'T', 'C', 'W', 'A'], 'models': models, 'built': __import__('datetime').datetime.now(__import__('datetime').timezone.utc).strftime('%Y-%m-%dT%H:%M:00Z')}, open(pt / 'index.json', 'w'))
     # towns for the text search (both boundary packs, without duplicates)
     seen, places = set(), []
     for f in ('geo_prob.json', 'geo_world.json'):

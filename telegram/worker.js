@@ -292,17 +292,17 @@ const PK = {  // words of the point forecast
   ru: { brief: 'Коротко', allDry: 'Все 15 дней без существенных осадков', wetNow: 'Осадки возможны уже сегодня', dryUntil: 'Сухо до {d} включительно',
     wetDays: 'Дней с осадками: {n}; сильнее всего {peak}', snowOn: 'Снег: {d}', cooler: 'Похолодание: днём с {a} до {b} к концу периода', warmer: 'Потепление: днём с {a} до {b} к концу периода',
     steady: 'Без резких перемен температуры: днём от {a} до {b}', frost: 'Заморозки до {t} ({d})', wind: 'Сильный ветер до {w} м/с ({d})', windW: 'ветер',
-    dry: 'без осадков', rain: 'дождь', snow: 'снег', next: 'Дальше по дням', cDay: 'День', cT: 'Темп.', cP: 'Осадки', run: 'Расчёт',
+    dry: 'без осадков', rain: 'дождь', snow: 'снег', next: 'Дальше по дням', cDay: 'День', cT: 'Темп.', cP: 'Осадки', run: 'Расчёт', upd: 'Обновлено', model: 'расчёт моделей',
     note: 'Осадки: вероятность за сутки и среднее количество по ансамблю моделей.', noRain: 'Зонт не понадобится', rainAt: '{w} вероятен {a}–{b} ч (до {p} %)', wear: 'Одежда' },
   uz: { brief: 'Qisqacha', allDry: '15 kun davomida sezilarli yog‘in kutilmaydi', wetNow: 'Bugunoq yog‘in bo‘lishi mumkin', dryUntil: '{d} gacha quruq',
     wetDays: 'Yog‘inli kunlar: {n}; eng kuchlisi {peak}', snowOn: 'Qor: {d}', cooler: 'Sovish: kunduzi {a} dan {b} gacha', warmer: 'Isish: kunduzi {a} dan {b} gacha',
     steady: 'Harorat keskin o‘zgarmaydi: kunduzi {a} … {b}', frost: 'Sovuq {t} gacha ({d})', wind: 'Kuchli shamol {w} m/s gacha ({d})', windW: 'shamol',
-    dry: 'yog‘insiz', rain: 'yomg‘ir', snow: 'qor', next: 'Keyingi kunlar', cDay: 'Kun', cT: 'Harorat', cP: 'Yog‘in', run: 'Hisob',
+    dry: 'yog‘insiz', rain: 'yomg‘ir', snow: 'qor', next: 'Keyingi kunlar', cDay: 'Kun', cT: 'Harorat', cP: 'Yog‘in', run: 'Hisob', upd: 'Yangilandi', model: 'modellar hisobi',
     note: 'Yog‘in: sutkalik ehtimol va modellar ansamblining o‘rtacha miqdori.', noRain: 'Soyabon kerak bo‘lmaydi', rainAt: '{w} ehtimoli {a}–{b} soatlarda ({p} % gacha)', wear: 'Kiyim' },
   tr: { brief: 'Özet', allDry: '15 gün boyunca kayda değer yağış yok', wetNow: 'Bugünden itibaren yağış olası', dryUntil: '{d} dahil kuru',
     wetDays: 'Yağışlı gün: {n}; en kuvvetlisi {peak}', snowOn: 'Kar: {d}', cooler: 'Soğuma: gündüz {a} → {b}', warmer: 'Isınma: gündüz {a} → {b}',
     steady: 'Sıcaklıkta sert değişim yok: gündüz {a} … {b}', frost: 'Don {t} ({d})', wind: 'Kuvvetli rüzgâr {w} m/s ({d})', windW: 'rüzgâr',
-    dry: 'yağışsız', rain: 'yağmur', snow: 'kar', next: 'Sonraki günler', cDay: 'Gün', cT: 'Sıcaklık', cP: 'Yağış', run: 'Hesaplama',
+    dry: 'yağışsız', rain: 'yağmur', snow: 'kar', next: 'Sonraki günler', cDay: 'Gün', cT: 'Sıcaklık', cP: 'Yağış', run: 'Hesaplama', upd: 'Güncellendi', model: 'model çalıştırması',
     note: 'Yağış: günlük olasılık ve model topluluğunun ortalama miktarı.', noRain: 'Şemsiye gerekmez', rainAt: '{w} {a}–{b} saatlerinde olası (%{p} e kadar)', wear: 'Giyim' },
 };
 const WEAR = {
@@ -415,7 +415,8 @@ async function pointForecast(env, chat, lang, lat, lon, place) {
   const bar = p => { const k = Math.max(0, Math.min(5, Math.round(p / 20))); return '█'.repeat(k) + '░'.repeat(5 - k); };
   const rows = D.slice(2).map(x => `${pad(wd(x.d), 9)}${pad(`${f(x.lo)}…${f(x.hi)}°`, 10)}${bar(x.p)} ${pad(x.p < 20 ? '—' : `${x.p}%`, 4)}${x.mm >= 0.5 ? ` ${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : ''}${x.snow && x.p >= 20 ? ' ❄' : ''}`);
   const nm = place ? `${FLAG[place[4]] || '📍'} <b>${esc(pname(place, lang))}</b>` : `📍 <b>${lat.toFixed(2)}, ${lon.toFixed(2)}</b>`;
-  const loc = new Date(run + off * 3600e3), u = `${String(loc.getUTCDate()).padStart(2, '0')}.${String(loc.getUTCMonth() + 1).padStart(2, '0')} ${String(loc.getUTCHours()).padStart(2, '0')}:00`;
+  const hm = t => { const l = new Date(t + off * 3600e3); return `${String(l.getUTCDate()).padStart(2, '0')}.${String(l.getUTCMonth() + 1).padStart(2, '0')} ${String(l.getUTCHours()).padStart(2, '0')}:${String(l.getUTCMinutes()).padStart(2, '0')}`; };
+  const u = I.built ? `${hm(Date.parse(I.built))} · ${K.model} ${hm(run).slice(0, 5)} ${hm(run).slice(6)}` : hm(run);
   const detail = x => {  // when it rains and what to wear (3-hour windows of that day)
     const ws = wins.filter(v => v.d === x.d), wet = ws.filter(v => v.p >= 40);
     let r = K.noRain;
@@ -425,7 +426,7 @@ async function pointForecast(env, chat, lang, lat, lon, place) {
     return `\n      ☂️ ${r}\n      🧥 ${K.wear}: ${wearText(lang, x.lo, x.hi, x.p, x.snow, x.w)}`;
   };
   const day = (x, w) => `${x.ic} <b>${w}</b> · ${wd(x.d)}\n      ${deg(x.lo)}…${deg(x.hi)} · ${pr(x)}${isFinite(x.w) && x.w >= 5 ? ` · ${K.windW} ${Math.round(x.w)} ${L.ms}` : ''}${detail(x)}`;
-  const text = [`${nm} · ${L.head}`, `<i>${K.run} ${u} (UTC${off >= 0 ? '+' : ''}${off}) · ECMWF, NOAA, DWD</i>`, '',
+  const text = [`${nm} · ${L.head}`, `<i>${I.built ? K.upd : K.run} ${u} (UTC${off >= 0 ? '+' : ''}${off})</i>`, '',
     `<b>${K.brief}</b>`, ...sum.map(x => `▸ ${x}`), '',
     day(D[0], D[0].d === today ? T[lang].tdy : wd(D[0].d)), ...(D[1] ? [day(D[1], D[1].d === tmrw ? T[lang].tmw : wd(D[1].d))] : []), '',
     ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc(pad(K.cDay, 9) + pad(K.cT, 10) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
