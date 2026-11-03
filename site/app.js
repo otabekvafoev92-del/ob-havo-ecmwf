@@ -1957,9 +1957,9 @@ const PROB_NAMES = {
   BY: { uz: 'Belarus', ru: 'Беларусь', tr: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', tr: 'Moldova' }, RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' } };
 const PROB = { ctry: null, PL: undefined, YT: undefined, M: null, city: null, cityName: null, C: {}, region: store.get('probRegion', 'UZ'), lang: null, rate: store.get('probRate2', 0.5), product: store.get('probProduct', 'prob') };
 const PROB_UI = {
-  uz: { prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', wind: '💨 Shamol', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', grp: ['Qit’alar', 'MDH va Turkiya'], today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', cities: '🏙 Shaharlar', whole: 'Butun davlat', video: '🎬 Ob-havo videosi', countries: '🗺 Davlatlar', ptHead: '15 kunlik prognoz', noprec: 'yog‘insiz', rainw: 'yomg‘ir', snoww: 'qor', mm: 'mm', ms: 'm/s', capital: 'poytaxt', yt: '📺 YouTube va kanallar uchun videosharh', ytV: '⬇ Video (4K)', ytT: '⬇ Muqova', ytD: '📋 Tavsifni nusxalash', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
-  ru: { prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', wind: '💨 Ветер', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', grp: ['Континенты', 'СНГ и Турция'], today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', cities: '🏙 Города', whole: 'Вся страна', video: '🎬 Видео погоды', countries: '🗺 Страны', ptHead: 'Прогноз на 15 дней', noprec: 'без осадков', rainw: 'дождь', snoww: 'снег', mm: 'мм', ms: 'м/с', capital: 'столица', yt: '📺 Видеообзор для YouTube и каналов', ytV: '⬇ Видео (4K)', ytT: '⬇ Обложка', ytD: '📋 Скопировать описание', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
-  tr: { prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', wind: '💨 Rüzgâr', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', grp: ['Kıtalar', 'BDT ve Türkiye'], today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', cities: '🏙 Şehirler', whole: 'Tüm ülke', video: '🎬 Hava videosu', countries: '🗺 Ülkeler', ptHead: '15 günlük tahmin', noprec: 'yağışsız', rainw: 'yağmur', snoww: 'kar', mm: 'mm', ms: 'm/s', capital: 'başkent', yt: '📺 YouTube ve kanallar için video özet', ytV: '⬇ Video (4K)', ytT: '⬇ Kapak', ytD: '📋 Açıklamayı kopyala', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
+  uz: { hr: '⏱ Soatma-soat', prob: '🌧 Yog‘in va qor', temp: '🌡 Harorat', cloud: '☁ Bulutlar', wind: '💨 Shamol', dl: '⬇ Animatsiyani yuklab olish', dlOk: 'Saqlandi', dlNo: 'Yuklab bo‘lmadi', grp: ['Qit’alar', 'MDH va Turkiya'], today: 'Bugun', tomorrow: 'Ertaga', ago: h => `${h} soat oldin hisoblangan`, share: '✈ Telegramda ulashish', copy: '🔗 Havolani nusxalash', copied: 'Nusxalandi', past: 'o‘tgan', days: 'Kunlar bo‘yicha izoh', cities: '🏙 Shaharlar', whole: 'Butun davlat', video: '🎬 Ob-havo videosi', countries: '🗺 Davlatlar', ptHead: '15 kunlik prognoz', noprec: 'yog‘insiz', rainw: 'yomg‘ir', snoww: 'qor', mm: 'mm', ms: 'm/s', capital: 'poytaxt', yt: '📺 YouTube va kanallar uchun videosharh', ytV: '⬇ Video (4K)', ytT: '⬇ Muqova', ytD: '📋 Tavsifni nusxalash', wd: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'] },
+  ru: { hr: '⏱ По часам', prob: '🌧 Осадки и снег', temp: '🌡 Температура', cloud: '☁ Облачность', wind: '💨 Ветер', dl: '⬇ Скачать анимацию', dlOk: 'Сохранено', dlNo: 'Не удалось скачать', grp: ['Континенты', 'СНГ и Турция'], today: 'Сегодня', tomorrow: 'Завтра', ago: h => `рассчитан ${h} ч назад`, share: '✈ Поделиться в Telegram', copy: '🔗 Скопировать ссылку', copied: 'Скопировано', past: 'прошло', days: 'Комментарии по дням', cities: '🏙 Города', whole: 'Вся страна', video: '🎬 Видео погоды', countries: '🗺 Страны', ptHead: 'Прогноз на 15 дней', noprec: 'без осадков', rainw: 'дождь', snoww: 'снег', mm: 'мм', ms: 'м/с', capital: 'столица', yt: '📺 Видеообзор для YouTube и каналов', ytV: '⬇ Видео (4K)', ytT: '⬇ Обложка', ytD: '📋 Скопировать описание', wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
+  tr: { hr: '⏱ Saatlik', prob: '🌧 Yağış ve kar', temp: '🌡 Sıcaklık', cloud: '☁ Bulutluluk', wind: '💨 Rüzgâr', dl: '⬇ Animasyonu indir', dlOk: 'Kaydedildi', dlNo: 'İndirilemedi', grp: ['Kıtalar', 'BDT ve Türkiye'], today: 'Bugün', tomorrow: 'Yarın', ago: h => `${h} saat önce hesaplandı`, share: '✈ Telegram’da paylaş', copy: '🔗 Bağlantıyı kopyala', copied: 'Kopyalandı', past: 'geçti', days: 'Günlük yorumlar', cities: '🏙 Şehirler', whole: 'Tüm ülke', video: '🎬 Hava videosu', countries: '🗺 Ülkeler', ptHead: '15 günlük tahmin', noprec: 'yağışsız', rainw: 'yağmur', snoww: 'kar', mm: 'mm', ms: 'm/s', capital: 'başkent', yt: '📺 YouTube ve kanallar için video özet', ytV: '⬇ Video (4K)', ytT: '⬇ Kapak', ytD: '📋 Açıklamayı kopyala', wd: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] },
 };
 async function saveVideo(url, name) {
   // inside claude.ai the page may only hand files over through the downloads capability; elsewhere a plain link works
@@ -2063,14 +2063,21 @@ async function renderProbPage() {
   const U = PROB_UI[lang];
   const vlang = M.items.some(i => i.region === PROB.region && i.lang === lang && (i.product || 'prob') === 'prob') ? lang : 'ru';  // Turkish texts, Russian videos for most countries
   const prods = ['prob', 'temp', 'cloud', 'wind'].filter(pr => M.items.some(i => i.region === PROB.region && i.lang === vlang && (i.product || 'prob') === pr));
+  // today and tomorrow hour by hour (prob/hourly.py): one more button on the video
+  const hk = PROB.region + '_' + vlang; PROB.HR = PROB.HR || {};
+  if (!(hk in PROB.HR)) { PROB.HR[hk] = null; try { const r = await fetch(`prob/hr/${hk}.json`, { cache: 'no-cache' }); if (r.ok) PROB.HR[hk] = await r.json(); } catch { } }
+  const HR = PROB.HR[hk];
+  if (HR) prods.unshift('hr');
   if (!prods.includes(PROB.product)) PROB.product = 'prob';
   const it0 = M.items.find(i => i.region === PROB.region && i.lang === vlang && (i.product || 'prob') === PROB.product);
   // a chosen city: its own video (zoom-in of 1 s first) for the precipitation map, and its daily comments
-  const it = it0 && city && city.video && PROB.product === 'prob' ? { ...it0, video: city.video, t0: 1 } : it0;
+  let it = it0 && city && city.video && PROB.product === 'prob' ? { ...it0, video: city.video, t0: 1 } : it0;
   const days = city ? { days: city.days, off: CT.off, city: city.name } : M.items.find(i => i.region === PROB.region && i.lang === lang && i.product === 'days');
   const t0 = (it && it.t0) || 0;
-  const n = it ? it.frames : 0, fps = M.fps || 1;
-  const dayOf = f => { if (!M.steps || !days) return null; const d = new Date(Date.parse(M.run) + (M.steps[f] - (M.win ? M.win[f] / 2 : 3) + (days.off || 0)) * 3600e3); return d.toISOString().slice(0, 10); };
+  const isHr = PROB.product === 'hr' && HR;
+  if (isHr) it = { video: HR.video, frames: 48 };
+  const n = it ? it.frames : 0, fps = isHr ? 1 : M.fps || 1;
+  const dayOf = f => { if (isHr || !M.steps || !days) return null; const d = new Date(Date.parse(M.run) + (M.steps[f] - (M.win ? M.win[f] / 2 : 3) + (days.off || 0)) * 3600e3); return d.toISOString().slice(0, 10); };
   const today = new Date(Date.now() + ((days && days.off) || 5) * 3600e3).toISOString().slice(0, 10);
   const tmrw = new Date(Date.now() + (((days && days.off) || 5) + 24) * 3600e3).toISOString().slice(0, 10);
   const ageH = M.run ? Math.max(0, Math.round((Date.now() - Date.parse(M.run)) / 3600e3)) : null;
@@ -2122,7 +2129,7 @@ async function renderProbPage() {
   const v = $('probVideo'), seek = $('probSeek'), idx = $('probIdx');
   const frameOf = () => Math.max(0, Math.min(n - 1, Math.floor((v.currentTime - t0) * fps + 1e-3)));
   v.playbackRate = PROB.rate;
-  v.addEventListener('loadedmetadata', () => { v.playbackRate = PROB.rate; const f0 = probNowFrame(M); if (f0 > 0 && f0 < n && !t0) v.currentTime = (f0 + 0.5) / fps; }, { once: true });
+  v.addEventListener('loadedmetadata', () => { v.playbackRate = PROB.rate; const f0 = isHr ? Math.floor((Date.now() + (HR.off ?? 5) * 3600e3 - Date.parse(HR.start + ':00Z')) / 3600e3) : probNowFrame(M); if (f0 > 0 && f0 < n && !t0) v.currentTime = (f0 + 0.5) / fps; }, { once: true });
   probZoom($('probStage'), v);
   $('probCopy').onclick = async () => { const msg = $('probDlMsg'); try { await navigator.clipboard.writeText(probLink()); msg.textContent = U.copied; } catch { msg.textContent = probLink(); } setTimeout(() => msg.textContent = '', 3000); };
   el.onkeydown = null;

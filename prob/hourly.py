@@ -53,11 +53,13 @@ def rain_spans(P, hours, lang, day0):
 
 
 def to_hours(R, D, run, off):
-    """Interpolate the region's fields from model windows to every hour of the next 48 h (from the next full hour)."""
+    """Interpolate the region's fields from model windows to every hour of local today and tomorrow (00:00 → 23:00),
+    so the video always covers whole days, whenever it was built."""
     st = np.array([int(x) for x in D['steps']], float); wn = np.array([int(x) for x in D['win']], float)
     mid = st - wn / 2  # window middles, hours from the run
     now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
-    h0 = max(mid[0], np.ceil((now - run).total_seconds() / 3600))
+    midnight = (now + dt.timedelta(hours=off)).replace(hour=0, minute=0, second=0, microsecond=0) - dt.timedelta(hours=off)  # local 00:00 in UTC
+    h0 = max(np.floor(mid[0]), np.round((midnight - run).total_seconds() / 3600))
     hrs = h0 + np.arange(HOURS)
     def lerp(F):
         out = []
@@ -180,7 +182,7 @@ def main():
             subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '1', '-i', str(fdir / '%03d.png'), '-vf', 'fps=25,format=yuv420p', '-c:v', 'libx264', '-crf', '27',
                             '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
             import shutil; shutil.rmtree(fdir)
-            json.dump({'region': region, 'lang': lang, 'city': Rn.city_name(city, lang), 'start': loc[0].strftime('%Y-%m-%dT%H:00'), 'info': info, 'video': f'hr/{mp4.name}'},
+            json.dump({'region': region, 'lang': lang, 'off': off, 'city': Rn.city_name(city, lang), 'start': loc[0].strftime('%Y-%m-%dT%H:00'), 'info': info, 'video': f'hr/{mp4.name}'},
                       open(out / f'{region}_{lang}.json', 'w'), ensure_ascii=False)
             index.append({'region': region, 'lang': lang, 'video': f'hr/{mp4.name}'})
             print('hourly', region, lang, mp4.stat().st_size // 1024, 'KB', flush=True)
