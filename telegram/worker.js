@@ -154,7 +154,7 @@ export default {
     return new Response('ok');
   },
   async scheduled(ev, env, ctx) {
-    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await staleTick(env); await statsTick(env); } })().catch(e => console.log('broadcast', e && e.stack)));
+    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await staleTick(env); await statsTick(env); } await buildTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
   },
 };
 
@@ -461,6 +461,17 @@ async function statsTick(env) {
   let site = '';
   try { const y = new Date(Date.now() - 864e5).toISOString().slice(0, 10); const h = await one('SELECT COALESCE(SUM(n),0) AS n FROM hits WHERE day = ?1', y); site = `\n🌐 Сайт за вчера: ${h.n}`; } catch (e) { /* no visits table yet */ }
   await tg(env, 'sendMessage', { chat_id: admin, text: `📊 <b>Бот за сутки</b> (${day})\n👤 Заходили: <b>${act.n}</b>\n🆕 Новых: <b>${neu.n}</b>\n👥 Всего пользователей: ${tot.n}\n💬 Групп и каналов: ${grp.n}\n🔔 Личных подписок: ${prv.n}\n🗣 Языки: ${langs.map(x => `${x.lang || '?'} ${x.n}`).join(', ') || '—'}${site}\n\n/users — список`, parse_mode: 'HTML' });
+}
+// GitHub often skips scheduled runs: the worker starts the site build itself every 3 hours (needs the GH_TOKEN secret)
+async function buildTick(env) {
+  if (!env.GH_TOKEN || !env.DB) return;
+  const last = +(await kv(env, 'build_at') || 0);
+  if (Date.now() - last < 3 * 3600e3 - 10 * 60e3) return;
+  const r = await fetch('https://api.github.com/repos/otabekvafoev92-del/ob-havo-ecmwf/actions/workflows/update.yml/dispatches', {
+    method: 'POST', headers: { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'osmon-bot', 'content-type': 'application/json' },
+    body: JSON.stringify({ ref: 'main' }) });
+  await setKv(env, 'build_at', String(Date.now()));
+  if (r.status !== 204) { const a = await kv(env, 'admin'); if (a) await tg(env, 'sendMessage', { chat_id: a, text: `⚠️ Не удалось запустить обновление данных (GitHub ${r.status}). Проверьте ключ GH_TOKEN.` }); }
 }
 async function staleTick(env) {
   const M = await manifest(env); if (!M || !M.run) return;
