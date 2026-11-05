@@ -637,13 +637,13 @@ async function handle(up, env) {
     return;
   }
   if (kind === 'Y' || kind === 'Z') {  // cities of a country: Y list, Z:lang:id:index one city
-    await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
+    await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(kind === 'Z' ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', tr: '⏳ Hazırlanıyor…' })[lang] || '⏳' } : {}) });
     const [, , rid, ci] = cb.data.split(':'), C = await cities(env, rid, lang);
     if (!C || !C.cities.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
     if (kind === 'Y') {
       const rows = []; C.cities.forEach((c, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: c.name, callback_data: `Z:${lang}:${rid}:${i}` }); });
       rows.push([{ text: T[lang].back, callback_data: `C:${lang}:${rid}` }]);
-      return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].cPick}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
+      return say(env, cb, { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].cPick}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
     }
     const c = C.cities[+ci]; if (!c) return;
     const kb = { inline_keyboard: [[{ text: T[lang].cities, callback_data: `Y:${lang}:${rid}` }, { text: T[lang].back, callback_data: `C:${lang}:${rid}` }]] };
@@ -666,7 +666,7 @@ async function handle(up, env) {
     }
     return tg(env, 'sendMessage', { chat_id: chat.id, text, parse_mode: 'HTML', reply_markup: kb });
   }
-  await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id });
+  await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(['T', 'V', 'DC', 'Q', 'O'].includes(kind) ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', tr: '⏳ Hazırlanıyor…' })[lang] || '⏳' } : {}) });
   if (chat.type === 'private') await saveUser(env, chat.id, who(cb.from));
   if (kind === 'S') {  // first language choice after /start: the guide, then the countries
     await saveUser(env, chat.id, { lang });
@@ -695,14 +695,17 @@ async function handle(up, env) {
       const kb = timeKb(lang, cur && regionsOf(cur)[0] === id ? cur.post_hour ?? POST_HOUR : -1);
       kb.inline_keyboard.forEach(row => row.forEach(b => { b.callback_data = `BH:${lang}:${id}:${b.callback_data.split(':')[2]}`; }));
       if (cur) kb.inline_keyboard.push([{ text: T[lang].unsub, callback_data: `BX:${lang}:${id}` }]);
-      return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].subAsk.replace('{name}', nm), reply_markup: kb });
+      kb.inline_keyboard.push([{ text: T[lang].back, callback_data: `C:${lang}:${id}` }]);
+      return say(env, cb, { chat_id: chat.id, text: T[lang].subAsk.replace('{name}', nm), reply_markup: kb });
     }
     const h = +cb.data.split(':')[3];
     await saveSub(env, chat, [id], lang, todayTZ(), h);
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].subOk.replace('{time}', hh(h)).replace('{name}', nm), reply_markup: menuKb(env, lang, id) });
   }
-  if (kind === 'L') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
-  if (kind === 'C') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
+  if (kind === 'L') { const k = countryKb(lang), cur = (await getUser(env, chat.id) || {}).region;  // ✅ marks the country chosen last time
+    k.inline_keyboard.forEach(r => r.forEach(b => { if (cur && b.callback_data === `C:${lang}:${cur}`) b.text = '✅ ' + b.text; }));
+    return say(env, cb, { chat_id: chat.id, text: T[lang].pick, reply_markup: k }); }
+  if (kind === 'C') return say(env, cb, { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
   if (kind === 'T') return sendHourly(env, chat.id, lang, id);
   const M = await manifest(env);
   const items = M ? M.items.filter(i => i.region === id && i.lang === lang) : [];
@@ -715,8 +718,9 @@ async function handle(up, env) {
     if (pl) rows.push([{ text: `📍 ${near ? pname(near, lang) : DK[lang].mine}`, callback_data: `Q:${lang}:${(+pl[0]).toFixed(3)}:${(+pl[1]).toFixed(3)}`, style: 'success' }]);
     (C ? C.cities.slice(0, 21) : []).forEach((c, i) => { if (c.lat == null) return; if (!rows.length || rows[rows.length - 1].length === 3 || (pl && rows.length === 1)) rows.push([]); rows[rows.length - 1].push({ text: c.name, callback_data: `DC:${lang}:${id}:${i}` }); });
     rows.push([{ text: DK[lang].loc, callback_data: `LQ:${lang}` }, { text: DK[lang].other, callback_data: `L:${lang}` }]);
+    rows.push([{ text: T[lang].back, callback_data: `C:${lang}:${id}` }]);
     if (rows.length <= 2 && !C) return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b>\n\n${allDays(days, lang)}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
-    return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
+    return say(env, cb, { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
   }
   if (kind === 'V') {
     let vids = ['prob', 'temp', 'cloud', 'wind'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
@@ -876,6 +880,15 @@ ${X.wait}`, parse_mode: 'HTML' });
   const text = [X.t, '', `☂️ ${X.rain}: <b>${o.rain}%</b>`, ...(o.t_mae != null ? [`🌡 ${X.temp}: <b>±${o.t_mae}°</b> (${o.t2}% ${X.t2})`] : []), `📅 ${V.days.length} ${X.days} · ${o.n}`,
     ...(rows.length ? ['', `<b>${X.city}</b>`, `<pre>${esc(rows.join('\n'))}</pre>`] : []), `<i>${X.how}</i>`].join('\n');
   return tg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML' });
+}
+// interactive menus: a menu message turns into the next menu in place (no new message); forecasts, videos and long texts stay
+async function say(env, cb, payload) {
+  const m = cb && cb.id !== '0' && cb.message;
+  if (m && typeof m.text === 'string' && m.text.length < 260 && !/<pre>|☂️|🧥/.test(m.text)) {
+    const r = await tg(env, 'editMessageText', { ...payload, message_id: m.message_id });
+    if (r.ok || /not modified/.test(r.description || '')) return r;
+  }
+  return tg(env, 'sendMessage', payload);
 }
 async function kv(env, k) { if (!env.DB) return null; await db(env); const r = await env.DB.prepare('SELECT v FROM meta WHERE k = ?1').bind(k).first(); return r ? r.v : null; }
 async function setKv(env, k, v) { await db(env); await env.DB.prepare('INSERT OR REPLACE INTO meta (k, v) VALUES (?1, ?2)').bind(k, v).run(); }
