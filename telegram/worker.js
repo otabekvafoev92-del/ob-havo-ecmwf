@@ -162,7 +162,7 @@ export default {
 const ADMIN_BTN = '👤 Пользователи';
 const ADMIN_KB = { inline_keyboard: [[{ text: ADMIN_BTN, callback_data: 'AU:ru' }, { text: '📺 YouTube', callback_data: 'AY:ru' }]] };
 async function adminMenu(env, chat) {
-  await tg(env, 'setMyCommands', { scope: { type: 'chat', chat_id: Number(chat) }, commands: [{ command: 'users', description: '👤 Пользователи бота' }, { command: 'admin', description: '👑 Статистика' }, { command: 'yt', description: '📺 Видеообзор для YouTube' }, { command: 'start', description: 'Меню' }] });
+  await tg(env, 'setMyCommands', { scope: { type: 'chat', chat_id: Number(chat) }, commands: [{ command: 'users', description: '👤 Пользователи бота' }, { command: 'searches', description: '🔎 Что ищут (7 дней)' }, { command: 'accuracy', description: '🎯 Точность прогноза' }, { command: 'admin', description: '👑 Статистика' }, { command: 'yt', description: '📺 Видеообзор для YouTube' }, { command: 'start', description: 'Меню' }] });
 }
 async function setup(env, url) {
   { const a = await kv(env, 'admin'); if (a) await adminMenu(env, a); }
@@ -177,7 +177,9 @@ async function setup(env, url) {
     { command: 'countries', description: '🌍 Davlat / Страна' },
     { command: 'daily', description: '🔔 Har kuni / Каждый день' },
     { command: 'site', description: '🗺 Sayt va globus / Сайт и глобус' },
+    { command: 'now', description: '🌡 Hozir / Погода сейчас' },
     { command: 'alerts', description: '⚠️ Ogohlantirishlar / Предупреждения' },
+    { command: 'accuracy', description: '🎯 Prognoz aniqligi / Точность прогноза' },
     { command: 'help', description: 'ℹ️ Yordam, PDF / Помощь, PDF' },
     { command: 'admin', description: '✉️ Adminga yozish / Написать админу' },
     { command: 'start', description: '🔤 Til / Язык / Dil' }] });
@@ -262,9 +264,9 @@ function icon(txt) {
 }
 /* ---------- warnings about heavy rain and snow (site/prob/alerts.json, written by prob/render.py) ---------- */
 const AX = {  // more kinds of warnings
-  uz: { heat: 'kuchli issiq, kunduzi', frost: 'kuchli sovuq, tunda', ice: 'yaxmalak xavfi (muzlagan yo‘llar)', wind: 'kuchli shamol, o‘rtacha', dust: 'chang bo‘roni / havo ifloslanishi', ms: 'm/s', title: '⚠️ <b>Ogohlantirish: xavfli ob-havo</b>' },
-  ru: { heat: 'сильная жара, днём', frost: 'сильный мороз, ночью', ice: 'гололёд (обледенение дорог)', wind: 'сильный ветер, в среднем', dust: 'пыльная буря / загрязнение воздуха', ms: 'м/с', title: '⚠️ <b>Предупреждение: опасная погода</b>' },
-  tr: { heat: 'aşırı sıcak, gündüz', frost: 'şiddetli soğuk, gece', ice: 'buzlanma (yollarda don)', wind: 'kuvvetli rüzgâr, ortalama', dust: 'toz fırtınası / hava kirliliği', ms: 'm/s', title: '⚠️ <b>Uyarı: tehlikeli hava</b>' },
+  uz: { heat: 'kuchli issiq, kunduzi', frost: 'kuchli sovuq, tunda', ice: 'yaxmalak xavfi (muzlagan yo‘llar)', wind: 'kuchli shamol, o‘rtacha', storm: 'momaqaldiroq, jala', dust: 'chang bo‘roni / havo ifloslanishi', ms: 'm/s', title: '⚠️ <b>Ogohlantirish: xavfli ob-havo</b>' },
+  ru: { heat: 'сильная жара, днём', frost: 'сильный мороз, ночью', ice: 'гололёд (обледенение дорог)', wind: 'сильный ветер, в среднем', storm: 'гроза, ливень', dust: 'пыльная буря / загрязнение воздуха', ms: 'м/с', title: '⚠️ <b>Предупреждение: опасная погода</b>' },
+  tr: { heat: 'aşırı sıcak, gündüz', frost: 'şiddetli soğuk, gece', ice: 'buzlanma (yollarda don)', wind: 'kuvvetli rüzgâr, ortalama', storm: 'gök gürültülü sağanak', dust: 'toz fırtınası / hava kirliliği', ms: 'm/s', title: '⚠️ <b>Uyarı: tehlikeli hava</b>' },
 };
 const AL = {
   uz: { title: '⚠️ <b>Ogohlantirish: kuchli yog‘in</b>', r1: 'kuchli yomg‘ir', r2: 'juda kuchli yomg‘ir', s1: 'kuchli qor', s2: 'juda kuchli qor', mm: 'mm', peak: 'eng kuchli', foot: 'ECMWF, NOAA, DWD modellari ansambli bo‘yicha. Ehtiyot bo‘ling!', none: '✅ Yaqin 3 kunda kuchli yog‘in kutilmayapti.' },
@@ -288,6 +290,7 @@ function alertText(items, lang) {
       else if (k === 'ice') out.push(`🧊 ${nm}: ${X.ice}`);
       else if (k === 'wind') out.push(`💨 ${nm}: ${X.wind} ${i.w} ${X.ms}`);
       else if (k === 'dust') out.push(`🌫 ${nm}: ${X.dust} (PM10 ~${i.pm10} µg/m³)`);
+      else if (k === 'storm') out.push(`⛈ ${nm}: ${X.storm}${i.peak ? ` (${i.peak})` : ''}, ${i.p}%`);
     }
   }
   out.push('', `<i>${A.foot}</i>`);
@@ -394,6 +397,28 @@ async function nearestPlace(env, lat, lon, km = 35) {
   for (const p of await places(env)) { const d = Math.hypot((p[5] - lat) * 111, (p[6] - lon) * 111 * Math.cos(lat * Math.PI / 180)); if (d < bd) { bd = d; best = p; } }
   return best;
 }
+// the weather right now (Open-Meteo current conditions: the latest model analysis and nowcast, every 15 minutes)
+const WMO = {
+  uz: { 0: 'ochiq osmon', 1: 'asosan ochiq', 2: 'qisman bulutli', 3: 'bulutli', 45: 'tuman', 48: 'qirovli tuman', 51: 'mayda yomg‘ir', 53: 'mayda yomg‘ir', 55: 'mayda yomg‘ir', 56: 'muzlovchi yomg‘ir', 57: 'muzlovchi yomg‘ir', 61: 'yengil yomg‘ir', 63: 'yomg‘ir', 65: 'kuchli yomg‘ir', 66: 'muzlovchi yomg‘ir', 67: 'muzlovchi yomg‘ir', 71: 'yengil qor', 73: 'qor', 75: 'kuchli qor', 77: 'qor donalari', 80: 'jala', 81: 'jala', 82: 'kuchli jala', 85: 'qor', 86: 'kuchli qor', 95: 'momaqaldiroq', 96: 'do‘lli momaqaldiroq', 99: 'do‘lli momaqaldiroq' },
+  ru: { 0: 'ясно', 1: 'преимущественно ясно', 2: 'переменная облачность', 3: 'пасмурно', 45: 'туман', 48: 'изморозь, туман', 51: 'морось', 53: 'морось', 55: 'сильная морось', 56: 'ледяная морось', 57: 'ледяная морось', 61: 'небольшой дождь', 63: 'дождь', 65: 'сильный дождь', 66: 'ледяной дождь', 67: 'ледяной дождь', 71: 'небольшой снег', 73: 'снег', 75: 'сильный снег', 77: 'снежная крупа', 80: 'ливень', 81: 'ливень', 82: 'сильный ливень', 85: 'снегопад', 86: 'сильный снегопад', 95: 'гроза', 96: 'гроза с градом', 99: 'гроза с градом' },
+  tr: { 0: 'açık', 1: 'çoğunlukla açık', 2: 'parçalı bulutlu', 3: 'kapalı', 45: 'sis', 48: 'kırağılı sis', 51: 'çisenti', 53: 'çisenti', 55: 'yoğun çisenti', 56: 'dondurucu çisenti', 57: 'dondurucu çisenti', 61: 'hafif yağmur', 63: 'yağmur', 65: 'kuvvetli yağmur', 66: 'dondurucu yağmur', 67: 'dondurucu yağmur', 71: 'hafif kar', 73: 'kar', 75: 'yoğun kar', 77: 'kar taneleri', 80: 'sağanak', 81: 'sağanak', 82: 'kuvvetli sağanak', 85: 'kar sağanağı', 86: 'yoğun kar sağanağı', 95: 'gök gürültülü fırtına', 96: 'dolu ile fırtına', 99: 'dolu ile fırtına' } };
+const NOWX = { uz: { now: 'Hozir', feels: 'his qilinadi', hum: 'namlik', wind: 'shamol', gust: 'shiddat', ms: 'm/s' }, ru: { now: 'Сейчас', feels: 'ощущается', hum: 'влажность', wind: 'ветер', gust: 'порывы', ms: 'м/с' }, tr: { now: 'Şimdi', feels: 'hissedilen', hum: 'nem', wind: 'rüzgâr', gust: 'hamle', ms: 'm/s' } };
+const wmoIcon = (c, day) => c >= 95 ? '⛈' : c >= 85 || (c >= 71 && c <= 77) ? '🌨' : c >= 80 ? '🌦' : c >= 51 ? '🌧' : c >= 45 ? '🌫' : c === 3 ? '☁️' : c === 2 ? '⛅' : day ? '☀️' : '🌙';
+async function nowWeather(lat, lon) {
+  const k = `now:${lat.toFixed(2)},${lon.toFixed(2)}`;
+  return memo(k, 10 * 60e3, async () => {
+    try {
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation,is_day&wind_speed_unit=ms&timezone=auto`, { cf: { cacheTtl: 600 } });
+      return r.ok ? (await r.json()).current : null;
+    } catch (e) { return null; }
+  });
+}
+function nowLine(c, lang) {
+  if (!c || c.temperature_2m == null) return '';
+  const X = NOWX[lang] || NOWX.ru, f = v => `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace(/^-0°$/, '0°');
+  const w = (WMO[lang] || WMO.ru)[c.weather_code] || '';
+  return `${wmoIcon(c.weather_code, c.is_day)} <b>${X.now}: ${f(c.temperature_2m)}</b>${w ? `, ${w}` : ''}\n      ${X.feels} ${f(c.apparent_temperature)} · ${X.hum} ${Math.round(c.relative_humidity_2m)}% · ${X.wind} ${Math.round(c.wind_speed_10m)} ${X.ms}${c.wind_gusts_10m >= 10 ? ` (${X.gust} ${Math.round(c.wind_gusts_10m)})` : ''}`;
+}
 async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
   const L = PT[lang], I = await memo('ptidx', 600e3, async () => (await fetch(`${base(env)}/prob/pt/index.json`, { cf: { cacheTtl: 600 } })).json().catch(() => null));
   await saveUser(env, chat, { place: JSON.stringify([lat, lon]) });
@@ -465,7 +490,8 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
   };
   const day = (x, w) => `${x.ic} <b>${w}</b> · ${wd(x.d)}\n      ${deg(x.lo)}…${deg(x.hi)} · ${pr(x)}${isFinite(x.w) && x.w >= 5 ? ` · ${K.windW} ${Math.round(x.w)} ${L.ms}` : ''}${detail(x)}`;
   const isAdmin = String(chat) === (await kv(env, 'admin'));  // update times only for the bot's admin
-  const text = [`${nm} · ${L.head}`, ...(isAdmin ? [`<i>${I.built ? K.upd : K.run} ${u} (UTC${off >= 0 ? '+' : ''}${off})</i>`] : []), '',
+  const nowT = nowLine(await nowWeather(lat, lon), lang);
+  const text = [`${nm} · ${L.head}`, ...(isAdmin ? [`<i>${I.built ? K.upd : K.run} ${u} (UTC${off >= 0 ? '+' : ''}${off})</i>`] : []), '', ...(nowT ? [nowT, ''] : []),
     `<b>${K.brief}</b>`, ...sum.map(x => `▸ ${x}`), '',
     day(D[0], D[0].d === today ? T[lang].tdy : wd(D[0].d)), ...(D[1] ? [day(D[1], D[1].d === tmrw ? T[lang].tmw : wd(D[1].d))] : []), '',
     ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc(pad(K.cDay, 9) + pad(K.cT, 10) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
@@ -486,6 +512,8 @@ async function statsTick(env) {
   const langs = (await env.DB.prepare('SELECT lang, COUNT(*) AS n FROM users WHERE seen > ?1 GROUP BY lang ORDER BY n DESC').bind(since).all()).results;
   let site = '';
   try { const y = new Date(Date.now() - 864e5).toISOString().slice(0, 10); const h = await one('SELECT COALESCE(SUM(n),0) AS n FROM hits WHERE day = ?1', y); site = `\n🌐 Сайт за вчера: ${h.n}`; } catch (e) { /* no visits table yet */ }
+  try { const S = await searchStats(env, 1); if (S.tot) site += `\n🔎 Поиск: ${S.tot} — ${S.top.slice(0, 5).map(x => `${esc(x.q)} ${x.n}`).join(', ')}${S.miss.length ? ` · не нашлось: ${S.miss.slice(0, 3).map(x => esc(x.q)).join(', ')}` : ''}`; } catch (e) { /* no searches yet */ }
+  try { const V = await (await fetch(`${base(env)}/prob/verify/index.json`)).json(); const o = V.uz || V.overall; if (o) site += `\n🎯 Точность (30 дн.): осадки ${o.rain}%, температура ±${o.t_mae}°`; } catch (e) { /* not yet */ }
   await tg(env, 'sendMessage', { chat_id: admin, text: `📊 <b>Бот за сутки</b> (${day})\n👤 Заходили: <b>${act.n}</b>\n🆕 Новых: <b>${neu.n}</b>\n👥 Всего пользователей: ${tot.n}\n💬 Групп и каналов: ${grp.n}\n🔔 Личных подписок: ${prv.n}\n🗣 Языки: ${langs.map(x => `${x.lang || '?'} ${x.n}`).join(', ') || '—'}${site}\n\n/users — список`, parse_mode: 'HTML' });
 }
 // GitHub often skips scheduled runs: the worker starts the site build itself every 3 hours (needs the GH_TOKEN secret)
@@ -708,6 +736,10 @@ async function privateMsg(msg, env) {
     const t = await (await fetch(`${base(env)}/prob/${b.text}`)).text().catch(() => '');
     return tg(env, 'sendMessage', { chat_id: chat.id, text: (r.ok ? '' : `⚠️ ${r.description || ''}\n${url}\n\n`) + t.slice(0, 4000), disable_web_page_preview: true });
   }
+  if (cmd === 'searches' && admin === String(chat.id)) {
+    const S = await searchStats(env, 7);
+    return tg(env, 'sendMessage', { chat_id: chat.id, parse_mode: 'HTML', text: `🔎 <b>Поиск городов за 7 дней</b>: ${S.tot}\n\n${S.top.map((x, i) => `${i + 1}. ${esc(x.q)} — ${x.n}`).join('\n') || '—'}${S.miss.length ? `\n\n❓ <b>Не нашлось</b>:\n${S.miss.map(x => `• ${esc(x.q)} — ${x.n}`).join('\n')}` : ''}` });
+  }
   if ((cmd === 'users' || text === ADMIN_BTN) && admin === String(chat.id)) {
     const rows = (await env.DB.prepare('SELECT * FROM users ORDER BY seen DESC LIMIT 100').all()).results;
     const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).n;
@@ -762,6 +794,12 @@ async function privateMsg(msg, env) {
     if (old('today') || old('d15') || old('video') || old('more')) await tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menuHint, reply_markup: mainKb(lang) });
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
     if (act === 'outlook') return sendOutlook(env, chat.id, lang);
+    if (act === 'accuracy') return sendAccuracy(env, chat.id, lang);
+    if (act === 'now') {  // right now at the user's place (or the country's capital), with the forecast below
+      const pl = u && u.place ? JSON.parse(u.place) : null;
+      if (pl) return pointForecast(env, chat.id, lang, pl[0], pl[1], await nearestPlace(env, pl[0], pl[1]));
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].locAsk, reply_markup: locOnce(lang) });
+    }
     if (act === 'days') return cbk(`D:${lang}:${rid}`);
     if (act === 'video') return cbk(`V:${lang}:${rid}`);
     if (act === 'cities') return cbk(`Y:${lang}:${rid}`);
@@ -775,6 +813,7 @@ async function privateMsg(msg, env) {
     let found = await searchPlaces(env, q);
     for (const v of [q.replace(/(ом|ем|ой|ей|ах|ях|е|у|ю|а|я|и|ы)$/iu, ''), q.replace(/(dagi|da|ga|ning|ni|dan|de|da|ta|te|'?(d|t)[ae])$/iu, '')])  // "в Самарканде", "Samarqandda", "Antalya'da"
       if (!found.length && v.length >= 3 && v !== q) found = await searchPlaces(env, v);
+    ctxLog(env, logSearch(env, q, found.length));
     if (found.length === 1 || (found.length && norm([found[0][0], found[0][1], found[0][2], found[0][3]].find(x => norm(x) === norm(q)) || '') === norm(q) && !found.slice(1).some(p => [p[0], p[1], p[2], p[3]].some(x => norm(x) === norm(q)))))
       return pointForecast(env, chat.id, lang, found[0][5], found[0][6], found[0]);
     if (found.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].pick, reply_markup: { inline_keyboard: found.map(p => [{ text: `${FLAG[p[4]] || '📍'} ${pname(p, lang)}${NAMES[p[4]] ? ', ' + NAMES[p[4]][lang] : ' (' + p[4] + ')'}`, callback_data: `Q:${lang}:${p[5]}:${p[6]}` }]) } });
@@ -783,6 +822,34 @@ async function privateMsg(msg, env) {
   const kb = langKb('S');  // a returning user goes straight back to the country they chose last time
   if (u && u.region && NAMES[u.region] && T[u.lang]) kb.inline_keyboard.push([{ text: `▶️ ${FLAG[u.region]} ${NAMES[u.region][u.lang]}`, callback_data: `C:${u.lang}:${u.region}` }]);
   return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.hi + '\n\n' + T.ru.hi.split('\n').slice(0, 2).join('\n') + '\nВыберите язык:', parse_mode: 'HTML', reply_markup: kb });
+}
+// what people search for (admin statistics): daily totals per query, nothing about the person
+function ctxLog(env, p) { if (env._ctx) env._ctx.waitUntil(p.catch(() => {})); else p.catch(() => {}); }
+async function logSearch(env, q, n) {
+  if (!env.DB) return; await db(env);
+  await env.DB.prepare('INSERT INTO searches (day, q, found, n) VALUES (?1, ?2, ?3, 1) ON CONFLICT(day, q) DO UPDATE SET n = n + 1, found = ?3').bind(todayTZ(), norm(q).slice(0, 60), n ? 1 : 0).run();
+}
+async function searchStats(env, days = 7) {
+  await db(env); const since = new Date(Date.now() + TZ * 3600e3 - days * 864e5).toISOString().slice(0, 10);
+  const top = (await env.DB.prepare('SELECT q, SUM(n) AS n FROM searches WHERE day >= ?1 AND found = 1 GROUP BY q ORDER BY n DESC LIMIT 15').bind(since).all()).results;
+  const miss = (await env.DB.prepare('SELECT q, SUM(n) AS n FROM searches WHERE day >= ?1 AND found = 0 GROUP BY q ORDER BY n DESC LIMIT 10').bind(since).all()).results;
+  const tot = await env.DB.prepare('SELECT COALESCE(SUM(n),0) AS n FROM searches WHERE day >= ?1').bind(since).first();
+  return { top, miss, tot: tot.n };
+}
+// forecast accuracy (prob/verify.py): the last 30 days, forecast for tomorrow against what happened
+async function sendAccuracy(env, chat, lang) {
+  const V = await memo('verify', 1800e3, async () => { const r = await fetch(`${base(env)}/prob/verify/index.json`, { cf: { cacheTtl: 1800 } }); return r.ok ? r.json() : null; });
+  const X = { uz: { t: '🎯 <b>Prognoz aniqligi</b> (oxirgi 30 kun)', rain: 'Yog‘in bor/yo‘q to‘g‘ri topildi', temp: 'Harorat xatosi o‘rtacha', t2: '±2° ichida', city: 'Shaharlar bo‘yicha', wait: 'Tekshiruv boshlandi: ertangi prognozlar saqlanmoqda, birinchi natijalar 2–3 kunda chiqadi.', how: 'Ertangi kun prognozi (24–48 soat oldin) haqiqiy ob-havo bilan solishtiriladi: yog‘in ≥ 1 mm, ehtimol ≥ 50 % = «yog‘in».', days: 'kun' },
+    ru: { t: '🎯 <b>Точность прогноза</b> (последние 30 дней)', rain: 'Угадано «будут осадки / нет»', temp: 'Средняя ошибка температуры', t2: 'в пределах ±2°', city: 'По городам', wait: 'Проверка запущена: прогнозы на завтра сохраняются, первые результаты — через 2–3 дня.', how: 'Прогноз на завтра (за 24–48 ч) сравнивается с фактической погодой: осадки ≥ 1 мм, вероятность ≥ 50 % = «будут осадки».', days: 'дн.' },
+    tr: { t: '🎯 <b>Tahmin doğruluğu</b> (son 30 gün)', rain: 'Yağış var/yok doğru', temp: 'Ortalama sıcaklık hatası', t2: '±2° içinde', city: 'Şehirler', wait: 'Doğrulama başladı: yarın tahminleri kaydediliyor, ilk sonuçlar 2–3 gün içinde.', how: 'Yarın tahmini (24–48 saat önce) gerçek hava ile karşılaştırılır: yağış ≥ 1 mm, olasılık ≥ %50 = «yağış».', days: 'gün' } }[lang] || null;
+  const o = V && (V.uz || V.overall);
+  if (!o) return tg(env, 'sendMessage', { chat_id: chat, text: `${X.t}
+
+${X.wait}`, parse_mode: 'HTML' });
+  const rows = (V.cities || []).filter(c => c.n).slice(0, 14).map(c => `${(c.name[lang] || c.name.ru).padEnd(12).slice(0, 12)} ${String(c.rain).padStart(3)}%  ±${c.t_mae ?? '—'}°`);
+  const text = [X.t, '', `☂️ ${X.rain}: <b>${o.rain}%</b>`, ...(o.t_mae != null ? [`🌡 ${X.temp}: <b>±${o.t_mae}°</b> (${o.t2}% ${X.t2})`] : []), `📅 ${V.days.length} ${X.days} · ${o.n}`,
+    ...(rows.length ? ['', `<b>${X.city}</b>`, `<pre>${esc(rows.join('\n'))}</pre>`] : []), `<i>${X.how}</i>`].join('\n');
+  return tg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML' });
 }
 async function kv(env, k) { if (!env.DB) return null; await db(env); const r = await env.DB.prepare('SELECT v FROM meta WHERE k = ?1').bind(k).first(); return r ? r.v : null; }
 async function setKv(env, k, v) { await db(env); await env.DB.prepare('INSERT OR REPLACE INTO meta (k, v) VALUES (?1, ?2)').bind(k, v).run(); }
@@ -841,6 +908,7 @@ async function db(env) {
   try { await env.DB.exec('ALTER TABLE users ADD COLUMN username TEXT'); } catch (e) { /* already there */ }
   for (const c of ['place TEXT', 'first TEXT']) { try { await env.DB.exec(`ALTER TABLE users ADD COLUMN ${c}`); } catch (e) { /* already there */ } }
   await env.DB.exec('CREATE TABLE IF NOT EXISTS msgmap (mid INTEGER PRIMARY KEY, chat INTEGER, lang TEXT)');
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS searches (day TEXT, q TEXT, found INTEGER, n INTEGER, PRIMARY KEY (day, q))');
   try { await env.DB.exec('ALTER TABLE subs ADD COLUMN post_hour INTEGER'); } catch (e) { /* already there */ }
   try { await env.DB.exec('ALTER TABLE subs ADD COLUMN alert_run TEXT'); } catch (e) { /* already there */ }
 }

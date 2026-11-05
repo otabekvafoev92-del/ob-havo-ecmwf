@@ -58,19 +58,30 @@ LABELS = ['10–30 %', '30–50 %', '50–70 %', '70–90 %', '90–100 %']
 ENS_LABEL = {'ifs': 'ECMWF IFS ENS', 'aifs': 'ECMWF AIFS ENS', 'gefs': 'NOAA GEFS'}
 DET_LABEL = {'hres': 'ECMWF IFS', 'aifss': 'ECMWF AIFS', 'gfs': 'NOAA GFS', 'icon': 'DWD ICON'}
 HEAVY = '#ffd166'
+STORM = '#7b3fb8'  # thunderstorms (hatched)
+
+
+def storm(R, s):
+    """0 none, 1 thunderstorms possible (rain ≥ 30 % and CAPE ≥ 400 J/kg), 2 strong (rain ≥ 40 % and CAPE ≥ 1200)."""
+    K = getattr(R, 'K', None)
+    if K is None or not np.isfinite(K[s]).any(): return None
+    P = R.P[s]; k = np.nan_to_num(K[s])
+    out = ((P >= 30) & (k >= 400)).astype(np.float32) + ((P >= 40) & (k >= 1200))
+    if R.T is not None: out[np.nan_to_num(R.T[s], nan=20) < 2] = 0  # no thunderstorms in frost
+    return out
 W_LV = [0, 2, 4, 6, 8, 10, 12, 15, 20, 25, 60]
 W_COL = ['#16263a', '#1b3d52', '#1d5d66', '#2a7f6c', '#64a35a', '#c9bd45', '#eea13a', '#e86a3a', '#cf3a52', '#8e1f63']
 S2 = {  # words of the city card and the legend
     'uz': {'chance': 'yog‘in ehtimoli', 't': 'Harorat', 'c': 'Bulutlilik', 'a': 'Yog‘in', 'p': 'Yog‘in ehtimoli', 'scale': 'Yog‘in ehtimoli, %', 'iso0': '0° chizig‘i',
-           'heavy': '≥ 5 mm', 'deg': 'havo harorati', 'cl': 'bulutlilik', 'p50': 'yog‘in ehtimoli > 50 %',
+           'heavy': '≥ 5 mm', 'storm': '⚡ momaqaldiroq ehtimoli', 'deg': 'havo harorati', 'cl': 'bulutlilik', 'p50': 'yog‘in ehtimoli > 50 %',
            'wt': 'Shamol (10 m)', 'ws': 'm/s', 'w': 'Shamol', 'wsub': 'shamol tezligi', 'wleg': 'Shamol tezligi, m/s · NOAA GEFS ansambli o‘rtachasi', 'wbars': '{city}: shamol, m/s',
            'dirs': ['shimoliy', 'shim.-sharqiy', 'sharqiy', 'jan.-sharqiy', 'janubiy', 'jan.-g‘arbiy', 'g‘arbiy', 'shim.-g‘arbiy']},
     'ru': {'chance': 'вероятность осадков', 't': 'Температура', 'c': 'Облачность', 'a': 'Осадки', 'p': 'Вероятность осадков', 'scale': 'Вероятность осадков, %', 'iso0': 'линия 0°',
-           'heavy': '≥ 5 мм', 'deg': 'температура воздуха', 'cl': 'облачность', 'p50': 'вероятность осадков > 50 %',
+           'heavy': '≥ 5 мм', 'storm': '⚡ возможна гроза', 'deg': 'температура воздуха', 'cl': 'облачность', 'p50': 'вероятность осадков > 50 %',
            'wt': 'Ветер (10 м)', 'ws': 'м/с', 'w': 'Ветер', 'wsub': 'скорость ветра', 'wleg': 'Скорость ветра, м/с · среднее ансамбля NOAA GEFS', 'wbars': '{city}: ветер, м/с',
            'dirs': ['северный', 'северо-восточный', 'восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный']},
     'tr': {'chance': 'yağış olasılığı', 't': 'Sıcaklık', 'c': 'Bulutluluk', 'a': 'Yağış', 'p': 'Yağış olasılığı', 'scale': 'Yağış olasılığı, %', 'iso0': '0° çizgisi',
-           'heavy': '≥ 5 mm', 'deg': 'hava sıcaklığı', 'cl': 'bulutluluk', 'p50': 'yağış olasılığı > %50',
+           'heavy': '≥ 5 mm', 'storm': '⚡ gök gürültülü sağanak', 'deg': 'hava sıcaklığı', 'cl': 'bulutluluk', 'p50': 'yağış olasılığı > %50',
            'wt': 'Rüzgâr (10 m)', 'ws': 'm/s', 'w': 'Rüzgâr', 'wsub': 'rüzgâr hızı', 'wleg': 'Rüzgâr hızı, m/s · NOAA GEFS topluluk ortalaması', 'wbars': '{city}: rüzgâr, m/s',
            'dirs': ['kuzey', 'kuzeydoğu', 'doğu', 'güneydoğu', 'güney', 'güneybatı', 'batı', 'kuzeybatı']},
 }
@@ -197,16 +208,19 @@ def load_wx_npz(D, path):
     ax_, ay_ = (fx - ix)[None, :], (fy - iy)[:, None]
     def up(a): return (a[iy][:, ix] * (1 - ax_) + a[iy][:, ix + 1] * ax_) * (1 - ay_) + (a[iy + 1][:, ix] * (1 - ax_) + a[iy + 1][:, ix + 1] * ax_) * ay_
     Uw = z['U'].astype(np.float32) if 'U' in z.files else None; Vw = z['V'].astype(np.float32) if 'V' in z.files else None
+    Kw = z['K'].astype(np.float32) if 'K' in z.files else None
     S = len(D['steps']); T = np.full((S, g['H'], g['W']), np.nan, np.float32); C = np.full_like(T, np.nan)
     U = np.full_like(T, np.nan) if Uw is not None else None; V = np.full_like(T, np.nan) if Vw is not None else None
+    K = np.full_like(T, np.nan) if Kw is not None else None
     for i, s_ in enumerate(D['steps']):
         s_ = int(s_)
         w_ = int(D['win'][i]) if 'win' in D else 6
         a = [st.index(h) for h in (s_ - w_, s_) if h in st]
         if a: T[i] = up(np.nanmean([Tw[k] for k in a], 0))
         if a and U is not None: U[i] = up(np.nanmean([Uw[k] for k in a], 0)); V[i] = up(np.nanmean([Vw[k] for k in a], 0))
+        if a and K is not None: K[i] = up(np.nanmax([Kw[k] for k in a], 0))  # the stronger end of the window
         if s_ in st and np.isfinite(Cw[st.index(s_)]).any(): C[i] = up(Cw[st.index(s_)]) / 100  # GEFS cloud cover is already a 6-h mean
-    return {'T': T, 'C': C, 'U': U, 'V': V}
+    return {'T': T, 'C': C, 'U': U, 'V': V, 'K': K}
 
 
 class Geo:
@@ -298,13 +312,14 @@ class Region:
             self.T = np.stack([gaussian_filter(np.nan_to_num(wx['T'][s, y0:y1, x0:x1], nan=99), 1.5) for s in range(P.shape[0])])
             self.T[np.stack([np.isnan(wx['T'][s, y0:y1, x0:x1]) for s in range(P.shape[0])])] = np.nan
             self.C = np.stack([gaussian_filter(np.nan_to_num(wx['C'][s, y0:y1, x0:x1]), 1.0) for s in range(P.shape[0])])
+            self.K = np.stack([gaussian_filter(np.nan_to_num(wx['K'][s, y0:y1, x0:x1]), 1.0) for s in range(P.shape[0])]) if wx.get('K') is not None and np.isfinite(wx['K']).any() else None
             self.U = self.V = self.Wd = None
             if wx.get('U') is not None and np.isfinite(wx['U']).any():
                 self.U = np.stack([gaussian_filter(np.nan_to_num(wx['U'][s, y0:y1, x0:x1]), 1.0) for s in range(P.shape[0])])
                 self.V = np.stack([gaussian_filter(np.nan_to_num(wx['V'][s, y0:y1, x0:x1]), 1.0) for s in range(P.shape[0])])
                 self.Wd = np.hypot(self.U, self.V)
         else:
-            self.T = self.C = self.U = self.V = self.Wd = None
+            self.T = self.C = self.U = self.V = self.Wd = self.K = None
         # map extent: projected bounding box of the lon/lat box
         bl = np.linspace(lon0, lon1, 60); bb = np.linspace(lat0, lat1, 40)
         ex, ey = self.proj(np.r_[bl, np.full(40, lon1), bl[::-1], np.full(40, lon0)], np.r_[np.full(60, lat0), bb, np.full(60, lat1), bb[::-1]])
@@ -372,6 +387,10 @@ class Region:
     def wseries(self, p):
         if self.Wd is None: return None
         gx, gy = self._xy(p); return np.array([bilinear(self.Wd[s], gx, gy) for s in range(self.Wd.shape[0])])
+
+    def kseries(self, p):
+        if getattr(self, 'K', None) is None: return None
+        gx, gy = self._xy(p); return np.array([bilinear(self.K[s], gx, gy) for s in range(self.K.shape[0])])
 
     def aseries(self, p):
         gx, gy = self._xy(p); return np.array([bilinear(self.A[s], gx, gy) for s in range(self.A.shape[0])])
@@ -660,6 +679,13 @@ def draw_fields(ax, R, s, product):
         ax.contourf(XU, YU, U(Pr), levels=LEVELS, cmap=ListedColormap(COLORS), norm=BoundaryNorm(LEVELS, 5), zorder=2, antialiased=True, alpha=0.92)
         if Ps.max() >= LEVELS[0]: ax.contourf(XU, YU, U(Ps), levels=LEVELS, cmap=ListedColormap(SNOW), norm=BoundaryNorm(LEVELS, 5), zorder=2.1, antialiased=True, alpha=0.92)
         if (R.Asm[s] >= 5).any(): ax.contour(XU, YU, U(R.Asm[s]), levels=[5], colors=[HEAVY], linewidths=1.1, linestyles='dashed', zorder=3)
+        St = storm(R, s)
+        if St is not None and St.max() >= 1:  # thunderstorms: rain likely and enough convective energy (GEFS CAPE)
+            with matplotlib.rc_context({'hatch.color': STORM, 'hatch.linewidth': 0.9}):
+                cs = ax.contourf(XU, YU, U(St), levels=[0.5, 1.5, 9], colors='none', hatches=['//', 'xx'], zorder=3.05)
+                try: cs.set_edgecolor(STORM); cs.set_linewidth(0)
+                except Exception: pass
+            ax.contour(XU, YU, U(St), levels=[0.5], colors=[STORM], linewidths=1.0, zorder=3.06, alpha=0.9)
         if has_t:
             lv = [0] if near else list(range(-30, 45, 5))
             cs = ax.contour(XU, YU, np.ma.masked_invalid(U(R.T[s])), levels=lv, colors=[ISO_COL(v) for v in lv], linewidths=[1.6 if v == 0 else 0.6 for v in lv], zorder=3.2,
@@ -749,6 +775,9 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
         fig.text(X0 + 0.036, LY - 0.15, W2['iso0'], fontsize=8.6, color=MUTED, va='center')
         fig.add_artist(matplotlib.lines.Line2D([X0 + 0.095, X0 + 0.125], [LY - 0.15, LY - 0.15], color=HEAVY, lw=1.3, ls=(0, (3, 2)), transform=fig.transFigure))
         fig.text(X0 + 0.131, LY - 0.15, W2['heavy'], fontsize=8.6, color=MUTED, va='center')
+        if getattr(R, 'K', None) is not None:
+            fig.patches.append(matplotlib.patches.Rectangle((X0, LY - 0.205), 0.03, 0.026, transform=fig.transFigure, fill=False, hatch='//', edgecolor=STORM, lw=1.0))
+            fig.text(X0 + 0.036, LY - 0.192, W2['storm'], fontsize=8.6, color=MUTED, va='center')
     elif product == 'temp':
         fig.text(X0, LY, L['legend_temp'].format(h=hours_text(lang, D['win'][s])), fontsize=8.6, color=MUTED, va='center')
         cb = fig.add_axes([X0, LY - 0.08, X1 - X0, 0.022])
@@ -876,6 +905,12 @@ def find_alerts(R, D, run, days=3):
                 if tn <= cold: out.append({**base, 'kind': 'frost', 't': round(tn), 'level': 2 if tn <= cold - 8 else 1})
                 ice = [i for i in idx if P[i] >= 60 and -1.5 <= Ts[i] <= 0.5] if tn <= -1 and tx >= 1 and R.id != 'RU' else []  # freezing rain / thaw-and-freeze
                 if ice and not snow: out.append({**base, 'kind': 'ice', 'p': int(round(max(P[i] for i in ice))), 'level': 1})
+            Ks = R.kseries(p)
+            if Ks is not None:
+                st_ = [i for i in idx if P[i] >= 40 and Ks[i] >= 1200 and (Ts is None or Ts[i] >= 5)]
+                if st_:
+                    h2 = (run + dt.timedelta(hours=steps[st_[0]] + off)); h1 = h2 - dt.timedelta(hours=win[st_[0]])
+                    out.append({**base, 'kind': 'storm', 'p': int(round(max(P[i] for i in st_))), 'level': 2 if max(Ks[i] for i in st_) >= 2500 else 1, 'peak': f'{h1:%H}–{h2:%H}'})
             Ws = R.wseries(p)
             if Ws is not None and float(np.nanmax(Ws[idx])) >= 12: out.append({**base, 'kind': 'wind', 'w': round(float(np.nanmax(Ws[idx]))), 'level': 2 if np.nanmax(Ws[idx]) >= 17 else 1})
     return out

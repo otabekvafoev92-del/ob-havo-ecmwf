@@ -121,6 +121,9 @@ jobs:
           elif [ "${{ matrix.part }}" = globe ]; then
             python prob/export_5d.py glob.npz wx.npz out/d5
             python prob/points.py glob.npz wx.npz out
+            # forecast accuracy: the saved history lives on the site itself
+            curl -sfo /tmp/vh.json https://otabekvafoev92-del.github.io/ob-havo-ecmwf/prob/verify/history.json || echo 'no history yet'
+            python prob/verify.py glob.npz wx.npz out /tmp/vh.json || echo 'verify failed'
           else
             python prob/render.py ${{ matrix.npz }} out ${{ matrix.args }} --wx wx.npz
           fi

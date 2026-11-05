@@ -2104,12 +2104,46 @@ async function renderProbPage() {
       <button class="btn" id="probDl">${U.dl}</button> <a class="btn" id="probShare" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(probLink())}&text=${encodeURIComponent(t.title + ' · ' + PROB_NAMES[PROB.region][lang])}">${U.share}</a> <button class="btn" id="probCopy">${U.copy}</button> <span class="muted mono" id="probDlMsg"></span>
     </div>` : `<p class="muted">${t.none}</p>`}
     ${days && days.days ? `<section class="prob-days"><h2>${U.days}${days.city ? ' · ' + days.city : ''}</h2><ol id="probDays">${Object.entries(days.days).map(([d, txt]) => { const dt_ = new Date(d + 'T12:00:00Z'); return `<li data-d="${d}"${d < today ? ` class="past" title="${U.past}"` : ''}><b>${U.wd[dt_.getUTCDay()]}, ${String(dt_.getUTCDate()).padStart(2, '0')}.${String(dt_.getUTCMonth() + 1).padStart(2, '0')}</b><span>${txt}</span></li>`; }).join('')}</ol></section>` : ''}
+    <section class="nowbox" id="nowBox" hidden></section>
     <section class="outlook" id="outlookBox" hidden></section>
+    <section class="accbox" id="accBox" hidden></section>
     <section class="yt-brief" id="ytBrief" hidden></section>
     <section class="visits prob-visits" id="probVisits"${VIS.data ? '' : ' hidden'}>${visitsHtml(8)}</section>
     <div class="prob-notes"><div><h2>${t.h1}</h2><p>${t.p1}</p></div><div><h2>${t.h2}</h2><p>${t.p2}</p></div><div><h2>${t.h3}</h2><p>${t.p3}</p></div></div>
   </div>`;
   if (CONT_BOX[PROB.region]) probCountries(lang, U);
+  (async () => {  // the weather right now in the country's cities (Open-Meteo current conditions, every 15 minutes)
+    const box = $('nowBox'); const C = CT && CT.cities ? CT.cities.filter(c => c.lat != null).slice(0, 12) : [];
+    if (!box || !C.length) return;
+    const X = { uz: ['Hozir shaharlarda', 'his qilinadi', 'yangilandi'], ru: ['Сейчас в городах', 'ощущается', 'обновлено'], tr: ['Şehirlerde şimdi', 'hissedilen', 'güncellendi'] }[lang] || ['Now', 'feels', 'updated'];
+    const key = C.map(c => c.lat + ',' + c.lon).join(';'); PROB.NOW = PROB.NOW || {};
+    if (!PROB.NOW[key] || Date.now() - PROB.NOW[key].t > 10 * 60e3) {
+      try { const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${C.map(c => c.lat).join(',')}&longitude=${C.map(c => c.lon).join(',')}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day,precipitation&wind_speed_unit=ms&timezone=auto`);
+        const j = await r.json(); PROB.NOW[key] = { t: Date.now(), v: Array.isArray(j) ? j : [j] }; } catch { return; }
+    }
+    const V = PROB.NOW[key].v, ic = (c, d) => c >= 95 ? '⛈' : c >= 85 || (c >= 71 && c <= 77) ? '🌨' : c >= 80 ? '🌦' : c >= 51 ? '🌧' : c >= 45 ? '🌫' : c === 3 ? '☁️' : c === 2 ? '⛅' : d ? '☀️' : '🌙';
+    const t = v => `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace(/^-0°$/, '0°');
+    box.hidden = false;
+    box.innerHTML = `<h2>${X[0]} <span class="live">●</span></h2><div class="now-grid">${C.map((c, i) => { const n = V[i] && V[i].current; if (!n) return '';
+      return `<div class="now"><span class="ic">${ic(n.weather_code, n.is_day)}</span><b>${c.name}</b><span class="t">${t(n.temperature_2m)}</span><small class="muted">${X[1]} ${t(n.apparent_temperature)} · 💨 ${Math.round(n.wind_speed_10m)}${n.precipitation > 0 ? ` · ${n.precipitation} mm` : ''}</small></div>`; }).join('')}</div>
+      <p class="muted small">${X[2]} ${new Date(PROB.NOW[key].t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · Open-Meteo (ECMWF, DWD, NOAA)</p>`;
+  })();
+  (async () => {  // forecast accuracy (prob/verify.py)
+    const box = $('accBox'); if (!box) return;
+    if (PROB.V === undefined) { try { PROB.V = await (await fetch('prob/verify/index.json', { cache: 'no-cache' })).json(); } catch { PROB.V = null; } }
+    const V = PROB.V, o = V && (V.uz || V.overall);
+    const X = { uz: ['Prognoz aniqligi', 'oxirgi 30 kun', 'yog‘in bor/yo‘q to‘g‘ri', 'harorat xatosi', '±2° ichida', 'Ertangi kun prognozi (24–48 soat oldin) haqiqiy ob-havo bilan solishtiriladi.', 'Tekshiruv boshlandi — birinchi natijalar 2–3 kunda.'],
+      ru: ['Точность прогноза', 'последние 30 дней', 'угадано «осадки / нет»', 'ошибка температуры', 'в пределах ±2°', 'Прогноз на завтра (за 24–48 ч) сравнивается с фактической погодой.', 'Проверка запущена — первые результаты через 2–3 дня.'],
+      tr: ['Tahmin doğruluğu', 'son 30 gün', 'yağış var/yok doğru', 'sıcaklık hatası', '±2° içinde', 'Yarın tahmini (24–48 saat önce) gerçek hava ile karşılaştırılır.', 'Doğrulama başladı — ilk sonuçlar 2–3 gün içinde.'] }[lang] || [];
+    if (!V) return;
+    box.hidden = false;
+    if (!o) { box.innerHTML = `<h2>🎯 ${X[0]}</h2><p class="muted">${X[6]}</p>`; return; }
+    const cs = (V.cities || []).filter(c => c.n);
+    box.innerHTML = `<h2>🎯 ${X[0]} <span class="muted small">· ${X[1]}</span></h2>
+      <div class="acc-kpi"><div><b>${o.rain}%</b><span>${X[2]}</span></div>${o.t_mae != null ? `<div><b>±${o.t_mae}°</b><span>${X[3]}</span></div><div><b>${o.t2}%</b><span>${X[4]}</span></div>` : ''}</div>
+      ${cs.length ? `<div class="acc-cities">${cs.map(c => `<span><b>${c.name[lang] || c.name.ru}</b> ${c.rain}% · ±${c.t_mae ?? '–'}°</span>`).join('')}</div>` : ''}
+      <p class="muted small">${X[5]} ${o.n} · ${V.days.length} d</p>`;
+  })();
   (async () => {  // Uzbekistan: past week, next two weeks, this and next month (prob/outlook.py)
     const box = $('outlookBox'); if (!box || PROB.region !== 'UZ') return;
     if (PROB.OL === undefined) { try { PROB.OL = await (await fetch('prob/outlook/index.json', { cache: 'no-cache' })).json(); } catch { PROB.OL = null; } }

@@ -367,3 +367,19 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .outlook img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .outlook figcaption { padding: 10px 12px; font-size: 13.5px; line-height: 1.4; }
 @media (max-width: 760px) { .outlook .ol-grid { grid-template-columns: 1fr; } }
+
+/* the weather right now and the accuracy of the forecast */
+.nowbox, .accbox { margin-top: 28px; }
+.nowbox .live { color: #2fa65a; font-size: 12px; vertical-align: middle; animation: blink 2s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.now-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.now { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; column-gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.now .ic { grid-row: span 2; font-size: 26px; line-height: 1.2; }
+.now .t { font-size: 22px; font-weight: 700; }
+.now small { grid-column: span 2; font-size: 12px; }
+.small { font-size: 12.5px; }
+.acc-kpi { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 12px; }
+.acc-kpi div { flex: 1 1 150px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.acc-kpi b { display: block; font-size: 26px; }
+.acc-kpi span { font-size: 13px; color: var(--muted); }
+.acc-cities { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; }
