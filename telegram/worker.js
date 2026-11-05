@@ -182,6 +182,8 @@ async function setup(env, url) {
     { command: 'accuracy', description: '🎯 Prognoz aniqligi / Точность прогноза' },
     { command: 'help', description: 'ℹ️ Yordam, PDF / Помощь, PDF' },
     { command: 'admin', description: '✉️ Adminga yozish / Написать админу' },
+    { command: 'home', description: '🏠 Bosh menyu / Главная' },
+    { command: 'reset', description: '🔄 Qayta boshlash / Сбросить' },
     { command: 'start', description: '🔤 Til / Язык / Dil' }] });
   await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'help', description: 'Yordam / Помощь' }] });
   await tg(env, 'setChatMenuButton', { menu_button: { type: 'commands' } });  // ☰ opens the command menu
@@ -245,8 +247,14 @@ function menuKb(env, lang, id) {
     ...(id === 'UZ' ? [[{ text: OLK[lang], callback_data: `O:${lang}:${id}`, style: 'success' }]] : []),
     [{ text: T[lang].cities, callback_data: `Y:${lang}:${id}` }, { text: T[lang].sub, callback_data: `B:${lang}:${id}` }],
     [{ text: T[lang].site, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].back, callback_data: `L:${lang}` }],
+    [{ text: (HK[lang] || HK.ru).reset, callback_data: `RS:${lang}` }],
   ] };
 }
+const HK = {
+  uz: { home: '🏠 Bosh menyu', reset: '🔄 Qayta boshlash', ask: 'Sozlamalarni o‘chirib, boshidan boshlaymizmi?\nDavlat, saqlangan joy va kunlik prognoz obunasi o‘chiriladi.', yes: '✅ Ha, qayta boshlash', no: '❌ Yo‘q', done: '🔄 Sozlamalar tozalandi. Tilni tanlang:' },
+  ru: { home: '🏠 Главная', reset: '🔄 Сбросить', ask: 'Сбросить настройки и начать заново?\nБудут удалены: выбранная страна, сохранённое место и подписка на ежедневный прогноз.', yes: '✅ Да, сбросить', no: '❌ Нет', done: '🔄 Настройки сброшены. Выберите язык:' },
+  tr: { home: '🏠 Ana menü', reset: '🔄 Sıfırla', ask: 'Ayarlar sıfırlanıp baştan başlansın mı?\nSeçili ülke, kayıtlı konum ve günlük tahmin aboneliği silinir.', yes: '✅ Evet, sıfırla', no: '❌ Hayır', done: '🔄 Ayarlar sıfırlandı. Dil seçin:' } };
+const homeRow = lang => [{ text: (HK[lang] || HK.ru).home, callback_data: `HM:${lang}` }, { text: (HK[lang] || HK.ru).reset, callback_data: `RS:${lang}` }];
 const DK = {
   uz: { ask: '15 kunlik prognoz: shaharni tanlang yoki dunyodagi istalgan shahar nomini yozing (masalan: Parij, Dubay)', mine: 'Mening joyim', loc: '📍 Joylashuvni yuborish', other: '🌍 Boshqa davlat', vid: '🎬 Shu shahar videosi', vidC: '🎬 Video 15 kun', more: '🏙 Boshqa shahar', globe: '🌍 Globusda ochish' },
   ru: { ask: 'Прогноз на 15 дней: выберите город или напишите название любого города мира (например: Париж, Дубай)', mine: 'Моё место', loc: '📍 Отправить геолокацию', other: '🌍 Другая страна', vid: '🎬 Видео этого города', vidC: '🎬 Видео на 15 дней', more: '🏙 Другой город', globe: '🌍 Открыть на глобусе' },
@@ -256,7 +264,7 @@ function dayKb(lang, rid, cityVideo) {
   const X = DK[lang] || DK.ru;
   return { inline_keyboard: [
     [cityVideo ? { text: X.vid, callback_data: cityVideo, style: 'primary' } : { text: X.vidC, callback_data: `V:${lang}:${rid}`, style: 'primary' }],
-    [{ text: X.more, callback_data: `D:${lang}:${rid}` }, { text: X.other, callback_data: `L:${lang}` }]] };
+    [{ text: X.more, callback_data: `D:${lang}:${rid}` }, { text: X.other, callback_data: `L:${lang}` }], homeRow(lang)] };
 }
 const helpKb = lang => ({ inline_keyboard: [[{ text: T[lang].pdf, callback_data: `P:${lang}` }, { text: T[lang].adm, callback_data: `M:${lang}` }]] });
 // groups and channels cannot open Mini Apps from buttons: plain links
@@ -512,7 +520,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
     const C = await cities(env, place[4], lang), ci = C ? C.cities.findIndex(c => c.en === place[2] && c.video) : -1;
     kb = dayKb(lang, place[4], ci >= 0 ? `Z:${lang}:${place[4]}:${ci}` : null);
   }
-  if (!kb) kb = { inline_keyboard: [[{ text: (DK[lang] || DK.ru).globe, web_app: { url: site(env, 'map') } }], [{ text: (DK[lang] || DK.ru).other, callback_data: `L:${lang}` }]] };
+  if (!kb) kb = { inline_keyboard: [[{ text: (DK[lang] || DK.ru).globe, web_app: { url: site(env, 'map') } }], [{ text: (DK[lang] || DK.ru).other, callback_data: `L:${lang}` }], homeRow(lang)] };
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
 }
 // the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
@@ -683,6 +691,16 @@ async function handle(up, env) {
     return pointForecast(env, chat.id, lang, c.lat, c.lon, (await nearestPlace(env, c.lat, c.lon, 8)) || [c.name, c.name, c.en, c.name, rid, c.lat, c.lon, 0, 0], dayKb(lang, rid, c.video ? `Z:${lang}:${rid}:${ci}` : null));
   }
   if (kind === 'H') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
+  if (kind === 'HM') {  // the main menu: the country chosen last time (or Uzbekistan)
+    const uu = await getUser(env, chat.id), rid = uu && NAMES[uu.region] ? uu.region : 'UZ';
+    return say(env, cb, { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, rid) });
+  }
+  if (kind === 'RS') { const X = HK[lang] || HK.ru; return say(env, cb, { chat_id: chat.id, text: X.ask, reply_markup: { inline_keyboard: [[{ text: X.yes, callback_data: `RSY:${lang}`, style: 'danger' }, { text: X.no, callback_data: `HM:${lang}` }]] } }); }
+  if (kind === 'RSY') {  // reset: forget the country, the place and the private daily subscription; start again from the language
+    await env.DB.prepare('UPDATE users SET region = NULL, place = NULL, mode = NULL WHERE chat_id = ?1').bind(chat.id).run();
+    if (chat.type === 'private') await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(chat.id).run();
+    return say(env, cb, { chat_id: chat.id, text: (HK[lang] || HK.ru).done, reply_markup: langKb('S') });
+  }
   if (kind === 'LQ') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].locAsk, reply_markup: locOnce(lang) });
   if (kind === 'P') return sendGuide(env, chat.id, lang);
   if (kind === 'M') { await saveUser(env, chat.id, { lang, mode: 'contact' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk }); }
@@ -718,7 +736,7 @@ async function handle(up, env) {
     if (pl) rows.push([{ text: `📍 ${near ? pname(near, lang) : DK[lang].mine}`, callback_data: `Q:${lang}:${(+pl[0]).toFixed(3)}:${(+pl[1]).toFixed(3)}`, style: 'success' }]);
     (C ? C.cities.slice(0, 21) : []).forEach((c, i) => { if (c.lat == null) return; if (!rows.length || rows[rows.length - 1].length === 3 || (pl && rows.length === 1)) rows.push([]); rows[rows.length - 1].push({ text: c.name, callback_data: `DC:${lang}:${id}:${i}` }); });
     rows.push([{ text: DK[lang].loc, callback_data: `LQ:${lang}` }, { text: DK[lang].other, callback_data: `L:${lang}` }]);
-    rows.push([{ text: T[lang].back, callback_data: `C:${lang}:${id}` }]);
+    rows.push([{ text: T[lang].back, callback_data: `C:${lang}:${id}` }, { text: (HK[lang] || HK.ru).home, callback_data: `HM:${lang}` }]);
     if (rows.length <= 2 && !C) return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b>\n\n${allDays(days, lang)}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
     return say(env, cb, { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
   }
@@ -822,6 +840,8 @@ async function privateMsg(msg, env) {
     const act = old('today') ? 'hourly' : old('d15') ? 'days' : old('video') ? 'video' : old('more') ? 'countries' : Object.values(PT).some(m => m.locBtn === text) ? 'location' : cmd;
     const cbk = data => handle({ callback_query: { id: '0', from: msg.from, data, message: { chat, message_id: msg.message_id } } }, env);
     if (old('today') || old('d15') || old('video') || old('more')) await tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menuHint, reply_markup: mainKb(lang) });
+    if (act === 'home') return cbk(`HM:${lang}`);
+    if (act === 'reset') return cbk(`RS:${lang}`);
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
     if (act === 'outlook') return sendOutlook(env, chat.id, lang);
     if (act === 'accuracy') return sendAccuracy(env, chat.id, lang);
