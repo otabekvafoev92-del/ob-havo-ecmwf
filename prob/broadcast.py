@@ -216,7 +216,7 @@ def main():
         tas = days_of(Ru, Dc, run, 5, Ru.mains[lang], 5)
         bul['uz'] = ([X['share'].format(p=round(sh * 100)) + ': ' + X['days3']] if sh else []) + [
             f"{Rn.T[lang]['wd'][d.weekday()]} {d:%d.%m}: {Rn.fmt_t(lo)}…{Rn.fmt_t(hi)}, " + (X['noprec'] if pm < 20 else f"{X['snoww'] if sn else X['rainw']} {pm:.0f} %") for d, lo, hi, pm, mm, sn in tas]
-        wl = [f"{w['name'][lang]} {Rn.T[lang]['wd'][dt.date.fromisoformat(w['date']).weekday()]}: ~{w['mm']:.0f} {X['mm']} ({X['snoww'] if w['snow'] else X['rainw']})" for w in warns]
+        wl = [f"{w['name'][lang]} {Rn.T[lang]['wd'][dt.date.fromisoformat(w['date']).weekday()]}: ~{w['mm']:.0f} {X['mm']} ({X['snoww'] if w['snow'] else X['rainw']})" for w in warns if 'mm' in w]
         jobs, order = [], []
         def add(kind, args):
             name = fdir / f'{len(order):03d}_{kind}.png'; order.append((name, kind))
