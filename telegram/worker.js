@@ -253,7 +253,12 @@ const countryOf = text => { const t = text.replace(/^✅ /, ''); for (const id o
 async function cityPicker(env, chat, lang, id, u) {
   const X = RKL[lang] || RKL.ru, C = (await cities(env, id, lang)) || (await cities(env, id, 'ru'));
   const rows = [[{ text: X.loc, request_location: true }]];
-  (C ? C.cities.slice(0, 24) : []).forEach((c, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: c.name }); });
+  const names = (C ? C.cities.map(c => c.name) : []).slice(0, 30);
+  for (const p of await places(env)) {  // more towns of the country, by population, up to 30 buttons
+    if (names.length >= 30) break;
+    const n = pname(p, lang); if (p[4] === id && n && !names.some(x => norm(x) === norm(n))) names.push(n);
+  }
+  names.forEach((n, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: n }); });
   rows.push([{ text: X.countries }, { text: X.home }]);
   return tg(env, 'sendMessage', { chat_id: chat, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { keyboard: rows, resize_keyboard: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', tr: 'Şehir adı…' }[lang] } });
 }
