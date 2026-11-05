@@ -253,7 +253,7 @@ const countryOf = text => { const t = text.replace(/^✅ /, ''); for (const id o
 async function cityPicker(env, chat, lang, id, u) {
   const X = RKL[lang] || RKL.ru, C = (await cities(env, id, lang)) || (await cities(env, id, 'ru'));
   const rows = [[{ text: X.loc, request_location: true }]];
-  (C ? C.cities.filter(c => c.lat != null).slice(0, 24) : []).forEach((c, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: c.name }); });
+  (C ? C.cities.slice(0, 24) : []).forEach((c, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: c.name }); });
   rows.push([{ text: X.countries }, { text: X.home }]);
   return tg(env, 'sendMessage', { chat_id: chat, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { keyboard: rows, resize_keyboard: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', tr: 'Şehir adı…' }[lang] } });
 }
@@ -860,6 +860,10 @@ async function privateMsg(msg, env) {
     if (!cmd && !rk && u && u.lang) {  // a city of the chosen country from the keyboard: the same 15-day layout as a searched town
       const C = (await cities(env, rid, lang)) || null, c = C && C.cities.find(x => x.name === text.trim());
       if (c && c.lat != null) return pointForecast(env, chat.id, lang, c.lat, c.lon, (await nearestPlace(env, c.lat, c.lon, 8)) || [c.name, c.name, c.en, c.name, rid, c.lat, c.lon, 0, 0], replyKb(env, lang, rid));
+      if (c) {  // older city lists without coordinates: find the town by name in this country
+        const q = norm(c.en || c.name), p = (await places(env)).find(p => p[4] === rid && [p[0], p[1], p[2], p[3]].some(x => norm(x) === q || norm(x) === norm(c.name)));
+        if (p) return pointForecast(env, chat.id, lang, p[5], p[6], p, replyKb(env, lang, rid));
+      }
     }
     const cbk = data => handle({ callback_query: { id: '0', from: msg.from, data, message: { chat, message_id: msg.message_id } } }, env);
     
