@@ -27,7 +27,7 @@ const T = {
   uz: {
     cities: '🏙 Shaharlar', cPick: '🏙 Shaharni tanlang:', cTitle: '🏙 Bugun shaharlarda', time: '⏰ Guruhga prognoz qaysi vaqtda yuborilsin? (Toshkent vaqti)', help: 'ℹ️ Yordam',
     d15: '15 kunlik prognoz', hi: '☀️ <b>Osmon</b> — ob-havo prognozi\n6 ta model (ECMWF, NOAA) asosida 15 kunga.\n\nTilni tanlang:', pick: '📍 Davlat yoki qit’ani tanlang:',
-    menu: 'Nimani ko‘rsatay?', today: '⏱ Bugun va ertaga soatma-soat', all: '🎬 15 kunlik video', days: '🗓 15 kun', site: '🗺 Sayt va globus', rep: '📊 Hisobot', menuHint: '☰ Barcha bo‘limlar — chap pastdagi «Menyu» tugmasida.\n📍 Joylashuvni yuboring yoki shahar nomini yozing, masalan: Namangan', locAsk: '📍 Pastdagi tugmani bosing — joylashuvingiz yuboriladi.',
+    menu: 'Nimani ko‘rsatay?', today: '⏱ Bugun va ertaga soatma-soat', all: '🎬 15 kunlik video', days: '🗓 15 kun', site: '🗺 Sayt va globus', rep: '📊 Hisobot', menuHint: '⌨️ Barcha bo‘limlar — pastdagi tugmalarda.\n📍 Joylashuvni yuboring yoki shahar nomini yozing, masalan: Namangan', locAsk: '📍 Pastdagi tugmani bosing — joylashuvingiz yuboriladi.',
     back: '↩️ Davlatlar', none: '⏳ Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.', tdy: 'Bugun', tmw: 'Ertaga', next: 'Keyingi kunlar',
     upd: 'Yangilandi', swipe: '🎬 Videoni suring: 🌧 yog‘in · 🌡 harorat · ☁️ bulutlar · 💨 shamol', bot: '🤖 Bot',
     gHi: '👋 Salom! Men har kuni shu yerga ob-havoni video bilan yuboraman.\nGuruh admini: til, davlat va vaqtni tanlang 👇 (/sozla)',
@@ -38,7 +38,7 @@ const T = {
   ru: {
     cities: '🏙 Города', cPick: '🏙 Выберите город:', cTitle: '🏙 Сегодня по городам', time: '⏰ Во сколько присылать прогноз в группу? (по Ташкенту)', help: 'ℹ️ Помощь',
     d15: 'прогноз на 15 дней', hi: '☀️ <b>Osmon</b> — прогноз погоды\nна 15 дней по 6 моделям (ECMWF, NOAA).\n\nВыберите язык:', pick: '📍 Выберите страну или континент:',
-    menu: 'Что показать?', today: '⏱ Сегодня и завтра по часам', all: '🎬 Видео на 15 дней', days: '🗓 15 дней', site: '🗺 Сайт и глобус', rep: '📊 Отчёт', menuHint: '☰ Все разделы — в кнопке «Меню» слева внизу.\n📍 Отправьте геолокацию или напишите город, например: Наманган', locAsk: '📍 Нажмите кнопку внизу — бот получит ваше место.',
+    menu: 'Что показать?', today: '⏱ Сегодня и завтра по часам', all: '🎬 Видео на 15 дней', days: '🗓 15 дней', site: '🗺 Сайт и глобус', rep: '📊 Отчёт', menuHint: '⌨️ Все разделы — на кнопках внизу.\n📍 Отправьте геолокацию или напишите город, например: Наманган', locAsk: '📍 Нажмите кнопку внизу — бот получит ваше место.',
     back: '↩️ Страны', none: '⏳ Данные ещё не готовы, попробуйте чуть позже.', tdy: 'Сегодня', tmw: 'Завтра', next: 'Дальше',
     upd: 'Обновлено', swipe: '🎬 Листайте видео: 🌧 осадки · 🌡 температура · ☁️ облака · 💨 ветер', bot: '🤖 Бот',
     gHi: '👋 Привет! Я буду каждый день присылать сюда прогноз погоды с видео.\nАдминистратор группы: выберите язык, страны и время 👇 (/settings)',
@@ -49,7 +49,7 @@ const T = {
   tr: {
     cities: '🏙 Şehirler', cPick: '🏙 Şehir seçin:', cTitle: '🏙 Bugün şehirlerde', time: '⏰ Tahmin gruba saat kaçta gönderilsin? (Taşkent saati)', help: 'ℹ️ Yardım',
     d15: '15 günlük tahmin', hi: '☀️ <b>Osmon</b> — hava tahmini\n6 modele göre 15 günlük (ECMWF, NOAA).\n\nDil seçin:', pick: '📍 Ülke veya kıta seçin:',
-    menu: 'Ne göstereyim?', today: '⏱ Bugün ve yarın saat saat', all: '🎬 15 günlük video', days: '🗓 15 gün', site: '🗺 Site ve küre', rep: '📊 Rapor', menuHint: '☰ Tüm bölümler — sol alttaki «Menü» düğmesinde.\n📍 Konum gönderin veya şehir adı yazın, örneğin: Antalya', locAsk: '📍 Alttaki düğmeye basın — konumunuz gönderilir.',
+    menu: 'Ne göstereyim?', today: '⏱ Bugün ve yarın saat saat', all: '🎬 15 günlük video', days: '🗓 15 gün', site: '🗺 Site ve küre', rep: '📊 Rapor', menuHint: '⌨️ Tüm bölümler — alttaki düğmelerde.\n📍 Konum gönderin veya şehir adı yazın, örneğin: Antalya', locAsk: '📍 Alttaki düğmeye basın — konumunuz gönderilir.',
     back: '↩️ Ülkeler', none: '⏳ Veriler henüz hazır değil, biraz sonra deneyin.', tdy: 'Bugün', tmw: 'Yarın', next: 'Sonraki günler',
     upd: 'Güncellendi', swipe: '🎬 Videoları kaydırın: 🌧 yağış · 🌡 sıcaklık · ☁️ bulutlar · 💨 rüzgâr', bot: '🤖 Bot',
     gHi: '👋 Merhaba! Her gün buraya videolu hava tahmini göndereceğim.\nGrup yöneticisi: dil, ülke ve saati seçin 👇 (/settings)',
@@ -862,7 +862,7 @@ async function privateMsg(msg, env) {
       if (c && c.lat != null) return pointForecast(env, chat.id, lang, c.lat, c.lon, (await nearestPlace(env, c.lat, c.lon, 8)) || [c.name, c.name, c.en, c.name, rid, c.lat, c.lon, 0, 0], replyKb(env, lang, rid));
     }
     const cbk = data => handle({ callback_query: { id: '0', from: msg.from, data, message: { chat, message_id: msg.message_id } } }, env);
-    if (old('today') || old('d15') || old('video') || old('more')) await tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menuHint, reply_markup: mainKb(lang) });
+    
     if (act === 'home') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, rid) });
     if (act === 'days' || act === 'cities') return cityPicker(env, chat.id, lang, rid, u);
     if (act === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
