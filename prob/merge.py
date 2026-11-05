@@ -17,7 +17,7 @@ def main():
             if M is None or (m.get('steps') and not M.get('steps')): M = {k: v for k, v in m.items() if k != 'items'}
             for i in m.get('items', []): items[(i.get('region'), i.get('lang'), i.get('product'))] = i
         if (part / 'alerts.json').exists():
-            for a in json.load(open(part / 'alerts.json')).get('items', []): alerts[(a['region'], a['en'], a['date'], a['snow'])] = a
+            for a in json.load(open(part / 'alerts.json')).get('items', []): alerts[(a['region'], a['en'], a['date'], a.get('kind', 'snow' if a.get('snow') else 'rain'))] = a
             M = M or {}; M.setdefault('run', json.load(open(part / 'alerts.json')).get('run'))
     if M is not None:
         M['items'] = list(items.values())

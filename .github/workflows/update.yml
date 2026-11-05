@@ -149,6 +149,7 @@ jobs:
           ls parts
           python prob/merge.py site/prob parts/prob-globe parts/prob-yt parts/prob-outlook parts/prob-hr-* parts/prob-world-* parts/prob-cis-* parts/prob-cities-*
           test -f site/prob/manifest.json
+          python prob/citypages.py site https://otabekvafoev92-del.github.io/ob-havo-ecmwf || echo 'city pages failed'
           du -sh site site/prob site/prob/pt
       - name: Send Telegram summary
         if: github.event_name != 'push'

@@ -154,7 +154,7 @@ export default {
     return new Response('ok');
   },
   async scheduled(ev, env, ctx) {
-    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await staleTick(env); await statsTick(env); } await buildTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
+    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await staleTick(env); await statsTick(env); await backupTick(env); } await buildTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
   },
 };
 
@@ -261,6 +261,11 @@ function icon(txt) {
   return '⛅';
 }
 /* ---------- warnings about heavy rain and snow (site/prob/alerts.json, written by prob/render.py) ---------- */
+const AX = {  // more kinds of warnings
+  uz: { heat: 'kuchli issiq, kunduzi', frost: 'kuchli sovuq, tunda', ice: 'yaxmalak xavfi (muzlagan yo‘llar)', wind: 'kuchli shamol, o‘rtacha', dust: 'chang bo‘roni / havo ifloslanishi', ms: 'm/s', title: '⚠️ <b>Ogohlantirish: xavfli ob-havo</b>' },
+  ru: { heat: 'сильная жара, днём', frost: 'сильный мороз, ночью', ice: 'гололёд (обледенение дорог)', wind: 'сильный ветер, в среднем', dust: 'пыльная буря / загрязнение воздуха', ms: 'м/с', title: '⚠️ <b>Предупреждение: опасная погода</b>' },
+  tr: { heat: 'aşırı sıcak, gündüz', frost: 'şiddetli soğuk, gece', ice: 'buzlanma (yollarda don)', wind: 'kuvvetli rüzgâr, ortalama', dust: 'toz fırtınası / hava kirliliği', ms: 'm/s', title: '⚠️ <b>Uyarı: tehlikeli hava</b>' },
+};
 const AL = {
   uz: { title: '⚠️ <b>Ogohlantirish: kuchli yog‘in</b>', r1: 'kuchli yomg‘ir', r2: 'juda kuchli yomg‘ir', s1: 'kuchli qor', s2: 'juda kuchli qor', mm: 'mm', peak: 'eng kuchli', foot: 'ECMWF, NOAA, DWD modellari ansambli bo‘yicha. Ehtiyot bo‘ling!', none: '✅ Yaqin 3 kunda kuchli yog‘in kutilmayapti.' },
   ru: { title: '⚠️ <b>Предупреждение: сильные осадки</b>', r1: 'сильный дождь', r2: 'очень сильный дождь', s1: 'сильный снег', s2: 'очень сильный снег', mm: 'мм', peak: 'пик', foot: 'По ансамблю моделей ECMWF, NOAA, DWD. Будьте осторожны!', none: '✅ В ближайшие 3 дня сильных осадков не ожидается.' },
@@ -271,13 +276,18 @@ async function alertsData(env) {
   return r.ok ? r.json() : null;
 }
 function alertText(items, lang) {
-  const A = AL[lang] || AL.ru, out = [A.title];
+  const A = AL[lang] || AL.ru, out = [items.every(i => !i.kind || i.kind === 'rain' || i.kind === 'snow') ? A.title : (AX[lang] || AX.ru).title];
   const regs = [...new Set(items.map(i => i.region))];
   for (const rg of regs) {
     out.push('', `${FLAG[rg] || ''} <b>${esc(NAMES[rg] ? NAMES[rg][lang] : rg)}</b>`);
     for (const i of items.filter(x => x.region === rg).slice(0, 10)) {
-      const w = i.snow ? (i.level > 1 ? A.s2 : A.s1) : (i.level > 1 ? A.r2 : A.r1);
-      out.push(`${i.snow ? '❄️' : i.level > 1 ? '⛈' : '🌧'} <b>${esc(i.name[lang] || i.name.ru)}</b> — ${dayLabel(i.date, lang)}: ${w}, ~${Math.round(i.mm)} ${A.mm} (${i.p} %), ${A.peak} ${i.peak}`);
+      const k = i.kind || (i.snow ? 'snow' : 'rain'), X = AX[lang] || AX.ru, nm = `<b>${esc(i.name[lang] || i.name.ru)}</b> — ${dayLabel(i.date, lang)}`;
+      if (k === 'rain' || k === 'snow') { const w = i.snow ? (i.level > 1 ? A.s2 : A.s1) : (i.level > 1 ? A.r2 : A.r1); out.push(`${i.snow ? '❄️' : i.level > 1 ? '⛈' : '🌧'} ${nm}: ${w}, ~${Math.round(i.mm)} ${A.mm} (${i.p} %), ${A.peak} ${i.peak}`); }
+      else if (k === 'heat') out.push(`🔥 ${nm}: ${X.heat} ${i.t > 0 ? '+' : ''}${i.t}°`);
+      else if (k === 'frost') out.push(`🥶 ${nm}: ${X.frost} ${i.t}°`);
+      else if (k === 'ice') out.push(`🧊 ${nm}: ${X.ice}`);
+      else if (k === 'wind') out.push(`💨 ${nm}: ${X.wind} ${i.w} ${X.ms}`);
+      else if (k === 'dust') out.push(`🌫 ${nm}: ${X.dust} (PM10 ~${i.pm10} µg/m³)`);
     }
   }
   out.push('', `<i>${A.foot}</i>`);
@@ -289,7 +299,7 @@ async function alertTick(env) {
   const hour = new Date(Date.now() + TZ * 3600e3).getUTCHours();
   if (hour < 7 || hour > 21) return;
   const A = await alertsData(env); if (!A || !A.run) return;
-  const key = i => `${i.region}|${i.en}|${i.date}|${i.snow ? 's' : 'r'}`;
+  const key = i => `${i.region}|${i.en}|${i.date}|${i.kind || (i.snow ? 's' : 'r')}`;
   if ((await kv(env, 'alert_run')) !== A.run) {  // a new model run: keep only the events we have not warned about yet
     const prev = JSON.parse((await kv(env, 'alert_keys')) || '[]');
     const today = todayTZ();
@@ -488,6 +498,22 @@ async function buildTick(env) {
     body: JSON.stringify({ ref: 'main' }) });
   await setKv(env, 'build_at', String(Date.now()));
   if (r.status !== 204) { const a = await kv(env, 'admin'); if (a) await tg(env, 'sendMessage', { chat_id: a, text: `⚠️ Не удалось запустить обновление данных (GitHub ${r.status}). Проверьте ключ GH_TOKEN.` }); }
+}
+// a copy of the bot's database (users, subscriptions, settings) sent to the admin as a file every night at 03:00
+async function backupTick(env) {
+  if (!env.DB) return;
+  const now = new Date(Date.now() + TZ * 3600e3); if (now.getUTCHours() < 3) return;
+  const day = now.toISOString().slice(0, 10), admin = await kv(env, 'admin');
+  if (!admin || (await kv(env, 'backup_day')) === day) return;
+  await setKv(env, 'backup_day', day);
+  const dump = {};
+  for (const t of ['users', 'subs', 'meta']) { try { dump[t] = (await env.DB.prepare(`SELECT * FROM ${t}`).all()).results; } catch (e) { dump[t] = []; } }
+  dump.meta = dump.meta.filter(r => !/^(guide|alert_|build_at)/.test(r.k));
+  const fd = new FormData();
+  fd.append('chat_id', admin); fd.append('caption', `💾 Резервная копия базы бота · ${day}\nПользователей: ${dump.users.length}, подписок: ${dump.subs.length}`);
+  fd.append('disable_notification', 'true');
+  fd.append('document', new Blob([JSON.stringify(dump, null, 1)], { type: 'application/json' }), `osmon_backup_${day}.json`);
+  await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd });
 }
 async function staleTick(env) {
   const M = await manifest(env); if (!M || !M.run) return;

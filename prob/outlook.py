@@ -67,6 +67,61 @@ def fetch(points):
     return sea, past
 
 
+def fetch_aq(points):
+    """CAMS (ECMWF Copernicus) air quality for the next 4 days: hourly PM10 and dust, as daily maxima."""
+    out = []
+    for i in range(0, len(points), 100):
+        ch = points[i:i + 100]
+        r = get('https://air-quality-api.open-meteo.com/v1/air-quality', {'latitude': ','.join(str(p[0]) for p in ch), 'longitude': ','.join(str(p[1]) for p in ch),
+                'hourly': 'pm10,dust', 'forecast_days': 4, 'timezone': 'Asia/Tashkent'})
+        out += r if isinstance(r, list) else [r]
+        time.sleep(1)
+    days = sorted({t[:10] for t in out[0]['hourly']['time']})[:4]
+    res = []
+    for d in days:
+        ix = [k for k, t in enumerate(out[0]['hourly']['time']) if t.startswith(d)]
+        mx = lambda key: np.array([max([x['hourly'][key][k] for k in ix if x['hourly'][key][k] is not None] or [np.nan]) for x in out], float)
+        res.append({'date': dt.date.fromisoformat(d), 'pm10': mx('pm10'), 'dust': mx('dust')})
+    return res
+
+
+AQ_LV = [0, 20, 50, 100, 200, 400, 5000]
+AQ_COL = ['#dff1e2', '#b9dfa8', '#f3dd7a', '#f2a65a', '#d9534f', '#7d2a5c']
+DX = {'ru': dict(title='Пыль и качество воздуха', sub='PM10, максимум за день, мкг/м³', bands=['хорошо', 'умеренно', 'вредно для чувствительных', 'вредно', 'очень вредно', 'опасно'], src='Прогноз CAMS (ECMWF Copernicus) · данные Open-Meteo'),
+      'uz': dict(title='Chang va havo sifati', sub='PM10, kunlik maksimum, mkg/m³', bands=['yaxshi', 'o‘rtacha', 'sezgirlar uchun zararli', 'zararli', 'juda zararli', 'xavfli'], src='CAMS prognozi (ECMWF Copernicus) · Open-Meteo ma’lumotlari'),
+      'tr': dict(title='Toz ve hava kalitesi', sub='PM10, günlük en yüksek, µg/m³', bands=['iyi', 'orta', 'hassaslar için zararlı', 'zararlı', 'çok zararlı', 'tehlikeli'], src='CAMS tahmini (ECMWF Copernicus) · Open-Meteo verisi')}
+
+
+def draw_dust(R, aq, lang, path, cities):
+    X = DX[lang]; L = Rn.T[lang]
+    fig = plt.figure(figsize=(12.8, 7.2), dpi=100); fig.patch.set_facecolor(Rn.BG)
+    x = Rn._brand(fig, 0.022, 0.948)
+    fig.text(x + 0.012, 0.948, TX[lang]['title'], fontsize=18, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
+    fig.text(0.985, 0.955, X['title'], fontsize=15, fontweight='bold', color=Rn.ACCENT, ha='right', va='center')
+    fig.text(0.985, 0.913, X['sub'], fontsize=11, color=Rn.MUTED, ha='right', va='center')
+    worst = None
+    for k, day in enumerate(aq[:4]):
+        box = [0.012 + (k % 2) * 0.494, 0.505 - (k // 2) * 0.355, 0.482, 0.34]
+        ax = Rn._basemap(fig, R, box)
+        F = field(day['pm10'], R)
+        if F is not None: ax.contourf(R.XU, R.YU, Rn._up(R, F), levels=AQ_LV, colors=AQ_COL, zorder=2, alpha=0.85, antialiased=True)
+        Rn._borders(ax, R)
+        d = day['date']
+        fig.text(box[0] + 0.01, box[1] + box[3] - 0.03, f"{L['wd'][d.weekday()]} {d:%d.%m}", fontsize=11, fontweight='bold', color=Rn.INK, va='center',
+                 bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.5', fc=Rn.LABEL_BG, ec='none', alpha=0.85))
+        lab = {}
+        for p in cities[:7]:
+            gx, gy = R._xy(p); v = float(Rn.bilinear(F, gx, gy)) if F is not None else np.nan
+            lab[id(p)] = f"{Rn.city_name(p, lang)} {v:.0f}" if np.isfinite(v) else Rn.city_name(p, lang)
+            if np.isfinite(v) and (worst is None or v > worst[2]): worst = (p, d, v)
+        R.main = cities[0]
+        Rn._cities(fig, ax, R, lambda p, main: lab.get(id(p), Rn.city_name(p, lang)))
+    Rn._chips(fig, 0.03, 0.08, AQ_COL, X['bands'], w=0.153, h=0.032, gap=0.004, dark_from=4)
+    fig.text(0.986, 0.03, X['src'] + ' · t.me/ObHavo_ECMWF_bot', fontsize=8, color=Rn.FAINT, va='center', ha='right')
+    fig.savefig(path, dpi=150, facecolor=Rn.BG); plt.close(fig)
+    return worst
+
+
 def per_day(unit, days):
     """Open-Meteo gives weekly/monthly precipitation as a mean (per day or per 6 h): the period total in mm."""
     u = (unit or '').lower()
@@ -179,6 +234,22 @@ def main():
             idx['items'].append({'key': per['key'], 'lang': lang, 'img': f"outlook/{per['key']}_{lang}.png", 'start': per['start'].isoformat(), 'end': per['end'].isoformat(),
                                  'title': TX[lang][per['key']], 'text': words})
             print('outlook', per['key'], lang, words, flush=True)
+    # dust and air quality (CAMS): one map of four days, and warnings for very dusty days at the cities
+    try:
+        aq = fetch_aq(pts); alerts = []
+        for lang in a.langs.split(','):
+            cities = [R.mains[lang]] + [p for p in R.cities if p is not R.mains[lang]][:9]
+            w = draw_dust(R, aq, lang, out / f'dust_{lang}.png', cities)
+            txt = f"{Rn.city_name(w[0], lang)} {w[1]:%d.%m}: PM10 {w[2]:.0f}" if w else ''
+            idx['items'].append({'key': 'dust', 'lang': lang, 'img': f'outlook/dust_{lang}.png', 'start': aq[0]['date'].isoformat(), 'end': aq[-1]['date'].isoformat(), 'title': DX[lang]['title'], 'text': txt})
+        for p in R.cities:
+            gx, gy = R._xy(p)
+            for day in aq[:3]:
+                v = float(Rn.bilinear(field(day['pm10'], R), gx, gy))
+                if v >= 300: alerts.append({'region': 'UZ', 'en': p['en'], 'name': {l: Rn.city_name(p, l) for l in ('uz', 'ru', 'tr')}, 'date': day['date'].isoformat(), 'kind': 'dust', 'pm10': int(v), 'level': 2 if v >= 600 else 1})
+        json.dump({'run': D['run'], 'items': alerts}, open(pathlib.Path(a.out) / 'alerts.json', 'w'), ensure_ascii=False)
+        print('dust ok, warnings:', len(alerts), flush=True)
+    except Exception as e: print('dust failed:', e, flush=True)
     json.dump(idx, open(out / 'index.json', 'w'), ensure_ascii=False, indent=1)
 
 

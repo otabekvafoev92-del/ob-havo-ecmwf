@@ -843,6 +843,7 @@ def _city_job(args):
 
 
 INTRO = 9  # frames of the zoom-in (played at 9 frames per second)
+WARM = {'UZ', 'TM', 'TJ', 'AZ', 'AM', 'TR', 'KG'}
 def find_alerts(R, D, run, days=3):
     """Heavy precipitation in the next days at the cities of a country (for the bot's warnings):
     a local day with ≥ 15 mm of rain (≥ 8 mm of snow, water equivalent) in the ensemble mean and ≥ 60 % chance."""
@@ -862,11 +863,21 @@ def find_alerts(R, D, run, days=3):
             wet = [i for i in idx if P[i] >= 30] or idx
             snow = Ts is not None and float(np.nanmean(Ts[wet])) <= 0.5
             lim = 8 if snow else 15
+            base = {'region': R.id, 'en': p['en'], 'name': {l: city_name(p, l) for l in ('uz', 'ru', 'tr')}, 'date': d.isoformat()}
             if mm >= lim and pm >= 60:
                 peak = max(idx, key=lambda i: A[i])
                 h2 = (run + dt.timedelta(hours=steps[peak] + off)); h1 = h2 - dt.timedelta(hours=win[peak])
-                out.append({'region': R.id, 'en': p['en'], 'name': {l: city_name(p, l) for l in ('uz', 'ru', 'tr')}, 'date': d.isoformat(),
-                            'mm': round(mm, 1), 'p': int(round(pm)), 'snow': bool(snow), 'level': 2 if mm >= 2 * lim else 1, 'peak': f'{h1:%H}–{h2:%H}'})
+                out.append({**base, 'kind': 'snow' if snow else 'rain', 'mm': round(mm, 1), 'p': int(round(pm)), 'snow': bool(snow), 'level': 2 if mm >= 2 * lim else 1, 'peak': f'{h1:%H}–{h2:%H}'})
+            if Ts is not None:
+                tx, tn = float(np.nanmax(Ts[idx])), float(np.nanmin(Ts[idx]))
+                warm = R.id in WARM  # southern countries: lower frost threshold, higher heat threshold
+                if tx >= (40 if warm else 35): out.append({**base, 'kind': 'heat', 't': round(tx), 'level': 2 if tx >= (44 if warm else 38) else 1})
+                cold = -35 if R.id == 'RU' else -10 if warm else -20
+                if tn <= cold: out.append({**base, 'kind': 'frost', 't': round(tn), 'level': 2 if tn <= cold - 8 else 1})
+                ice = [i for i in idx if P[i] >= 60 and -1.5 <= Ts[i] <= 0.5] if tn <= -1 and tx >= 1 and R.id != 'RU' else []  # freezing rain / thaw-and-freeze
+                if ice and not snow: out.append({**base, 'kind': 'ice', 'p': int(round(max(P[i] for i in ice))), 'level': 1})
+            Ws = R.wseries(p)
+            if Ws is not None and float(np.nanmax(Ws[idx])) >= 12: out.append({**base, 'kind': 'wind', 'w': round(float(np.nanmax(Ws[idx]))), 'level': 2 if np.nanmax(Ws[idx]) >= 17 else 1})
     return out
 
 
@@ -896,7 +907,7 @@ def _job(args):
         # the same daily comments for every labelled city of the country (the bot's city menu)
         cities = city_list(R, geo, lang)
         (out / 'cities').mkdir(exist_ok=True)
-        json.dump({'region': region, 'lang': lang, 'off': off, 'cities': [{'name': city_name(c, lang), 'days': daily_comments(R, D, lang, off, c, area=False)} for c in cities]},
+        json.dump({'region': region, 'lang': lang, 'off': off, 'cities': [{'name': city_name(c, lang), 'en': c['en'], 'lat': round(c['lat'], 3), 'lon': round(c['lon'], 3), 'days': daily_comments(R, D, lang, off, c, area=False)} for c in cities]},
                   open(out / 'cities' / f'{region}_{lang}.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     try: res.append({'product': 'alerts', 'alerts': find_alerts(R, D, run)})
     except Exception as e: print(region, 'alerts:', e, flush=True)

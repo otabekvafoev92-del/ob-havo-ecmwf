@@ -23,7 +23,7 @@ const ASSET = (window.__ASSET_BASE__ || '') ;
 /* ------------------------------ i18n ------------------------------ */
 const I18N = {
   uz: {
-    tagline: 'ob-havo', 'nav.map': 'Globus', 'nav.forecast': 'Prognoz sharhi', 'nav.maps': 'ECMWF xaritalari', 'nav.prob': 'Yog‘in ehtimolligi', 'nav.guide': 'Qo‘llanma', 'nav.about': 'Ma’lumotlar haqida',
+    tagline: 'ob-havo', 'nav.map': 'Globus', 'nav.forecast': 'Prognoz sharhi', 'nav.maps': 'ECMWF xaritalari', 'nav.prob': 'Yog‘in ehtimolligi', 'nav.guide': 'Qo‘llanma', 'nav.about': 'Ma’lumotlar haqida', 'nav.cities': 'Shaharlar',
     'loc.title': 'Joyni tanlash', 'loc.main': 'Asosiy nuqta', 'loc.compare': 'Taqqoslash', 'loc.search': 'Shahar, davlat yoki 41.31, 69.28', 'loc.mine': '⌖ Mening joylashuvim', 'loc.save': '☆ Saqlash',
     'loc.saved': 'Saqlangan nuqtalar', 'loc.savedEmpty': 'Hali yo‘q. Globusda nuqtani tanlab «Saqlash»ni bosing.', 'loc.src': 'charts.ecmwf.int →',
     'loc.geoFail': 'Joylashuvni aniqlab bo‘lmadi. Shaharni tanlang yoki globusni bosing.', 'loc.cmpHint': 'Ikkinchi nuqtani tanlang (ro‘yxat yoki globus).', 'loc.country': 'davlat', 'loc.here': 'Siz shu yerdasiz', 'bld.proc': 'Binolar shartli (OSM ga ulanib bo‘lmadi)', 'zen.sun': 'Quyosh tik turgan joy', 'zen.moon': 'Oy tik turgan joy',
@@ -45,7 +45,7 @@ const I18N = {
     'maps.title': 'ECMWF xaritalari', 'maps.note': 'Asl xaritalar charts.ecmwf.int dan, har kuni 12:00 UTC (17:00 Toshkent) holatiga.', 'maps.empty': 'Bu namoyish versiyasida asl xaritalar yo‘q — ular saytning to‘liq versiyasida GitHub Actions orqali yuklanadi.',
   },
   ru: {
-    tagline: 'погода', 'nav.map': 'Глобус', 'nav.forecast': 'Обзор прогноза', 'nav.maps': 'Карты ECMWF', 'nav.prob': 'Вероятность осадков', 'nav.guide': 'Руководство', 'nav.about': 'О данных',
+    tagline: 'погода', 'nav.map': 'Глобус', 'nav.forecast': 'Обзор прогноза', 'nav.maps': 'Карты ECMWF', 'nav.prob': 'Вероятность осадков', 'nav.guide': 'Руководство', 'nav.about': 'О данных', 'nav.cities': 'Города',
     'loc.title': 'Выбор места', 'loc.main': 'Основная точка', 'loc.compare': 'Сравнение', 'loc.search': 'Город, страна или 41.31, 69.28', 'loc.mine': '⌖ Моё местоположение', 'loc.save': '☆ Сохранить',
     'loc.saved': 'Сохранённые точки', 'loc.savedEmpty': 'Пока пусто. Выберите точку на глобусе и нажмите «Сохранить».', 'loc.src': 'charts.ecmwf.int →',
     'loc.geoFail': 'Не удалось определить местоположение. Выберите город или нажмите на глобус.', 'loc.cmpHint': 'Выберите вторую точку (в списке или на глобусе).', 'loc.country': 'страна', 'loc.here': 'Вы здесь', 'bld.proc': 'Здания условные (нет доступа к OSM)', 'zen.sun': 'Солнце в зените', 'zen.moon': 'Луна в зените',
