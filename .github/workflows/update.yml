@@ -104,7 +104,16 @@ jobs:
           sudo apt-get install -y -qq ffmpeg >/dev/null
           pip install numpy scipy matplotlib pyproj pillow requests
           if [ "${{ matrix.part }}" = outlook ]; then
-            python prob/outlook.py prob.npz wx.npz out
+            # weekly and monthly outlooks change once a day: draw them twice a day (free Open-Meteo quota), otherwise reuse the live ones
+            H=$(date -u +%H); SITE=https://otabekvafoev92-del.github.io/ob-havo-ecmwf/prob
+            if [ "${{ github.event_name }}" != schedule ] && [ "${{ github.event_name }}" != workflow_dispatch ] || [ $((10#$H % 12)) -lt 3 ] || ! curl -sfo /tmp/ol.json $SITE/outlook/index.json; then
+              python prob/outlook.py prob.npz wx.npz out
+            else
+              mkdir -p out/outlook && cp /tmp/ol.json out/outlook/index.json
+              for f in $(python -c "import json;print(' '.join(i['img'] for i in json.load(open('/tmp/ol.json'))['items']))"); do curl -sfo out/$f $SITE/$f || true; done
+              curl -sfo out/outlook/alerts.json $SITE/outlook/alerts.json && cp out/outlook/alerts.json out/alerts.json || true
+              echo reused the live outlook
+            fi
           elif [ "${{ matrix.part }}" = hr-a ] || [ "${{ matrix.part }}" = hr-b ]; then
             python prob/hourly.py prob.npz wx.npz out ${{ matrix.args }}
           elif [ "${{ matrix.part }}" = yt ]; then

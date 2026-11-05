@@ -248,6 +248,7 @@ def main():
                 v = float(Rn.bilinear(field(day['pm10'], R), gx, gy))
                 if v >= 300: alerts.append({'region': 'UZ', 'en': p['en'], 'name': {l: Rn.city_name(p, l) for l in ('uz', 'ru', 'tr')}, 'date': day['date'].isoformat(), 'kind': 'dust', 'pm10': int(v), 'level': 2 if v >= 600 else 1})
         json.dump({'run': D['run'], 'items': alerts}, open(pathlib.Path(a.out) / 'alerts.json', 'w'), ensure_ascii=False)
+        json.dump({'run': D['run'], 'items': alerts}, open(out / 'alerts.json', 'w'), ensure_ascii=False)  # kept for the runs that reuse these maps
         print('dust ok, warnings:', len(alerts), flush=True)
     except Exception as e: print('dust failed:', e, flush=True)
     json.dump(idx, open(out / 'index.json', 'w'), ensure_ascii=False, indent=1)
