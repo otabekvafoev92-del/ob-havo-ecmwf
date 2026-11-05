@@ -247,6 +247,17 @@ function menuKb(env, lang, id) {
     [{ text: T[lang].site, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].back, callback_data: `L:${lang}` }],
   ] };
 }
+const DK = {
+  uz: { ask: '15 kunlik prognoz: shaharni tanlang yoki dunyodagi istalgan shahar nomini yozing (masalan: Parij, Dubay)', mine: 'Mening joyim', loc: '📍 Joylashuvni yuborish', other: '🌍 Boshqa davlat', vid: '🎬 Shu shahar videosi', vidC: '🎬 Video 15 kun', more: '🏙 Boshqa shahar', globe: '🌍 Globusda ochish' },
+  ru: { ask: 'Прогноз на 15 дней: выберите город или напишите название любого города мира (например: Париж, Дубай)', mine: 'Моё место', loc: '📍 Отправить геолокацию', other: '🌍 Другая страна', vid: '🎬 Видео этого города', vidC: '🎬 Видео на 15 дней', more: '🏙 Другой город', globe: '🌍 Открыть на глобусе' },
+  tr: { ask: '15 günlük tahmin: şehir seçin ya da dünyadaki herhangi bir şehrin adını yazın (ör. Paris, Dubai)', mine: 'Konumum', loc: '📍 Konum gönder', other: '🌍 Başka ülke', vid: '🎬 Bu şehrin videosu', vidC: '🎬 15 günlük video', more: '🏙 Başka şehir', globe: '🌍 Kürede aç' } };
+// under a 15-day text: the matching video (this city's own, or the country's), another city, the countries
+function dayKb(lang, rid, cityVideo) {
+  const X = DK[lang] || DK.ru;
+  return { inline_keyboard: [
+    [cityVideo ? { text: X.vid, callback_data: cityVideo, style: 'primary' } : { text: X.vidC, callback_data: `V:${lang}:${rid}`, style: 'primary' }],
+    [{ text: X.more, callback_data: `D:${lang}:${rid}` }, { text: X.other, callback_data: `L:${lang}` }]] };
+}
 const helpKb = lang => ({ inline_keyboard: [[{ text: T[lang].pdf, callback_data: `P:${lang}` }, { text: T[lang].adm, callback_data: `M:${lang}` }]] });
 // groups and channels cannot open Mini Apps from buttons: plain links
 const postKb = (env, lang, id, bot) => ({ inline_keyboard: [[{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
@@ -496,7 +507,12 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
     day(D[0], D[0].d === today ? T[lang].tdy : wd(D[0].d)), ...(D[1] ? [day(D[1], D[1].d === tmrw ? T[lang].tmw : wd(D[1].d))] : []), '',
     ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc(pad(K.cDay, 9) + pad(K.cT, 10) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
     `<i>${K.note}</i>`].join('\n');
-  const kb = kbOver || (place && NAMES[place[4]] ? menuKb(env, lang, place[4]) : undefined);
+  let kb = kbOver;
+  if (!kb && place && NAMES[place[4]]) {  // a town of a country with videos: its city video when there is one
+    const C = await cities(env, place[4], lang), ci = C ? C.cities.findIndex(c => c.en === place[2] && c.video) : -1;
+    kb = dayKb(lang, place[4], ci >= 0 ? `Z:${lang}:${place[4]}:${ci}` : null);
+  }
+  if (!kb) kb = { inline_keyboard: [[{ text: (DK[lang] || DK.ru).globe, web_app: { url: site(env, 'map') } }], [{ text: (DK[lang] || DK.ru).other, callback_data: `L:${lang}` }]] };
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
 }
 // the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
@@ -661,7 +677,13 @@ async function handle(up, env) {
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
   if (kind === 'O') return sendOutlook(env, chat.id, lang);
   if (kind === 'Q') { const [, , la, lo] = cb.data.split(':'); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 5)); }
+  if (kind === 'DC') {  // 15 days for one city of the country list: the same numbers as its video, and the video under it
+    const [, , rid, ci] = cb.data.split(':'), C = (await cities(env, rid, lang)) || (await cities(env, rid, 'ru')), c = C && C.cities[+ci];
+    if (!c || c.lat == null) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
+    return pointForecast(env, chat.id, lang, c.lat, c.lon, (await nearestPlace(env, c.lat, c.lon, 8)) || [c.name, c.name, c.en, c.name, rid, c.lat, c.lon, 0, 0], dayKb(lang, rid, c.video ? `Z:${lang}:${rid}:${ci}` : null));
+  }
   if (kind === 'H') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
+  if (kind === 'LQ') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].locAsk, reply_markup: locOnce(lang) });
   if (kind === 'P') return sendGuide(env, chat.id, lang);
   if (kind === 'M') { await saveUser(env, chat.id, { lang, mode: 'contact' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk }); }
   if (kind === 'L') await saveUser(env, chat.id, { lang });
@@ -686,11 +708,15 @@ async function handle(up, env) {
   const items = M ? M.items.filter(i => i.region === id && i.lang === lang) : [];
   if (!items.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
   const days = items.find(i => i.product === 'days');
-  if (kind === 'D') {  // 15 days: the same professional layout as for a searched town — the user's place in this country, or its capital
+  if (kind === 'D') {  // 15 days: first choose where — a city of this country, my place, or any town in the world by name
+    const C = (await cities(env, id, lang)) || (await cities(env, id, 'ru'));
     const uu = await getUser(env, chat.id), pl = uu && uu.place ? JSON.parse(uu.place) : null, near = pl ? await nearestPlace(env, pl[0], pl[1], 40) : null;
-    const P0 = near && near[4] === id ? near : (await places(env)).find(p => p[4] === id && p[8] === 2) || (await places(env)).find(p => p[4] === id);
-    if (P0) return pointForecast(env, chat.id, lang, near && near[4] === id ? pl[0] : P0[5], near && near[4] === id ? pl[1] : P0[6], P0, menuKb(env, lang, id));
-    return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b>\n\n${allDays(days, lang)}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
+    const rows = [];
+    if (pl) rows.push([{ text: `📍 ${near ? pname(near, lang) : DK[lang].mine}`, callback_data: `Q:${lang}:${(+pl[0]).toFixed(3)}:${(+pl[1]).toFixed(3)}`, style: 'success' }]);
+    (C ? C.cities.slice(0, 21) : []).forEach((c, i) => { if (c.lat == null) return; if (!rows.length || rows[rows.length - 1].length === 3 || (pl && rows.length === 1)) rows.push([]); rows[rows.length - 1].push({ text: c.name, callback_data: `DC:${lang}:${id}:${i}` }); });
+    rows.push([{ text: DK[lang].loc, callback_data: `LQ:${lang}` }, { text: DK[lang].other, callback_data: `L:${lang}` }]);
+    if (rows.length <= 2 && !C) return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b>\n\n${allDays(days, lang)}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
   }
   if (kind === 'V') {
     let vids = ['prob', 'temp', 'cloud', 'wind'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
