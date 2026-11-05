@@ -360,3 +360,10 @@ table.cmp td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums;
 .pt-day .tbar { display: block; width: 6px; height: 46px; border-radius: 3px; background: linear-gradient(to top, transparent var(--a), #f39a4a var(--a), #f39a4a var(--b), transparent var(--b)), var(--line); }
 .pt-day .pp { font-weight: 600; padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, #2a7cba var(--p), transparent); }
 .pt-day .pp.sn { background: color-mix(in srgb, #c0548f var(--p), transparent); }
+
+.outlook { margin-top: 28px; }
+.outlook .ol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+.outlook figure { margin: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+.outlook img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.outlook figcaption { padding: 10px 12px; font-size: 13.5px; line-height: 1.4; }
+@media (max-width: 760px) { .outlook .ol-grid { grid-template-columns: 1fr; } }

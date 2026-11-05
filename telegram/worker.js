@@ -170,6 +170,7 @@ async function setup(env, url) {
   await tg(env, 'setMyCommands', { commands: [  // the ☰ menu on the left of the input: every section of the bot, in one place
     { command: 'hourly', description: '⏱ Bugun va ertaga soatma-soat (video) / Сегодня и завтра по часам' },
     { command: 'days', description: '🗓 15 kun / 15 дней' },
+    { command: 'outlook', description: '📅 Haftalar va oylar / Недели и месяцы (UZ)' },
     { command: 'video', description: '🎬 15 kunlik videolar / Видео на 15 дней' },
     { command: 'cities', description: '🏙 Shaharlar / Города' },
     { command: 'location', description: '📍 Mening joyim / Погода у меня' },
@@ -221,10 +222,25 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 /* ---------- keyboards ---------- */
 const langKb = (p = 'L') => ({ inline_keyboard: [[{ text: '🇺🇿 O‘zbekcha', callback_data: `${p}:uz` }, { text: '🇷🇺 Русский', callback_data: `${p}:ru` }, { text: '🇹🇷 Türkçe', callback_data: `${p}:tr` }]] });
 const countryKb = (lang, p = 'C') => ({ inline_keyboard: GROUPS.map(row => row.map(id => ({ text: `${FLAG[id]} ${NAMES[id][lang]}`, callback_data: `${p}:${lang}:${id}` }))) });
+const OLK = { uz: '📅 Haftalar va oylar', ru: '📅 Недели и месяцы', tr: '📅 Haftalar ve aylar' };
+// Uzbekistan: the past week, the next two weeks and this and next month as five maps (prob/outlook.py)
+async function sendOutlook(env, chat, lang) {
+  const I = await (await fetch(`${base(env)}/prob/outlook/index.json?t=${Date.now()}`)).json().catch(() => null);
+  let its = I ? I.items.filter(i => i.lang === lang) : []; if (I && !its.length) its = I.items.filter(i => i.lang === 'ru');
+  if (!its.length) return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].none });
+  const cap = [`🇺🇿 <b>${OLK[lang]}</b>`, '', ...its.map(i => `<b>${i.title}</b> (${i.start.slice(8, 10)}.${i.start.slice(5, 7)}–${i.end.slice(8, 10)}.${i.end.slice(5, 7)})\n${esc(i.text)}`)].join('\n').slice(0, 1024);
+  const media = its.map((i, k) => ({ type: 'photo', media: `${base(env)}/prob/${i.img}?v=${encodeURIComponent(I.made || '')}`, ...(k === 0 ? { caption: cap, parse_mode: 'HTML' } : {}) }));
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
+  const r = await tg(env, 'sendMediaGroup', { chat_id: chat, media });
+  if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML' });
+  return r;
+}
 function menuKb(env, lang, id) {
   return { inline_keyboard: [
-    [{ text: T[lang].today, callback_data: `T:${lang}:${id}` }],
-    [{ text: T[lang].days, callback_data: `D:${lang}:${id}` }, { text: T[lang].all, callback_data: `V:${lang}:${id}` }],
+    // coloured buttons (Telegram 2026+): blue = main actions, green = forecast texts, the rest plain
+    [{ text: T[lang].today, callback_data: `T:${lang}:${id}`, style: 'primary' }],
+    [{ text: T[lang].days, callback_data: `D:${lang}:${id}`, style: 'success' }, { text: T[lang].all, callback_data: `V:${lang}:${id}`, style: 'primary' }],
+    ...(id === 'UZ' ? [[{ text: OLK[lang], callback_data: `O:${lang}:${id}`, style: 'success' }]] : []),
     [{ text: T[lang].cities, callback_data: `Y:${lang}:${id}` }, { text: T[lang].sub, callback_data: `B:${lang}:${id}` }],
     [{ text: T[lang].site, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].back, callback_data: `L:${lang}` }],
   ] };
@@ -589,6 +605,7 @@ async function handle(up, env) {
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
   }
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
+  if (kind === 'O') return sendOutlook(env, chat.id, lang);
   if (kind === 'Q') { const [, , la, lo] = cb.data.split(':'); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 5)); }
   if (kind === 'H') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
   if (kind === 'P') return sendGuide(env, chat.id, lang);
@@ -718,6 +735,7 @@ async function privateMsg(msg, env) {
     const cbk = data => handle({ callback_query: { id: '0', from: msg.from, data, message: { chat, message_id: msg.message_id } } }, env);
     if (old('today') || old('d15') || old('video') || old('more')) await tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menuHint, reply_markup: mainKb(lang) });
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
+    if (act === 'outlook') return sendOutlook(env, chat.id, lang);
     if (act === 'days') return cbk(`D:${lang}:${rid}`);
     if (act === 'video') return cbk(`V:${lang}:${rid}`);
     if (act === 'cities') return cbk(`Y:${lang}:${rid}`);
