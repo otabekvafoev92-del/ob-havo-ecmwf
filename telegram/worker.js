@@ -27,7 +27,7 @@ const T = {
   uz: {
     cities: '🏙 Shaharlar', cPick: '🏙 Shaharni tanlang:', cTitle: '🏙 Bugun shaharlarda', time: '⏰ Guruhga prognoz qaysi vaqtda yuborilsin? (Toshkent vaqti)', help: 'ℹ️ Yordam',
     d15: '15 kunlik prognoz', hi: '☀️ <b>Osmon</b> — ob-havo prognozi\n6 ta model (ECMWF, NOAA) asosida 15 kunga.\n\nTilni tanlang:', pick: '📍 Davlat yoki qit’ani tanlang:',
-    menu: 'Nimani ko‘rsatay?', today: '📅 Bugun va ertaga', all: '🎬 15 kunlik video', days: '🗓 Kunlar bo‘yicha', site: '🌍 Globus', rep: '📊 Hisobot',
+    menu: 'Nimani ko‘rsatay?', today: '⏱ Bugun va ertaga soatma-soat', all: '🎬 15 kunlik video', days: '🗓 15 kun', site: '🗺 Sayt va globus', rep: '📊 Hisobot', menuHint: '☰ Barcha bo‘limlar — chap pastdagi «Menyu» tugmasida.\n📍 Joylashuvni yuboring yoki shahar nomini yozing, masalan: Namangan', locAsk: '📍 Pastdagi tugmani bosing — joylashuvingiz yuboriladi.',
     back: '↩️ Davlatlar', none: '⏳ Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.', tdy: 'Bugun', tmw: 'Ertaga', next: 'Keyingi kunlar',
     upd: 'Yangilandi', swipe: '🎬 Videoni suring: 🌧 yog‘in · 🌡 harorat · ☁️ bulutlar · 💨 shamol', bot: '🤖 Bot',
     gHi: '👋 Salom! Men har kuni shu yerga ob-havoni video bilan yuboraman.\nGuruh admini: til, davlat va vaqtni tanlang 👇 (/sozla)',
@@ -38,7 +38,7 @@ const T = {
   ru: {
     cities: '🏙 Города', cPick: '🏙 Выберите город:', cTitle: '🏙 Сегодня по городам', time: '⏰ Во сколько присылать прогноз в группу? (по Ташкенту)', help: 'ℹ️ Помощь',
     d15: 'прогноз на 15 дней', hi: '☀️ <b>Osmon</b> — прогноз погоды\nна 15 дней по 6 моделям (ECMWF, NOAA).\n\nВыберите язык:', pick: '📍 Выберите страну или континент:',
-    menu: 'Что показать?', today: '📅 Сегодня и завтра', all: '🎬 Видео на 15 дней', days: '🗓 По дням', site: '🌍 Глобус', rep: '📊 Отчёт',
+    menu: 'Что показать?', today: '⏱ Сегодня и завтра по часам', all: '🎬 Видео на 15 дней', days: '🗓 15 дней', site: '🗺 Сайт и глобус', rep: '📊 Отчёт', menuHint: '☰ Все разделы — в кнопке «Меню» слева внизу.\n📍 Отправьте геолокацию или напишите город, например: Наманган', locAsk: '📍 Нажмите кнопку внизу — бот получит ваше место.',
     back: '↩️ Страны', none: '⏳ Данные ещё не готовы, попробуйте чуть позже.', tdy: 'Сегодня', tmw: 'Завтра', next: 'Дальше',
     upd: 'Обновлено', swipe: '🎬 Листайте видео: 🌧 осадки · 🌡 температура · ☁️ облака · 💨 ветер', bot: '🤖 Бот',
     gHi: '👋 Привет! Я буду каждый день присылать сюда прогноз погоды с видео.\nАдминистратор группы: выберите язык, страны и время 👇 (/settings)',
@@ -49,7 +49,7 @@ const T = {
   tr: {
     cities: '🏙 Şehirler', cPick: '🏙 Şehir seçin:', cTitle: '🏙 Bugün şehirlerde', time: '⏰ Tahmin gruba saat kaçta gönderilsin? (Taşkent saati)', help: 'ℹ️ Yardım',
     d15: '15 günlük tahmin', hi: '☀️ <b>Osmon</b> — hava tahmini\n6 modele göre 15 günlük (ECMWF, NOAA).\n\nDil seçin:', pick: '📍 Ülke veya kıta seçin:',
-    menu: 'Ne göstereyim?', today: '📅 Bugün ve yarın', all: '🎬 15 günlük video', days: '🗓 Günlere göre', site: '🌍 Küre', rep: '📊 Rapor',
+    menu: 'Ne göstereyim?', today: '⏱ Bugün ve yarın saat saat', all: '🎬 15 günlük video', days: '🗓 15 gün', site: '🗺 Site ve küre', rep: '📊 Rapor', menuHint: '☰ Tüm bölümler — sol alttaki «Menü» düğmesinde.\n📍 Konum gönderin veya şehir adı yazın, örneğin: Antalya', locAsk: '📍 Alttaki düğmeye basın — konumunuz gönderilir.',
     back: '↩️ Ülkeler', none: '⏳ Veriler henüz hazır değil, biraz sonra deneyin.', tdy: 'Bugün', tmw: 'Yarın', next: 'Sonraki günler',
     upd: 'Güncellendi', swipe: '🎬 Videoları kaydırın: 🌧 yağış · 🌡 sıcaklık · ☁️ bulutlar · 💨 rüzgâr', bot: '🤖 Bot',
     gHi: '👋 Merhaba! Her gün buraya videolu hava tahmini göndereceğim.\nGrup yöneticisi: dil, ülke ve saati seçin 👇 (/settings)',
@@ -167,9 +167,21 @@ async function adminMenu(env, chat) {
 async function setup(env, url) {
   { const a = await kv(env, 'admin'); if (a) await adminMenu(env, a); }
   const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, secret_token: await secret(env), allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post'] });
-  await tg(env, 'setMyCommands', { commands: [{ command: 'start', description: 'Til / Язык / Dil' }, { command: 'bugun', description: 'Bugun va ertaga' }, { command: 'today', description: 'Сегодня и завтра' }, { command: 'prognoz', description: '15 kunlik video' }, { command: 'help', description: 'Yordam / Помощь' }, { command: 'guide', description: 'Yo‘riqnoma PDF / Инструкция PDF' }, { command: 'alerts', description: 'Ogohlantirishlar / Предупреждения' }, { command: 'admin', description: 'Adminga yozish / Написать админу' }] });
+  await tg(env, 'setMyCommands', { commands: [  // the ☰ menu on the left of the input: every section of the bot, in one place
+    { command: 'hourly', description: '⏱ Bugun va ertaga soatma-soat (video) / Сегодня и завтра по часам' },
+    { command: 'days', description: '🗓 15 kun / 15 дней' },
+    { command: 'video', description: '🎬 15 kunlik videolar / Видео на 15 дней' },
+    { command: 'cities', description: '🏙 Shaharlar / Города' },
+    { command: 'location', description: '📍 Mening joyim / Погода у меня' },
+    { command: 'countries', description: '🌍 Davlat / Страна' },
+    { command: 'daily', description: '🔔 Har kuni / Каждый день' },
+    { command: 'site', description: '🗺 Sayt va globus / Сайт и глобус' },
+    { command: 'alerts', description: '⚠️ Ogohlantirishlar / Предупреждения' },
+    { command: 'help', description: 'ℹ️ Yordam, PDF / Помощь, PDF' },
+    { command: 'admin', description: '✉️ Adminga yozish / Написать админу' },
+    { command: 'start', description: '🔤 Til / Язык / Dil' }] });
   await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'help', description: 'Yordam / Помощь' }] });
-  await tg(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: 'Osmon', web_app: { url: site(env, 'map') } } });
+  await tg(env, 'setChatMenuButton', { menu_button: { type: 'commands' } });  // ☰ opens the command menu
   await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода · Hava — 15 kun, 6 model (ECMWF, NOAA). Guruhlarga avtomatik prognoz.' });
   await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 6 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 6 моделям. Добавьте в группу — бот сам будет присылать прогноз.' });
   if (env.DB) await db(env);
@@ -211,14 +223,13 @@ const langKb = (p = 'L') => ({ inline_keyboard: [[{ text: '🇺🇿 O‘zbekcha'
 const countryKb = (lang, p = 'C') => ({ inline_keyboard: GROUPS.map(row => row.map(id => ({ text: `${FLAG[id]} ${NAMES[id][lang]}`, callback_data: `${p}:${lang}:${id}` }))) });
 function menuKb(env, lang, id) {
   return { inline_keyboard: [
-    [{ text: T[lang].today, callback_data: `T:${lang}:${id}` }, { text: T[lang].days, callback_data: `D:${lang}:${id}` }],
-    [{ text: T[lang].cities, callback_data: `Y:${lang}:${id}` }, { text: T[lang].all, callback_data: `V:${lang}:${id}` }],
-    [{ text: T[lang].rep, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].site, web_app: { url: site(env, 'map') } }],
-    [{ text: T[lang].sub, callback_data: `B:${lang}:${id}` }, { text: T[lang].help, callback_data: `H:${lang}` }],
-    [{ text: T[lang].adm, callback_data: `M:${lang}` }, { text: T[lang].back, callback_data: `L:${lang}` }],
+    [{ text: T[lang].today, callback_data: `T:${lang}:${id}` }],
+    [{ text: T[lang].days, callback_data: `D:${lang}:${id}` }, { text: T[lang].all, callback_data: `V:${lang}:${id}` }],
+    [{ text: T[lang].cities, callback_data: `Y:${lang}:${id}` }, { text: T[lang].sub, callback_data: `B:${lang}:${id}` }],
+    [{ text: T[lang].site, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].back, callback_data: `L:${lang}` }],
   ] };
 }
-const helpKb = lang => ({ inline_keyboard: [[{ text: T[lang].pdf, callback_data: `P:${lang}` }], [{ text: T[lang].adm, callback_data: `M:${lang}` }]] });
+const helpKb = lang => ({ inline_keyboard: [[{ text: T[lang].pdf, callback_data: `P:${lang}` }, { text: T[lang].adm, callback_data: `M:${lang}` }]] });
 // groups and channels cannot open Mini Apps from buttons: plain links
 const postKb = (env, lang, id, bot) => ({ inline_keyboard: [[{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
 
@@ -319,7 +330,8 @@ const MK = {  // the main keyboard under the chat: four buttons for everything
   uz: { today: '📅 Bugun va ertaga', d15: '🗓 15 kun', video: '🎬 Video', more: '⚙️ Menyu' },
   tr: { today: '📅 Bugün ve yarın', d15: '🗓 15 gün', video: '🎬 Video', more: '⚙️ Menü' },
 };
-const mainKb = lang => ({ keyboard: [[{ text: PT[lang].locBtn, request_location: true }], [{ text: MK[lang].today }, { text: MK[lang].d15 }], [{ text: MK[lang].video }, { text: MK[lang].more }]], resize_keyboard: true, is_persistent: true });
+const mainKb = () => ({ remove_keyboard: true });  // the old big keyboard is gone: everything is in the ☰ menu
+const locOnce = lang => ({ keyboard: [[{ text: PT[lang].locBtn, request_location: true }]], resize_keyboard: true, one_time_keyboard: true });
 const FILLER = new Set('погода погоду погоды прогноз в во на для город городе сегодня завтра какая какой ob-havo obhavo havo bugun ertaga shahar shahrida hava durumu bugün yarın için weather in today tomorrow'.split(' '));
 // today and tomorrow hour by hour: the country's video with the main city's timing and clothing advice (prob/hourly.py)
 async function sendHourly(env, chat, lang, id) {
@@ -356,7 +368,7 @@ async function nearestPlace(env, lat, lon, km = 35) {
   for (const p of await places(env)) { const d = Math.hypot((p[5] - lat) * 111, (p[6] - lon) * 111 * Math.cos(lat * Math.PI / 180)); if (d < bd) { bd = d; best = p; } }
   return best;
 }
-async function pointForecast(env, chat, lang, lat, lon, place) {
+async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
   const L = PT[lang], I = await memo('ptidx', 600e3, async () => (await fetch(`${base(env)}/prob/pt/index.json`, { cf: { cacheTtl: 600 } })).json().catch(() => null));
   await saveUser(env, chat, { place: JSON.stringify([lat, lon]) });
   if (!I || lat > 80 || lat <= -60) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
@@ -432,7 +444,7 @@ async function pointForecast(env, chat, lang, lat, lon, place) {
     day(D[0], D[0].d === today ? T[lang].tdy : wd(D[0].d)), ...(D[1] ? [day(D[1], D[1].d === tmrw ? T[lang].tmw : wd(D[1].d))] : []), '',
     ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc(pad(K.cDay, 9) + pad(K.cT, 10) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
     `<i>${K.note}</i>`].join('\n');
-  const kb = place && NAMES[place[4]] ? { inline_keyboard: [[{ text: L.vid, callback_data: `C:${lang}:${place[4]}` }]] } : undefined;
+  const kb = kbOver || (place && NAMES[place[4]] ? menuKb(env, lang, place[4]) : undefined);
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
 }
 // the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
@@ -562,7 +574,7 @@ async function handle(up, env) {
   if (kind === 'S') {  // first language choice after /start: the guide, then the countries
     await saveUser(env, chat.id, { lang });
     await tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
-    await tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].locHint, parse_mode: 'HTML', reply_markup: mainKb(lang) });
+    await tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menuHint, reply_markup: mainKb(lang) });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
   }
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
@@ -592,7 +604,12 @@ async function handle(up, env) {
   const items = M ? M.items.filter(i => i.region === id && i.lang === lang) : [];
   if (!items.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
   const days = items.find(i => i.product === 'days');
-  if (kind === 'D') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b>\n\n${allDays(days, lang)}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
+  if (kind === 'D') {  // 15 days: the same professional layout as for a searched town — the user's place in this country, or its capital
+    const uu = await getUser(env, chat.id), pl = uu && uu.place ? JSON.parse(uu.place) : null, near = pl ? await nearestPlace(env, pl[0], pl[1], 40) : null;
+    const P0 = near && near[4] === id ? near : (await places(env)).find(p => p[4] === id && p[8] === 2) || (await places(env)).find(p => p[4] === id);
+    if (P0) return pointForecast(env, chat.id, lang, near && near[4] === id ? pl[0] : P0[5], near && near[4] === id ? pl[1] : P0[6], P0, menuKb(env, lang, id));
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b>\n\n${allDays(days, lang)}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
+  }
   if (kind === 'V') {
     let vids = ['prob', 'temp', 'cloud', 'wind'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
     if (!vids.length) vids = ['prob', 'temp', 'cloud', 'wind'].map(p => M.items.find(i => i.region === id && i.lang === 'ru' && (i.product || 'prob') === p)).filter(Boolean);
@@ -683,17 +700,20 @@ async function privateMsg(msg, env) {
     return pointForecast(env, chat.id, lang, la, lo, await nearestPlace(env, la, lo));
   }
   if (!text) return;
-  if (!cmd) {  // the four buttons of the main keyboard (in any language)
-    const rid = (u && NAMES[u.region] && u.region) || 'UZ';
-    const hit = k => Object.values(MK).some(m => m[k] === text);
-    if (hit('today')) return sendHourly(env, chat.id, lang, rid);
-    if (hit('video')) return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, rid) });
-    if (hit('more')) { await tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) }); }
-    if (hit('d15')) {
-      const pl = u && u.place ? JSON.parse(u.place) : null;
-      if (pl) return pointForecast(env, chat.id, lang, pl[0], pl[1], await nearestPlace(env, pl[0], pl[1], 5));
-      const cap = await nearestPlace(env, 41.31, 69.28, 5); return pointForecast(env, chat.id, lang, 41.31, 69.28, cap);
-    }
+  // the ☰ menu (and the buttons of the old keyboard that some chats still show): one action each, no duplicates
+  {
+    const rid = (u && NAMES[u.region] && u.region) || 'UZ', old = k => !cmd && Object.values(MK).some(m => m[k] === text);
+    const act = old('today') ? 'hourly' : old('d15') ? 'days' : old('video') ? 'video' : old('more') ? 'countries' : Object.values(PT).some(m => m.locBtn === text) ? 'location' : cmd;
+    const cbk = data => handle({ callback_query: { id: '0', from: msg.from, data, message: { chat, message_id: msg.message_id } } }, env);
+    if (old('today') || old('d15') || old('video') || old('more')) await tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menuHint, reply_markup: mainKb(lang) });
+    if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
+    if (act === 'days') return cbk(`D:${lang}:${rid}`);
+    if (act === 'video') return cbk(`V:${lang}:${rid}`);
+    if (act === 'cities') return cbk(`Y:${lang}:${rid}`);
+    if (act === 'daily') return cbk(`B:${lang}:${rid}`);
+    if (act === 'countries' || act === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
+    if (act === 'location') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].locAsk, reply_markup: locOnce(lang) });
+    if (act === 'site') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} ${NAMES[rid][lang]}`, reply_markup: { inline_keyboard: [[{ text: T[lang].site, web_app: { url: site(env, `prob/${rid}/${lang}/prob`) } }], [{ text: T[lang].rep, web_app: { url: site(env, 'map') } }]] } });
   }
   if (!cmd && u && u.lang) {  // a town name (also "погода в Самарканде завтра"): search it anywhere in the world
     const q = text.split(/\s+/).filter(w => !FILLER.has(norm(w))).join(' ').trim() || text;
@@ -703,9 +723,8 @@ async function privateMsg(msg, env) {
     if (found.length === 1 || (found.length && norm([found[0][0], found[0][1], found[0][2], found[0][3]].find(x => norm(x) === norm(q)) || '') === norm(q) && !found.slice(1).some(p => [p[0], p[1], p[2], p[3]].some(x => norm(x) === norm(q)))))
       return pointForecast(env, chat.id, lang, found[0][5], found[0][6], found[0]);
     if (found.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].pick, reply_markup: { inline_keyboard: found.map(p => [{ text: `${FLAG[p[4]] || '📍'} ${pname(p, lang)}${NAMES[p[4]] ? ', ' + NAMES[p[4]][lang] : ' (' + p[4] + ')'}`, callback_data: `Q:${lang}:${p[5]}:${p[6]}` }]) } });
-    return tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].nf, reply_markup: mainKb(lang) });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: PT[lang].nf + '\n\n' + T[lang].menuHint });
   }
-  if (u && u.lang && T[u.lang]) await tg(env, 'sendMessage', { chat_id: chat.id, text: PT[u.lang].locHint, parse_mode: 'HTML', reply_markup: mainKb(u.lang) });
   const kb = langKb('S');  // a returning user goes straight back to the country they chose last time
   if (u && u.region && NAMES[u.region] && T[u.lang]) kb.inline_keyboard.push([{ text: `▶️ ${FLAG[u.region]} ${NAMES[u.region][u.lang]}`, callback_data: `C:${u.lang}:${u.region}` }]);
   return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.hi + '\n\n' + T.ru.hi.split('\n').slice(0, 2).join('\n') + '\nВыберите язык:', parse_mode: 'HTML', reply_markup: kb });
