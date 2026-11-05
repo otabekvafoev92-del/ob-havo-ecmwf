@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker
+import matplotlib.patheffects
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.patches import Polygon, Rectangle
 from matplotlib.collections import PolyCollection, LineCollection
@@ -618,7 +619,9 @@ def _cities(fig, ax, R, label, extra=()):
         dx, dy, ha, va, box_ = spot; placed.append(box_)
         ax.annotate(txt, (cx, cy), xytext=(dx, dy), textcoords='offset points', fontsize=fs, ha=ha, va=va, fontweight='bold' if main else 'medium',
                     color=ACCENT if main else INK, zorder=12 if main else 11,
-                    bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.6' if main else 'round,pad=0.25,rounding_size=0.5', fc=LABEL_BG, ec=ACCENT if main else 'none', lw=1.4, alpha=0.82 if main else 0.8))
+                    # only the chosen city sits on a card; the other names are plain text with a soft light outline
+                    bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.6', fc=LABEL_BG, ec=ACCENT, lw=1.4, alpha=0.82) if main else None,
+                    path_effects=None if main else [matplotlib.patheffects.withStroke(linewidth=2.2, foreground=BG, alpha=0.75)])
 
 
 def _chips(fig, x, y, cols, labels, w=0.052, h=0.019, gap=0.004, dark_from=3):
