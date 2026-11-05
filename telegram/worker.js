@@ -167,23 +167,10 @@ async function adminMenu(env, chat) {
 async function setup(env, url) {
   { const a = await kv(env, 'admin'); if (a) await adminMenu(env, a); }
   const hook = await tg(env, 'setWebhook', { url: `${url.origin}/`, secret_token: await secret(env), allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post'] });
-  await tg(env, 'setMyCommands', { commands: [  // the ☰ menu on the left of the input: every section of the bot, in one place
-    { command: 'hourly', description: '⏱ Bugun va ertaga soatma-soat (video) / Сегодня и завтра по часам' },
-    { command: 'days', description: '🗓 15 kun / 15 дней' },
-    { command: 'outlook', description: '📅 Haftalar va oylar / Недели и месяцы (UZ)' },
-    { command: 'video', description: '🎬 15 kunlik videolar / Видео на 15 дней' },
-    { command: 'cities', description: '🏙 Shaharlar / Города' },
-    { command: 'location', description: '📍 Mening joyim / Погода у меня' },
-    { command: 'countries', description: '🌍 Davlat / Страна' },
-    { command: 'daily', description: '🔔 Har kuni / Каждый день' },
-    { command: 'site', description: '🗺 Sayt va globus / Сайт и глобус' },
-    { command: 'now', description: '🌡 Hozir / Погода сейчас' },
-    { command: 'alerts', description: '⚠️ Ogohlantirishlar / Предупреждения' },
-    { command: 'accuracy', description: '🎯 Prognoz aniqligi / Точность прогноза' },
+  await tg(env, 'setMyCommands', { commands: [  // ☰ only the basics: everything else is on the keyboard under the input field
+    { command: 'home', description: '🏠 Menyu / Меню (klaviatura / клавиатура)' },
     { command: 'help', description: 'ℹ️ Yordam, PDF / Помощь, PDF' },
     { command: 'admin', description: '✉️ Adminga yozish / Написать админу' },
-    { command: 'home', description: '🏠 Bosh menyu / Главная' },
-    { command: 'reset', description: '🔄 Qayta boshlash / Сбросить' },
     { command: 'start', description: '🔤 Til / Язык / Dil' }] });
   await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'help', description: 'Yordam / Помощь' }] });
   await tg(env, 'setChatMenuButton', { menu_button: { type: 'commands' } });  // ☰ opens the command menu
@@ -239,7 +226,39 @@ async function sendOutlook(env, chat, lang) {
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML' });
   return r;
 }
-function menuKb(env, lang, id) {
+// the menu is a keyboard under the input field (white buttons, as in the screenshot): one place for everything, no buttons under messages
+const RKL = {
+  ru: { hourly: '⏱ Сегодня и завтра по часам', days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', back: '⬅️ Назад', help: 'ℹ️ Помощь' },
+  uz: { hourly: '⏱ Bugun va ertaga soatma-soat', days: '🗓 15 kun', video: '🎬 15 kunlik video', outlook: '📅 Haftalar va oylar', now: '🌡 Hozir', cities: '🏙 Shaharlar', loc: '📍 Mening joyim', countries: '🌍 Davlatlar', daily: '🔔 Har kuni', accuracy: '🎯 Aniqlik', alerts: '⚠️ Ogohlantirishlar', site: '🗺 Sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qayta boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yordam' },
+  tr: { hourly: '⏱ Bugün ve yarın saat saat', days: '🗓 15 gün', video: '🎬 15 günlük video', outlook: '📅 Haftalar ve aylar', now: '🌡 Şimdi', cities: '🏙 Şehirler', loc: '📍 Konumum', countries: '🌍 Ülkeler', daily: '🔔 Her gün', accuracy: '🎯 Doğruluk', alerts: '⚠️ Uyarılar', site: '🗺 Site ve küre', home: '🏠 Ana menü', reset: '🔄 Sıfırla', back: '⬅️ Geri', help: 'ℹ️ Yardım' } };
+const rkAct = text => { for (const L of Object.values(RKL)) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
+function replyKb(env, lang, id) {
+  const X = RKL[lang] || RKL.ru, b = t => ({ text: t });
+  return { keyboard: [
+    [b(X.hourly)],
+    [b(X.days), b(X.video)],
+    ...(id === 'UZ' ? [[b(X.outlook)]] : []),
+    [b(X.now), b(X.cities)],
+    [{ text: X.loc, request_location: true }, b(X.countries)],
+    [b(X.daily), b(X.alerts)],
+    [b(X.accuracy), { text: X.site, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }],
+    [b(X.home), b(X.reset)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', tr: 'Şehir adı…' }[lang] };
+}
+// countries and cities are keyboards too: the chosen one is marked with ✅
+function countryRk(lang, cur) {
+  const X = RKL[lang] || RKL.ru;
+  return { keyboard: [...GROUPS.map(row => row.map(id => ({ text: `${cur === id ? '✅ ' : ''}${FLAG[id]} ${NAMES[id][lang]}` }))), [{ text: X.home }]], resize_keyboard: true };
+}
+const countryOf = text => { const t = text.replace(/^✅ /, ''); for (const id of Object.keys(NAMES)) for (const l of ['uz', 'ru', 'tr']) if (t === `${FLAG[id]} ${NAMES[id][l]}`) return id; return null; };
+async function cityPicker(env, chat, lang, id, u) {
+  const X = RKL[lang] || RKL.ru, C = (await cities(env, id, lang)) || (await cities(env, id, 'ru'));
+  const rows = [[{ text: X.loc, request_location: true }]];
+  (C ? C.cities.filter(c => c.lat != null).slice(0, 24) : []).forEach((c, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: c.name }); });
+  rows.push([{ text: X.countries }, { text: X.home }]);
+  return tg(env, 'sendMessage', { chat_id: chat, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { keyboard: rows, resize_keyboard: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', tr: 'Şehir adı…' }[lang] } });
+}
+function menuKb(env, lang, id) { return replyKb(env, lang, id); }
+function menuKbInline(env, lang, id) {
   return { inline_keyboard: [
     // coloured buttons (Telegram 2026+): blue = main actions, green = forecast texts, the rest plain
     [{ text: T[lang].today, callback_data: `T:${lang}:${id}`, style: 'primary' }],
@@ -378,7 +397,7 @@ const MK = {  // the main keyboard under the chat: four buttons for everything
   uz: { today: '📅 Bugun va ertaga', d15: '🗓 15 kun', video: '🎬 Video', more: '⚙️ Menyu' },
   tr: { today: '📅 Bugün ve yarın', d15: '🗓 15 gün', video: '🎬 Video', more: '⚙️ Menü' },
 };
-const mainKb = () => ({ remove_keyboard: true });  // the old big keyboard is gone: everything is in the ☰ menu
+const mainKb = () => ({ remove_keyboard: true });  // (kept for old callers)
 const locOnce = lang => ({ keyboard: [[{ text: PT[lang].locBtn, request_location: true }]], resize_keyboard: true, one_time_keyboard: true });
 const FILLER = new Set('погода погоду погоды прогноз в во на для город городе сегодня завтра какая какой ob-havo obhavo havo bugun ertaga shahar shahrida hava durumu bugün yarın için weather in today tomorrow'.split(' '));
 // today and tomorrow hour by hour: the country's video with the main city's timing and clothing advice (prob/hourly.py)
@@ -515,12 +534,8 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
     day(D[0], D[0].d === today ? T[lang].tdy : wd(D[0].d)), ...(D[1] ? [day(D[1], D[1].d === tmrw ? T[lang].tmw : wd(D[1].d))] : []), '',
     ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc(pad(K.cDay, 9) + pad(K.cT, 10) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
     `<i>${K.note}</i>`].join('\n');
-  let kb = kbOver;
-  if (!kb && place && NAMES[place[4]]) {  // a town of a country with videos: its city video when there is one
-    const C = await cities(env, place[4], lang), ci = C ? C.cities.findIndex(c => c.en === place[2] && c.video) : -1;
-    kb = dayKb(lang, place[4], ci >= 0 ? `Z:${lang}:${place[4]}:${ci}` : null);
-  }
-  if (!kb) kb = { inline_keyboard: [[{ text: (DK[lang] || DK.ru).globe, web_app: { url: site(env, 'map') } }], [{ text: (DK[lang] || DK.ru).other, callback_data: `L:${lang}` }], homeRow(lang)] };
+  let kb = kbOver && kbOver.keyboard ? kbOver : null;
+  if (!kb) { const uu = await getUser(env, chat); kb = replyKb(env, lang, place && NAMES[place[4]] ? place[4] : (uu && NAMES[uu.region] ? uu.region : 'UZ')); }
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
 }
 // the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
@@ -679,8 +694,7 @@ async function handle(up, env) {
   if (kind === 'S') {  // first language choice after /start: the guide, then the countries
     await saveUser(env, chat.id, { lang });
     await tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
-    await tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menuHint, reply_markup: mainKb(lang) });
-    return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryRk(lang) });
   }
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
   if (kind === 'O') return sendOutlook(env, chat.id, lang);
@@ -688,7 +702,7 @@ async function handle(up, env) {
   if (kind === 'DC') {  // 15 days for one city of the country list: the same numbers as its video, and the video under it
     const [, , rid, ci] = cb.data.split(':'), C = (await cities(env, rid, lang)) || (await cities(env, rid, 'ru')), c = C && C.cities[+ci];
     if (!c || c.lat == null) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
-    return pointForecast(env, chat.id, lang, c.lat, c.lon, (await nearestPlace(env, c.lat, c.lon, 8)) || [c.name, c.name, c.en, c.name, rid, c.lat, c.lon, 0, 0], dayKb(lang, rid, c.video ? `Z:${lang}:${rid}:${ci}` : null));
+    return pointForecast(env, chat.id, lang, c.lat, c.lon, (await nearestPlace(env, c.lat, c.lon, 8)) || [c.name, c.name, c.en, c.name, rid, c.lat, c.lon, 0, 0], replyKb(env, lang, rid));
   }
   if (kind === 'H') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
   if (kind === 'HM') {  // the main menu: the country chosen last time (or Uzbekistan)
@@ -720,16 +734,15 @@ async function handle(up, env) {
     await saveSub(env, chat, [id], lang, todayTZ(), h);
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].subOk.replace('{time}', hh(h)).replace('{name}', nm), reply_markup: menuKb(env, lang, id) });
   }
-  if (kind === 'L') { const k = countryKb(lang), cur = (await getUser(env, chat.id) || {}).region;  // ✅ marks the country chosen last time
-    k.inline_keyboard.forEach(r => r.forEach(b => { if (cur && b.callback_data === `C:${lang}:${cur}`) b.text = '✅ ' + b.text; }));
-    return say(env, cb, { chat_id: chat.id, text: T[lang].pick, reply_markup: k }); }
+  if (kind === 'L') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryRk(lang, (await getUser(env, chat.id) || {}).region) });
   if (kind === 'C') return say(env, cb, { chat_id: chat.id, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: menuKb(env, lang, id) });
   if (kind === 'T') return sendHourly(env, chat.id, lang, id);
   const M = await manifest(env);
   const items = M ? M.items.filter(i => i.region === id && i.lang === lang) : [];
   if (!items.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
   const days = items.find(i => i.product === 'days');
-  if (kind === 'D') {  // 15 days: first choose where — a city of this country, my place, or any town in the world by name
+  if (kind === 'D') return cityPicker(env, chat.id, lang, id);
+  if (kind === 'D_old') {  // 15 days: first choose where — a city of this country, my place, or any town in the world by name
     const C = (await cities(env, id, lang)) || (await cities(env, id, 'ru'));
     const uu = await getUser(env, chat.id), pl = uu && uu.place ? JSON.parse(uu.place) : null, near = pl ? await nearestPlace(env, pl[0], pl[1], 40) : null;
     const rows = [];
@@ -827,7 +840,7 @@ async function privateMsg(msg, env) {
   if (cmd === 'alerts') { const A = await alertsData(env), rid = (u && NAMES[u.region] && u.region) || null; const it = A ? A.items.filter(i => !rid || i.region === rid) : []; return tg(env, 'sendMessage', { chat_id: chat.id, text: it.length ? alertText(it, lang) : AL[lang].none, parse_mode: 'HTML' }); }
   if (cmd === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
   if (cmd === 'bugun' || cmd === 'today') return sendHourly(env, chat.id, u && u.lang && T[u.lang] ? u.lang : cmd === 'today' ? 'ru' : 'uz', (u && NAMES[u.region] && u.region) || 'UZ');
-  if (cmd === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
+  if (cmd === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryRk(lang, u && u.region) });
   if (msg.location) {  // weather right here
     const { latitude: la, longitude: lo } = msg.location;
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'typing' });
@@ -837,10 +850,28 @@ async function privateMsg(msg, env) {
   // the ☰ menu (and the buttons of the old keyboard that some chats still show): one action each, no duplicates
   {
     const rid = (u && NAMES[u.region] && u.region) || 'UZ', old = k => !cmd && Object.values(MK).some(m => m[k] === text);
-    const act = old('today') ? 'hourly' : old('d15') ? 'days' : old('video') ? 'video' : old('more') ? 'countries' : Object.values(PT).some(m => m.locBtn === text) ? 'location' : cmd;
+    const rk = !cmd && rkAct(text);
+    const act = rk === 'back' ? 'home' : rk || (old('today') ? 'hourly' : old('d15') ? 'days' : old('video') ? 'video' : old('more') ? 'countries' : Object.values(PT).some(m => m.locBtn === text) ? 'location' : cmd);
+    const cid = !cmd && !rk && countryOf(text);
+    if (cid) {  // a country from the keyboard: remember it and show its menu
+      await saveUser(env, chat.id, { lang, region: cid });
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[cid]} <b>${NAMES[cid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, cid) });
+    }
+    if (!cmd && !rk && u && u.lang) {  // a city of the chosen country from the keyboard: the same 15-day layout as a searched town
+      const C = (await cities(env, rid, lang)) || null, c = C && C.cities.find(x => x.name === text.trim());
+      if (c && c.lat != null) return pointForecast(env, chat.id, lang, c.lat, c.lon, (await nearestPlace(env, c.lat, c.lon, 8)) || [c.name, c.name, c.en, c.name, rid, c.lat, c.lon, 0, 0], replyKb(env, lang, rid));
+    }
     const cbk = data => handle({ callback_query: { id: '0', from: msg.from, data, message: { chat, message_id: msg.message_id } } }, env);
     if (old('today') || old('d15') || old('video') || old('more')) await tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menuHint, reply_markup: mainKb(lang) });
-    if (act === 'home') return cbk(`HM:${lang}`);
+    if (act === 'home') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, rid) });
+    if (act === 'days' || act === 'cities') return cityPicker(env, chat.id, lang, rid, u);
+    if (act === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
+    if (act === 'alerts') { const A = await alertsData(env); const it = A ? A.items.filter(i => i.region === rid) : []; return tg(env, 'sendMessage', { chat_id: chat.id, text: it.length ? alertText(it, lang) : AL[lang].none, parse_mode: 'HTML' }); }
+    if (act === 'video') {  // the video that matches the last forecast: that city's own video (Uzbekistan, Kazakhstan) or the country's
+      const pl = u && u.place ? JSON.parse(u.place) : null, C = pl ? await cities(env, rid, lang) : null;
+      const ci = C ? C.cities.findIndex(c => c.video && c.lat != null && Math.hypot(c.lat - pl[0], (c.lon - pl[1]) * Math.cos(pl[0] * Math.PI / 180)) < 0.12) : -1;
+      return cbk(ci >= 0 ? `Z:${lang}:${rid}:${ci}` : `V:${lang}:${rid}`);
+    }
     if (act === 'reset') return cbk(`RS:${lang}`);
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
     if (act === 'outlook') return sendOutlook(env, chat.id, lang);
@@ -854,7 +885,7 @@ async function privateMsg(msg, env) {
     if (act === 'video') return cbk(`V:${lang}:${rid}`);
     if (act === 'cities') return cbk(`Y:${lang}:${rid}`);
     if (act === 'daily') return cbk(`B:${lang}:${rid}`);
-    if (act === 'countries' || act === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryKb(lang) });
+    if (act === 'countries' || act === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryRk(lang, u && u.region) });
     if (act === 'location') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].locAsk, reply_markup: locOnce(lang) });
     if (act === 'site') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} ${NAMES[rid][lang]}`, reply_markup: { inline_keyboard: [[{ text: T[lang].site, web_app: { url: site(env, `prob/${rid}/${lang}/prob`) } }], [{ text: T[lang].rep, web_app: { url: site(env, 'map') } }]] } });
   }
