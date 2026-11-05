@@ -123,11 +123,11 @@ def draw_dust(R, aq, lang, path, cities):
 
 
 def per_day(unit, days):
-    """Open-Meteo gives weekly/monthly precipitation as a mean (per day or per 6 h): the period total in mm."""
+    """Factor from the weekly/monthly precipitation value to the period total in mm (Open-Meteo: "mm" = the total)."""
     u = (unit or '').lower()
     if '6h' in u or '6 h' in u: return 4 * days
-    if 'day' in u or '/d' in u or u == 'mm': return days
-    return days
+    if 'day' in u or '/d' in u: return days
+    return 1  # plain "mm": already the week's or the month's total (Tashkent: ~34 mm a week, ~83 mm in November, not ×7 / ×30)
 
 
 def periods(sea, past):
