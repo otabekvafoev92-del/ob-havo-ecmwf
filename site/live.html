@@ -301,7 +301,7 @@ function toggleSound() {
     if (lv.snow > 0.05 && Math.random() < 0.6) { const o = A.createOscillator(), g = A.createGain(), t = A.currentTime, f = [1046.5, 1174.7, 1318.5, 1568, 1760][Math.floor(Math.random() * 5)];
       o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 2); o.connect(g).connect(out); o.start(t); o.stop(t + 2.1); }
     setTimeout(bell, 1500 + Math.random() * 1500); };
-  drop(); bell();
+  // no synthetic drops or bells: the 'ping' sounds tire the ear; the recordings carry the rain
   sound = { set(h) { const p = val(h, 0, sel.lat, sel.lon), t = val(h, 1, sel.lat, sel.lon), w = val(h, 3, sel.lat, sel.lon), r = p >= 20 ? Math.min(1, (p - 20) / 60) : 0, sn = t <= 0.5;
       lv = { rain: sn ? 0 : r, snow: sn ? r : 0, wind: Math.max(0, Math.min(1, ((w || 2) - 1) / 13)) }; const k = A.currentTime;
       gWind.gain.setTargetAtTime(0.04 + 0.35 * lv.wind ** 1.2, k, 0.4); const rr = real ? 0 : 1; gHiss.gain.setTargetAtTime(0.12 * lv.rain ** 1.5 * rr, k, 0.4); gRoar.gain.setTargetAtTime(0.09 * lv.rain ** 1.3 * rr, k, 0.4);

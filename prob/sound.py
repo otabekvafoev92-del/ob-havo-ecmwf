@@ -124,7 +124,7 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
         # snow: falling snow is almost silent, so a muffled hush and soft high bells (the winter sign of the video);
         # heavy snow with wind turns into a blizzard: a howling whistle that slides up and down
         out[ch] += _bp(wn, 150, 900) * 0.08 * snowy ** 0.8
-        out[ch] += _bells(rng, n, snowy, ch) * 0.10
+        # (no bells: a tonal 'ping' gets on the nerves; snow is the soft hush and its wind)
         howl = np.zeros(n); blz = snowy * wind
         if blz.max() > 0.05:
             fc = 450 + 250 * np.sin(2 * np.pi * np.cumsum(np.full(n, 0.11)) / SR + rng.random() * 6)
@@ -148,7 +148,7 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
     # drips: clear single drops ("plip") falling from roofs into puddles, panned left and right — the sound people
     # know as rain even when it is light
     L = int(0.12 * SR); tt = np.arange(L) / SR
-    for p in np.flatnonzero(rng.random(n) < (np.where(rainy > 0.04, 2.5 + 6 * rainy, 0) * (0.35 if real else 1)) / SR):  # a few clear drips over the recording
+    for p in np.flatnonzero(rng.random(n) < (np.where(rainy > 0.04, 2.5 + 6 * rainy, 0) * (0 if real else 1)) / SR):  # no synthetic 'ping' drips over the recordings  # a few clear drips over the recording
         f0 = rng.uniform(650, 1500); d = rng.uniform(0.025, 0.05); k = min(L, n - p)
         tone = np.sin(2 * np.pi * f0 * tt[:k] * (1 + 7 * tt[:k])) * np.exp(-tt[:k] / d) * (1 - np.exp(-tt[:k] / 0.0008))
         amp = rng.uniform(0.35, 0.8) * (0.5 + 0.5 * min(1, rainy[p] * 3)); pan = rng.uniform(0.15, 0.85)
