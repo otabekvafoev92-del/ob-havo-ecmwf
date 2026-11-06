@@ -15,9 +15,12 @@ html,body{margin:0;background:var(--paper);color:var(--ink);font-family:'Golos T
 body{display:flex;flex-direction:column;min-height:100vh;user-select:none;-webkit-user-select:none}
 header{background:var(--navy);color:#fff;padding:calc(10px + var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)) 14px 10px;display:flex;align-items:center;gap:10px}
 #fs{border:0;background:rgba(255,255,255,.14);color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;flex:none;cursor:pointer}
-#fs:focus-visible,.btn:focus-visible,#zoom button:focus-visible{outline:2px solid #f0b88a;outline-offset:2px}
-/* a wide screen (computer, tablet, phone on its side): the map on the left, the numbers and hours on the right */
-@media (min-width:760px){#main{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(300px,1fr);align-items:start}#side{padding-top:4px}}
+#fs:focus-visible,.rb:focus-visible,#zoom button:focus-visible{outline:2px solid #f0b88a;outline-offset:2px}
+/* the bottom player: small round buttons and a short strip of hours; the map gets the rest */
+#dock{padding-bottom:calc(4px + var(--tg-safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;padding:4px 6px;background:#fff;border-top:1px solid var(--line)}
+.rb{flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--navy);color:#fff;font:600 17px 'Golos Text',sans-serif;cursor:pointer}
+.rb.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}.rb.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#tl{flex:1;min-width:0;height:74px;display:block;touch-action:none}
 header .c{font-family:Unbounded,sans-serif;font-weight:700;font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .d{font-size:12px;color:#c9d6e5;text-align:right}
 header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:#f0b88a;min-width:74px;text-align:right}
@@ -25,28 +28,22 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 #zoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
 #zoom button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.95);font:700 20px 'Golos Text',sans-serif;color:var(--ink)}
 #map{display:block;width:100%}
-#hint{position:absolute;left:10px;top:8px;transition:opacity .4s;font-size:11px;color:var(--muted);background:rgba(255,255,255,.85);padding:3px 8px;border-radius:8px}
-.card{margin:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
-#place{display:flex;align-items:center;gap:12px}
-#place .nm{font-weight:700;color:var(--muted);font-size:13px}
-#place .tv{font-family:Unbounded,sans-serif;font-weight:700;font-size:34px;line-height:1.1}
-#place .rows{margin-left:auto;font-size:13px;line-height:1.7;text-align:right}
-#place .rows b{font-size:14px}
-#tl{display:block;width:100%;touch-action:none}
-.bar{display:flex;gap:8px;margin:0 8px 10px}
-.btn{flex:1;border:0;border-radius:12px;padding:12px;font:600 15px 'Golos Text',sans-serif;background:var(--navy);color:#fff}
-.btn.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}
-.btn.on{background:var(--accent)}
+#hint{position:absolute;left:10px;right:58px;bottom:8px;transition:opacity .4s;font-size:11px;color:var(--muted);background:rgba(255,255,255,.85);padding:3px 8px;border-radius:8px}
+#place{position:absolute;left:8px;top:8px;background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:12px;padding:7px 10px;box-shadow:0 2px 8px rgba(43,58,78,.12);max-width:58%;pointer-events:none}
+#place .nm{font-weight:700;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#place .tv{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;line-height:1.15}
+#place .rows{font-size:11px;line-height:1.45;color:var(--muted)}
+#place .rows b{font-size:11.5px;color:var(--ink)}
 #load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--paper);font-size:15px;color:var(--muted);z-index:9}
 </style>
 </head>
 <body>
 <div id="load">…</div>
 <header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div><button id="fs" title="Во весь экран" aria-label="Во весь экран">⛶</button></header>
-<div id="main"><div id="mapwrap"><canvas id="map"></canvas><div id="hint"></div><div id="zoom"><button id="zin">+</button><button id="zout">−</button><button id="zfit" style="font-size:15px">⤢</button></div></div>
-<div id="side"><div class="card" id="place"><div><div class="nm" id="pn"></div><div class="tv" id="pt"></div></div><div class="rows" id="pr"></div></div>
-<div class="card" style="padding:8px 6px 4px"><canvas id="tl"></canvas></div>
-<div class="bar"><button class="btn" id="play"></button><button class="btn alt" id="snd"></button></div></div></div>
+<div id="main"><div id="mapwrap"><canvas id="map"></canvas><div id="hint"></div>
+<div id="place"><div class="nm" id="pn"></div><div class="tv" id="pt"></div><div class="rows" id="pr"></div></div>
+<div id="zoom"><button id="zin" aria-label="+">+</button><button id="zout" aria-label="−">−</button><button id="zfit" aria-label="⤢" style="font-size:15px">⤢</button></div></div>
+<div id="dock"><button class="rb" id="play"></button><button class="rb alt" id="snd"></button><canvas id="tl"></canvas></div></div>
 <script>
 'use strict';
 const Q = new URLSearchParams(location.search), tg = window.Telegram && Telegram.WebApp;
@@ -72,7 +69,7 @@ async function load() {
   hour = M.times ? Math.max(0, M.times.findIndex((t, i) => i === H - 1 || new Date(M.times[i + 1] + ':00Z') > now)) : Math.max(0, Math.min(H - 1, Math.floor((now - st) / 3600e3)));
   const mc = M.cities.find(c => c.ru === (M.main[LANG] || M.main.ru)) || M.cities[0];
   sel = { lat: mc.lat, lon: mc.lon, name: mc[LANG] || mc.ru, city: true };
-  $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = TX.play; $('snd').textContent = TX.son;
+  $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = '▶'; $('play').setAttribute('aria-label', TX.play); $('snd').textContent = '🔈'; $('snd').setAttribute('aria-label', TX.son);
   $('load').remove(); setup(); draw();
 }
 
@@ -100,14 +97,15 @@ function setup() {
   kx = Math.cos((la0 + la1) / 2 * Math.PI / 180);
   const pw = (lo1 - lo0) * kx * 1.02, ph = (la1 - la0) * 1.04;
   const wide = window.innerWidth >= 760;  // side by side: the map as tall as the window
-  W = cv.clientWidth; Hc = Math.round(wide ? Math.max(320, window.innerHeight - document.querySelector('header').offsetHeight - 8) : Math.min(window.innerHeight * 0.6, W * 1.1));
+  const tl = $('tl'); tl.style.height = TLH + 'px';
+  W = cv.clientWidth; Hc = Math.round(Math.max(260, Math.max(window.innerHeight, (tg && tg.viewportStableHeight) || 0) - document.querySelector('header').offsetHeight - $('dock').offsetHeight));  // the map takes all the room left
   const dpr = devicePixelRatio || 1; cv.width = W * dpr; cv.height = Hc * dpr; cv.style.height = Hc + 'px'; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
   PS0 = Math.min(W / pw, Hc / ph); P0 = [(lo0 + lo1) / 2, (la0 + la1) / 2];
   if (!inited) {  // the first view: the country as tall as the map, the chosen city in sight
-    Z = wide ? 1 : Math.min(2.2, Math.max(1, (Hc / ph) / PS0 * 0.82)); PAN = [0, 0];  // a wide screen shows the whole country
-    if (!wide) { const [x, y] = proj(sel.lon, sel.lat); PAN = [(W / 2 - x) * 0.6, 0]; clampPan(); }
+    Z = Hc > W * 1.2 ? Math.min(2.2, Math.max(1, (Hc / ph) / PS0 * 0.6)) : 1; PAN = [0, 0];  // a tall phone map: the country fills it, the chosen city near the middle
+    if (Z > 1) { const [x, y] = proj(sel.lon, sel.lat); PAN = [(W / 2 - x) * 0.35, 0]; clampPan(); }
   }
-  const tl = $('tl'); tl.width = tl.clientWidth * dpr; tl.height = 130 * dpr; tl.style.height = '130px'; tl.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+  tl.width = tl.clientWidth * dpr; tl.height = TLH * dpr; tl.style.height = TLH + 'px'; tl.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
   if (inited) return; inited = true;
   // touch: one finger moves the map (a short tap picks a place), two fingers zoom
   const pts = new Map(); let moved = false, last = null, pinch = null;
@@ -127,7 +125,7 @@ function setup() {
   cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
   $('zin').onclick = () => zoomAt(1.4, W / 2, Hc / 2); $('zout').onclick = () => zoomAt(1 / 1.4, W / 2, Hc / 2);
   $('zfit').onclick = () => { Z = 1; PAN = [0, 0]; draw(); };
-  let drag = false; const seek = e => { const r = tl.getBoundingClientRect(); hour = Math.max(0, Math.min(H - 1, (e.clientX - r.left - 30) / (r.width - 44) * (H - 1))); stop(); draw(); };
+  let drag = false; const seek = e => { const r = tl.getBoundingClientRect(); hour = Math.max(0, Math.min(H - 1, (e.clientX - r.left - 4) / (r.width - 8) * H - 0.5)); stop(); draw(); };
   tl.addEventListener('pointerdown', e => { drag = true; tl.setPointerCapture(e.pointerId); seek(e); });
   tl.addEventListener('pointermove', e => drag && seek(e)); tl.addEventListener('pointerup', () => { drag = false; hour = Math.round(hour); draw(); });
   // full screen: Telegram's own (phone and computer apps), or the browser's
@@ -140,6 +138,7 @@ function setup() {
   $('play').onclick = () => playing ? stop() : start();
   $('snd').onclick = toggleSound;
   addEventListener('resize', () => { setup(); draw(); });
+  try { tg && tg.onEvent && tg.onEvent('viewportChanged', () => { setup(); draw(); }); } catch (e) {}  // Telegram opens small and then grows: the map grows with it
 }
 function zoomAt(f, x, y) { const z2 = Math.max(1, Math.min(6, Z * f)); f = z2 / Z; PAN = [x - W / 2 - (x - W / 2 - PAN[0]) * f, y - Hc / 2 - (y - Hc / 2 - PAN[1]) * f]; Z = z2; clampPan(); draw(); }
 function clampPan() { const mx = Math.max(0, (Z - 1) * W / 2 + W * 0.15), my = Math.max(0, (Z - 1) * Hc / 2 + Hc * 0.15); PAN = [Math.max(-mx, Math.min(mx, PAN[0])), Math.max(-my, Math.min(my, PAN[1]))]; }
@@ -266,45 +265,43 @@ function header(h) {
 function card(h) {
   const p = val(h, 0, sel.lat, sel.lon), t = val(h, 1, sel.lat, sel.lon), c = val(h, 2, sel.lat, sel.lon), w = val(h, 3, sel.lat, sel.lon);
   $('pn').textContent = sel.name; $('pt').textContent = isFinite(t) ? fmtT(t) : '—';
-  $('pr').innerHTML = `${t <= 0.5 ? TX.snow : TX.rain} <b>${isFinite(p) ? Math.round(p) : '—'} %</b><br>${TX.cl} <b>${isFinite(c) ? Math.round(c * 100) : '—'} %</b><br>${TX.wind} <b>${isFinite(w) ? Math.round(w) : '—'} ${TX.ms}</b>`;
+  $('pr').innerHTML = `${t <= 0.5 ? '❄' : '☂'} <b>${isFinite(p) ? Math.round(p) : '—'}%</b> · ☁ <b>${isFinite(c) ? Math.round(c * 100) : '—'}%</b> · 💨 <b>${isFinite(w) ? Math.round(w) : '—'} ${TX.ms}</b>`;
 }
+const TLH = 74;  // the strip of hours: small, the map gets the room
 function timeline(h) {
-  const tl = $('tl'), g = tl.getContext('2d'), w = tl.clientWidth, hh = 130, L = 30, R = 14, bw = (w - L - R) / H;
+  const tl = $('tl'), g = tl.getContext('2d'), w = tl.clientWidth, hh = TLH, L = 4, R = 4, bw = (w - L - R) / H, base = hh - 20;
   g.clearRect(0, 0, w, hh);
   const P = [], T = [];
   for (let i = 0; i < H; i++) { P.push(val(i, 0, sel.lat, sel.lon)); T.push(val(i, 1, sel.lat, sel.lon)); }
-  const st = new Date(M.start + ':00Z');
+  g.font = '9.5px Golos Text,sans-serif'; let lastLab = -99;
   for (let i = 0; i < H; i++) {
     const x = L + i * bw, p = P[i] || 0, snow = T[i] <= 0.5;
     const c = p >= 20 ? (snow ? SNOWC : RAIN)[Math.max(0, Math.min(3, Math.floor((p - 30) / 20)))] : [237, 241, 245];
-    const bh = Math.max(3, p / 100 * 54); g.fillStyle = `rgb(${c})`; g.beginPath(); g.roundRect(x + 1, 98 - bh, bw - 2, bh, 2); g.fill();
-    const t = when(i), tp = i ? when(i - 1) : null;
-    if (M.times) {  // 15 days: a line and the weekday at each new day
-      if (!tp || t.getUTCDate() !== tp.getUTCDate()) { if (i) { g.strokeStyle = '#dde3ea'; g.beginPath(); g.moveTo(x, 8); g.lineTo(x, 102); g.stroke(); }
-        g.fillStyle = '#6b7a8c'; g.font = '10px Golos Text,sans-serif'; g.textAlign = 'left'; g.fillText(TX.wd[(t.getUTCDay() + 6) % 7], x + 2, 116); g.fillText(p2(t.getUTCDate()), x + 2, 127); }
-      continue;
-    }
-    if (t.getUTCHours() % 6 === 0) { g.fillStyle = '#6b7a8c'; g.font = '11px Golos Text,sans-serif'; g.textAlign = 'center'; g.fillText(String(t.getUTCHours()).padStart(2, '0'), x + bw / 2, 116); }
-    if (t.getUTCHours() === 0 && i) { g.strokeStyle = '#dde3ea'; g.beginPath(); g.moveTo(x, 8); g.lineTo(x, 102); g.stroke(); g.fillStyle = '#6b7a8c'; g.textAlign = 'left'; g.fillText(`${TX.wd[(t.getUTCDay() + 6) % 7]} ${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`, x + 4, 14); }
+    const bh = Math.max(2, p / 100 * 26); g.fillStyle = `rgb(${c})`; g.beginPath(); g.roundRect(x + 0.5, base - bh, Math.max(1, bw - 1), bh, 1.5); g.fill();
+    const t = when(i), tp = i ? when(i - 1) : null, newDay = !tp || t.getUTCDate() !== tp.getUTCDate();
+    if (newDay && i) { g.strokeStyle = '#dde3ea'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, 2); g.lineTo(x, base + 2); g.stroke(); }
+    g.fillStyle = '#6b7a8c'; g.textAlign = 'left';
+    if (M.times) { if (newDay && x - lastLab >= 22) { g.fillText(String(t.getUTCDate()), x + 2, hh - 6); lastLab = x; } }  // 15 days: the date only, as many as fit
+    else if (t.getUTCHours() % 6 === 0) { g.textAlign = 'center'; g.fillText(t.getUTCHours() === 0 ? `${TX.wd[(t.getUTCDay() + 6) % 7]}` : p2(t.getUTCHours()), x + bw / 2, hh - 6); }
   }
-  const ok = T.filter(isFinite), lo = Math.min(...ok), hi = Math.max(...ok), ty = t => 70 - (t - lo) / Math.max(1, hi - lo) * 46;
-  g.strokeStyle = '#e0895a'; g.lineWidth = 2; g.beginPath(); T.forEach((t, i) => { if (isFinite(t)) { const x = L + (i + 0.5) * bw; i ? g.lineTo(x, ty(t)) : g.moveTo(x, ty(t)); } }); g.stroke();
+  const ok = T.filter(isFinite), lo = Math.min(...ok), hi = Math.max(...ok), ty = t => base - 8 - (t - lo) / Math.max(1, hi - lo) * (base - 24);
+  g.strokeStyle = '#e0895a'; g.lineWidth = 1.6; g.beginPath(); T.forEach((t, i) => { if (isFinite(t)) { const x = L + (i + 0.5) * bw; i ? g.lineTo(x, ty(t)) : g.moveTo(x, ty(t)); } }); g.stroke();
   const hx = L + (h + 0.5) * bw, tv = val(h, 1, sel.lat, sel.lon);
-  g.fillStyle = 'rgba(240,184,138,.3)'; g.fillRect(hx - bw / 2, 4, bw, 98);
-  g.beginPath(); g.arc(hx, ty(tv), 5, 0, 7); g.fillStyle = '#e0895a'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.stroke();
-  g.fillStyle = '#c8784a'; g.font = '700 12px Golos Text,sans-serif'; g.textAlign = 'center'; g.fillText(fmtT(tv), Math.max(20, Math.min(w - 20, hx)), Math.max(12, ty(tv) - 10));
+  g.fillStyle = 'rgba(240,184,138,.3)'; g.fillRect(hx - Math.max(bw, 3) / 2, 0, Math.max(bw, 3), base + 2);
+  g.beginPath(); g.arc(hx, ty(tv), 4, 0, 7); g.fillStyle = '#e0895a'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#fff'; g.stroke();
+  g.fillStyle = '#c8784a'; g.font = '700 11px Golos Text,sans-serif'; g.textAlign = 'center'; g.fillText(fmtT(tv), Math.max(16, Math.min(w - 16, hx)), Math.max(10, ty(tv) - 7));
 }
 
 // playing: one hour per 0.9 s, the map flowing smoothly between hours
 let raf, t0;
 const SPD = () => M.times ? 700 : 900;
-function start() { playing = true; $('play').textContent = TX.pause; t0 = performance.now() - (hour % 1) * SPD(); if (hour >= H - 1) hour = 0; const h0 = Math.floor(hour);
+function start() { playing = true; $('play').textContent = '❚❚'; t0 = performance.now() - (hour % 1) * SPD(); if (hour >= H - 1) hour = 0; const h0 = Math.floor(hour);
   const step = now => { if (!playing) return; hour = Math.min(H - 1, h0 + (now - t0) / SPD()); draw(); if (hour >= H - 1) return stop(); raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
-function stop() { playing = false; cancelAnimationFrame(raf); $('play').textContent = TX.play; }
+function stop() { playing = false; cancelAnimationFrame(raf); $('play').textContent = '▶'; }
 
 // the weather heard: wind, rain (hiss and single drops), snow (a soft hush and bells), all made here in the browser
 function toggleSound() {
-  if (sound) { sound.close(); sound = null; $('snd').textContent = TX.son; $('snd').classList.remove('on'); return; }
+  if (sound) { sound.close(); sound = null; $('snd').textContent = '🔈'; $('snd').classList.remove('on'); return; }
   const A = new (window.AudioContext || window.webkitAudioContext)(), sr = A.sampleRate;
   const nb = A.createBuffer(2, sr * 4, sr); for (let c = 0; c < 2; c++) { const d = nb.getChannelData(c); let b = 0; for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
   const bb = A.createBuffer(2, sr * 4, sr); for (let c = 0; c < 2; c++) { const d = bb.getChannelData(c); let b = 0; for (let i = 0; i < d.length; i++) { b = (b + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = b * 3.5; } }
@@ -334,7 +331,7 @@ function toggleSound() {
       if (real) { const rp = (a, b) => Math.max(0, Math.min(1, (lv.rain - a) / (b - a))), gl = rp(0, 0.3) * (1 - 0.7 * rp(0.4, 0.65)), gm = rp(0.3, 0.5) * (1 - 0.6 * rp(0.7, 0.9)), gh = rp(0.65, 0.9);
         gRL.gain.setTargetAtTime(0.9 * gl, k, 0.5); gRM.gain.setTargetAtTime(0.8 * gm, k, 0.5); gRH.gain.setTargetAtTime(0.85 * gh, k, 0.5); } gHush.gain.setTargetAtTime(0.05 * lv.snow, k, 0.4); },
     close() { alive = false; A.close(); } };
-  sound.set(hour); $('snd').textContent = TX.soff; $('snd').classList.add('on');
+  sound.set(hour); $('snd').textContent = '🔊'; $('snd').classList.add('on');
 }
 load().catch(e => { $('load').textContent = TX.err; console.log(e); });
 </script>
