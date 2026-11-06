@@ -370,7 +370,10 @@ function dayKb(lang, rid, cityVideo) {
 }
 const helpKb = lang => ({ inline_keyboard: [[{ text: T[lang].pdf, callback_data: `P:${lang}` }, { text: T[lang].adm, callback_data: `M:${lang}` }]] });
 // groups and channels cannot open Mini Apps from buttons: plain links
-const postKb = (env, lang, id, bot) => ({ inline_keyboard: [[{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
+const LIVE = { ru: '🗺 Интерактивная карта по часам', uz: '🗺 Interaktiv xarita soatma-soat', tr: '🗺 Saat saat etkileşimli harita' };
+// the interactive map: inside Telegram in a private chat (mini app), a plain link in groups (Telegram allows mini-app buttons only in private chats)
+const liveBtn = (env, lang, id, chat) => ({ text: LIVE[lang] || LIVE.ru, ...(chat > 0 ? { web_app: { url: `${base(env)}/live.html?r=${id}&l=${lang}` } } : { url: `${base(env)}/live.html?r=${id}&l=${lang}` }) });
+const postKb = (env, lang, id, bot, chat) => ({ inline_keyboard: [...(chat ? [[liveBtn(env, lang, id, chat)]] : []), [{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
 
 /* ---------- forecast text ---------- */
 function icon(txt) {
@@ -496,9 +499,8 @@ async function sendHourly(env, chat, lang, id) {
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   const url = `${base(env)}/prob/${H.video}?v=${fresh()}`, kb0 = menuKb(env, lang, id);
   // the interactive map (a Telegram mini app): touch the map, drag the hours, hear the weather — private chats only
-  const LV = { ru: '🗺 Интерактивная карта по часам', uz: '🗺 Interaktiv xarita soatma-soat', tr: '🗺 Saat saat etkileşimli harita' }[lang];
   // (the keyboard under the input field stays as it is; this message carries the mini-app button)
-  const kb = chat > 0 ? { inline_keyboard: [[{ text: LV, web_app: { url: `${base(env)}/live.html?r=${id}&l=${lang}` } }]] } : kb0;
+  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)]] } : kb0;
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
   if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
@@ -1160,7 +1162,7 @@ async function post(env, M, chat, lang0, id0, bot) {
   const updated = M.run.slice(8, 10) + '.' + M.run.slice(5, 7) + ' ' + M.run.slice(11, 16) + ' UTC';
   const cap = forecastText(days, lang, NAMES[id][lang], id, { more: 3, foot: T[lang].swipe, limit: 1024 });
   if (!cap) return { ok: false, description: 'no data' };
-  if (!vids.length) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot), disable_web_page_preview: true });
+  if (!vids.length) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot, chat), disable_web_page_preview: true });
   const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}?v=${fresh()}`, supports_streaming: true }));
   media[0].caption = cap; media[0].parse_mode = 'HTML';
   let r = await tg(env, 'sendMediaGroup', { chat_id: chat, media });

@@ -16,7 +16,9 @@ header{background:var(--navy);color:#fff;padding:10px 14px;display:flex;align-it
 header .c{font-family:Unbounded,sans-serif;font-weight:700;font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .d{font-size:12px;color:#c9d6e5;text-align:right}
 header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:#f0b88a;min-width:74px;text-align:right}
-#mapwrap{position:relative;margin:8px 8px 0;background:#e6e9ed;border-radius:14px;overflow:hidden;touch-action:none}
+#mapwrap{position:relative;margin:0;background:#e6e9ed;overflow:hidden;touch-action:none}
+#zoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
+#zoom button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.95);font:700 20px 'Golos Text',sans-serif;color:var(--ink)}
 #map{display:block;width:100%}
 #hint{position:absolute;left:10px;top:8px;transition:opacity .4s;font-size:11px;color:var(--muted);background:rgba(255,255,255,.85);padding:3px 8px;border-radius:8px}
 .card{margin:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
@@ -36,7 +38,7 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 <body>
 <div id="load">…</div>
 <header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div></header>
-<div id="mapwrap"><canvas id="map"></canvas><div id="hint"></div></div>
+<div id="mapwrap"><canvas id="map"></canvas><div id="hint"></div><div id="zoom"><button id="zin">+</button><button id="zout">−</button><button id="zfit" style="font-size:15px">⤢</button></div></div>
 <div class="card" id="place"><div><div class="nm" id="pn"></div><div class="tv" id="pt"></div></div><div class="rows" id="pr"></div></div>
 <div class="card" style="padding:8px 6px 4px"><canvas id="tl"></canvas></div>
 <div class="bar"><button class="btn" id="play"></button><button class="btn alt" id="snd"></button></div>
@@ -46,9 +48,9 @@ const Q = new URLSearchParams(location.search), tg = window.Telegram && Telegram
 try { tg && (tg.ready(), tg.expand()); } catch (e) {}
 const LANG = ['ru', 'uz', 'tr'].includes(Q.get('l')) ? Q.get('l') : 'ru', REG = (Q.get('r') || 'UZ').toUpperCase();
 const TX = {
-  ru: { hint: 'Нажмите на карту — погода в этом месте', play: '▶ Смотреть', pause: '❚❚ Пауза', son: '🔊 Звук погоды', soff: '🔇 Выключить звук', rain: 'Дождь', snow: 'Снег', cl: 'Облачно', wind: 'Ветер', ms: 'м/с', today: 'Сегодня', tom: 'Завтра', here: 'Точка на карте', wd: ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'], err: 'Данные ещё готовятся, попробуйте позже', names: { UZ: 'Узбекистан', KZ: 'Казахстан', KG: 'Кыргызстан', TJ: 'Таджикистан', TM: 'Туркменистан', AZ: 'Азербайджан', AM: 'Армения', BY: 'Беларусь', MD: 'Молдова', RU: 'Россия', TR: 'Турция' } },
-  uz: { hint: 'Xaritaga bosing — shu joyning ob-havosi', play: '▶ Ko‘rish', pause: '❚❚ To‘xtatish', son: '🔊 Ob-havo ovozi', soff: '🔇 Ovozni o‘chirish', rain: 'Yomg‘ir', snow: 'Qor', cl: 'Bulutli', wind: 'Shamol', ms: 'm/s', today: 'Bugun', tom: 'Ertaga', here: 'Xaritadagi nuqta', wd: ['Du','Se','Ch','Pa','Ju','Sh','Ya'], err: 'Ma’lumotlar tayyorlanmoqda, keyinroq urinib ko‘ring', names: { UZ: 'O‘zbekiston', KZ: 'Qozog‘iston', KG: 'Qirg‘iziston', TJ: 'Tojikiston', TM: 'Turkmaniston', AZ: 'Ozarbayjon', AM: 'Armaniston', BY: 'Belarus', MD: 'Moldova', RU: 'Rossiya', TR: 'Turkiya' } },
-  tr: { hint: 'Haritaya dokunun — o yerin havası', play: '▶ İzle', pause: '❚❚ Durdur', son: '🔊 Hava sesi', soff: '🔇 Sesi kapat', rain: 'Yağmur', snow: 'Kar', cl: 'Bulutlu', wind: 'Rüzgâr', ms: 'm/s', today: 'Bugün', tom: 'Yarın', here: 'Haritadaki nokta', wd: ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'], err: 'Veriler hazırlanıyor, sonra tekrar deneyin', names: { UZ: 'Özbekistan', KZ: 'Kazakistan', KG: 'Kırgızistan', TJ: 'Tacikistan', TM: 'Türkmenistan', AZ: 'Azerbaycan', AM: 'Ermenistan', BY: 'Belarus', MD: 'Moldova', RU: 'Rusya', TR: 'Türkiye' } },
+  ru: { hint: 'Нажмите на карту — погода в этом месте · двумя пальцами — увеличить', play: '▶ Смотреть', pause: '❚❚ Пауза', son: '🔊 Звук погоды', soff: '🔇 Выключить звук', rain: 'Дождь', snow: 'Снег', cl: 'Облачно', wind: 'Ветер', ms: 'м/с', today: 'Сегодня', tom: 'Завтра', here: 'Точка на карте', wd: ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'], err: 'Данные ещё готовятся, попробуйте позже', names: { UZ: 'Узбекистан', KZ: 'Казахстан', KG: 'Кыргызстан', TJ: 'Таджикистан', TM: 'Туркменистан', AZ: 'Азербайджан', AM: 'Армения', BY: 'Беларусь', MD: 'Молдова', RU: 'Россия', TR: 'Турция' } },
+  uz: { hint: 'Xaritaga bosing — shu joy ob-havosi · ikki barmoq — kattalashtirish', play: '▶ Ko‘rish', pause: '❚❚ To‘xtatish', son: '🔊 Ob-havo ovozi', soff: '🔇 Ovozni o‘chirish', rain: 'Yomg‘ir', snow: 'Qor', cl: 'Bulutli', wind: 'Shamol', ms: 'm/s', today: 'Bugun', tom: 'Ertaga', here: 'Xaritadagi nuqta', wd: ['Du','Se','Ch','Pa','Ju','Sh','Ya'], err: 'Ma’lumotlar tayyorlanmoqda, keyinroq urinib ko‘ring', names: { UZ: 'O‘zbekiston', KZ: 'Qozog‘iston', KG: 'Qirg‘iziston', TJ: 'Tojikiston', TM: 'Turkmaniston', AZ: 'Ozarbayjon', AM: 'Armaniston', BY: 'Belarus', MD: 'Moldova', RU: 'Rossiya', TR: 'Turkiya' } },
+  tr: { hint: 'Haritaya dokunun — o yerin havası · iki parmak — yakınlaştır', play: '▶ İzle', pause: '❚❚ Durdur', son: '🔊 Hava sesi', soff: '🔇 Sesi kapat', rain: 'Yağmur', snow: 'Kar', cl: 'Bulutlu', wind: 'Rüzgâr', ms: 'm/s', today: 'Bugün', tom: 'Yarın', here: 'Haritadaki nokta', wd: ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'], err: 'Veriler hazırlanıyor, sonra tekrar deneyin', names: { UZ: 'Özbekistan', KZ: 'Kazakistan', KG: 'Kırgızistan', TJ: 'Tacikistan', TM: 'Türkmenistan', AZ: 'Azerbaycan', AM: 'Ermenistan', BY: 'Belarus', MD: 'Moldova', RU: 'Rusya', TR: 'Türkiye' } },
 }[LANG];
 const RAIN = [[188,220,242],[140,192,230],[90,159,214],[58,120,181]], SNOWC = [[228,212,240],[204,176,227],[173,139,208],[138,99,184]];
 const $ = id => document.getElementById(id);
@@ -83,21 +85,42 @@ function val(h, v, lat, lon) {
   return w ? s / w / sc[0] - sc[1] : NaN;
 }
 
-// projection: plain lon/lat scaled by the cosine of the middle latitude, the country filling the canvas
-let cv, cx, W, Hc, P0, PS, kx;
+// projection: plain lon/lat scaled by the cosine of the middle latitude; the map can be zoomed (pinch, buttons)
+// and moved with a finger; it opens zoomed in so the country fills the height, centred on the chosen city
+let cv, cx, W, Hc, P0, PS0, kx, Z = 1, PAN = [0, 0], inited = false;
 function setup() {
   cv = $('map'); cx = cv.getContext('2d');
   const all = M.country.flat(); let lo0 = Infinity, lo1 = -Infinity, la0 = Infinity, la1 = -Infinity;
   for (const [x, y] of all) { lo0 = Math.min(lo0, x); lo1 = Math.max(lo1, x); la0 = Math.min(la0, y); la1 = Math.max(la1, y); }
   kx = Math.cos((la0 + la1) / 2 * Math.PI / 180);
-  const pw = (lo1 - lo0) * kx * 1.06, ph = (la1 - la0) * 1.1;
-  W = cv.clientWidth; Hc = Math.min(window.innerHeight * 0.58, Math.max(220, W * ph / pw));
+  const pw = (lo1 - lo0) * kx * 1.02, ph = (la1 - la0) * 1.04;
+  W = cv.clientWidth; Hc = Math.round(Math.min(window.innerHeight * 0.6, W * 1.1));
   const dpr = devicePixelRatio || 1; cv.width = W * dpr; cv.height = Hc * dpr; cv.style.height = Hc + 'px'; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  PS = Math.min(W / pw, Hc / ph); P0 = [(lo0 + lo1) / 2, (la0 + la1) / 2];
+  PS0 = Math.min(W / pw, Hc / ph); P0 = [(lo0 + lo1) / 2, (la0 + la1) / 2];
+  if (!inited) {  // the first view: the country as tall as the map, the chosen city in sight
+    Z = Math.min(2.2, Math.max(1, (Hc / ph) / PS0 * 0.82)); PAN = [0, 0];
+    const [x, y] = proj(sel.lon, sel.lat); PAN = [(W / 2 - x) * 0.6, 0]; clampPan();
+  }
   const tl = $('tl'); tl.width = tl.clientWidth * dpr; tl.height = 130 * dpr; tl.style.height = '130px'; tl.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
-  cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(), [lon, lat] = unproj(e.clientX - r.left, e.clientY - r.top);
+  if (inited) return; inited = true;
+  // touch: one finger moves the map (a short tap picks a place), two fingers zoom
+  const pts = new Map(); let moved = false, last = null, pinch = null;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); moved = false; last = [e.clientX, e.clientY];
+    if (pts.size === 2) { const [a_, b_] = [...pts.values()]; pinch = { d: Math.hypot(a_[0] - b_[0], a_[1] - b_[1]), z: Z }; } });
+  cv.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+    const r = cv.getBoundingClientRect();
+    if (pts.size === 2 && pinch) { const [a_, b_] = [...pts.values()], d = Math.hypot(a_[0] - b_[0], a_[1] - b_[1]);
+      zoomAt(pinch.z * d / pinch.d / Z, (a_[0] + b_[0]) / 2 - r.left, (a_[1] + b_[1]) / 2 - r.top); moved = true; return; }
+    const dx = e.clientX - last[0], dy = e.clientY - last[1];
+    if (moved || Math.hypot(dx, dy) > 6) { moved = true; PAN[0] += dx; PAN[1] += dy; clampPan(); last = [e.clientX, e.clientY]; draw(); } });
+  const up = e => { const was = pts.has(e.pointerId); pts.delete(e.pointerId); if (pts.size < 2) pinch = null;
+    if (!was || moved || pts.size) return; const r = cv.getBoundingClientRect(), [lon, lat] = unproj(e.clientX - r.left, e.clientY - r.top);
     $('hint').style.opacity = 0;
-    if (isFinite(val(hour, 1, lat, lon))) { sel = { lat, lon, name: TX.here, city: false }; const c = nearCity(lat, lon); if (c) sel = { lat: c.lat, lon: c.lon, name: c[LANG] || c.ru, city: true }; draw(); } });
+    if (isFinite(val(hour, 1, lat, lon))) { sel = { lat, lon, name: TX.here, city: false }; const c = nearCity(lat, lon); if (c) sel = { lat: c.lat, lon: c.lon, name: c[LANG] || c.ru, city: true }; draw(); } };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => { pts.delete(e.pointerId); pinch = null; });
+  cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  $('zin').onclick = () => zoomAt(1.4, W / 2, Hc / 2); $('zout').onclick = () => zoomAt(1 / 1.4, W / 2, Hc / 2);
+  $('zfit').onclick = () => { Z = 1; PAN = [0, 0]; draw(); };
   let drag = false; const seek = e => { const r = tl.getBoundingClientRect(); hour = Math.max(0, Math.min(H - 1, (e.clientX - r.left - 30) / (r.width - 44) * (H - 1))); stop(); draw(); };
   tl.addEventListener('pointerdown', e => { drag = true; tl.setPointerCapture(e.pointerId); seek(e); });
   tl.addEventListener('pointermove', e => drag && seek(e)); tl.addEventListener('pointerup', () => { drag = false; hour = Math.round(hour); draw(); });
@@ -105,9 +128,11 @@ function setup() {
   $('snd').onclick = toggleSound;
   addEventListener('resize', () => { setup(); draw(); });
 }
-const proj = (lon, lat) => [W / 2 + (lon - P0[0]) * kx * PS, Hc / 2 - (lat - P0[1]) * PS];
-const unproj = (x, y) => [P0[0] + (x - W / 2) / (kx * PS), P0[1] - (y - Hc / 2) / PS];
-const nearCity = (lat, lon) => M.cities.find(c => { const [a, b] = proj(c.lon, c.lat), [x, y] = proj(lon, lat); return Math.hypot(a - x, b - y) < 22; });
+function zoomAt(f, x, y) { const z2 = Math.max(1, Math.min(6, Z * f)); f = z2 / Z; PAN = [x - W / 2 - (x - W / 2 - PAN[0]) * f, y - Hc / 2 - (y - Hc / 2 - PAN[1]) * f]; Z = z2; clampPan(); draw(); }
+function clampPan() { const mx = Math.max(0, (Z - 1) * W / 2 + W * 0.15), my = Math.max(0, (Z - 1) * Hc / 2 + Hc * 0.15); PAN = [Math.max(-mx, Math.min(mx, PAN[0])), Math.max(-my, Math.min(my, PAN[1]))]; }
+const proj = (lon, lat) => [W / 2 + PAN[0] + (lon - P0[0]) * kx * PS0 * Z, Hc / 2 + PAN[1] - (lat - P0[1]) * PS0 * Z];
+const unproj = (x, y) => [P0[0] + (x - W / 2 - PAN[0]) / (kx * PS0 * Z), P0[1] - (y - Hc / 2 - PAN[1]) / (PS0 * Z)];
+const nearCity = (lat, lon) => M.cities.find(c => { const [a, b] = proj(c.lon, c.lat), [x, y] = proj(lon, lat); return Math.hypot(a - x, b - y) < 24; });
 function path(rings) { cx.beginPath(); for (const r of rings) { r.forEach(([x, y], i) => { const [a, b] = proj(x, y); i ? cx.lineTo(a, b) : cx.moveTo(a, b); }); cx.closePath(); } }
 
 // the precipitation layer: a small image of the grid (row 0 = the north), smoothed when it is drawn large
