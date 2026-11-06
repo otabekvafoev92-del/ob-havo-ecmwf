@@ -1171,7 +1171,7 @@ async function post(env, M, chat, lang0, id0, bot) {
   if (!r.ok) return r;
   // weather by city for today, with the buttons the album cannot carry
   const lines = await cityLines(env, id, lang);
-  if (lines) await tg(env, 'sendMessage', { chat_id: chat, text: `${T[lang].cTitle} · ${FLAG[id]} <b>${esc(NAMES[id][lang])}</b>\n\n${lines}`.slice(0, 4000), parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot), disable_web_page_preview: true });
+  if (lines) await tg(env, 'sendMessage', { chat_id: chat, text: `${T[lang].cTitle} · ${FLAG[id]} <b>${esc(NAMES[id][lang])}</b>\n\n${lines}`.slice(0, 4000), parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot, chat), disable_web_page_preview: true });
   return r;
 }
 
