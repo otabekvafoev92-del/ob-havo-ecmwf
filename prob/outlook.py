@@ -35,9 +35,9 @@ TX = {
                months=['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık']),
 }
 PR_LV = [0, 1, 3, 5, 10, 20, 40, 80, 500]
-PR_COL = ['#f3f5f7', '#bfe3f7', '#86c8f0', '#4aa6e6', '#1f7fd1', '#1559ae', '#0c3a80', '#6a2c91']
+PR_COL = ['#f5f6f7', '#d4e8f2', '#aed3e8', '#84bbdb', '#5f9fca', '#4683b3', '#355f8f', '#6c5a8e']  # soft, easy on the eyes, steps still apart
 TA_LV = [-8, -4, -3, -2, -1, -0.5, 0.5, 1, 2, 3, 4, 8]
-TA_COL = ['#1e2f8f', '#2f56c4', '#4f86e0', '#8ab6ef', '#c6dcf6', '#f2f2ee', '#fbd3b3', '#f6a375', '#ec6b45', '#d03a2c', '#9c1626']
+TA_COL = ['#40568f', '#5876ad', '#7d98c4', '#a9bfdb', '#d3dfec', '#f1f0ec', '#f2dccb', '#e9bea0', '#dc9a77', '#c77560', '#a35454']
 
 
 def get(url, params):
@@ -86,7 +86,7 @@ def fetch_aq(points):
 
 
 AQ_LV = [0, 20, 50, 100, 200, 400, 5000]
-AQ_COL = ['#cfeccf', '#8fd18a', '#f2d750', '#f39a3d', '#de4a3f', '#7a1f5c']
+AQ_COL = ['#e3efe0', '#bcd9b0', '#eedc9a', '#e8b67f', '#d48a7a', '#9a6a8a']
 DX = {'ru': dict(title='Пыль и качество воздуха', sub='PM10, максимум за день, мкг/м³', bands=['хорошо', 'умеренно', 'вредно для чувствительных', 'вредно', 'очень вредно', 'опасно'], src='Прогноз CAMS (ECMWF Copernicus) · данные Open-Meteo'),
       'uz': dict(title='Chang va havo sifati', sub='PM10, kunlik maksimum, mkg/m³', bands=['yaxshi', 'o‘rtacha', 'sezgirlar uchun zararli', 'zararli', 'juda zararli', 'xavfli'], src='CAMS prognozi (ECMWF Copernicus) · Open-Meteo ma’lumotlari'),
       'tr': dict(title='Toz ve hava kalitesi', sub='PM10, günlük en yüksek, µg/m³', bands=['iyi', 'orta', 'hassaslar için zararlı', 'zararlı', 'çok zararlı', 'tehlikeli'], src='CAMS tahmini (ECMWF Copernicus) · Open-Meteo verisi')}
@@ -120,7 +120,7 @@ def _scale(kind, lang):
     lv = list(Rn.T_LV); return lv, Rn.T_COL[:len(lv) - 1], [Rn.fmt_t(v) for v in lv[:-1]]
 
 
-NAVY, PAPER, GREY_LAND, GREY_LINE = '#14243a', '#f4f6f8', '#e3e7ec', '#ffffff'
+NAVY, PAPER, GREY_LAND, GREY_LINE = '#2b3a4e', '#f3f4f6', '#e4e7eb', '#ffffff'
 
 
 def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summary, src, label, unit=''):
@@ -137,7 +137,7 @@ def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summar
     finally: Rn.INK = ink0
     fig.text(x + 0.018, 0.952, title, fontsize=19, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center')
     fig.text(x + 0.018, 0.905, f"{TX[lang]['title']} · {badge}", fontsize=10.5, color='#a9bdd6', va='center')
-    fig.text(0.976, 0.936, when, fontsize=17, fontweight='bold', color='#ffb36b', ha='right', va='center')
+    fig.text(0.976, 0.936, when, fontsize=17, fontweight='bold', color='#f0b88a', ha='right', va='center')
     # the map: the country's outline fills the box
     box = [0.018, 0.165, 0.665, 0.69]
     ax = fig.add_axes(box); ax.axis('off')
@@ -156,7 +156,7 @@ def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summar
         cs = ax.contourf(R.XU, R.YU, U, levels=lv, colors=cols, extend='both' if kind in ('ta', 't') else 'neither', zorder=2, antialiased=True)
         verts = np.concatenate(rings); codes = np.concatenate([[1] + [2] * (len(r) - 2) + [79] for r in rings])
         clip = matplotlib.patches.PathPatch(matplotlib.path.Path(verts, codes), transform=ax.transData, facecolor='none', edgecolor='none')
-        ln = ax.contour(R.XU, R.YU, U, levels=lv[1:-1], colors='#ffffff', linewidths=0.9, alpha=0.85, zorder=2.1)  # a thin white line between the colour steps
+        ln = ax.contour(R.XU, R.YU, U, levels=lv[1:-1], colors='#ffffff', linewidths=0.8, alpha=0.6, zorder=2.1)  # a thin white line between the colour steps
         ax.add_patch(clip); cs.set_clip_path(clip); ln.set_clip_path(clip)
     ax.add_collection(LC(R.a1, colors='#ffffff', linewidths=1.0, alpha=0.9, zorder=3))
     ax.add_collection(LC(rings, colors=NAVY, linewidths=6, alpha=0.08, zorder=3.5))
