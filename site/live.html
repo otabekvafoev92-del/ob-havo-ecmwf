@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Osmon · по часам</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700&family=Unbounded:wght@600;700&display=swap">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--navy:#2b3a4e;--paper:#f3f5f7;--card:#fff;--line:#dde3ea;--ink:#2b3a4e;--muted:#6b7a8c;--accent:#e0895a;--rain:#4f8cc4;--snow:#8a63b8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:'Golos Text',system-ui,sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;min-height:100vh;user-select:none;-webkit-user-select:none}
+header{background:var(--navy);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px}
+header .c{font-family:Unbounded,sans-serif;font-weight:700;font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .d{font-size:12px;color:#c9d6e5;text-align:right}
+header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:#f0b88a;min-width:74px;text-align:right}
+#mapwrap{position:relative;margin:8px 8px 0;background:#e6e9ed;border-radius:14px;overflow:hidden;touch-action:none}
+#map{display:block;width:100%}
+#hint{position:absolute;left:10px;top:8px;transition:opacity .4s;font-size:11px;color:var(--muted);background:rgba(255,255,255,.85);padding:3px 8px;border-radius:8px}
+.card{margin:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+#place{display:flex;align-items:center;gap:12px}
+#place .nm{font-weight:700;color:var(--muted);font-size:13px}
+#place .tv{font-family:Unbounded,sans-serif;font-weight:700;font-size:34px;line-height:1.1}
+#place .rows{margin-left:auto;font-size:13px;line-height:1.7;text-align:right}
+#place .rows b{font-size:14px}
+#tl{display:block;width:100%;touch-action:none}
+.bar{display:flex;gap:8px;margin:0 8px 10px}
+.btn{flex:1;border:0;border-radius:12px;padding:12px;font:600 15px 'Golos Text',sans-serif;background:var(--navy);color:#fff}
+.btn.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.on{background:var(--accent)}
+#load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--paper);font-size:15px;color:var(--muted);z-index:9}
+</style>
+</head>
+<body>
+<div id="load">…</div>
+<header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div></header>
+<div id="mapwrap"><canvas id="map"></canvas><div id="hint"></div></div>
+<div class="card" id="place"><div><div class="nm" id="pn"></div><div class="tv" id="pt"></div></div><div class="rows" id="pr"></div></div>
+<div class="card" style="padding:8px 6px 4px"><canvas id="tl"></canvas></div>
+<div class="bar"><button class="btn" id="play"></button><button class="btn alt" id="snd"></button></div>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search), tg = window.Telegram && Telegram.WebApp;
+try { tg && (tg.ready(), tg.expand()); } catch (e) {}
+const LANG = ['ru', 'uz', 'tr'].includes(Q.get('l')) ? Q.get('l') : 'ru', REG = (Q.get('r') || 'UZ').toUpperCase();
+const TX = {
+  ru: { hint: 'Нажмите на карту — погода в этом месте', play: '▶ Смотреть', pause: '❚❚ Пауза', son: '🔊 Звук погоды', soff: '🔇 Выключить звук', rain: 'Дождь', snow: 'Снег', cl: 'Облачно', wind: 'Ветер', ms: 'м/с', today: 'Сегодня', tom: 'Завтра', here: 'Точка на карте', wd: ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'], err: 'Данные ещё готовятся, попробуйте позже', names: { UZ: 'Узбекистан', KZ: 'Казахстан', KG: 'Кыргызстан', TJ: 'Таджикистан', TM: 'Туркменистан', AZ: 'Азербайджан', AM: 'Армения', BY: 'Беларусь', MD: 'Молдова', RU: 'Россия', TR: 'Турция' } },
+  uz: { hint: 'Xaritaga bosing — shu joyning ob-havosi', play: '▶ Ko‘rish', pause: '❚❚ To‘xtatish', son: '🔊 Ob-havo ovozi', soff: '🔇 Ovozni o‘chirish', rain: 'Yomg‘ir', snow: 'Qor', cl: 'Bulutli', wind: 'Shamol', ms: 'm/s', today: 'Bugun', tom: 'Ertaga', here: 'Xaritadagi nuqta', wd: ['Du','Se','Ch','Pa','Ju','Sh','Ya'], err: 'Ma’lumotlar tayyorlanmoqda, keyinroq urinib ko‘ring', names: { UZ: 'O‘zbekiston', KZ: 'Qozog‘iston', KG: 'Qirg‘iziston', TJ: 'Tojikiston', TM: 'Turkmaniston', AZ: 'Ozarbayjon', AM: 'Armaniston', BY: 'Belarus', MD: 'Moldova', RU: 'Rossiya', TR: 'Turkiya' } },
+  tr: { hint: 'Haritaya dokunun — o yerin havası', play: '▶ İzle', pause: '❚❚ Durdur', son: '🔊 Hava sesi', soff: '🔇 Sesi kapat', rain: 'Yağmur', snow: 'Kar', cl: 'Bulutlu', wind: 'Rüzgâr', ms: 'm/s', today: 'Bugün', tom: 'Yarın', here: 'Haritadaki nokta', wd: ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'], err: 'Veriler hazırlanıyor, sonra tekrar deneyin', names: { UZ: 'Özbekistan', KZ: 'Kazakistan', KG: 'Kırgızistan', TJ: 'Tacikistan', TM: 'Türkmenistan', AZ: 'Azerbaycan', AM: 'Ermenistan', BY: 'Belarus', MD: 'Moldova', RU: 'Rusya', TR: 'Türkiye' } },
+}[LANG];
+const RAIN = [[188,220,242],[140,192,230],[90,159,214],[58,120,181]], SNOWC = [[228,212,240],[204,176,227],[173,139,208],[138,99,184]];
+const $ = id => document.getElementById(id);
+if (!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r); this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath(); };
+let M, B, H, NX, NY, hour = 0, playing = false, sel = null, sound = null;
+const fmtT = t => (t > 0.5 ? '+' : t < -0.5 ? '−' : '') + Math.abs(Math.round(t)) + '°';
+
+async function load() {
+  const base = 'prob/hr/' + REG + '_live';
+  const [m, b] = await Promise.all([fetch(base + '.json?t=' + Date.now()).then(r => r.ok ? r.json() : null), fetch(base + '.bin?t=' + Date.now()).then(r => r.ok ? r.arrayBuffer() : null)]);
+  if (!m || !b) { $('load').textContent = TX.err; return; }
+  M = m; B = new Uint8Array(b); H = M.hours; NX = M.nx; NY = M.ny;
+  const st = new Date(M.start + ':00Z'), now = new Date(Date.now() + M.off * 3600e3);
+  hour = Math.max(0, Math.min(H - 1, Math.floor((now - st) / 3600e3)));
+  const mc = M.cities.find(c => c.ru === (M.main[LANG] || M.main.ru)) || M.cities[0];
+  sel = { lat: mc.lat, lon: mc.lon, name: mc[LANG] || mc.ru, city: true };
+  $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = TX.play; $('snd').textContent = TX.son;
+  $('load').remove(); setup(); draw();
+}
+
+// the grid: value of variable v at hour h (fractional) and grid position (fx, fy)
+const raw = (h, v, y, x) => B[((h * 4 + v) * NY + y) * NX + x];
+function val(h, v, lat, lon) {
+  const fx = (lon - M.lon[0]) / (M.lon[1] - M.lon[0]) * (NX - 1), fy = (lat - M.lat[0]) / (M.lat[1] - M.lat[0]) * (NY - 1);
+  if (fx < 0 || fy < 0 || fx > NX - 1 || fy > NY - 1) return NaN;
+  const x0 = Math.min(NX - 2, Math.floor(fx)), y0 = Math.min(NY - 2, Math.floor(fy)), ax = fx - x0, ay = fy - y0;
+  const h0 = Math.min(H - 1, Math.floor(h)), h1 = Math.min(H - 1, h0 + 1), wh = h - h0, sc = M.scale[v];
+  let s = 0, w = 0;
+  for (const [hh, kh] of [[h0, 1 - wh], [h1, wh]]) for (const [dy, dx, k] of [[0,0,(1-ay)*(1-ax)],[0,1,(1-ay)*ax],[1,0,ay*(1-ax)],[1,1,ay*ax]]) {
+    const b = raw(hh, v, y0 + dy, x0 + dx); if (b !== 255 && k * kh > 0) { s += b * k * kh; w += k * kh; }
+  }
+  return w ? s / w / sc[0] - sc[1] : NaN;
+}
+
+// projection: plain lon/lat scaled by the cosine of the middle latitude, the country filling the canvas
+let cv, cx, W, Hc, P0, PS, kx;
+function setup() {
+  cv = $('map'); cx = cv.getContext('2d');
+  const all = M.country.flat(); let lo0 = Infinity, lo1 = -Infinity, la0 = Infinity, la1 = -Infinity;
+  for (const [x, y] of all) { lo0 = Math.min(lo0, x); lo1 = Math.max(lo1, x); la0 = Math.min(la0, y); la1 = Math.max(la1, y); }
+  kx = Math.cos((la0 + la1) / 2 * Math.PI / 180);
+  const pw = (lo1 - lo0) * kx * 1.06, ph = (la1 - la0) * 1.1;
+  W = cv.clientWidth; Hc = Math.min(window.innerHeight * 0.58, Math.max(220, W * ph / pw));
+  const dpr = devicePixelRatio || 1; cv.width = W * dpr; cv.height = Hc * dpr; cv.style.height = Hc + 'px'; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  PS = Math.min(W / pw, Hc / ph); P0 = [(lo0 + lo1) / 2, (la0 + la1) / 2];
+  const tl = $('tl'); tl.width = tl.clientWidth * dpr; tl.height = 130 * dpr; tl.style.height = '130px'; tl.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+  cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(), [lon, lat] = unproj(e.clientX - r.left, e.clientY - r.top);
+    $('hint').style.opacity = 0;
+    if (isFinite(val(hour, 1, lat, lon))) { sel = { lat, lon, name: TX.here, city: false }; const c = nearCity(lat, lon); if (c) sel = { lat: c.lat, lon: c.lon, name: c[LANG] || c.ru, city: true }; draw(); } });
+  let drag = false; const seek = e => { const r = tl.getBoundingClientRect(); hour = Math.max(0, Math.min(H - 1, (e.clientX - r.left - 30) / (r.width - 44) * (H - 1))); stop(); draw(); };
+  tl.addEventListener('pointerdown', e => { drag = true; tl.setPointerCapture(e.pointerId); seek(e); });
+  tl.addEventListener('pointermove', e => drag && seek(e)); tl.addEventListener('pointerup', () => { drag = false; hour = Math.round(hour); draw(); });
+  $('play').onclick = () => playing ? stop() : start();
+  $('snd').onclick = toggleSound;
+  addEventListener('resize', () => { setup(); draw(); });
+}
+const proj = (lon, lat) => [W / 2 + (lon - P0[0]) * kx * PS, Hc / 2 - (lat - P0[1]) * PS];
+const unproj = (x, y) => [P0[0] + (x - W / 2) / (kx * PS), P0[1] - (y - Hc / 2) / PS];
+const nearCity = (lat, lon) => M.cities.find(c => { const [a, b] = proj(c.lon, c.lat), [x, y] = proj(lon, lat); return Math.hypot(a - x, b - y) < 22; });
+function path(rings) { cx.beginPath(); for (const r of rings) { r.forEach(([x, y], i) => { const [a, b] = proj(x, y); i ? cx.lineTo(a, b) : cx.moveTo(a, b); }); cx.closePath(); } }
+
+// the precipitation layer: a small image of the grid (row 0 = the north), smoothed when it is drawn large
+let off; const LAT_N = () => Math.max(...M.lat), LAT_S = () => Math.min(...M.lat);
+function field(h) {
+  off = off || document.createElement('canvas'); off.width = NX; off.height = NY;
+  const o = off.getContext('2d'), im = o.createImageData(NX, NY), n = LAT_N(), s_ = LAT_S();
+  for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
+    const lat = n - (n - s_) * y / (NY - 1), lon = M.lon[0] + (M.lon[1] - M.lon[0]) * x / (NX - 1);
+    const p = val(h, 0, lat, lon), t = val(h, 1, lat, lon), i = (y * NX + x) * 4;
+    if (!(p >= 30)) { im.data[i + 3] = 0; continue; }
+    const c = (t <= 0.5 ? SNOWC : RAIN)[Math.min(3, Math.floor((p - 30) / 20))];
+    im.data[i] = c[0]; im.data[i + 1] = c[1]; im.data[i + 2] = c[2]; im.data[i + 3] = 235;
+  }
+  o.putImageData(im, 0, 0); return off;
+}
+function paint(f) {  // the grid image over its cells (each pixel is the centre of a cell)
+  const [x0, y0] = proj(M.lon[0], LAT_N()), [x1, y1] = proj(M.lon[1], LAT_S()), dx = (x1 - x0) / (NX - 1), dy = (y1 - y0) / (NY - 1);
+  cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(f, x0 - dx / 2, y0 - dy / 2, x1 - x0 + dx, y1 - y0 + dy);
+}
+
+function draw() {
+  const h = hour;
+  cx.clearRect(0, 0, W, Hc); cx.fillStyle = '#e6e9ed'; cx.fillRect(0, 0, W, Hc);
+  path(M.neighbours); cx.fillStyle = '#e1e5ea'; cx.fill(); cx.strokeStyle = '#fff'; cx.lineWidth = 1.2; cx.stroke();
+  path(M.country); cx.fillStyle = '#fff'; cx.fill();
+  const f = field(h);
+  cx.save(); cx.globalAlpha = 0.35; paint(f); cx.restore();          // the neighbours: faint
+  cx.save(); path(M.country); cx.clip(); paint(f); cx.restore();     // the country: full colour
+  cx.strokeStyle = '#c9d3de'; cx.lineWidth = 0.7; path(M.admin); cx.stroke();
+  cx.strokeStyle = '#2b3a4e'; cx.lineWidth = 1.8; path(M.country); cx.stroke();
+  // the cities: a white pill with the name and temperature
+  const boxes = [], dots = M.cities.map(c => proj(c.lon, c.lat));
+  const pills = M.cities.map(c => ({ c, main: sel.city && c.lat === sel.lat && c.lon === sel.lon })).sort((a, b) => b.main - a.main);
+  cx.textBaseline = 'middle';
+  for (const { c, main } of pills) {
+    const t = val(h, 1, c.lat, c.lon); if (!isFinite(t)) continue;
+    const [px, py] = proj(c.lon, c.lat), txt = `${c[LANG] || c.ru}  ${fmtT(t)}`;
+    cx.font = `${main ? 700 : 600} ${main ? 14 : 12}px 'Golos Text',sans-serif`;
+    const w = cx.measureText(txt).width + 14, hh = main ? 24 : 21;
+    let placed = null;
+    for (const [ox, oy] of [[-w / 2, -hh - 6], [8, -hh / 2], [-w - 8, -hh / 2], [-w / 2, 6], [6, -hh - 4], [-w - 6, -hh - 4], [6, 4], [-w - 6, 4]]) {
+      const b = [px + ox, py + oy, w, hh];
+      if (b[0] < 2 || b[1] < 2 || b[0] + w > W - 2 || b[1] + hh > Hc - 2) continue;
+      if (boxes.some(q => b[0] < q[0] + q[2] && q[0] < b[0] + b[2] && b[1] < q[1] + q[3] && q[1] < b[1] + b[3])) continue;
+      if (dots.some(([qx, qy]) => qx > b[0] - 4 && qx < b[0] + w + 4 && qy > b[1] - 4 && qy < b[1] + hh + 4)) continue;  // never over a city's dot
+      placed = b; break;
+    }
+    cx.beginPath(); cx.arc(px, py, main ? 4 : 3, 0, 7); cx.fillStyle = '#2b3a4e'; cx.fill();
+    if (!placed) continue; boxes.push(placed);
+    cx.beginPath(); cx.roundRect(placed[0], placed[1], w, hh, hh / 2); cx.fillStyle = 'rgba(255,255,255,.96)'; cx.fill();
+    cx.lineWidth = main ? 2 : 1; cx.strokeStyle = main ? '#e0895a' : '#cfd7e0'; cx.stroke();
+    cx.fillStyle = '#2b3a4e'; cx.fillText(txt, placed[0] + 7, placed[1] + hh / 2 + 0.5);
+  }
+  if (!sel.city) { const [px, py] = proj(sel.lon, sel.lat); cx.beginPath(); cx.arc(px, py, 7, 0, 7); cx.fillStyle = '#e0895a'; cx.fill(); cx.lineWidth = 2.5; cx.strokeStyle = '#fff'; cx.stroke(); }
+  card(h); timeline(h); header(h); if (sound) sound.set(h);
+}
+
+function when(h) { return new Date(new Date(M.start + ':00Z').getTime() + Math.round(h) * 3600e3); }
+function header(h) {
+  const t = when(h), d0 = new Date(M.start + ':00Z'), day = Math.floor((t - d0) / 864e5);
+  $('ht').textContent = String(t.getUTCHours()).padStart(2, '0') + ':00';
+  $('hd').textContent = `${day === 0 ? TX.today : day === 1 ? TX.tom : ''} · ${TX.wd[(t.getUTCDay() + 6) % 7]} ${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+function card(h) {
+  const p = val(h, 0, sel.lat, sel.lon), t = val(h, 1, sel.lat, sel.lon), c = val(h, 2, sel.lat, sel.lon), w = val(h, 3, sel.lat, sel.lon);
+  $('pn').textContent = sel.name; $('pt').textContent = isFinite(t) ? fmtT(t) : '—';
+  $('pr').innerHTML = `${t <= 0.5 ? TX.snow : TX.rain} <b>${isFinite(p) ? Math.round(p) : '—'} %</b><br>${TX.cl} <b>${isFinite(c) ? Math.round(c * 100) : '—'} %</b><br>${TX.wind} <b>${isFinite(w) ? Math.round(w) : '—'} ${TX.ms}</b>`;
+}
+function timeline(h) {
+  const tl = $('tl'), g = tl.getContext('2d'), w = tl.clientWidth, hh = 130, L = 30, R = 14, bw = (w - L - R) / H;
+  g.clearRect(0, 0, w, hh);
+  const P = [], T = [];
+  for (let i = 0; i < H; i++) { P.push(val(i, 0, sel.lat, sel.lon)); T.push(val(i, 1, sel.lat, sel.lon)); }
+  const st = new Date(M.start + ':00Z');
+  for (let i = 0; i < H; i++) {
+    const x = L + i * bw, p = P[i] || 0, snow = T[i] <= 0.5;
+    const c = p >= 20 ? (snow ? SNOWC : RAIN)[Math.max(0, Math.min(3, Math.floor((p - 30) / 20)))] : [237, 241, 245];
+    const bh = Math.max(3, p / 100 * 54); g.fillStyle = `rgb(${c})`; g.beginPath(); g.roundRect(x + 1, 98 - bh, bw - 2, bh, 2); g.fill();
+    const t = new Date(st.getTime() + i * 3600e3);
+    if (t.getUTCHours() % 6 === 0) { g.fillStyle = '#6b7a8c'; g.font = '11px Golos Text,sans-serif'; g.textAlign = 'center'; g.fillText(String(t.getUTCHours()).padStart(2, '0'), x + bw / 2, 116); }
+    if (t.getUTCHours() === 0 && i) { g.strokeStyle = '#dde3ea'; g.beginPath(); g.moveTo(x, 8); g.lineTo(x, 102); g.stroke(); g.fillStyle = '#6b7a8c'; g.textAlign = 'left'; g.fillText(`${TX.wd[(t.getUTCDay() + 6) % 7]} ${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`, x + 4, 14); }
+  }
+  const ok = T.filter(isFinite), lo = Math.min(...ok), hi = Math.max(...ok), ty = t => 70 - (t - lo) / Math.max(1, hi - lo) * 46;
+  g.strokeStyle = '#e0895a'; g.lineWidth = 2; g.beginPath(); T.forEach((t, i) => { if (isFinite(t)) { const x = L + (i + 0.5) * bw; i ? g.lineTo(x, ty(t)) : g.moveTo(x, ty(t)); } }); g.stroke();
+  const hx = L + (h + 0.5) * bw, tv = val(h, 1, sel.lat, sel.lon);
+  g.fillStyle = 'rgba(240,184,138,.3)'; g.fillRect(hx - bw / 2, 4, bw, 98);
+  g.beginPath(); g.arc(hx, ty(tv), 5, 0, 7); g.fillStyle = '#e0895a'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.stroke();
+  g.fillStyle = '#c8784a'; g.font = '700 12px Golos Text,sans-serif'; g.textAlign = 'center'; g.fillText(fmtT(tv), Math.max(20, Math.min(w - 20, hx)), Math.max(12, ty(tv) - 10));
+}
+
+// playing: one hour per 0.9 s, the map flowing smoothly between hours
+let raf, t0;
+function start() { playing = true; $('play').textContent = TX.pause; t0 = performance.now() - (hour % 1) * 900; if (hour >= H - 1) hour = 0; const h0 = Math.floor(hour);
+  const step = now => { if (!playing) return; hour = Math.min(H - 1, h0 + (now - t0) / 900); draw(); if (hour >= H - 1) return stop(); raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
+function stop() { playing = false; cancelAnimationFrame(raf); $('play').textContent = TX.play; }
+
+// the weather heard: wind, rain (hiss and single drops), snow (a soft hush and bells), all made here in the browser
+function toggleSound() {
+  if (sound) { sound.close(); sound = null; $('snd').textContent = TX.son; $('snd').classList.remove('on'); return; }
+  const A = new (window.AudioContext || window.webkitAudioContext)(), sr = A.sampleRate;
+  const nb = A.createBuffer(2, sr * 4, sr); for (let c = 0; c < 2; c++) { const d = nb.getChannelData(c); let b = 0; for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const bb = A.createBuffer(2, sr * 4, sr); for (let c = 0; c < 2; c++) { const d = bb.getChannelData(c); let b = 0; for (let i = 0; i < d.length; i++) { b = (b + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = b * 3.5; } }
+  const src = buf => { const s = A.createBufferSource(); s.buffer = buf; s.loop = true; s.start(); return s; };
+  const out = A.createGain(); out.gain.value = 0.9; out.connect(A.destination);
+  const chain = (buf, type, f, q) => { const fl = A.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = A.createGain(); g.gain.value = 0; src(buf).connect(fl).connect(g).connect(out); return g; };
+  const gWind = chain(bb, 'lowpass', 500, 0.5), gHiss = chain(nb, 'bandpass', 3500, 0.6), gRoar = chain(nb, 'bandpass', 800, 0.7), gHush = chain(nb, 'bandpass', 600, 0.8);
+  let lv = { rain: 0, snow: 0, wind: 0 }, alive = true;
+  const drop = () => { if (!alive) return; const r = lv.rain;
+    if (r > 0.03) { const o = A.createOscillator(), g = A.createGain(), p = A.createStereoPanner(), t = A.currentTime, f0 = 900 + Math.random() * 2600, d = 0.02 + Math.random() * 0.04;
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 1.6, t + d * 3); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05 + 0.2 * Math.random(), t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + d * 3);
+      p.pan.value = Math.random() * 1.6 - 0.8; o.connect(g).connect(p).connect(out); o.start(t); o.stop(t + d * 3 + 0.02); }
+    setTimeout(drop, r > 0.03 ? 1000 / (4 + 40 * r) * (0.4 + Math.random() * 1.2) : 300); };
+  const bell = () => { if (!alive) return;
+    if (lv.snow > 0.05 && Math.random() < 0.6) { const o = A.createOscillator(), g = A.createGain(), t = A.currentTime, f = [1046.5, 1174.7, 1318.5, 1568, 1760][Math.floor(Math.random() * 5)];
+      o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 2); o.connect(g).connect(out); o.start(t); o.stop(t + 2.1); }
+    setTimeout(bell, 1500 + Math.random() * 1500); };
+  drop(); bell();
+  sound = { set(h) { const p = val(h, 0, sel.lat, sel.lon), t = val(h, 1, sel.lat, sel.lon), w = val(h, 3, sel.lat, sel.lon), r = p >= 20 ? Math.min(1, (p - 20) / 60) : 0, sn = t <= 0.5;
+      lv = { rain: sn ? 0 : r, snow: sn ? r : 0, wind: Math.max(0, Math.min(1, ((w || 2) - 1) / 13)) }; const k = A.currentTime;
+      gWind.gain.setTargetAtTime(0.04 + 0.35 * lv.wind ** 1.2, k, 0.4); gHiss.gain.setTargetAtTime(0.12 * lv.rain ** 1.5, k, 0.4); gRoar.gain.setTargetAtTime(0.09 * lv.rain ** 1.3, k, 0.4); gHush.gain.setTargetAtTime(0.05 * lv.snow, k, 0.4); },
+    close() { alive = false; A.close(); } };
+  sound.set(hour); $('snd').textContent = TX.soff; $('snd').classList.add('on');
+}
+load().catch(e => { $('load').textContent = TX.err; console.log(e); });
+</script>
+</body>
+</html>

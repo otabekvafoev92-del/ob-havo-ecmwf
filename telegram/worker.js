@@ -494,7 +494,11 @@ async function sendHourly(env, chat, lang, id) {
   const part = (lbl, d) => d ? `<b>${lbl}</b> ${d.range}\n☂️ ${d.rain}\n🧥 ${K.wear}: ${d.wear}` : '';
   const cap = [`${FLAG[id] || ''} <b>${esc(NAMES[id][lang])}</b> · ${esc(H.city)} — ${X[0].toLowerCase()} / ${X[1].toLowerCase()} ${X[2]}`, '', part(X[0], H.info.today), '', part(X[1], H.info.tomorrow)].join('\n').slice(0, 1024);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
-  const url = `${base(env)}/prob/${H.video}?v=${fresh()}`, kb = menuKb(env, lang, id);
+  const url = `${base(env)}/prob/${H.video}?v=${fresh()}`, kb0 = menuKb(env, lang, id);
+  // the interactive map (a Telegram mini app): touch the map, drag the hours, hear the weather — private chats only
+  const LV = { ru: '🗺 Интерактивная карта по часам', uz: '🗺 Interaktiv xarita soatma-soat', tr: '🗺 Saat saat etkileşimli harita' }[lang];
+  // (the keyboard under the input field stays as it is; this message carries the mini-app button)
+  const kb = chat > 0 ? { inline_keyboard: [[{ text: LV, web_app: { url: `${base(env)}/live.html?r=${id}&l=${lang}` } }]] } : kb0;
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
   if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
