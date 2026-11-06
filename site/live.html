@@ -294,7 +294,7 @@ function timeline(h) {
 
 // playing: one hour per 0.9 s, the map flowing smoothly between hours
 let raf, t0;
-const SPD = () => M.times ? 1400 : 1800;  // ms per step: half the old speed (0.5×), calmer to watch
+const SPD = () => M.times ? 2800 : 3600;  // ms per step: a quarter of the old speed (0.25×), calm to watch
 function start() { playing = true; $('play').textContent = '❚❚'; t0 = performance.now() - (hour % 1) * SPD(); if (hour >= H - 1) hour = 0; const h0 = Math.floor(hour);
   const step = now => { if (!playing) return; hour = Math.min(H - 1, h0 + (now - t0) / SPD()); draw(); if (hour >= H - 1) return stop(); raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
 function stop() { playing = false; cancelAnimationFrame(raf); $('play').textContent = '▶'; }
