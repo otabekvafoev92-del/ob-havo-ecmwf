@@ -14,6 +14,25 @@ SR = 48000
 CTL = 100  # control rate of the envelopes (Hz)
 
 
+_REC = {}
+def _rec(name):
+    """A recorded sound from prob/sounds (a seamless 40-second loop), as float stereo at 48 kHz; None when it is missing."""
+    if name not in _REC:
+        import pathlib
+        p = pathlib.Path(__file__).resolve().parent / 'sounds' / f'{name}.mp3'
+        try:
+            raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(p), '-ac', '2', '-ar', str(SR), '-f', 'f32le', '-'], check=True, capture_output=True).stdout
+            _REC[name] = np.frombuffer(raw, '<f4').reshape(-1, 2).T.astype(float) if raw else None
+        except Exception: _REC[name] = None
+    return _REC[name]
+
+
+def _loop(a, n, start):
+    """A recording repeated to n samples, from a given offset (each video sounds a little different)."""
+    k = a.shape[1]; idx = (np.arange(n) + start) % k
+    return a[:, idx]
+
+
 def _bp(x, lo, hi):
     return sosfilt(butter(2, [lo, hi], btype='band', fs=SR, output='sos'), x)
 
@@ -74,6 +93,13 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
     snow = _env([1.0 if l.get('snow') else 0.0 for l in levels], frame_sec, intro_sec, n)
     rainy, snowy = rain * (1 - snow), rain * snow
     out = np.zeros((2, n))
+    # real rain: two recordings (light rain, heavy rain) crossfaded by how likely and heavy the rain is
+    rl, rh = _rec('rain_light'), _rec('rain_heavy')
+    real = rl is not None and rh is not None
+    if real:
+        gl = np.clip(rainy / 0.35, 0, 1) * (1 - np.clip((rainy - 0.55) / 0.35, 0, 1) * 0.6)
+        gh = np.clip((rainy - 0.45) / 0.4, 0, 1)
+        out += _loop(rl, n, int(rng.integers(rl.shape[1]))) * 1.0 * gl + _loop(rh, n, int(rng.integers(rh.shape[1]))) * 0.95 * gh
     for ch in range(2):  # two decorrelated channels: a wide, natural sound
         wn = rng.standard_normal(n)
         # wind: brown noise, low and breathy, with slow gusts; a light breeze is always there
@@ -84,10 +110,12 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
         # rain, four layers (procedural rain): a soft roar of distant rain, a bright hiss that flickers,
         # drops that land as bubbles (a short tone that rises in pitch: the sound of a drop in water), and thuds on roofs
         flick = np.interp(np.arange(n), np.linspace(0, n, int(dur * 8) + 2), 0.75 + 0.25 * rng.random(int(dur * 8) + 2))
-        out[ch] += _bp(wn, 300, 1500) * 0.16 * rainy ** 1.3
-        out[ch] += _bp(wn, 1800, 9000) * 0.20 * rainy ** 1.5 * flick  # the hiss only fills in when the rain is heavy
-        out[ch] += _bubbles(rng, n, rainy, 90, ch) * 0.55
-        thud = np.zeros(n); hit = rng.random(n) < 25 * rainy / SR
+        if real: rainy_s = rainy * 0.0  # the recordings carry the rain; the synthetic layers stay silent
+        else: rainy_s = rainy
+        out[ch] += _bp(wn, 300, 1500) * 0.16 * rainy_s ** 1.3
+        out[ch] += _bp(wn, 1800, 9000) * 0.20 * rainy_s ** 1.5 * flick  # the hiss only fills in when the rain is heavy
+        out[ch] += _bubbles(rng, n, rainy_s, 90, ch) * 0.55
+        thud = np.zeros(n); hit = rng.random(n) < 25 * rainy_s / SR
         thud[hit] = rng.uniform(0.3, 1.0, hit.sum())
         out[ch] += _bp(np.convolve(thud, np.exp(-np.arange(int(0.03 * SR)) / (0.006 * SR)))[:n], 120, 900) * 0.35
         # snow: falling snow is almost silent, so a muffled hush and soft high bells (the winter sign of the video);
@@ -117,7 +145,7 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
     # drips: clear single drops ("plip") falling from roofs into puddles, panned left and right — the sound people
     # know as rain even when it is light
     L = int(0.12 * SR); tt = np.arange(L) / SR
-    for p in np.flatnonzero(rng.random(n) < (np.where(rainy > 0.04, 2.5 + 6 * rainy, 0)) / SR):
+    for p in np.flatnonzero(rng.random(n) < (np.where(rainy > 0.04, 2.5 + 6 * rainy, 0) * (0.35 if real else 1)) / SR):  # a few clear drips over the recording
         f0 = rng.uniform(650, 1500); d = rng.uniform(0.025, 0.05); k = min(L, n - p)
         tone = np.sin(2 * np.pi * f0 * tt[:k] * (1 + 7 * tt[:k])) * np.exp(-tt[:k] / d) * (1 - np.exp(-tt[:k] / 0.0008))
         amp = rng.uniform(0.35, 0.8) * (0.5 + 0.5 * min(1, rainy[p] * 3)); pan = rng.uniform(0.15, 0.85)

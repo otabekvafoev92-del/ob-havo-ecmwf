@@ -1,0 +1,4 @@
+Rain recordings, free to use under the Pixabay Content License (no attribution required), sent by the bot's owner:
+  rain_light.mp3  — "Rain Sound" by boons_freak (Pixabay, id 188158), a 40-second seamless loop cut from it
+  rain_heavy.mp3  — "Relaxing Rain" by Dragon Studio (Pixabay, id 444802), a 40-second seamless loop cut from it
+Wind, snow, drops and thunder are synthesised in prob/sound.py and in site/live.html.
