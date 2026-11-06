@@ -543,15 +543,15 @@ def _header(fig, R, D, s, lang, title):
     """Full HD 16:9: brand, country, product and the forecast window across the top."""
     run = dt.datetime.fromisoformat(D['run'].replace('Z', '+00:00')).replace(tzinfo=None)
     step = int(D['steps'][s]); off = R.off if R.off is not None else OVERVIEW_TZ[lang]
-    x = _brand(fig, 0.022, 0.948)
-    nm = fig.text(x + 0.012, 0.948, NAMES[R.id][lang], fontsize=18, fontfamily=DISPLAY, fontweight='bold', color=INK, va='center')
+    # a thin dark title band (the same as the hourly video): brand, country, what the map shows, the window
+    fig.patches.append(Rectangle((0, 0.93), 1, 0.07, transform=fig.transFigure, facecolor=BAND, edgecolor='none', zorder=-6))
+    ink0 = globals()['INK']; globals()['INK'] = '#ffffff'
+    try: x = _brand(fig, 0.016, 0.965, size=11)
+    finally: globals()['INK'] = ink0
+    nm = fig.text(x + 0.014, 0.965, NAMES[R.id][lang], fontsize=14, fontfamily=DISPLAY, fontweight='bold', color='#ffffff', va='center')
     bb = nm.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    tx = fig.text(bb.x1 + 0.026, 0.948, title.upper(), fontsize=8.6, fontweight='bold', color=SKY, va='center')
-    tb = tx.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    _card(fig, tb.x0 - 0.01, 0.93, tb.width + 0.02, 0.036, fc=CARD2, ec=LINE, r=0.012)
-    wt = fig.text(0.985, 0.954, _when(lang, run, step, off, D['win'][s]), fontsize=15, fontweight='bold', color=ACCENT, ha='right', va='center')
-    wb = wt.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    fig.text(wb.x0 - 0.012, 0.952, tz_label(lang, R.id, off), fontsize=8.5, color=MUTED, ha='right', va='center')  # beside the time: the map starts right below
+    fig.text(bb.x1 + 0.018, 0.965, title, fontsize=11, color='#a9bdd6', va='center')
+    wt = fig.text(0.984, 0.965, _when(lang, run, step, off, D['win'][s]), fontsize=14, fontweight='bold', color='#f0b88a', ha='right', va='center')
     return run, step, off
 
 
@@ -564,9 +564,10 @@ def zoom_view(R, p, z):
     return (cx - w / 2, cx + w / 2, cy - h / 2, cy + h / 2)
 
 
-MAP_BOX = [0.012, 0.19, 0.752, 0.713]  # Full HD 16:9: a big map on the left, a slim city card on the right
-PANEL = (0.776, 0.212)
-PANEL_Y, PANEL_H = 0.185, 0.723  # the city card, as tall as the map
+MAP_BOX = [0.006, 0.152, 0.802, 0.768]  # Full HD 16:9: the map takes most of the frame, a slim city card on the right
+PANEL = (0.816, 0.178)
+PANEL_Y, PANEL_H = 0.15, 0.772  # the city card, as tall as the map
+BAND = '#2b3a4e'
 def _basemap(fig, R, box=None):
     box = box or MAP_BOX
     _card(fig, box[0] - 0.006, box[1] - 0.005, box[2] + 0.012, box[3] + 0.01, fc=SEA, ec=LINE)
@@ -575,8 +576,7 @@ def _basemap(fig, R, box=None):
     ax.set_xlim(x0, x1); ax.set_ylim(y0, y1); ax.set_aspect('equal', adjustable='box'); ax.axis('off')
     ax.add_patch(Rectangle((x0, y0), x1 - x0, y1 - y0, facecolor=SEA, edgecolor='none', zorder=0))
     ax.add_collection(PolyCollection([r for rings in R.cpoly.values() for r in rings], facecolor=LAND, edgecolor='none', zorder=1))
-    if getattr(R, 'relief', None) is not None:
-        ax.imshow(R.relief, extent=R.ext, origin='upper', interpolation='bilinear', zorder=2.6)
+    # (no shaded relief: a calm, flat map reads more easily)
     return ax
 
 
@@ -635,9 +635,9 @@ def _chips(fig, x, y, cols, labels, w=0.052, h=0.019, gap=0.004, dark_from=3):
 
 
 def _timeline(fig, R, D, s, run, off, values, colors, ylim, yfmt, title, line=None, lang='ru'):
-    _card(fig, 0.012, 0.038, 0.976, 0.135)
-    fig.text(0.024, 0.158, title, fontsize=9, color=MUTED, va='center')
-    bx = fig.add_axes([0.045, 0.07, 0.915, 0.072]); bx.set_facecolor('none')
+    _card(fig, 0.006, 0.022, 0.988, 0.118)
+    fig.text(0.018, 0.126, title, fontsize=8, color=MUTED, va='center')
+    bx = fig.add_axes([0.04, 0.045, 0.925, 0.064]); bx.set_facecolor('none')
     st_ = np.array([int(x) for x in D['steps']], float); wn = np.array([int(x) for x in D['win']], float)
     X = st_ - wn / 2  # middle of each window, hours from the run
     bx.axvspan(X[s] - wn[s] / 2, X[s] + wn[s] / 2, color=ACCENT, alpha=0.16, lw=0, zorder=1)
@@ -748,7 +748,7 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
         p = R.main; v = max(0, min(100, R.value_at(s, p))); t = R.value_at(s, p, 'T') if has_t else np.nan
         c = R.value_at(s, p, 'C') * 100 if has_c else np.nan; mm = R.value_at(s, p, 'Araw')
         snowy = np.isfinite(t) and t <= 0.5
-        fig.text(X0, 0.845, city_name(p, lang), fontsize=13, fontweight='bold', color=INK, va='center')
+        fig.text(X0, 0.885, city_name(p, lang), fontsize=13, fontweight='bold', color=INK, va='center')
         if product == 'temp' and np.isfinite(t): big, bigc, sub = fmt_t(t), _level_col(60, COLORS) if t < 0 else ACCENT, W2['deg']
         elif product == 'cloud' and np.isfinite(c): big, bigc, sub = f'{c:.0f} %', CLOUD_BIG, W2['cl']
         elif product == 'wind' and has_w:
@@ -756,25 +756,23 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
             frm = (np.degrees(np.arctan2(-u_, -v_)) + 360) % 360
             big, bigc, sub = f"{ws:.0f} {W2['ws']}", W_COL[int(np.clip(np.digitize(ws, W_LV) - 1, 4, 9))], f"{W2['wsub']} · {W2['dirs'][int(round(frm / 45)) % 8]}"
         else: big, bigc, sub = f'{v:.0f} %', _level_col(v, SNOW if snowy else COLORS), W2['chance']
-        fig.text(X0, 0.782, big, fontsize=26, fontfamily=DISPLAY, fontweight='bold', color=bigc, va='center')
-        fig.text(X0, 0.733, sub, fontsize=9, color=MUTED, va='center')
+        fig.text(X0, 0.822, big, fontsize=26, fontfamily=DISPLAY, fontweight='bold', color=bigc, va='center')
+        fig.text(X0, 0.773, sub, fontsize=9, color=MUTED, va='center')
         stats = []
         if product != 'prob': stats.append((W2['p'], f'{v:.0f} %'))
         if product != 'temp' and np.isfinite(t): stats.append((W2['t'], fmt_t(t)))
         if product != 'cloud' and np.isfinite(c): stats.append((W2['c'], f'{c:.0f} %'))
         if product == 'prob' and mm >= 0.1: stats.append((W2['a'], f'≈ {mm:.1f} mm' if mm < 1.5 else f'≈ {mm:.0f} mm'))
         for i, (k, val) in enumerate(stats[:3]):
-            y = 0.688 - i * 0.042
+            y = 0.725 - i * 0.045
             fig.text(X0, y, k, fontsize=10, color=MUTED, va='center')
             fig.text(X1, y, val, fontsize=12, fontweight='bold', color=INK, va='center', ha='right')
             fig.add_artist(matplotlib.lines.Line2D([X0, X1], [y - 0.021, y - 0.021], color=LINE, lw=0.6, transform=fig.transFigure))
-    if comment:
-        for j, line in enumerate(textwrap.wrap(comment, 34)[:4]):
-            fig.text(X0, 0.55 - j * 0.032, line, fontsize=9.3, color=COMMENT, va='center', style='italic')
+    # (the day's comment is in the bot's text under the video; the frame keeps only the numbers)
     # legend at the bottom of the card
-    LY = 0.43
+    LY = 0.5
     if product == 'prob':
-        fig.text(X0, LY, f"{W2['scale']} · {hours_text(lang, D['win'][s])}", fontsize=8.6, color=MUTED, va='center')
+        fig.text(X0, LY, textwrap.fill(f"{W2['scale']} · {hours_text(lang, D['win'][s])}", 28), fontsize=8.6, color=MUTED, va='center')
         for j, (pal, name) in enumerate(((COLORS, L['rain']), (SNOW, L['snow']))):
             y = LY - 0.05 - j * 0.045
             fig.text(X0, y, name, fontsize=8.6, fontweight='bold', color=INK, va='center')
@@ -787,7 +785,7 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
             fig.patches.append(matplotlib.patches.Rectangle((X0, LY - 0.205), 0.03, 0.026, transform=fig.transFigure, fill=False, hatch='//', edgecolor=STORM, lw=1.0))
             fig.text(X0 + 0.036, LY - 0.192, W2['storm'], fontsize=8.6, color=MUTED, va='center')
     elif product == 'temp':
-        fig.text(X0, LY, L['legend_temp'].format(h=hours_text(lang, D['win'][s])), fontsize=8.6, color=MUTED, va='center')
+        fig.text(X0, LY, textwrap.fill(L['legend_temp'].format(h=hours_text(lang, D['win'][s])), 28), fontsize=8.6, color=MUTED, va='center')
         cb = fig.add_axes([X0, LY - 0.08, X1 - X0, 0.022])
         cb.imshow([np.arange(len(T_COL))], cmap=ListedColormap(T_COL), aspect='auto', extent=(T_LV[0] - 4, T_LV[-1], 0, 1))
         cb.set_yticks([]); cb.set_xticks(list(range(-40, 41, 20))); cb.set_xticklabels([fmt_t(v) for v in range(-40, 41, 20)], fontsize=8, color=MUTED)
@@ -825,9 +823,8 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
                 cv = np.nan_to_num(cs_) * 100
                 _timeline(fig, R, D, s, run, off, cv, [CL_COL[int(np.clip(np.digitize(c, CL_LV[:-1]) - 1, 0, 4))] if c >= 10 else LOW_BAR for c in cv], (0, 100), lambda x, _: f'{x:.0f}',
                           L['bars_cloud'].format(city=nm), lang=lang)
-    src = (L['models'].format(m=', '.join(models)) + ' · ' + L['method'].format(n=members)) if product == 'prob' else W2['wleg'] if product == 'wind' else L['src_wx']
-    fig.text(0.014, 0.018, textwrap.shorten(src, 170, placeholder='…'), fontsize=6.6, color=FAINT, va='center')
-    fig.text(0.986, 0.018, L['run'].format(run=run.strftime('%d.%m.%Y %H:%M')) + ' · ECMWF (CC BY 4.0), NOAA, DWD · Natural Earth', fontsize=6.6, color=FAINT, va='center', ha='right')
+    # one short credit line under the strip (the full model list is on the site)
+    fig.text(0.012, 0.162, 'ECMWF (CC BY 4.0) · NOAA · DWD · ' + L['run'].format(run=run.strftime('%d.%m %H:%M')), fontsize=6.2, color=MUTED, va='center', zorder=30)
     fig.savefig(path, dpi=dpi or _CTX.get('dpi', 100), facecolor=BG)
     plt.close(fig)
 
