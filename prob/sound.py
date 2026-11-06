@@ -84,8 +84,8 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
         # rain, four layers (procedural rain): a soft roar of distant rain, a bright hiss that flickers,
         # drops that land as bubbles (a short tone that rises in pitch: the sound of a drop in water), and thuds on roofs
         flick = np.interp(np.arange(n), np.linspace(0, n, int(dur * 8) + 2), 0.75 + 0.25 * rng.random(int(dur * 8) + 2))
-        out[ch] += _bp(wn, 300, 1500) * 0.22 * rainy ** 0.9
-        out[ch] += _bp(wn, 1800, 9000) * 0.30 * rainy ** 0.8 * flick
+        out[ch] += _bp(wn, 300, 1500) * 0.16 * rainy ** 1.3
+        out[ch] += _bp(wn, 1800, 9000) * 0.20 * rainy ** 1.5 * flick  # the hiss only fills in when the rain is heavy
         out[ch] += _bubbles(rng, n, rainy, 90, ch) * 0.55
         thud = np.zeros(n); hit = rng.random(n) < 25 * rainy / SR
         thud[hit] = rng.uniform(0.3, 1.0, hit.sum())
@@ -114,6 +114,14 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
                 th[t1:t1 + len(seg)] += np.exp(-seg / (1.3 * SR)) * (1 - np.exp(-seg / (0.08 * SR))) * sw
         rum = _lp(br, 160); rum /= np.percentile(np.abs(rum), 99) + 1e-9
         out[ch] += rum * th * 0.95 + _bp(wn, 500, 7000) * cr * 0.8
+    # drips: clear single drops ("plip") falling from roofs into puddles, panned left and right — the sound people
+    # know as rain even when it is light
+    L = int(0.12 * SR); tt = np.arange(L) / SR
+    for p in np.flatnonzero(rng.random(n) < (np.where(rainy > 0.04, 2.5 + 6 * rainy, 0)) / SR):
+        f0 = rng.uniform(650, 1500); d = rng.uniform(0.025, 0.05); k = min(L, n - p)
+        tone = np.sin(2 * np.pi * f0 * tt[:k] * (1 + 7 * tt[:k])) * np.exp(-tt[:k] / d) * (1 - np.exp(-tt[:k] / 0.0008))
+        amp = rng.uniform(0.35, 0.8) * (0.5 + 0.5 * min(1, rainy[p] * 3)); pan = rng.uniform(0.15, 0.85)
+        out[0, p:p + k] += tone * amp * (1 - pan); out[1, p:p + k] += tone * amp * pan
     # a quiet calm pad (C major add 9) that steps back when the weather gets loud
     t = np.arange(n) / SR; pad = np.zeros(n)
     for f, a in ((130.81, 1.0), (196.0, 0.7), (261.63, 0.6), (293.66, 0.35), (329.63, 0.45)):

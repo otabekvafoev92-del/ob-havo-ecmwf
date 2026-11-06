@@ -857,7 +857,7 @@ def _sound_levels(R, sel, city=None):
 
 
 def _video(fdir, mp4, fps, width=None, crf=None, intro=None, sound=None):
-    w = width or _CTX.get('width', 1440); vf = f"fps=25,scale={w}:-2:flags=lanczos,format=yuv420p"
+    w = width or _CTX.get('width', 1440); vf = f"framerate=fps=25:interp_start=140:interp_end=255:scene=100,scale={w}:-2:flags=lanczos,format=yuv420p"
     enc = ['-c:v', 'libx264', '-crf', str(crf or _CTX.get('crf', 20)), '-preset', 'medium', '-tune', 'animation', '-movflags', '+faststart', str(mp4)]
     if intro is None:
         subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(fps), '-i', str(fdir / '%03d.png'), '-vf', vf] + enc, check=True)
