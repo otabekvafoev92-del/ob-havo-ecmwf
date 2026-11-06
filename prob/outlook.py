@@ -108,57 +108,120 @@ def _fit(R, box):
     c = (y0 + y1) / 2; h = w / asp; return (x0, x1, c - h / 2, c + h / 2)
 
 
-def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summary, src, label):
-    """Full HD 16:9: a single large map with the cities' numbers, and a card that says what the colours mean."""
-    fig = plt.figure(figsize=(12.8, 7.2), dpi=100); fig.patch.set_facecolor(Rn.BG)
-    x = Rn._brand(fig, 0.022, 0.948)
-    nm = fig.text(x + 0.012, 0.948, TX[lang]['title'], fontsize=18, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
-    bb = nm.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    tx = fig.text(bb.x1 + 0.026, 0.948, badge.upper(), fontsize=9, fontweight='bold', color=Rn.SKY, va='center')
-    tb = tx.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    Rn._card(fig, tb.x0 - 0.01, 0.93, tb.width + 0.02, 0.036, fc=Rn.CARD2, ec=Rn.LINE, r=0.012)
-    fig.text(0.985, 0.95, when, fontsize=15, fontweight='bold', color=Rn.ACCENT, ha='right', va='center')
-    R.view = None; R.main = cities[0]
-    ax = Rn._basemap(fig, R, BOX)
+def _lum(c):
+    r, g, b = matplotlib.colors.to_rgb(c); return 0.299 * r + 0.587 * g + 0.114 * b
+
+
+def _scale(kind, lang):
+    """(levels, colours, labels under the colour bar) for each kind of map."""
+    if kind == 'pr': return PR_LV, PR_COL, PR_LAB
+    if kind == 'ta': return TA_LV, TA_COL, TA_LAB[lang]
+    if kind == 'aq': return AQ_LV, AQ_COL, [f"{a}–{b}" if b < 5000 else f"{a}+" for a, b in zip(AQ_LV, AQ_LV[1:])]
+    lv = list(Rn.T_LV); return lv, Rn.T_COL[:len(lv) - 1], [Rn.fmt_t(v) for v in lv[:-1]]
+
+
+NAVY, PAPER, GREY_LAND, GREY_LINE = '#14243a', '#f4f6f8', '#e3e7ec', '#ffffff'
+
+
+def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summary, src, label, unit=''):
+    """Full HD 16:9 poster: a dark title band, the country alone coloured by the field (the neighbours plain grey),
+    a coloured number at every city, a colour bar under the map, and the cities ranked on the right."""
+    lv, cols, labs = _scale(kind, lang)
+    big = big.replace('-', '−'); summary = summary.replace(' -', ' −').replace('(-', '(−')
+    cls = lambda v: cols[int(np.clip(np.digitize(v, lv) - 1, 0, len(cols) - 1))]
+    fig = plt.figure(figsize=(12.8, 7.2), dpi=100); fig.patch.set_facecolor(PAPER)
+    # title band
+    fig.patches.append(matplotlib.patches.Rectangle((0, 0.872), 1, 0.128, transform=fig.transFigure, facecolor=NAVY, edgecolor='none', zorder=-6))
+    ink0 = Rn.INK; Rn.INK = '#ffffff'
+    try: x = Rn._brand(fig, 0.024, 0.936, size=13)
+    finally: Rn.INK = ink0
+    fig.text(x + 0.018, 0.952, title, fontsize=19, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center')
+    fig.text(x + 0.018, 0.905, f"{TX[lang]['title']} · {badge}", fontsize=10.5, color='#a9bdd6', va='center')
+    fig.text(0.976, 0.936, when, fontsize=17, fontweight='bold', color='#ffb36b', ha='right', va='center')
+    # the map: the country's outline fills the box
+    box = [0.018, 0.165, 0.665, 0.69]
+    ax = fig.add_axes(box); ax.axis('off')
+    rings = R.cpoly.get('UZ', [])
+    xs = np.concatenate([r[:, 0] for r in rings]); ys = np.concatenate([r[:, 1] for r in rings])
+    e0, e1, f0, f1 = xs.min(), xs.max(), ys.min(), ys.max(); px, py = (e1 - e0) * 0.025, (f1 - f0) * 0.05
+    e0, e1, f0, f1 = e0 - px, e1 + px, f0 - py, f1 + py; asp = box[2] * 12.8 / (box[3] * 7.2)
+    if (e1 - e0) / (f1 - f0) < asp: c = (e0 + e1) / 2; w = (f1 - f0) * asp; e0, e1 = c - w / 2, c + w / 2
+    else: c = (f0 + f1) / 2; h = (e1 - e0) / asp; f0, f1 = c - h / 2, c + h / 2
+    ax.set_xlim(e0, e1); ax.set_ylim(f0, f1); ax.set_aspect('equal', adjustable='box')
+    PC, LC = matplotlib.collections.PolyCollection, matplotlib.collections.LineCollection
+    ax.add_collection(PC([r for c_, rr in R.cpoly.items() if c_ != 'UZ' for r in rr], facecolor=GREY_LAND, edgecolor=GREY_LINE, linewidths=1.2, zorder=1))
+    ax.add_collection(PC(rings, facecolor='#ffffff', edgecolor='none', zorder=1.5))
     if F is not None:
         U = Rn._up(R, F)
-        if kind == 'pr': ax.contourf(R.XU, R.YU, U, levels=PR_LV, colors=PR_COL, zorder=2, antialiased=True); lv, cols = PR_LV[1:-1], PR_COL[1:]
-        elif kind == 'ta': ax.contourf(R.XU, R.YU, U, levels=TA_LV, colors=TA_COL, extend='both', zorder=2, antialiased=True); lv, cols = TA_LV[1:-1], TA_COL[1:]
-        elif kind == 'aq': ax.contourf(R.XU, R.YU, U, levels=AQ_LV, colors=AQ_COL, zorder=2, antialiased=True); lv, cols = AQ_LV[1:-1], AQ_COL[1:]
-        else: ax.contourf(R.XU, R.YU, U, levels=Rn.T_LV, colors=Rn.T_COL[:len(Rn.T_LV) - 1], extend='both', zorder=2, antialiased=True); lv = cols = None
-        if lv: ax.contour(R.XU, R.YU, U, levels=lv, colors=[Rn.OUTLINE], linewidths=0.35, alpha=0.35, zorder=2.05)  # crisp steps
-    Rn._borders(ax, R)
-    lab = {}
+        cs = ax.contourf(R.XU, R.YU, U, levels=lv, colors=cols, extend='both' if kind in ('ta', 't') else 'neither', zorder=2, antialiased=True)
+        verts = np.concatenate(rings); codes = np.concatenate([[1] + [2] * (len(r) - 2) + [79] for r in rings])
+        clip = matplotlib.patches.PathPatch(matplotlib.path.Path(verts, codes), transform=ax.transData, facecolor='none', edgecolor='none')
+        ax.add_patch(clip); cs.set_clip_path(clip)
+    ax.add_collection(LC(R.a1, colors='#ffffff', linewidths=1.0, alpha=0.9, zorder=3))
+    ax.add_collection(LC(rings, colors=NAVY, linewidths=6, alpha=0.08, zorder=3.5))
+    ax.add_collection(LC(rings, colors=NAVY, linewidths=1.6, zorder=4))
+    # the cities: a pill in the colour of its value, the name under it
+    vals = []
     for p in cities:
-        gx, gy = R._xy(p); v = float(Rn.bilinear(F, gx, gy)) if F is not None else np.nan
-        lab[id(p)] = label(p, v)
-    R.cities_bak = R.cities; R.cities = cities; R.cxy = [R.proj(p['lon'], p['lat']) for p in cities]
-    Rn._cities(fig, ax, R, lambda p, main: lab.get(id(p), Rn.city_name(p, lang)))
-    R.cities = R.cities_bak; R.cxy = [R.proj(p['lon'], p['lat']) for p in R.cities]
-    # the card: what this map shows, the main city, and the colour key
-    X0, X1 = CARD_X + 0.016, CARD_X + CARD_W - 0.014
-    Rn._card(fig, CARD_X, BOX[1] - 0.005, CARD_W, BOX[3] + 0.01)
-    yy = BOX[1] + BOX[3] - 0.04
-    for line in __import__('textwrap').wrap(title, 22)[:3]: fig.text(X0, yy, line, fontsize=12, fontweight='bold', color=Rn.INK, va='center'); yy -= 0.034
-    yy -= 0.01
-    fig.text(X0, yy, Rn.city_name(cities[0], lang), fontsize=10, color=Rn.MUTED, va='center'); yy -= 0.055
-    fig.text(X0, yy, big, fontsize=26, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.ACCENT, va='center'); yy -= 0.05
-    for line in __import__('textwrap').wrap(sub, 30)[:2]: fig.text(X0, yy, line, fontsize=9.5, color=Rn.INK, va='center'); yy -= 0.03
-    yy -= 0.025
-    if kind == 'pr': rows = list(zip(PR_COL, PR_LAB))[::-1]
-    elif kind == 'ta': rows = list(zip(TA_COL, TA_LAB[lang]))[::-1]
-    elif kind == 'aq': rows = list(zip(AQ_COL, [f"{a}–{b}  {n}" if b < 5000 else f"{a}+  {n}" for a, b, n in zip(AQ_LV, AQ_LV[1:], DX[lang]['bands'])]))[::-1]
-    else: rows = [(Rn.T_COL[min(len(Rn.T_COL) - 1, max(0, int((a + b) / 2 + 40) // 4))], f"{Rn.fmt_t(a) if a > -40 else '…'} … {Rn.fmt_t(b) if b < 50 else '…'}") for a, b in T_ABS][::-1]
-    dy = min(0.034, (yy - BOX[1] - 0.03) / max(1, len(rows)))
-    for c, t in rows:
-        Rn._card(fig, X0, yy - dy * 0.42, 0.034, dy * 0.84, fc=c, ec=Rn.LINE, r=0.004)
-        fig.text(X0 + 0.042, yy, t, fontsize=8.6 if len(t) < 26 else 7.4, color=Rn.INK, va='center'); yy -= dy
-    # bottom line: the main city in words and the source
-    Rn._card(fig, 0.012, 0.04, 0.976, 0.125)
-    fig.text(0.028, 0.118, summary, fontsize=14, fontweight='bold', color=Rn.INK, va='center')
-    fig.text(0.028, 0.072, src, fontsize=9, color=Rn.MUTED, va='center')
-    fig.text(0.972, 0.072, 't.me/ObHavo_ECMWF_bot · ECMWF CC BY 4.0', fontsize=9, color=Rn.FAINT, va='center', ha='right')
-    fig.savefig(path, dpi=150, facecolor=Rn.BG); plt.close(fig)
+        gx, gy = R._xy(p); v = float(Rn.bilinear(F, gx, gy)) if F is not None else np.nan; vals.append(v)
+    fv0 = {'pr': lambda v: f"{v:.0f}", 'ta': lambda v: f"{'+' if v > 0.05 else ''}{v:.1f}°", 'aq': lambda v: f"{v:.0f}", 't': lambda v: Rn.fmt_t(v)}[kind]
+    fv = lambda v: fv0(v).replace('-', '−')
+    fig.canvas.draw(); rnd = fig.canvas.get_renderer(); placed = []; axb = ax.get_window_extent()
+    dots = [ax.transData.transform(R.proj(p['lon'], p['lat'])) for p in cities]
+    for k, (p, v) in enumerate(zip(cities, vals)):
+        cx, cy = R.proj(p['lon'], p['lat']); main = k == 0
+        ax.plot(cx, cy, 'o', ms=7 if main else 5, mfc=NAVY, mec='#ffffff', mew=1.5, zorder=6)
+    for k, (p, v) in enumerate(zip(cities, vals)):  # the main city first, the rest around what is already placed
+        if not np.isfinite(v): continue
+        cx, cy = R.proj(p['lon'], p['lat']); main = k == 0
+        c = cls(v); tc = '#ffffff' if _lum(c) < 0.55 else NAVY
+        for (ox, oy, ha, va) in ((0, 9, 'center', 'bottom'), (10, 0, 'left', 'center'), (-10, 0, 'right', 'center'), (0, -9, 'center', 'top'),
+                                 (10, 10, 'left', 'bottom'), (-10, 10, 'right', 'bottom'), (10, -10, 'left', 'top'), (-10, -10, 'right', 'top')):
+            pill = ax.annotate(fv(v), (cx, cy), xytext=(ox, oy), textcoords='offset points', ha=ha, va=va, fontsize=15 if main else 12.5, fontweight='bold', color=tc, zorder=7,
+                               bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.8', fc=c, ec=NAVY if main else '#ffffff', lw=1.6 if main else 1.2))
+            down = va == 'top'
+            name = ax.annotate(Rn.city_name(p, lang), xy=(0.5, 0 if down else 1), xycoords=pill, xytext=(0, -4 if down else 4), textcoords='offset points',
+                               ha='center', va='top' if down else 'bottom', fontsize=10 if main else 8.6, fontweight='bold', color=NAVY, zorder=7,
+                               path_effects=[matplotlib.patheffects.withStroke(linewidth=3, foreground='#ffffff')])
+            pb = pill.get_window_extent(rnd); bb = matplotlib.transforms.Bbox.union([pb.padded(5), name.get_window_extent(rnd)]).padded(2)
+            ok = axb.contains(bb.x0, bb.y0) and axb.contains(bb.x1, bb.y1) and not any(bb.overlaps(o) for o in placed) and \
+                not any(bb.contains(*d) for j, d in enumerate(dots) if j != k)
+            if ok: placed.append(bb); break
+            pill.remove(); name.remove()
+        else:
+            ax.annotate(fv(v), (cx, cy), xytext=(0, 9), textcoords='offset points', ha='center', va='bottom', fontsize=11, fontweight='bold', color=tc, zorder=7,
+                        bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.8', fc=c, ec='#ffffff', lw=1))
+    # colour bar under the map
+    lc, ll = cols, labs
+    if kind == 't' and F is not None:  # only the part of the scale that is on the map
+        i0 = max(0, int(np.digitize(np.nanmin(F), lv)) - 2); i1 = min(len(cols), int(np.digitize(np.nanmax(F), lv)) + 1)
+        lc, ll = cols[i0:i1], [f"{Rn.fmt_t(a)}…{Rn.fmt_t(b)}" for a, b in zip(lv[i0:i1], lv[i0 + 1:i1 + 1])]
+    n = len(lc); bx0, bw = box[0] + 0.01, box[2] - 0.02; cw = bw / n
+    for i, (c, t) in enumerate(zip(lc, ll)):
+        Rn._card(fig, bx0 + i * cw + 0.001, 0.105, cw - 0.002, 0.03, fc=c, ec='none', r=0.003)
+        fig.text(bx0 + i * cw + cw / 2, 0.082, t, fontsize=8.6 if n < 10 else 7.6, color=NAVY, ha='center', va='center')
+    if kind == 'aq':
+        for i, t in enumerate(DX[lang]['bands']): fig.text(bx0 + i * cw + cw / 2, 0.06, t, fontsize=7.2, color=Rn.MUTED, ha='center', va='center')
+    fig.text(bx0, 0.148, (unit or title), fontsize=9, color=Rn.MUTED, va='center')
+    # right column: the main city big, then all the cities ranked with bars
+    X0 = 0.705; Rn._card(fig, X0, 0.165, 0.277, 0.69, fc='#ffffff', ec='#dde3ea', r=0.012)
+    fig.text(X0 + 0.018, 0.815, Rn.city_name(cities[0], lang), fontsize=12, fontweight='bold', color=Rn.MUTED, va='center')
+    c0 = cls(vals[0]) if np.isfinite(vals[0]) else Rn.ACCENT
+    fig.text(X0 + 0.018, 0.76, big, fontsize=30, fontfamily=Rn.DISPLAY, fontweight='bold', color=c0 if _lum(c0) < 0.7 else NAVY, va='center')
+    for j, line in enumerate(__import__('textwrap').wrap(sub, 38)[:2]): fig.text(X0 + 0.018, 0.71 - j * 0.03, line, fontsize=10, color=NAVY, va='center')
+    yy = 0.625; fig.add_artist(matplotlib.lines.Line2D([X0 + 0.018, X0 + 0.259], [yy + 0.02, yy + 0.02], color='#e3e8ee', lw=1, transform=fig.transFigure))
+    order = sorted([(v, p) for v, p in zip(vals, cities) if np.isfinite(v)], key=lambda t: -t[0])
+    mx = max([abs(v) for v, _ in order] + [1e-6]); dy = min(0.047, 0.44 / max(1, len(order)))
+    for v, p in order:
+        fig.text(X0 + 0.018, yy - dy / 2, Rn.city_name(p, lang), fontsize=9.5, fontweight='bold' if p is cities[0] else 'normal', color=NAVY, va='center')
+        bw_ = 0.075 * abs(v) / mx
+        Rn._card(fig, X0 + 0.135, yy - dy / 2 - 0.009, max(bw_, 0.003), 0.018, fc=cls(v), ec='none', r=0.003)
+        fig.text(X0 + 0.259, yy - dy / 2, fv(v) + (f" {unit}" if unit and kind == 'pr' else ''), fontsize=10, fontweight='bold', color=NAVY, ha='right', va='center')
+        yy -= dy
+    # footer
+    fig.text(0.024, 0.025, summary, fontsize=10.5, fontweight='bold', color=NAVY, va='center')
+    fig.text(0.976, 0.025, src + '  ·  t.me/ObHavo_ECMWF_bot', fontsize=8, color=Rn.FAINT, va='center', ha='right')
+    fig.savefig(path, dpi=150, facecolor=PAPER); plt.close(fig)
 
 
 def draw_dust(R, aq, lang, path, cities):
@@ -303,7 +366,7 @@ def draw_period(R, per, lang, out, cities):
     imgs = []
     f1 = out / f"{per['key']}_p_{lang}.png"
     one_map(R, lang, f1, cities, badge, when, X['pr'] + (' · ' + X['fact'] if per['key'] == 'past' else ''), field(per['pr'], R), 'pr', f"{pr:.0f} {X['mm']}",
-            pw or X['pr'], words, src, lambda p, v_: f"{Rn.city_name(p, lang)} {v_:.0f} {X['mm']}" if np.isfinite(v_) else Rn.city_name(p, lang))
+            pw or X['pr'], words, src, lambda p, v_: f"{Rn.city_name(p, lang)} {v_:.0f} {X['mm']}" if np.isfinite(v_) else Rn.city_name(p, lang), unit=X['mm'])
     imgs.append(f"outlook/{f1.name}")
     f2 = out / f"{per['key']}_t_{lang}.png"
     if per['ta'] is not None:
