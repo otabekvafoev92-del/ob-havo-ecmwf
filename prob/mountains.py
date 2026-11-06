@@ -1,4 +1,4 @@
-"""Mountains of Uzbekistan: when fresh snow falls and which days are good for a trip (Chimgan, Amirsoy, Beldersay,
+"""Mountains of Uzbekistan: when fresh snow falls and which days are good for a trip (Chimgan, Amirsoy, Beldersay, the Kamchik pass,
 Urgut, Zomin). Daily forecast for 16 days from Open-Meteo (best mix of ECMWF, DWD ICON, NOAA GFS), corrected to each
 spot's own height (the elevation parameter), with the snow cover from the hourly snow depth.
   out/mountains.json
@@ -12,6 +12,7 @@ SPOTS = [
     ('chimgan', {'uz': 'Chimyon', 'ru': 'Чимган', 'tr': 'Çimgan'}, {'uz': 'Toshkent viloyati', 'ru': 'Ташкентская обл.', 'tr': 'Taşkent ili'}, 41.545, 70.010, 1700),
     ('amirsoy', {'uz': 'Amirsoy', 'ru': 'Амирсой', 'tr': 'Amirsoy'}, {'uz': 'Toshkent viloyati', 'ru': 'Ташкентская обл.', 'tr': 'Taşkent ili'}, 41.490, 69.995, 1900),
     ('beldersay', {'uz': 'Beldersoy', 'ru': 'Бельдерсай', 'tr': 'Beldersay'}, {'uz': 'Toshkent viloyati', 'ru': 'Ташкентская обл.', 'tr': 'Taşkent ili'}, 41.520, 70.070, 1800),
+    ('kamchik', {'uz': 'Qamchiq dovoni', 'ru': 'Перевал Камчик', 'tr': 'Kamçik geçidi'}, {'uz': 'Toshkent – Farg‘ona yo‘li', 'ru': 'дорога Ташкент – Фергана', 'tr': 'Taşkent – Fergana yolu'}, 41.100, 70.518, 2268),
     ('urgut', {'uz': 'Urgut tog‘lari', 'ru': 'Ургут (горы)', 'tr': 'Urgut dağları'}, {'uz': 'Samarqand viloyati', 'ru': 'Самаркандская обл.', 'tr': 'Semerkant ili'}, 39.340, 67.270, 1600),
     ('zomin', {'uz': 'Zomin', 'ru': 'Зомин', 'tr': 'Zomin'}, {'uz': 'Jizzax viloyati', 'ru': 'Джизакская обл.', 'tr': 'Cizzak ili'}, 39.620, 68.430, 2000),
 ]
