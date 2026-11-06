@@ -245,7 +245,7 @@ def frame(R, k, lang, path, loc, info, city):
     fig.savefig(path, dpi=150, facecolor=PAPER); plt.close(fig)
 
 
-def export_live(R, region, loc, out, run, off):
+def export_live(R, region, loc, out, run, off, suffix='live', times=None):
     """The data of the interactive map (site/live.html, opened from the bot): the region's 48 hours on its own grid
     (precipitation chance, temperature, clouds, wind, as bytes), the outlines and the cities.
       out/hr/<region>_live.bin  [hour][var P,T,C,W][row][col] uint8 (255 = no data)
@@ -260,23 +260,25 @@ def export_live(R, region, loc, out, run, off):
     if not len(cols) or not len(rows): return
     st = max(1, int(np.ceil(np.sqrt(len(cols) * len(rows) / 15000))))  # big countries (Russia) on a coarser grid
     cols, rows = cols[::st], rows[::st]
-    sub = lambda F: None if F is None else np.asarray(F)[:HOURS][:, rows][:, :, cols]
+    NH = len(times) if times is not None else HOURS
+    sub = lambda F: None if F is None else np.asarray(F)[:NH][:, rows][:, :, cols]
     def enc(F, f, lo=0.0):
-        if F is None: return np.full((HOURS, len(rows), len(cols)), 255, np.uint8)
+        if F is None: return np.full((NH, len(rows), len(cols)), 255, np.uint8)
         v = np.round((F + lo) * f); return np.where(np.isfinite(v), np.clip(v, 0, 254), 255).astype(np.uint8)
     cube = np.stack([enc(np.clip(sub(R.P), 0, 100), 2.5), enc(sub(R.T), 2, 60), enc(sub(R.C), 250), enc(sub(getattr(R, 'Wd', None)), 5)], 1)
-    cube.tofile(out / f'{region}_live.bin')
+    cube.tofile(out / f'{region}_{suffix}.bin')
     near = lambda r: any(lo0 - 3 <= x <= lo1 + 3 and la0 - 3 <= y <= la1 + 3 for x, y in r[::max(1, len(r) // 30)])
     rnd = lambda r: [[round(x, 3), round(y, 3)] for x, y in r]
-    meta = {'region': region, 'run': run.strftime('%Y-%m-%dT%H:00Z'), 'start': loc[0].strftime('%Y-%m-%dT%H:00'), 'off': off, 'hours': HOURS,
+    meta = {'region': region, 'run': run.strftime('%Y-%m-%dT%H:00Z'), 'start': (times[0] if times is not None else loc[0].strftime('%Y-%m-%dT%H:00')), 'off': off, 'hours': NH,
+            **({'times': times} if times is not None else {}),
             'lon': [float(LON[cols[0]]), float(LON[cols[-1]])], 'lat': [float(LAT[rows[0]]), float(LAT[rows[-1]])], 'nx': len(cols), 'ny': len(rows),
             'vars': ['P', 'T', 'C', 'W'], 'scale': [[2.5, 0], [2, 60], [250, 0], [5, 0]],
             'country': [rnd(r) for r in rings], 'neighbours': [rnd(r) for c, v in g['countries'].items() if c != region for r in v['rings'] if near(r)],
             'admin': [rnd(r) for r in g['admin1'].get(region, [])],
             'cities': [{'ru': Rn.city_name(p, 'ru'), 'uz': Rn.city_name(p, 'uz'), 'tr': Rn.city_name(p, 'tr'), 'lat': p['lat'], 'lon': p['lon']} for p in R.cities],
             'main': {l: Rn.city_name(R.mains[l], 'ru') for l in ('uz', 'ru', 'tr') if R.mains.get(l) is not None}}
-    json.dump(meta, open(out / f'{region}_live.json', 'w'), ensure_ascii=False, separators=(',', ':'))
-    print('live', region, len(rows), 'x', len(cols), 'step', st, flush=True)
+    json.dump(meta, open(out / f'{region}_{suffix}.json', 'w'), ensure_ascii=False, separators=(',', ':'))
+    print(suffix, region, len(rows), 'x', len(cols), 'step', st, flush=True)
 
 
 REG = {}
@@ -298,6 +300,10 @@ def main():
         # the day's chance from the model windows (before they become hours): the same rule as the daily texts
         win_day = [Rn.local_day(run, st, off, D['win'][i]) for i, st in enumerate(D['steps'])]
         pw = {lang: R.series(R.mains[lang]) for lang in a.langs.split(',') if R.mains.get(lang) is not None}
+        try:  # the 15 days for the interactive map: the model windows themselves, each with its local start time
+            tw = [(run + dt.timedelta(hours=int(st) - int(D['win'][i]) + off)).strftime('%Y-%m-%dT%H:00') for i, st in enumerate(D['steps'])]
+            export_live(R, region, None, out, run, off, 'live15', tw)
+        except Exception as e: print('live15 export failed:', region, e, flush=True)
         hrs, loc = to_hours(R, D, run, off)
         try: export_live(R, region, loc, out, run, off)
         except Exception as e: print('live export failed:', region, e, flush=True)

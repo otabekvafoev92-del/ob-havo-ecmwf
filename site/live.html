@@ -47,7 +47,7 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 'use strict';
 const Q = new URLSearchParams(location.search), tg = window.Telegram && Telegram.WebApp;
 try { tg && (tg.ready(), tg.expand()); } catch (e) {}
-const LANG = ['ru', 'uz', 'tr'].includes(Q.get('l')) ? Q.get('l') : 'ru', REG = (Q.get('r') || 'UZ').toUpperCase();
+const LANG = ['ru', 'uz', 'tr'].includes(Q.get('l')) ? Q.get('l') : 'ru', REG = (Q.get('r') || 'UZ').toUpperCase(), D15 = Q.get('m') === '15';  // m=15: the 15 days (model windows)
 const TX = {
   ru: { hint: 'Нажмите на карту — погода в этом месте · двумя пальцами — увеличить', play: '▶ Смотреть', pause: '❚❚ Пауза', son: '🔊 Звук погоды', soff: '🔇 Выключить звук', rain: 'Дождь', snow: 'Снег', cl: 'Облачно', wind: 'Ветер', ms: 'м/с', today: 'Сегодня', tom: 'Завтра', here: 'Точка на карте', wd: ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'], err: 'Данные ещё готовятся, попробуйте позже', names: { UZ: 'Узбекистан', KZ: 'Казахстан', KG: 'Кыргызстан', TJ: 'Таджикистан', TM: 'Туркменистан', AZ: 'Азербайджан', AM: 'Армения', BY: 'Беларусь', MD: 'Молдова', RU: 'Россия', TR: 'Турция' } },
   uz: { hint: 'Xaritaga bosing — shu joy ob-havosi · ikki barmoq — kattalashtirish', play: '▶ Ko‘rish', pause: '❚❚ To‘xtatish', son: '🔊 Ob-havo ovozi', soff: '🔇 Ovozni o‘chirish', rain: 'Yomg‘ir', snow: 'Qor', cl: 'Bulutli', wind: 'Shamol', ms: 'm/s', today: 'Bugun', tom: 'Ertaga', here: 'Xaritadagi nuqta', wd: ['Du','Se','Ch','Pa','Ju','Sh','Ya'], err: 'Ma’lumotlar tayyorlanmoqda, keyinroq urinib ko‘ring', names: { UZ: 'O‘zbekiston', KZ: 'Qozog‘iston', KG: 'Qirg‘iziston', TJ: 'Tojikiston', TM: 'Turkmaniston', AZ: 'Ozarbayjon', AM: 'Armaniston', BY: 'Belarus', MD: 'Moldova', RU: 'Rossiya', TR: 'Turkiya' } },
@@ -60,12 +60,12 @@ let M, B, H, NX, NY, hour = 0, playing = false, sel = null, sound = null;
 const fmtT = t => (t > 0.5 ? '+' : t < -0.5 ? '−' : '') + Math.abs(Math.round(t)) + '°';
 
 async function load() {
-  const base = 'prob/hr/' + REG + '_live';
+  const base = 'prob/hr/' + REG + (D15 ? '_live15' : '_live');
   const [m, b] = await Promise.all([fetch(base + '.json?t=' + Date.now()).then(r => r.ok ? r.json() : null), fetch(base + '.bin?t=' + Date.now()).then(r => r.ok ? r.arrayBuffer() : null)]);
   if (!m || !b) { $('load').textContent = TX.err; return; }
   M = m; B = new Uint8Array(b); H = M.hours; NX = M.nx; NY = M.ny;
   const st = new Date(M.start + ':00Z'), now = new Date(Date.now() + M.off * 3600e3);
-  hour = Math.max(0, Math.min(H - 1, Math.floor((now - st) / 3600e3)));
+  hour = M.times ? Math.max(0, M.times.findIndex((t, i) => i === H - 1 || new Date(M.times[i + 1] + ':00Z') > now)) : Math.max(0, Math.min(H - 1, Math.floor((now - st) / 3600e3)));
   const mc = M.cities.find(c => c.ru === (M.main[LANG] || M.main.ru)) || M.cities[0];
   sel = { lat: mc.lat, lon: mc.lon, name: mc[LANG] || mc.ru, city: true };
   $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = TX.play; $('snd').textContent = TX.son;
@@ -237,9 +237,15 @@ function draw() {
   card(h); timeline(h); header(h); if (sound) sound.set(h);
 }
 
-function when(h) { return new Date(new Date(M.start + ':00Z').getTime() + Math.round(h) * 3600e3); }
+function when(h) { return M.times ? new Date(M.times[Math.min(H - 1, Math.round(h))] + ':00Z') : new Date(new Date(M.start + ':00Z').getTime() + Math.round(h) * 3600e3); }
+const p2 = n => String(n).padStart(2, '0');
 function header(h) {
   const t = when(h), d0 = new Date(M.start + ':00Z'), day = Math.floor((t - d0) / 864e5);
+  if (M.times) {  // a model window: its day and its hours
+    const i = Math.min(H - 1, Math.round(h)), e = i + 1 < H ? new Date(M.times[i + 1] + ':00Z') : new Date(t.getTime() + 6 * 3600e3);
+    $('ht').textContent = `${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)}`;
+    $('hd').textContent = `${TX.wd[(t.getUTCDay() + 6) % 7]} · ${p2(t.getUTCHours())}:00–${p2(e.getUTCHours())}:00`; return;
+  }
   $('ht').textContent = String(t.getUTCHours()).padStart(2, '0') + ':00';
   $('hd').textContent = `${day === 0 ? TX.today : day === 1 ? TX.tom : ''} · ${TX.wd[(t.getUTCDay() + 6) % 7]} ${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`;
 }
@@ -258,7 +264,12 @@ function timeline(h) {
     const x = L + i * bw, p = P[i] || 0, snow = T[i] <= 0.5;
     const c = p >= 20 ? (snow ? SNOWC : RAIN)[Math.max(0, Math.min(3, Math.floor((p - 30) / 20)))] : [237, 241, 245];
     const bh = Math.max(3, p / 100 * 54); g.fillStyle = `rgb(${c})`; g.beginPath(); g.roundRect(x + 1, 98 - bh, bw - 2, bh, 2); g.fill();
-    const t = new Date(st.getTime() + i * 3600e3);
+    const t = when(i), tp = i ? when(i - 1) : null;
+    if (M.times) {  // 15 days: a line and the weekday at each new day
+      if (!tp || t.getUTCDate() !== tp.getUTCDate()) { if (i) { g.strokeStyle = '#dde3ea'; g.beginPath(); g.moveTo(x, 8); g.lineTo(x, 102); g.stroke(); }
+        g.fillStyle = '#6b7a8c'; g.font = '10px Golos Text,sans-serif'; g.textAlign = 'left'; g.fillText(TX.wd[(t.getUTCDay() + 6) % 7], x + 2, 116); g.fillText(p2(t.getUTCDate()), x + 2, 127); }
+      continue;
+    }
     if (t.getUTCHours() % 6 === 0) { g.fillStyle = '#6b7a8c'; g.font = '11px Golos Text,sans-serif'; g.textAlign = 'center'; g.fillText(String(t.getUTCHours()).padStart(2, '0'), x + bw / 2, 116); }
     if (t.getUTCHours() === 0 && i) { g.strokeStyle = '#dde3ea'; g.beginPath(); g.moveTo(x, 8); g.lineTo(x, 102); g.stroke(); g.fillStyle = '#6b7a8c'; g.textAlign = 'left'; g.fillText(`${TX.wd[(t.getUTCDay() + 6) % 7]} ${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`, x + 4, 14); }
   }
@@ -272,8 +283,9 @@ function timeline(h) {
 
 // playing: one hour per 0.9 s, the map flowing smoothly between hours
 let raf, t0;
-function start() { playing = true; $('play').textContent = TX.pause; t0 = performance.now() - (hour % 1) * 900; if (hour >= H - 1) hour = 0; const h0 = Math.floor(hour);
-  const step = now => { if (!playing) return; hour = Math.min(H - 1, h0 + (now - t0) / 900); draw(); if (hour >= H - 1) return stop(); raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
+const SPD = () => M.times ? 700 : 900;
+function start() { playing = true; $('play').textContent = TX.pause; t0 = performance.now() - (hour % 1) * SPD(); if (hour >= H - 1) hour = 0; const h0 = Math.floor(hour);
+  const step = now => { if (!playing) return; hour = Math.min(H - 1, h0 + (now - t0) / SPD()); draw(); if (hour >= H - 1) return stop(); raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
 function stop() { playing = false; cancelAnimationFrame(raf); $('play').textContent = TX.play; }
 
 // the weather heard: wind, rain (hiss and single drops), snow (a soft hush and bells), all made here in the browser

@@ -372,8 +372,10 @@ const helpKb = lang => ({ inline_keyboard: [[{ text: T[lang].pdf, callback_data:
 // groups and channels cannot open Mini Apps from buttons: plain links
 const LIVE = { ru: '🗺 Интерактивная карта по часам', uz: '🗺 Interaktiv xarita soatma-soat', tr: '🗺 Saat saat etkileşimli harita' };
 // the interactive map: inside Telegram in a private chat (mini app), a plain link in groups (Telegram allows mini-app buttons only in private chats)
-const liveBtn = (env, lang, id, chat) => ({ text: LIVE[lang] || LIVE.ru, ...(chat > 0 ? { web_app: { url: `${base(env)}/live.html?r=${id}&l=${lang}` } } : { url: `${base(env)}/live.html?r=${id}&l=${lang}` }) });
-const postKb = (env, lang, id, bot, chat) => ({ inline_keyboard: [...(chat ? [[liveBtn(env, lang, id, chat)]] : []), [{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
+const LIVE15 = { ru: '🗺 Интерактивная карта на 15 дней', uz: '🗺 15 kunlik interaktiv xarita', tr: '🗺 15 günlük etkileşimli harita' };
+const liveBtn = (env, lang, id, chat, d15) => { const u = `${base(env)}/live.html?r=${id}&l=${lang}${d15 ? '&m=15' : ''}`;
+  return { text: (d15 ? LIVE15 : LIVE)[lang] || (d15 ? LIVE15 : LIVE).ru, ...(chat > 0 ? { web_app: { url: u } } : { url: u }) }; };
+const postKb = (env, lang, id, bot, chat) => ({ inline_keyboard: [...(chat ? [[liveBtn(env, lang, id, chat)], [liveBtn(env, lang, id, chat, true)]] : []), [{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
 
 /* ---------- forecast text ---------- */
 function icon(txt) {
@@ -773,7 +775,7 @@ async function handle(up, env) {
       return say(env, cb, { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].cPick}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
     }
     const c = C.cities[+ci]; if (!c) return;
-    const kb = chat.type === 'private' ? replyKb(env, lang, rid) : { inline_keyboard: [[{ text: T[lang].cities, callback_data: `Y:${lang}:${rid}` }, { text: T[lang].back, callback_data: `C:${lang}:${rid}` }]] };
+    const kb = chat.type === 'private' ? { inline_keyboard: [[liveBtn(env, lang, rid, chat.id, true)]] } : { inline_keyboard: [[{ text: T[lang].cities, callback_data: `Y:${lang}:${rid}` }, { text: T[lang].back, callback_data: `C:${lang}:${rid}` }]] };
     const text = forecastText({ days: c.days, off: C.off, city: c.name }, lang, NAMES[rid][lang], rid, { more: c.video ? 4 : 5, limit: c.video ? 1024 : 4000 });
     if (!text) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none, reply_markup: kb });
     if (c.video) {  // the precipitation video with this city's timeline (Uzbekistan and Kazakhstan)
