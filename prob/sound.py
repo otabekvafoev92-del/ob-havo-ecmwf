@@ -30,6 +30,29 @@ def _env(values, frame_sec, intro_sec, n, smooth=0.7):
     return np.interp(np.arange(n) / SR * CTL, np.arange(len(c)), c)
 
 
+def _bubbles(rng, n, level, rate, ch):
+    """Rain drops as bubbles: each a short sine whose pitch rises while it fades (the classic drop-in-water model)."""
+    out = np.zeros(n); L = int(0.03 * SR); t = np.arange(L) / SR
+    lam = rate * level / SR; pos = np.flatnonzero(rng.random(n) < lam)
+    for p in pos[:200000]:
+        f0 = rng.uniform(1200, 4200); d = rng.uniform(0.004, 0.012)
+        k = min(L, n - p); tt = t[:k]
+        out[p:p + k] += rng.uniform(0.2, 1.0) * np.sin(2 * np.pi * f0 * tt * (1 + 18 * tt)) * np.exp(-tt / d)
+    return out
+
+
+def _bells(rng, n, level, ch):
+    """Soft high bells for snow: a few bright partials with a long, quiet decay, about one every two seconds."""
+    out = np.zeros(n); L = int(2.5 * SR); t = np.arange(L) / SR
+    notes = [1046.5, 1174.7, 1318.5, 1568.0, 1760.0, 2093.0]  # C major pentatonic, high
+    pos = np.flatnonzero(rng.random(n) < 0.5 * level / SR)
+    for p in pos:
+        f = notes[int(rng.integers(len(notes)))]; k = min(L, n - p); tt = t[:k]
+        tone = np.sin(2 * np.pi * f * tt) + 0.4 * np.sin(2 * np.pi * 2.76 * f * tt) * np.exp(-tt / 0.15)
+        out[p:p + k] += rng.uniform(0.4, 1.0) * tone * np.exp(-tt / 0.7) * (1 - np.exp(-tt / 0.004))
+    return out
+
+
 def from_series(P, T, W, K=None):
     P, T, W = (np.asarray(a, float) if a is not None else None for a in (P, T, W))
     out = []
@@ -58,25 +81,39 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
         gust = np.interp(np.arange(n), np.linspace(0, n, max(4, int(dur / 2.5))), 0.55 + 0.45 * rng.random(max(4, int(dur / 2.5))))  # a gust every few seconds
         wsig = _lp(br, 500) * 0.9 + _bp(wn, 250, 1100) * 0.12
         out[ch] += wsig * (0.06 + 0.55 * wind ** 1.2) * gust
-        # rain: a bright hiss plus drops whose number grows with the rain
-        hiss = _bp(wn, 1200, 7000)
-        out[ch] += hiss * 0.45 * rainy ** 0.8
-        drops = np.zeros(n); rate = 60 * rainy  # drops per second
-        hit = rng.random(n) < rate / SR
-        drops[hit] = rng.uniform(0.3, 1.0, hit.sum()) * rng.choice([-1, 1], hit.sum())
-        kern = np.exp(-np.arange(int(0.012 * SR)) / (0.0025 * SR))
-        out[ch] += _bp(np.convolve(drops, kern)[:n], 900, 6000) * 0.5
-        # snow: soft, muffled, close to silence (as falling snow is)
-        out[ch] += _bp(wn, 200, 1400) * 0.10 * snowy ** 0.8
-        # thunder: a few low rumbles while a storm is on
-        th = np.zeros(n); t0 = 0
+        # rain, four layers (procedural rain): a soft roar of distant rain, a bright hiss that flickers,
+        # drops that land as bubbles (a short tone that rises in pitch: the sound of a drop in water), and thuds on roofs
+        flick = np.interp(np.arange(n), np.linspace(0, n, int(dur * 8) + 2), 0.75 + 0.25 * rng.random(int(dur * 8) + 2))
+        out[ch] += _bp(wn, 300, 1500) * 0.22 * rainy ** 0.9
+        out[ch] += _bp(wn, 1800, 9000) * 0.30 * rainy ** 0.8 * flick
+        out[ch] += _bubbles(rng, n, rainy, 90, ch) * 0.55
+        thud = np.zeros(n); hit = rng.random(n) < 25 * rainy / SR
+        thud[hit] = rng.uniform(0.3, 1.0, hit.sum())
+        out[ch] += _bp(np.convolve(thud, np.exp(-np.arange(int(0.03 * SR)) / (0.006 * SR)))[:n], 120, 900) * 0.35
+        # snow: falling snow is almost silent, so a muffled hush and soft high bells (the winter sign of the video);
+        # heavy snow with wind turns into a blizzard: a howling whistle that slides up and down
+        out[ch] += _bp(wn, 150, 900) * 0.08 * snowy ** 0.8
+        out[ch] += _bells(rng, n, snowy, ch) * 0.10
+        howl = np.zeros(n); blz = snowy * wind
+        if blz.max() > 0.05:
+            fc = 450 + 250 * np.sin(2 * np.pi * np.cumsum(np.full(n, 0.11)) / SR + rng.random() * 6)
+            for lo in (300, 520, 760):  # three overlapping bands follow the slow pitch
+                band = _bp(wn, lo, lo * 1.25); howl += band * np.exp(-((fc - lo * 1.12) / 140) ** 2)
+            out[ch] += howl * 0.6 * blz
+        # thunder: a crack of lightning, then after a moment (the distance) a rolling rumble
+        th = np.zeros(n); cr = np.zeros(n); t0 = 0
         while t0 < n:
-            t0 += int(SR * rng.uniform(4, 9))
+            t0 += int(SR * rng.uniform(5, 11))
             if t0 >= n or storm[min(t0, n - 1)] < 0.5: continue
-            ln = int(SR * rng.uniform(2.5, 4.5)); seg = np.arange(min(ln, n - t0))
-            th[t0:t0 + len(seg)] += np.exp(-seg / (0.9 * SR)) * (1 - np.exp(-seg / (0.03 * SR)))
-        rum = _lp(br, 120); rum /= np.percentile(np.abs(rum), 99) + 1e-9
-        out[ch] += rum * th * 0.45
+            near = rng.random() < 0.4
+            c = np.arange(min(int(0.25 * SR), n - t0)); cr[t0:t0 + len(c)] += np.exp(-c / (0.05 * SR)) * (1.0 if near else 0.25)
+            t1 = t0 + int(SR * (rng.uniform(0.05, 0.3) if near else rng.uniform(1.0, 2.5)))
+            ln = int(SR * rng.uniform(3.0, 5.5)); seg = np.arange(max(0, min(ln, n - t1)))
+            if len(seg):  # a few swells inside one roll
+                sw = 1 + 0.6 * np.sin(2 * np.pi * seg / SR * rng.uniform(0.6, 1.4)) ** 2
+                th[t1:t1 + len(seg)] += np.exp(-seg / (1.3 * SR)) * (1 - np.exp(-seg / (0.08 * SR))) * sw
+        rum = _lp(br, 160); rum /= np.percentile(np.abs(rum), 99) + 1e-9
+        out[ch] += rum * th * 0.95 + _bp(wn, 500, 7000) * cr * 0.8
     # a quiet calm pad (C major add 9) that steps back when the weather gets loud
     t = np.arange(n) / SR; pad = np.zeros(n)
     for f, a in ((130.81, 1.0), (196.0, 0.7), (261.63, 0.6), (293.66, 0.35), (329.63, 0.45)):

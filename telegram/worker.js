@@ -136,6 +136,8 @@ const POST_HOUR = 7, TZ = 5;  // default daily post at 07:00 Tashkent; each grou
 const HOURS = [6, 7, 8, 9, 10, 12, 15, 18, 20, 21];
 const hh = h => `${String(h).padStart(2, '0')}:00`;
 const timeKb = (lang, cur) => ({ inline_keyboard: [HOURS.slice(0, 5), HOURS.slice(5)].map(row => row.map(h => ({ text: `${h === cur ? '✅ ' : ''}${hh(h)}`, callback_data: `GH:${lang}:${h}` }))) });
+// a stored UTC time shown in Tashkent time: "06.11 12:04"
+const tkt = iso => { if (!iso) return '—'; const t = new Date(Date.parse(iso) + TZ * 3600e3); return isNaN(t) ? '—' : `${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')} ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`; };
 const todayTZ = () => new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10);
 const multiKb = (lang, sel) => ({ inline_keyboard: [...GROUPS.map(row => row.map(id => ({ text: `${sel.includes(id) ? '✅' : FLAG[id]} ${NAMES[id][lang]}`, callback_data: `GT:${lang}:${id}` }))), [{ text: T[lang].done, callback_data: `GD:${lang}` }]] });
 const regionsOf = s => (s && s.region ? s.region.split(',').filter(r => NAMES[r]) : []);
@@ -684,7 +686,7 @@ async function staleTick(env) {
   const last = +(await kv(env, 'stale_at') || 0), admin = await kv(env, 'admin');
   if (!admin || Date.now() - last < 12 * 3600e3) return;
   await setKv(env, 'stale_at', String(Date.now()));
-  await tg(env, 'sendMessage', { chat_id: admin, text: `⚠️ Данные сайта и бота не обновлялись ${Math.round(age)} ч (последний расчёт ${M.run.slice(0, 16)} UTC).\nПроверьте вкладку Actions в репозитории на GitHub.`, disable_web_page_preview: true });
+  await tg(env, 'sendMessage', { chat_id: admin, text: `⚠️ Данные сайта и бота не обновлялись ${Math.round(age)} ч (последний расчёт ${tkt(M.run)} по Ташкенту).\nПроверьте вкладку Actions в репозитории на GitHub.`, disable_web_page_preview: true });
 }
 const dayLabel = (d, lang) => { const dt = new Date(d + 'T12:00:00Z'); return `${WD[lang][dt.getUTCDay()]} ${String(dt.getUTCDate()).padStart(2, '0')}.${String(dt.getUTCMonth() + 1).padStart(2, '0')}`; };
 const localToday = off => new Date(Date.now() + (off || 0) * 3600e3).toISOString().slice(0, 10);
@@ -907,8 +909,8 @@ async function privateMsg(msg, env) {
   if ((cmd === 'users' || text === ADMIN_BTN) && admin === String(chat.id)) {
     const rows = (await env.DB.prepare('SELECT * FROM users ORDER BY seen DESC LIMIT 100').all()).results;
     const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).n;
-    const lines = rows.map((x, i) => `${i + 1}. ${esc(x.name || '—')}${x.username ? ' @' + esc(x.username) : ''} · ${x.lang || '?'}${x.region ? ' · ' + (FLAG[x.region] || x.region) : ''} · ${(x.seen || '').slice(5, 16).replace('T', ' ')}`);
-    const out = [`👤 <b>Users: ${n}</b> (last 100, UTC)`, ...lines]; let buf = '';
+    const lines = rows.map((x, i) => `${i + 1}. ${esc(x.name || '—')}${x.username ? ' @' + esc(x.username) : ''} · ${x.lang || '?'}${x.region ? ' · ' + (FLAG[x.region] || x.region) : ''} · ${tkt(x.seen)}`);
+    const out = [`👤 <b>Users: ${n}</b> (last 100, время Ташкента)`, ...lines]; let buf = '';
     for (const l of out) { if ((buf + l).length > 3800) { await tg(env, 'sendMessage', { chat_id: chat.id, text: buf, parse_mode: 'HTML' }); buf = ''; } buf += l + '\n'; }
     return tg(env, 'sendMessage', { chat_id: chat.id, text: buf, parse_mode: 'HTML' });
   }
