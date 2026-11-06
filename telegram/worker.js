@@ -59,76 +59,98 @@ const T = {
   },
 };
 const HELP = {
-  uz: `ℹ️ <b>Osmon bot — yo‘riqnoma</b>
+  uz: `ℹ️ <b>Osmon — qanday foydalanish</b>
 
-<b>Shaxsiy chatda</b>
-/start — til va davlatni tanlash
-📍 <b>Joylashuv</b> yuboring yoki <b>shahar nomini</b> yozing — dunyoning istalgan joyi uchun 15 kunlik prognoz
-📅 <b>Bugun va ertaga</b> — asosiy shahar bo‘yicha qisqa prognoz
-🗓 <b>Kunlar bo‘yicha</b> — 15 kun
-🏙 <b>Shaharlar</b> — istalgan shahar uchun prognoz
-🎬 <b>15 kunlik video</b> — yog‘in, harorat, bulutlar
-🔔 <b>Har kuni</b> — prognozni har kuni o‘zingiz tanlagan vaqtda olish; kuchli yog‘in bo‘lsa — ⚠️ ogohlantirish
-/alerts — kuchli yog‘in ogohlantirishlari
-📊 Hisobot / 🌍 Globus — sayt Telegram ichida ochiladi
-/bugun — O‘zbekiston, bugun va ertaga
+<b>Pastdagi tugmalar</b>
+⏱ <b>Bugun va ertaga soatma-soat</b> — 48 soatlik ovozli video va «🗺 Interaktiv xarita»: xaritaga bosing — o‘sha joy ob-havosi; pastdagi soatlar chizig‘ini suring; ▶ — ijro, 🔈 — ob-havo ovozi, ⛶ — to‘liq ekran
+🗓 <b>15 kunlik prognoz</b> — shaharni tanlang, kunlar bo‘yicha prognoz keladi
+🎬 <b>15 kunlik video-prognoz</b> — shahringiz yoki davlat uchun yog‘in va harorat videosi
+📅 <b>Haftalar va oylar</b> — davrni tugma bilan tanlang: o‘tgan hafta, keyingi haftalar, oylar, chang
+🏔 <b>Tog‘lar: qor va sayohat</b> — 10 kunlik rasm (qor, yomg‘ir, yaxshi kunlar); joy nomli tugma — batafsil; 🔔 — qor haqida xabar
+🌡 <b>Hozirgi ob-havo</b> — joyingizda hozir qanday
+🌫 <b>Bugungi havo sifati</b> — chang va havo sifati soatma-soat
+🏙 <b>Shaharni tanlash</b> · 🌍 <b>Davlatni almashtirish</b>
+📍 <b>Joyimni yuborish</b> — aynan sizning nuqtangiz uchun prognoz (yoki shunchaki shahar nomini yozing)
+🔔 <b>Har tongi prognoz</b> — kunlik prognoz siz tanlagan vaqtda
+⏰ <b>Bildirishnomalarim</b> — nima va soat nechada kelsin: soatma-soat, haftalar, tog‘lar, havo sifati
+⚠️ <b>Xavfli ob-havo</b> — kuchli yog‘in, chang
+🎯 <b>Prognoz aniqligi</b> — prognozlar haqiqiy ob-havo bilan solishtiriladi
+🗺 <b>Xarita-sayt va globus</b> — sayt Telegram ichida ochiladi
+
+<b>Avtomatik yuborish</b>
+Bo‘limlar ostida «⏰ Avtomatik yuborish» tugmasi bor: vaqtni tanlang — bo‘lim o‘zi keladi. O‘chirish — o‘sha yerda yoki «⏰ Bildirishnomalarim» da. Vaqt — Toshkent vaqti.
 
 <b>Guruh yoki kanalda</b>
 1. Botni guruhga qo‘shing (kanalda — admin qilib, «xabar yuborish» huquqi bilan).
 2. Admin /sozla yozadi: til → davlatlar (bir nechta) → «Tayyor» → yuborish vaqti.
-3. Har kuni tanlangan vaqtda har bir davlat uchun post keladi: 3 ta video + bugun/ertaga + shaharlar.
+3. Har kuni tanlangan vaqtda har bir davlat uchun post keladi.
 /bugun — guruhda hozirgi prognoz.
 
-✉️ <b>Adminga yozish</b> — savol yoki taklif, javob shu yerga keladi (/admin)
-📄 /guide — to‘liq yo‘riqnoma PDF faylda
+✉️ Savol yoki taklif — /admin, javob shu yerga keladi
+📄 /guide — PDF yo‘riqnoma
 
-Ma’lumot: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Kuniga 2 marta yangilanadi.`,
-  ru: `ℹ️ <b>Бот Osmon — инструкция</b>
+Ma’lumot: ECMWF, NOAA, DWD modellari; havo sifati — CAMS. Har 3 soatda yangilanadi.`,
+  ru: `ℹ️ <b>Osmon — как пользоваться</b>
 
-<b>В личном чате</b>
-/start — выбрать язык и страну
-📍 Отправьте <b>геолокацию</b> или напишите <b>название города</b> — прогноз на 15 дней для любой точки мира
-📅 <b>Сегодня и завтра</b> — коротко по главному городу
-🗓 <b>По дням</b> — все 15 дней
-🏙 <b>Города</b> — прогноз для любого города страны
-🎬 <b>Видео на 15 дней</b> — осадки, температура, облака
-🔔 <b>Каждый день</b> — получать прогноз ежедневно в выбранное время; при сильных осадках — ⚠️ предупреждение
-/alerts — предупреждения о сильных осадках
-📊 Отчёт / 🌍 Глобус — сайт открывается прямо в Телеграме
-/today — Узбекистан, сегодня и завтра
+<b>Кнопки внизу экрана</b>
+⏱ <b>Сегодня и завтра по часам</b> — видео со звуком на 48 часов и «🗺 Интерактивная карта»: нажмите на карту — погода в этой точке; тяните полосу часов внизу; ▶ — проиграть, 🔈 — звук погоды, ⛶ — во весь экран
+🗓 <b>Прогноз на 15 дней</b> — выберите город и получите прогноз по дням
+🎬 <b>Видео-прогноз 15 дней</b> — видео осадков и температуры для вашего города или страны
+📅 <b>Недели и месяцы</b> — выберите период кнопкой: прошедшая неделя, следующие недели, месяцы, пыль
+🏔 <b>Горы: снег и поездки</b> — картинка на 10 дней (снег, дождь, хорошие дни); кнопка с названием места — подробно; 🔔 — сигнал о снеге
+🌡 <b>Погода сейчас</b> — что сейчас в вашем месте
+🌫 <b>Воздух сегодня</b> — пыль и качество воздуха по часам
+🏙 <b>Выбрать город</b> · 🌍 <b>Сменить страну</b>
+📍 <b>Отправить моё место</b> — прогноз точно для вашей точки (или просто напишите название города)
+🔔 <b>Прогноз каждое утро</b> — прогноз на день в выбранное время
+⏰ <b>Мои уведомления</b> — что и во сколько присылать: по часам, недели, горы, воздух
+⚠️ <b>Опасная погода</b> — сильные осадки, пыль
+🎯 <b>Точность прогноза</b> — как прогнозы совпали с фактом
+🗺 <b>Карта-сайт и глобус</b> — сайт прямо в Telegram
+
+<b>Автоотправка</b>
+Под разделами есть кнопка «⏰ Присылать автоматически»: выберите время — и раздел будет приходить сам. Выключить — там же или в «⏰ Мои уведомления». Время — по Ташкенту.
 
 <b>В группе или канале</b>
 1. Добавьте бота в группу (в канал — администратором с правом публикации).
 2. Администратор пишет /settings: язык → страны (можно несколько) → «Готово» → время отправки.
-3. Каждый день в выбранное время по каждой стране приходит пост: 3 видео + сегодня/завтра + погода по городам.
+3. Каждый день в выбранное время по каждой стране приходит пост.
 /bugun — прогноз в группу прямо сейчас.
 
-✉️ <b>Написать админу</b> — вопрос или предложение, ответ придёт сюда (/admin)
-📄 /guide — полная инструкция в PDF
+✉️ Вопрос или предложение — /admin, ответ придёт сюда
+📄 /guide — инструкция в PDF
 
-Данные: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Обновление 2 раза в сутки.`,
-  tr: `ℹ️ <b>Osmon botu — kılavuz</b>
+Данные: модели ECMWF, NOAA, DWD; качество воздуха — CAMS. Обновление каждые 3 часа.`,
+  tr: `ℹ️ <b>Osmon — nasıl kullanılır</b>
 
-<b>Özel sohbette</b>
-/start — dil ve ülke seçimi
-📍 <b>Konum</b> gönderin veya <b>şehir adı</b> yazın — dünyanın her yeri için 15 günlük tahmin
-📅 <b>Bugün ve yarın</b> — ana şehir için kısa tahmin
-🗓 <b>Günlere göre</b> — 15 gün
-🏙 <b>Şehirler</b> — herhangi bir şehir için tahmin
-🎬 <b>15 günlük video</b> — yağış, sıcaklık, bulutlar
-🔔 <b>Her gün</b> — tahmini her gün seçtiğiniz saatte alın; kuvvetli yağışta ⚠️ uyarı
-/alerts — kuvvetli yağış uyarıları
-📊 Rapor / 🌍 Küre — site Telegram içinde açılır
+<b>Alttaki düğmeler</b>
+⏱ <b>Bugün ve yarın saat saat</b> — 48 saatlik sesli video ve «🗺 Etkileşimli harita»: haritaya dokunun — o yerin havası; alttaki saat şeridini kaydırın; ▶ — oynat, 🔈 — hava sesi, ⛶ — tam ekran
+🗓 <b>15 günlük tahmin</b> — şehri seçin, günlere göre tahmin gelir
+🎬 <b>15 günlük video tahmin</b> — şehriniz veya ülke için yağış ve sıcaklık videosu
+📅 <b>Haftalar ve aylar</b> — dönemi düğmeyle seçin: geçen hafta, gelecek haftalar, aylar, toz
+🏔 <b>Dağlar: kar ve gezi</b> — 10 günlük resim (kar, yağmur, iyi günler); yer adlı düğme — ayrıntı; 🔔 — kar bildirimi
+🌡 <b>Şu anki hava</b> — bulunduğunuz yerde şimdi
+🌫 <b>Bugün hava kalitesi</b> — toz ve hava kalitesi saat saat
+🏙 <b>Şehir seç</b> · 🌍 <b>Ülke değiştir</b>
+📍 <b>Konumumu gönder</b> — tam olarak sizin noktanız için tahmin (veya şehir adını yazın)
+🔔 <b>Her sabah tahmin</b> — seçtiğiniz saatte günlük tahmin
+⏰ <b>Bildirimlerim</b> — ne ve saat kaçta gelsin: saat saat, haftalar, dağlar, hava kalitesi
+⚠️ <b>Tehlikeli hava</b> — kuvvetli yağış, toz
+🎯 <b>Tahmin doğruluğu</b> — tahminler gerçekle karşılaştırılır
+🗺 <b>Harita-site ve küre</b> — site Telegram içinde açılır
+
+<b>Otomatik gönderim</b>
+Bölümlerin altında «⏰ Otomatik gönder» düğmesi var: saati seçin — bölüm kendiliğinden gelir. Kapatmak — aynı yerde veya «⏰ Bildirimlerim». Saat — Taşkent saati.
 
 <b>Grupta veya kanalda</b>
 1. Botu gruba ekleyin (kanalda yönetici olarak, gönderme izniyle).
 2. Yönetici /settings yazar: dil → ülkeler (birden fazla) → «Tamam» → gönderme saati.
-3. Her gün seçilen saatte her ülke için gönderi gelir: 3 video + bugün/yarın + şehirler.
+3. Her gün seçilen saatte her ülke için gönderi gelir.
 
-✉️ <b>Yöneticiye yaz</b> — soru veya öneri, cevap buraya gelir (/admin)
-📄 /guide — PDF olarak tam kılavuz
+✉️ Soru veya öneri — /admin, cevap buraya gelir
+📄 /guide — PDF kılavuz
 
-Veri: ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON. Günde 2 kez güncellenir.`,
+Veri: ECMWF, NOAA, DWD modelleri; hava kalitesi — CAMS. Her 3 saatte güncellenir.`,
 };
 const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], tr: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] };
 const PER_TICK = 4;      // groups per cron run (Workers free plan: 50 subrequests per run; a group may want several countries)
@@ -156,7 +178,7 @@ export default {
     return new Response('ok');
   },
   async scheduled(ev, env, ctx) {
-    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await mtnTick(env).catch(e => console.log('mtn', e && e.stack)); await staleTick(env); await statsTick(env); await backupTick(env); } await buildTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
+    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await mtnTick(env).catch(e => console.log('mtn', e && e.stack)); await notifTick(env).catch(e => console.log('notif', e && e.stack)); await staleTick(env); await statsTick(env); await backupTick(env); } await buildTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
   },
 };
 
@@ -289,6 +311,7 @@ function outlookKb(its, lang, cur) {
   const by = k => its.filter(i => k.includes(i.key)).map(btn), rows = [by(['past']), by(['w1', 'w2']), by(['m0', 'm1']), by(['dust']),
     its.filter(i => !['past', 'w1', 'w2', 'm0', 'm1', 'dust'].includes(i.key)).map(btn)].filter(r => r.length);
   rows.push([{ text: A.all, callback_data: `OA:${lang}` }]);
+  rows.push([notifBtn(lang, 'outlook')]);
   return { inline_keyboard: rows };
 }
 async function sendOutlook(env, chat, lang) {
@@ -315,13 +338,110 @@ async function sendOutlookPart(env, chat, lang, key) {
   }
   return r;
 }
+/* ---------- automatic sending of one section at the hour the person picked (⏰) ---------- */
+const NX_ = {
+  ru: { btn: '⏰ Присылать автоматически', ask: '⏰ Во сколько присылать «{s}»? Время — по Ташкенту.', weekly: ' (по понедельникам)', off: '🔕 Не присылать', on: '✅ «{s}» будет приходить каждый день в {h}.', onW: '✅ «{s}» будет приходить по понедельникам в {h}.', offT: '🔕 «{s}» больше не присылаю.', list: '⏰ <b>Мои уведомления</b>', none: 'Пока ничего не приходит автоматически. Нажмите раздел ниже и выберите время:', at: 'в', edit: 'Нажмите раздел, чтобы поменять время или выключить:', daily: '🔔 Прогноз каждое утро — включается кнопкой «🔔 Прогноз каждое утро»' },
+  uz: { btn: '⏰ Avtomatik yuborish', ask: '⏰ «{s}» soat nechada kelsin? Vaqt — Toshkent bo‘yicha.', weekly: ' (dushanba kunlari)', off: '🔕 Yubormaslik', on: '✅ «{s}» har kuni soat {h} da keladi.', onW: '✅ «{s}» har dushanba soat {h} da keladi.', offT: '🔕 «{s}» endi yuborilmaydi.', list: '⏰ <b>Bildirishnomalarim</b>', none: 'Hozircha hech narsa avtomatik kelmaydi. Quyidagi bo‘limni bosing va vaqtni tanlang:', at: 'soat', edit: 'Vaqtni o‘zgartirish yoki o‘chirish uchun bo‘limni bosing:', daily: '🔔 Har tongi prognoz — «🔔 Har tongi prognoz» tugmasi bilan yoqiladi' },
+  tr: { btn: '⏰ Otomatik gönder', ask: '⏰ «{s}» saat kaçta gelsin? Saat — Taşkent saati.', weekly: ' (pazartesi günleri)', off: '🔕 Gönderme', on: '✅ «{s}» her gün saat {h} gelecek.', onW: '✅ «{s}» her pazartesi saat {h} gelecek.', offT: '🔕 «{s}» artık gönderilmeyecek.', list: '⏰ <b>Bildirimlerim</b>', none: 'Şu anda otomatik bir şey gelmiyor. Aşağıdan bölüm seçip saati belirleyin:', at: 'saat', edit: 'Saati değiştirmek veya kapatmak için bölüme dokunun:', daily: '🔔 Her sabah tahmin — «🔔 Her sabah tahmin» düğmesiyle açılır' } };
+const NSEC = ['hourly', 'outlook', 'mtn', 'air'];  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
+const NWEEKLY = { outlook: true };                   // the weeks and months change slowly: once a week is enough
+const secName = (sec, lang) => ((RKL[lang] || RKL.ru)[sec] || sec).replace(/^\S+\s/, '');
+const notifBtn = (lang, sec) => ({ text: (NX_[lang] || NX_.ru).btn, callback_data: `NS:${lang}:${sec}` });
+async function notifGet(env, chat, sec) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM notif WHERE chat_id = ?1 AND sec = ?2').bind(chat, sec).first(); }
+async function notifAsk(env, chat, lang, sec) {
+  const N = NX_[lang] || NX_.ru, cur = await notifGet(env, chat, sec), hrs = HOURS;
+  const rows = [hrs.slice(0, 5), hrs.slice(5)].map(r => r.map(h => ({ text: `${cur && cur.hour === h ? '✅ ' : ''}${hh(h)}`, callback_data: `NT:${lang}:${sec}:${h}` })));
+  if (cur) rows.push([{ text: N.off, callback_data: `NO:${lang}:${sec}` }]);
+  return tg(env, 'sendMessage', { chat_id: chat, text: N.ask.replace('{s}', secName(sec, lang)) + (NWEEKLY[sec] ? N.weekly : ''), reply_markup: { inline_keyboard: rows } });
+}
+async function notifSet(env, chat, lang, sec, hour, msgId) {
+  const N = NX_[lang] || NX_.ru, now = new Date(Date.now() + TZ * 3600e3), u = await getUser(env, chat);
+  // an hour already past today: the first one comes tomorrow
+  const last = hour <= now.getUTCHours() ? todayTZ() : '';
+  await env.DB.prepare('INSERT INTO notif (chat_id, sec, hour, lang, region, last_day, added) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(chat_id, sec) DO UPDATE SET hour = ?3, lang = ?4, region = ?5, last_day = ?6')
+    .bind(chat, sec, hour, lang, (u && u.region) || 'UZ', last, new Date().toISOString()).run();
+  const text = (NWEEKLY[sec] ? N.onW : N.on).replace('{s}', secName(sec, lang)).replace('{h}', hh(hour));
+  return msgId ? tg(env, 'editMessageText', { chat_id: chat, message_id: msgId, text }) : tg(env, 'sendMessage', { chat_id: chat, text });
+}
+async function notifList(env, chat, lang) {
+  const N = NX_[lang] || NX_.ru; if (!env.DB) return; await db(env);
+  const rows = (await env.DB.prepare('SELECT * FROM notif WHERE chat_id = ?1').bind(chat).all()).results, by = Object.fromEntries(rows.map(r => [r.sec, r]));
+  const d = await sub(env, chat), lines = [N.list, ''];
+  for (const sec of NSEC) if (by[sec]) lines.push(`✅ ${secName(sec, lang)} — ${N.at} ${hh(by[sec].hour)}${NWEEKLY[sec] ? N.weekly : ''}`);
+  if (d) lines.push(`✅ ${secName('daily', lang)} — ${N.at} ${hh(d.post_hour ?? POST_HOUR)}`);
+  lines.push('', rows.length || d ? N.edit : N.none);
+  const kb = NSEC.map(sec => [{ text: `${by[sec] ? '✅' : '➕'} ${(RKL[lang] || RKL.ru)[sec]}${by[sec] ? ` · ${hh(by[sec].hour)}` : ''}`, callback_data: `NS:${lang}:${sec}` }]);
+  return tg(env, 'sendMessage', { chat_id: chat, text: lines.join('\n') + (d ? '' : `\n\n<i>${N.daily}</i>`), parse_mode: 'HTML', reply_markup: { inline_keyboard: kb } });
+}
+// each cron run: the sections that are due now (a few per run: videos and pictures take time)
+async function notifTick(env) {
+  if (!env.DB) return; await db(env);
+  const now = new Date(Date.now() + TZ * 3600e3), day = todayTZ(), hour = now.getUTCHours(), monday = now.getUTCDay() === 1;
+  const due = (await env.DB.prepare("SELECT * FROM notif WHERE hour <= ?1 AND COALESCE(last_day, '') <> ?2 LIMIT 6").bind(hour, day).all()).results;
+  for (const n of due) {
+    await env.DB.prepare('UPDATE notif SET last_day = ?3 WHERE chat_id = ?1 AND sec = ?2').bind(n.chat_id, n.sec, day).run();
+    if (NWEEKLY[n.sec] && !monday) continue;
+    const lang = RKL[n.lang] ? n.lang : 'ru', rid = NAMES[n.region] ? n.region : 'UZ';
+    let r = null;
+    try {
+      if (n.sec === 'hourly') r = await sendHourly(env, n.chat_id, lang, rid);
+      else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
+      else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
+      else if (n.sec === 'air') r = await sendAir(env, n.chat_id, lang, rid);
+    } catch (e) { console.log('notif', n.sec, e && e.stack); }
+    if (r && !r.ok && /blocked|deactivated|chat not found|kicked/i.test(r.description || '')) await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1').bind(n.chat_id).run();
+  }
+}
+
+/* ---------- the air today: dust and air quality hour by hour at the person's place (CAMS via Open-Meteo) ---------- */
+const AQX = {
+  ru: { title: '🌫 <b>Воздух сегодня</b>', now: 'Сейчас', max: 'Хуже всего сегодня', hours: 'По часам (индекс AQI)', pm: 'PM10 {a} · PM2.5 {b} мкг/м³', dust: 'пыль {d} мкг/м³',
+    bands: ['хорошо', 'умеренно', 'вредно для чувствительных', 'вредно', 'очень вредно', 'опасно'],
+    tips: ['', '', '🙂 Людям с астмой и детям лучше меньше быть на улице', '😷 Сократите время на улице, закройте окна', '😷 Маска N95, без нужды не выходите', '⛔ Оставайтесь дома, закройте окна'],
+    src: 'Прогноз CAMS (ECMWF Copernicus) · Open-Meteo', none: 'Не удалось получить данные о воздухе, попробуйте позже.', map: 'Карта пыли по Узбекистану' },
+  uz: { title: '🌫 <b>Bugungi havo sifati</b>', now: 'Hozir', max: 'Bugun eng yomoni', hours: 'Soatma-soat (AQI indeksi)', pm: 'PM10 {a} · PM2.5 {b} mkg/m³', dust: 'chang {d} mkg/m³',
+    bands: ['yaxshi', 'o‘rtacha', 'sezgirlar uchun zararli', 'zararli', 'juda zararli', 'xavfli'],
+    tips: ['', '', '🙂 Astmasi borlar va bolalar ko‘chada kamroq bo‘lgani yaxshi', '😷 Ko‘chada kamroq bo‘ling, derazalarni yoping', '😷 N95 niqob, keraksiz chiqmang', '⛔ Uyda qoling, derazalarni yoping'],
+    src: 'CAMS prognozi (ECMWF Copernicus) · Open-Meteo', none: 'Havo ma’lumotlarini olib bo‘lmadi, keyinroq urinib ko‘ring.', map: 'O‘zbekiston bo‘yicha chang xaritasi' },
+  tr: { title: '🌫 <b>Bugün hava kalitesi</b>', now: 'Şimdi', max: 'Bugün en kötü', hours: 'Saat saat (AQI endeksi)', pm: 'PM10 {a} · PM2.5 {b} µg/m³', dust: 'toz {d} µg/m³',
+    bands: ['iyi', 'orta', 'hassaslar için zararlı', 'zararlı', 'çok zararlı', 'tehlikeli'],
+    tips: ['', '', '🙂 Astımlılar ve çocuklar dışarıda daha az kalsın', '😷 Dışarıda daha az kalın, pencereleri kapatın', '😷 N95 maske, gereksiz çıkmayın', '⛔ Evde kalın, pencereleri kapatın'],
+    src: 'CAMS tahmini (ECMWF Copernicus) · Open-Meteo', none: 'Hava verisi alınamadı, sonra tekrar deneyin.', map: 'Özbekistan toz haritası' } };
+const aqBand = v => v == null ? 0 : v <= 50 ? 0 : v <= 100 ? 1 : v <= 150 ? 2 : v <= 200 ? 3 : v <= 300 ? 4 : 5;
+const AQ_DOT = ['🟢', '🟡', '🟠', '🔴', '🟣', '🟤'];
+async function sendAir(env, chat, lang, rid) {
+  const X = AQX[lang] || AQX.ru, u = await getUser(env, chat), pl = u && u.place ? JSON.parse(u.place) : null;
+  let lat, lon, name;
+  if (pl) { lat = +pl[0]; lon = +pl[1]; const np = await nearestPlace(env, lat, lon); name = np ? `${FLAG[np[4]] || '📍'} ${pname(np, lang)}` : `📍 ${lat.toFixed(2)}, ${lon.toFixed(2)}`; }
+  else { const C = (await cities(env, rid, lang)) || (await cities(env, rid, 'ru')), c = C && C.cities.find(c => c.lat != null);
+    if (c) { lat = c.lat; lon = c.lon; name = `${FLAG[rid] || ''} ${c.name}`; } else { lat = 41.31; lon = 69.28; name = '🇺🇿 Toshkent'; } }
+  const j = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=us_aqi,pm10,pm2_5,dust&current=us_aqi,pm10,pm2_5,dust&timezone=auto&forecast_days=1`).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!j || !j.hourly) return tg(env, 'sendMessage', { chat_id: chat, text: X.none, reply_markup: { inline_keyboard: [[notifBtn(lang, 'air')]] } });
+  const Hh = j.hourly, c = j.current || {}, b = aqBand(c.us_aqi), r0 = v => v == null ? '—' : Math.round(v);
+  let mi = 0; Hh.us_aqi.forEach((v, i) => { if (v != null && v > (Hh.us_aqi[mi] ?? -1)) mi = i; });
+  const hrs = []; for (let i = 0; i < Hh.time.length; i += 3) { const v = Hh.us_aqi[i]; hrs.push(`${Hh.time[i].slice(11, 13)}:00 ${AQ_DOT[aqBand(v)]} ${r0(v)}`); }
+  const out = [`${X.title} · <b>${esc(name)}</b>`, '',
+    `${X.now}: ${AQ_DOT[b]} <b>${r0(c.us_aqi)}</b> — ${X.bands[b]}`, `   ${X.pm.replace('{a}', r0(c.pm10)).replace('{b}', r0(c.pm2_5))}${c.dust >= 20 ? ` · ${X.dust.replace('{d}', r0(c.dust))}` : ''}`,
+    `${X.max}: ${AQ_DOT[aqBand(Hh.us_aqi[mi])]} <b>${r0(Hh.us_aqi[mi])}</b> ${X.bands[aqBand(Hh.us_aqi[mi])]} · ${Hh.time[mi].slice(11, 16)}`,
+    ...(X.tips[Math.max(b, aqBand(Hh.us_aqi[mi]))] ? ['', X.tips[Math.max(b, aqBand(Hh.us_aqi[mi]))]] : []),
+    '', `<b>${X.hours}</b>`, `<pre>${hrs.reduce((a, x, i) => a + x.padEnd(14) + (i % 2 ? '\n' : ''), '')}</pre>`,
+    `🟢 ≤50 · 🟡 ≤100 · 🟠 ≤150 · 🔴 ≤200 · 🟣 ≤300 · 🟤 >300`, `<i>${X.src}</i>`];
+  const kb = { inline_keyboard: [[notifBtn(lang, 'air')]] };
+  // in Uzbekistan the dust map of today goes first (prob/outlook.py, dust0)
+  if (rid === 'UZ') {
+    const I = await (await fetch(`${base(env)}/prob/outlook/index.json?t=${fresh()}`)).json().catch(() => null), it = I && (I.items.find(i => i.key === 'dust' && i.lang === lang) || I.items.find(i => i.key === 'dust'));
+    if (it) await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/${(it.imgs || [it.img])[0]}?v=${encodeURIComponent(I.made || '')}`, caption: `🌫 ${X.map}` });
+  }
+  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n'), parse_mode: 'HTML', reply_markup: kb });
+}
+
 /* ---------- mountains of Uzbekistan: fresh snow and good days for a trip (site/prob/mountains.json, prob/mountains.py) ---------- */
 const MTX = {
-  ru: { title: '🏔 <b>Горы Узбекистана: снег и поездки</b>', m: 'м', snow: '❄️ Свежий снег', noSnow: '❄️ Снегопадов в ближайшие 16 дней не видно', cm: 'см', cover: '⛄ Снег лежит', go: '🥾 Когда ехать', noGo: '🥾 Хороших дней для поездки пока не видно', after: '👉 После снега лучше всего', wind: 'ветер до', ms: 'м/с',
+  ru: { title: '🏔 <b>Горы Узбекистана: снег и поездки</b>', rain: '🌧 Дождь', mm: 'мм', m: 'м', snow: '❄️ Свежий снег', noSnow: '❄️ Снегопадов в ближайшие 16 дней не видно', cm: 'см', cover: '⛄ Снег лежит', go: '🥾 Когда ехать', noGo: '🥾 Хороших дней для поездки пока не видно', after: '👉 После снега лучше всего', wind: 'ветер до', ms: 'м/с',
     foot: 'Прогноз на 16 дней с поправкой на высоту · ECMWF, DWD, NOAA (Open-Meteo). Снегопад — от 2 см за сутки; хороший день — сухо, солнечно, без сильного ветра.', sub: '🔔 Сигнал о снеге в горах', unsub: '🔕 Выключить сигнал о снеге', on: '🔔 Сигнал включён: напишу, как только в горах ожидается свежий снег, и подскажу, в какой день лучше ехать.', off: '🔕 Сигнал о снеге выключен.', alert: '❄️ <b>Снег в горах!</b>', fresh: 'свежего снега', all: '🏔 Все горы', none: 'Данные по горам ещё готовятся, попробуйте чуть позже.' },
-  uz: { title: '🏔 <b>O‘zbekiston tog‘lari: qor va sayohat</b>', m: 'm', snow: '❄️ Yangi qor', noSnow: '❄️ Yaqin 16 kunda qor yog‘ishi kutilmayapti', cm: 'sm', cover: '⛄ Qor qoplami', go: '🥾 Qachon borish kerak', noGo: '🥾 Hozircha sayohat uchun yaxshi kun ko‘rinmayapti', after: '👉 Qordan keyin eng yaxshi kun', wind: 'shamol', ms: 'm/s',
+  uz: { title: '🏔 <b>O‘zbekiston tog‘lari: qor va sayohat</b>', rain: '🌧 Yomg‘ir', mm: 'mm', m: 'm', snow: '❄️ Yangi qor', noSnow: '❄️ Yaqin 16 kunda qor yog‘ishi kutilmayapti', cm: 'sm', cover: '⛄ Qor qoplami', go: '🥾 Qachon borish kerak', noGo: '🥾 Hozircha sayohat uchun yaxshi kun ko‘rinmayapti', after: '👉 Qordan keyin eng yaxshi kun', wind: 'shamol', ms: 'm/s',
     foot: '16 kunlik prognoz, balandlikka moslangan · ECMWF, DWD, NOAA (Open-Meteo). Qor yog‘ishi — sutkada 2 sm dan; yaxshi kun — quruq, quyoshli, kuchli shamolsiz.', sub: '🔔 Tog‘da qor haqida xabar', unsub: '🔕 Qor xabarini o‘chirish', on: '🔔 Xabar yoqildi: tog‘larda yangi qor kutilishi bilan yozaman va qaysi kuni borish yaxshiligini aytaman.', off: '🔕 Qor xabari o‘chirildi.', alert: '❄️ <b>Tog‘larda qor!</b>', fresh: 'yangi qor', all: '🏔 Barcha tog‘lar', none: 'Tog‘lar ma’lumoti hali tayyorlanmoqda, birozdan keyin urinib ko‘ring.' },
-  tr: { title: '🏔 <b>Özbekistan dağları: kar ve gezi</b>', m: 'm', snow: '❄️ Taze kar', noSnow: '❄️ Önümüzdeki 16 günde kar yağışı görünmüyor', cm: 'cm', cover: '⛄ Kar örtüsü', go: '🥾 Ne zaman gidilir', noGo: '🥾 Şimdilik gezi için iyi gün görünmüyor', after: '👉 Kardan sonra en iyi gün', wind: 'rüzgâr', ms: 'm/s',
+  tr: { title: '🏔 <b>Özbekistan dağları: kar ve gezi</b>', rain: '🌧 Yağmur', mm: 'mm', m: 'm', snow: '❄️ Taze kar', noSnow: '❄️ Önümüzdeki 16 günde kar yağışı görünmüyor', cm: 'cm', cover: '⛄ Kar örtüsü', go: '🥾 Ne zaman gidilir', noGo: '🥾 Şimdilik gezi için iyi gün görünmüyor', after: '👉 Kardan sonra en iyi gün', wind: 'rüzgâr', ms: 'm/s',
     foot: 'Yüksekliğe göre düzeltilmiş 16 günlük tahmin · ECMWF, DWD, NOAA (Open-Meteo). Kar yağışı — günde 2 cm’den; iyi gün — kuru, güneşli, sert rüzgârsız.', sub: '🔔 Dağlarda kar bildirimi', unsub: '🔕 Kar bildirimini kapat', on: '🔔 Bildirim açık: dağlarda taze kar beklendiğinde yazacağım ve hangi gün gitmenin iyi olduğunu söyleyeceğim.', off: '🔕 Kar bildirimi kapatıldı.', alert: '❄️ <b>Dağlarda kar!</b>', fresh: 'taze kar', all: '🏔 Tüm dağlar', none: 'Dağ verileri henüz hazırlanıyor, biraz sonra deneyin.' },
 };
 const wIcon = c => c == null ? '' : c <= 1 ? '☀️' : c === 2 ? '🌤' : c === 3 ? '☁️' : c <= 48 ? '🌫' : c <= 67 ? '🌧' : c <= 77 ? '🌨' : c <= 82 ? '🌦' : c <= 86 ? '🌨' : '⛈';
@@ -341,6 +461,8 @@ function spotLines(sp, M, lang) {
   const X = MTX[lang] || MTX.ru, today = todayTZ(), days = sp.days.filter(d => d.d >= today), snow = days.filter(d => d.sn >= (M.snow_cm || 2)), out = [];
   out.push(`<b>${esc(sp.name[lang] || sp.name.ru)}</b> · ${sp.elev} ${X.m} · ${esc(sp.area[lang] || sp.area.ru)}`);
   out.push(snow.length ? `${X.snow}: ${snow.slice(0, 4).map(d => `${dayLabel(d.d, lang)} ~${Math.round(d.sn)} ${X.cm}`).join(', ')}` : X.noSnow);
+  const rain = days.slice(0, 10).filter(d => (d.rn || 0) >= 2);
+  if (rain.length) out.push(`${X.rain}: ${rain.slice(0, 4).map(d => `${dayLabel(d.d, lang)} ~${Math.round(d.rn)} ${X.mm}`).join(', ')}`);
   if (days[0] && days[0].depth >= 1) out.push(`${X.cover}: ~${days[0].depth} ${X.cm}`);
   const a = snow.length ? afterSnow(sp, snow[0].d) : null;
   if (a) out.push(`${X.after}: <b>${dayW(a, lang)}</b>`);
@@ -355,6 +477,7 @@ async function mountainsKb(env, chat, lang, M, cur) {
   const rows = []; for (let i = 0; i < b.length; i += 2) rows.push(b.slice(i, i + 2));
   rows.push([{ text: A.all, callback_data: `MA:${lang}` }]);
   rows.push([{ text: s ? X.unsub : X.sub, callback_data: `MS:${lang}`, style: s ? undefined : 'success' }]);
+  rows.push([notifBtn(lang, 'mtn')]);
   return { inline_keyboard: rows };
 }
 async function sendMountains(env, chat, lang) {
@@ -407,21 +530,28 @@ async function mtnTick(env) {
 }
 // the menu is a keyboard under the input field (white buttons, as in the screenshot): one place for everything, no buttons under messages
 const RKL = {
-  ru: { hourly: '⏱ Сегодня и завтра по часам', days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', mtn: '🏔 Горы и снег', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', back: '⬅️ Назад', help: 'ℹ️ Помощь' },
-  uz: { hourly: '⏱ Bugun va ertaga soatma-soat', days: '🗓 15 kun', video: '🎬 15 kunlik video', outlook: '📅 Haftalar va oylar', mtn: '🏔 Tog‘lar va qor', now: '🌡 Hozir', cities: '🏙 Shaharlar', loc: '📍 Mening joyim', countries: '🌍 Davlatlar', daily: '🔔 Har kuni', accuracy: '🎯 Aniqlik', alerts: '⚠️ Ogohlantirishlar', site: '🗺 Sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qayta boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yordam' },
-  tr: { hourly: '⏱ Bugün ve yarın saat saat', days: '🗓 15 gün', video: '🎬 15 günlük video', outlook: '📅 Haftalar ve aylar', mtn: '🏔 Dağlar ve kar', now: '🌡 Şimdi', cities: '🏙 Şehirler', loc: '📍 Konumum', countries: '🌍 Ülkeler', daily: '🔔 Her gün', accuracy: '🎯 Doğruluk', alerts: '⚠️ Uyarılar', site: '🗺 Site ve küre', home: '🏠 Ana menü', reset: '🔄 Sıfırla', back: '⬅️ Geri', help: 'ℹ️ Yardım' } };
-const rkAct = text => { for (const L of Object.values(RKL)) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
+  ru: { hourly: '⏱ Сегодня и завтра по часам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
+  uz: { hourly: '⏱ Bugun va ertaga soatma-soat', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
+  tr: { hourly: '⏱ Bugün ve yarın saat saat', days: '🗓 15 günlük tahmin', video: '🎬 15 günlük video tahmin', outlook: '📅 Haftalar ve aylar (haritalar)', mtn: '🏔 Dağlar: kar ve gezi', now: '🌡 Şu anki hava', air: '🌫 Bugün hava kalitesi', cities: '🏙 Şehir seç', loc: '📍 Konumumu gönder', countries: '🌍 Ülke değiştir', daily: '🔔 Her sabah tahmin', notif: '⏰ Bildirimlerim', accuracy: '🎯 Tahmin doğruluğu', alerts: '⚠️ Tehlikeli hava', site: '🗺 Harita-site ve küre', home: '🏠 Ana menü', reset: '🔄 Baştan başla', back: '⬅️ Geri', help: 'ℹ️ Kılavuz' } };
+// the labels the keyboard had before (people may still have the old keyboard on their phone): they keep working
+const RKL_OLD = {
+  ru: { days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', mtn: '🏔 Горы и снег', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', help: 'ℹ️ Помощь' },
+  uz: { days: '🗓 15 kun', video: '🎬 15 kunlik video', outlook: '📅 Haftalar va oylar', mtn: '🏔 Tog‘lar va qor', now: '🌡 Hozir', cities: '🏙 Shaharlar', loc: '📍 Mening joyim', countries: '🌍 Davlatlar', daily: '🔔 Har kuni', accuracy: '🎯 Aniqlik', alerts: '⚠️ Ogohlantirishlar', site: '🗺 Sayt va globus', reset: '🔄 Qayta boshlash', help: 'ℹ️ Yordam' },
+  tr: { days: '🗓 15 gün', video: '🎬 15 günlük video', outlook: '📅 Haftalar ve aylar', mtn: '🏔 Dağlar ve kar', now: '🌡 Şimdi', cities: '🏙 Şehirler', loc: '📍 Konumum', countries: '🌍 Ülkeler', daily: '🔔 Her gün', accuracy: '🎯 Doğruluk', alerts: '⚠️ Uyarılar', site: '🗺 Site ve küre', reset: '🔄 Sıfırla', help: 'ℹ️ Yardım' } };
+const rkAct = text => { for (const L of [...Object.values(RKL), ...Object.values(RKL_OLD)]) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
 function replyKb(env, lang, id) {
   const X = RKL[lang] || RKL.ru, b = t => ({ text: t });
   return { keyboard: [
     [b(X.hourly)],
     [b(X.days), b(X.video)],
     ...(id === 'UZ' ? [[b(X.outlook), b(X.mtn)]] : []),
-    [b(X.now), b(X.cities)],
-    [{ text: X.loc, request_location: true }, b(X.countries)],
-    [b(X.daily), b(X.alerts)],
+    [b(X.now), b(X.air)],
+    [b(X.cities), b(X.countries)],
+    [{ text: X.loc, request_location: true }, b(X.alerts)],
+    [b(X.daily), b(X.notif)],
     [b(X.accuracy), { text: X.site, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }],
-    [b(X.home), b(X.reset)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', tr: 'Şehir adı…' }[lang] };
+    [b(X.help), b(X.home)],
+    [b(X.reset)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', tr: 'Şehir adı…' }[lang] };
 }
 // countries and cities are keyboards too: the chosen one is marked with ✅
 function countryRk(lang, cur) {
@@ -603,7 +733,7 @@ async function sendHourly(env, chat, lang, id) {
   const url = `${base(env)}/prob/${H.video}?v=${fresh()}`, kb0 = menuKb(env, lang, id);
   // the interactive map (a Telegram mini app): touch the map, drag the hours, hear the weather — private chats only
   // (the keyboard under the input field stays as it is; this message carries the mini-app button)
-  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)]] } : kb0;
+  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], [notifBtn(lang, 'hourly')]] } : kb0;
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
   if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
@@ -910,6 +1040,9 @@ async function handle(up, env) {
   if (kind === 'OP') return sendOutlookPart(env, chat.id, lang, id);
   if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
+  if (kind === 'NS' && NSEC.includes(id)) return notifAsk(env, chat.id, lang, id);
+  if (kind === 'NT' && NSEC.includes(id)) return notifSet(env, chat.id, lang, id, +cb.data.split(':')[3], cb.message.message_id);
+  if (kind === 'NO' && NSEC.includes(id)) { await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1 AND sec = ?2').bind(chat.id, id).run(); return tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: (NX_[lang] || NX_.ru).offT.replace('{s}', secName(id, lang)) }); }
   if (kind === 'MA') return sendMountainText(env, chat.id, lang, null);
   if (kind === 'MT') return sendMountains(env, chat.id, lang);
   if (kind === 'MS') {  // the snow signal on / off: the button under the mountains message changes with it
@@ -1105,6 +1238,8 @@ async function privateMsg(msg, env) {
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
     if (act === 'outlook') return sendOutlook(env, chat.id, lang);
     if (act === 'mtn') return sendMountains(env, chat.id, lang);
+    if (act === 'air') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'typing' }); return sendAir(env, chat.id, lang, rid); }
+    if (act === 'notif') return notifList(env, chat.id, lang);
     if (act === 'accuracy') return sendAccuracy(env, chat.id, lang);
     if (act === 'now') {  // right now at the user's place (or the country's capital), with the forecast below
       const pl = u && u.place ? JSON.parse(u.place) : null;
@@ -1244,6 +1379,7 @@ async function db(env) {
   // who used the bot on which day (Tashkent date) and a daily snapshot of the auto-send subscriptions: for the admin's 📈 Динамика
   await env.DB.exec('CREATE TABLE IF NOT EXISTS daily (day TEXT, chat_id INTEGER, PRIMARY KEY (day, chat_id))');
   await env.DB.exec('CREATE TABLE IF NOT EXISTS dstat (day TEXT PRIMARY KEY, prv INTEGER, grp INTEGER, mtn INTEGER, users INTEGER)');
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS notif (chat_id INTEGER, sec TEXT, hour INTEGER, lang TEXT, region TEXT, last_day TEXT, added TEXT, PRIMARY KEY (chat_id, sec))');
 }
 async function sub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM subs WHERE chat_id = ?1').bind(chat).first(); }
 async function saveSub(env, chat, regions, lang, lastDay, hour = POST_HOUR) {
