@@ -98,7 +98,7 @@ def frame(R, k, lang, path, loc, info, city):
         return f"{Rn.city_name(p, lang)} {Rn.fmt_t(tt)}" + (f" · {int(round(v))} %" if v >= 15 else '') if np.isfinite(tt) else Rn.city_name(p, lang)
     Rn._cities(fig, ax, R, label)
     PX, PW = Rn.PANEL; X0, X1 = PX + 0.016, PX + PW - 0.014
-    Rn._card(fig, PX, 0.213, PW, 0.665)
+    Rn._card(fig, PX, Rn.PANEL_Y, PW, Rn.PANEL_H)
     tt = R.value_at(k, city, 'T') if has_t else np.nan; v = max(0, min(100, R.value_at(k, city)))
     c = R.value_at(k, city, 'C') * 100 if has_c else np.nan; ws = R.value_at(k, city, 'Wd') if has_w else np.nan
     snow = np.isfinite(tt) and tt <= 0.5
@@ -121,9 +121,9 @@ def frame(R, k, lang, path, loc, info, city):
             fig.text(X0, y, line, fontsize=9.5, color=Rn.ACCENT if j == 0 else Rn.MUTED, va='center'); y -= 0.03
         y -= 0.02
     # 48 hours
-    Rn._card(fig, 0.012, 0.04, 0.976, 0.155)
-    fig.text(0.024, 0.178, X['strip'], fontsize=9, color=Rn.MUTED, va='center')
-    bx = fig.add_axes([0.045, 0.072, 0.915, 0.088]); bx.set_facecolor('none')
+    Rn._card(fig, 0.012, 0.038, 0.976, 0.135)
+    fig.text(0.024, 0.158, X['strip'], fontsize=9, color=Rn.MUTED, va='center')
+    bx = fig.add_axes([0.045, 0.07, 0.915, 0.072]); bx.set_facecolor('none')
     P = np.clip(R.series(city), 0, 100); Ts = R.tseries(city)
     cols = [Rn._level_col(p, Rn.SNOW if (Ts is not None and Ts[i] <= 0.5) else Rn.COLORS) if p >= 10 else Rn.LOW_BAR for i, p in enumerate(P)]
     bx.bar(np.arange(HOURS), P, width=0.8, color=cols, zorder=2); bx.set_ylim(0, 100); bx.set_xlim(-0.6, HOURS - 0.4)

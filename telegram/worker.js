@@ -406,6 +406,8 @@ const mainKb = () => ({ remove_keyboard: true });  // (kept for old callers)
 const locOnce = lang => ({ keyboard: [[{ text: PT[lang].locBtn, request_location: true }]], resize_keyboard: true, one_time_keyboard: true });
 const FILLER = new Set('погода погоду погоды прогноз в во на для город городе сегодня завтра какая какой ob-havo obhavo havo bugun ertaga shahar shahrida hava durumu bugün yarın için weather in today tomorrow'.split(' '));
 // today and tomorrow hour by hour: the country's video with the main city's timing and clothing advice (prob/hourly.py)
+// Telegram caches a file by its URL, so every media link carries the hour: a new build is always fetched again
+const fresh = () => Math.floor(Date.now() / 3600e3);
 async function sendHourly(env, chat, lang, id) {
   let H = null;
   for (const l of [lang, 'ru', 'uz']) { const r = await fetch(`${base(env)}/prob/hr/${id}_${l}.json`, { cf: { cacheTtl: 600 } }); if (r.ok) { H = await r.json(); break; } }
@@ -414,7 +416,7 @@ async function sendHourly(env, chat, lang, id) {
   const part = (lbl, d) => d ? `<b>${lbl}</b> ${d.range}\n☂️ ${d.rain}\n🧥 ${K.wear}: ${d.wear}` : '';
   const cap = [`${FLAG[id] || ''} <b>${esc(NAMES[id][lang])}</b> · ${esc(H.city)} — ${X[0].toLowerCase()} / ${X[1].toLowerCase()} ${X[2]}`, '', part(X[0], H.info.today), '', part(X[1], H.info.tomorrow)].join('\n').slice(0, 1024);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
-  const url = `${base(env)}/prob/${H.video}`, kb = menuKb(env, lang, id);
+  const url = `${base(env)}/prob/${H.video}?v=${fresh()}`, kb = menuKb(env, lang, id);
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
   if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
@@ -683,7 +685,7 @@ async function handle(up, env) {
     if (!text) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none, reply_markup: kb });
     if (c.video) {  // the precipitation video with this city's timeline (Uzbekistan and Kazakhstan)
       await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
-      const url = `${base(env)}/prob/${c.video}`;
+      const url = `${base(env)}/prob/${c.video}?v=${fresh()}`;
       let r = await tg(env, 'sendVideo', { chat_id: chat.id, video: url, caption: text, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
       if (!r.ok) {
         const f = await fetch(url);
@@ -764,7 +766,7 @@ async function handle(up, env) {
   if (kind === 'V') {
     let vids = ['prob', 'temp', 'cloud', 'wind'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
     if (!vids.length) vids = ['prob', 'temp', 'cloud', 'wind'].map(p => M.items.find(i => i.region === id && i.lang === 'ru' && (i.product || 'prob') === p)).filter(Boolean);
-    const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}`, supports_streaming: true }));
+    const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}?v=${fresh()}`, supports_streaming: true }));
     media[0].caption = forecastText(days, lang, NAMES[id][lang], id, { more: 3, limit: 1000 }) || `${NAMES[id][lang]} · ${T[lang].d15}`;
     media[0].parse_mode = 'HTML';
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
@@ -798,10 +800,10 @@ async function privateMsg(msg, env) {
     const want = (text.split(/\s+/)[1] || lang).toLowerCase(), b = I && (I.items.find(i => i.lang === want) || I.items[0]);
     if (!b) return tg(env, 'sendMessage', { chat_id: chat.id, text: '⏳ Видеообзора ещё нет.' });
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
-    const url = `${base(env)}/prob/${b.video}`;
+    const url = `${base(env)}/prob/${b.video}?v=${fresh()}`;
     let r = await tg(env, 'sendVideo', { chat_id: chat.id, video: url, caption: b.title, supports_streaming: true });
     if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat.id)); fd.append('caption', b.title); fd.append('supports_streaming', 'true'); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `osmon_${b.lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
-    await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${base(env)}/prob/${b.thumb}`, caption: 'YouTube thumbnail' });
+    await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${base(env)}/prob/${b.thumb}?v=${fresh()}`, caption: 'YouTube thumbnail' });
     const t = await (await fetch(`${base(env)}/prob/${b.text}`)).text().catch(() => '');
     return tg(env, 'sendMessage', { chat_id: chat.id, text: (r.ok ? '' : `⚠️ ${r.description || ''}\n${url}\n\n`) + t.slice(0, 4000), disable_web_page_preview: true });
   }
@@ -1058,7 +1060,7 @@ async function post(env, M, chat, lang0, id0, bot) {
   const cap = forecastText(days, lang, NAMES[id][lang], id, { more: 3, foot: T[lang].swipe, limit: 1024 });
   if (!cap) return { ok: false, description: 'no data' };
   if (!vids.length) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot), disable_web_page_preview: true });
-  const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}`, supports_streaming: true }));
+  const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}?v=${fresh()}`, supports_streaming: true }));
   media[0].caption = cap; media[0].parse_mode = 'HTML';
   let r = await tg(env, 'sendMediaGroup', { chat_id: chat, media });
   // Telegram could not fetch the videos by link: upload the files

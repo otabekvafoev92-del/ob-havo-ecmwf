@@ -343,8 +343,8 @@ class Region:
             xs = np.concatenate([r[:, 0] for r in self.cpoly[iso]]); ys = np.concatenate([r[:, 1] for r in self.cpoly[iso]])
             big = max(len(r) for r in self.cpoly[iso]); main_ring = next(r for r in self.cpoly[iso] if len(r) == big)
             if (xs.max() - xs.min()) > 3 * (main_ring[:, 0].max() - main_ring[:, 0].min()): xs, ys = main_ring[:, 0], main_ring[:, 1]  # far islands
-            e0, e1, f0, f1 = xs.min(), xs.max(), ys.min(), ys.max(); px, py = (e1 - e0) * 0.05, (f1 - f0) * 0.07
-            e0, e1, f0, f1 = e0 - px, e1 + px, f0 - py, f1 + py; asp = 2.0
+            e0, e1, f0, f1 = xs.min(), xs.max(), ys.min(), ys.max(); px, py = (e1 - e0) * 0.03, (f1 - f0) * 0.04
+            e0, e1, f0, f1 = e0 - px, e1 + px, f0 - py, f1 + py; asp = MAP_BOX[2] * 12.8 / (MAP_BOX[3] * 7.2)
             if (e1 - e0) / (f1 - f0) < asp: c = (e0 + e1) / 2; w = (f1 - f0) * asp; e0, e1 = c - w / 2, c + w / 2
             else: c = (f0 + f1) / 2; h = (e1 - e0) / asp; f0, f1 = c - h / 2, c + h / 2
             self.ext = (e0, e1, f0, f1)
@@ -548,8 +548,9 @@ def _header(fig, R, D, s, lang, title):
     tx = fig.text(bb.x1 + 0.026, 0.948, title.upper(), fontsize=8.6, fontweight='bold', color=SKY, va='center')
     tb = tx.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
     _card(fig, tb.x0 - 0.01, 0.93, tb.width + 0.02, 0.036, fc=CARD2, ec=LINE, r=0.012)
-    fig.text(0.985, 0.954, _when(lang, run, step, off, D['win'][s]), fontsize=15, fontweight='bold', color=ACCENT, ha='right', va='center')
-    fig.text(0.985, 0.912, tz_label(lang, R.id, off), fontsize=8.5, color=MUTED, ha='right', va='center')
+    wt = fig.text(0.985, 0.954, _when(lang, run, step, off, D['win'][s]), fontsize=15, fontweight='bold', color=ACCENT, ha='right', va='center')
+    wb = wt.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+    fig.text(wb.x0 - 0.012, 0.952, tz_label(lang, R.id, off), fontsize=8.5, color=MUTED, ha='right', va='center')  # beside the time: the map starts right below
     return run, step, off
 
 
@@ -562,8 +563,9 @@ def zoom_view(R, p, z):
     return (cx - w / 2, cx + w / 2, cy - h / 2, cy + h / 2)
 
 
-MAP_BOX = [0.012, 0.218, 0.752, 0.66]  # Full HD 16:9: a big map on the left, a slim city card on the right
+MAP_BOX = [0.012, 0.19, 0.752, 0.713]  # Full HD 16:9: a big map on the left, a slim city card on the right
 PANEL = (0.776, 0.212)
+PANEL_Y, PANEL_H = 0.185, 0.723  # the city card, as tall as the map
 def _basemap(fig, R, box=None):
     box = box or MAP_BOX
     _card(fig, box[0] - 0.006, box[1] - 0.005, box[2] + 0.012, box[3] + 0.01, fc=SEA, ec=LINE)
@@ -632,9 +634,9 @@ def _chips(fig, x, y, cols, labels, w=0.052, h=0.019, gap=0.004, dark_from=3):
 
 
 def _timeline(fig, R, D, s, run, off, values, colors, ylim, yfmt, title, line=None, lang='ru'):
-    _card(fig, 0.012, 0.04, 0.976, 0.155)
-    fig.text(0.024, 0.178, title, fontsize=9, color=MUTED, va='center')
-    bx = fig.add_axes([0.045, 0.072, 0.915, 0.088]); bx.set_facecolor('none')
+    _card(fig, 0.012, 0.038, 0.976, 0.135)
+    fig.text(0.024, 0.158, title, fontsize=9, color=MUTED, va='center')
+    bx = fig.add_axes([0.045, 0.07, 0.915, 0.072]); bx.set_facecolor('none')
     st_ = np.array([int(x) for x in D['steps']], float); wn = np.array([int(x) for x in D['win']], float)
     X = st_ - wn / 2  # middle of each window, hours from the run
     bx.axvspan(X[s] - wn[s] / 2, X[s] + wn[s] / 2, color=ACCENT, alpha=0.16, lw=0, zorder=1)
@@ -737,7 +739,7 @@ def draw_frame(R, D, s, lang, models, members, path, product='prob', comment='',
     _cities(fig, ax, R, label, extra)
     # the chosen city: a card on the right with the numbers of this window, its comment and the legend
     PX, PW = PANEL
-    _card(fig, PX, 0.213, PW, 0.665)
+    _card(fig, PX, PANEL_Y, PW, PANEL_H)
     X0, X1 = PX + 0.016, PX + PW - 0.014
     if R.main is not None:
         p = R.main; v = max(0, min(100, R.value_at(s, p))); t = R.value_at(s, p, 'T') if has_t else np.nan
