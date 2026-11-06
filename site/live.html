@@ -13,11 +13,15 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--paper);color:var(--ink);font-family:'Golos Text',system-ui,sans-serif;overscroll-behavior:none}
 body{display:flex;flex-direction:column;min-height:100vh;user-select:none;-webkit-user-select:none}
-header{background:var(--navy);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px}
+header{background:var(--navy);color:#fff;padding:calc(10px + var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)) 14px 10px;display:flex;align-items:center;gap:10px}
+#fs{border:0;background:rgba(255,255,255,.14);color:#fff;width:36px;height:36px;border-radius:10px;font-size:18px;flex:none;cursor:pointer}
+#fs:focus-visible,.btn:focus-visible,#zoom button:focus-visible{outline:2px solid #f0b88a;outline-offset:2px}
+/* a wide screen (computer, tablet, phone on its side): the map on the left, the numbers and hours on the right */
+@media (min-width:760px){#main{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(300px,1fr);align-items:start}#side{padding-top:4px}}
 header .c{font-family:Unbounded,sans-serif;font-weight:700;font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .d{font-size:12px;color:#c9d6e5;text-align:right}
 header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:#f0b88a;min-width:74px;text-align:right}
-#mapwrap{position:relative;margin:0;background:#e6e9ed;overflow:hidden;touch-action:none}
+#mapwrap{position:relative;margin:0;min-width:0;background:#e6e9ed;overflow:hidden;touch-action:none}
 #zoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
 #zoom button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.95);font:700 20px 'Golos Text',sans-serif;color:var(--ink)}
 #map{display:block;width:100%}
@@ -38,11 +42,11 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 </head>
 <body>
 <div id="load">…</div>
-<header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div></header>
-<div id="mapwrap"><canvas id="map"></canvas><div id="hint"></div><div id="zoom"><button id="zin">+</button><button id="zout">−</button><button id="zfit" style="font-size:15px">⤢</button></div></div>
-<div class="card" id="place"><div><div class="nm" id="pn"></div><div class="tv" id="pt"></div></div><div class="rows" id="pr"></div></div>
+<header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div><button id="fs" title="Во весь экран" aria-label="Во весь экран">⛶</button></header>
+<div id="main"><div id="mapwrap"><canvas id="map"></canvas><div id="hint"></div><div id="zoom"><button id="zin">+</button><button id="zout">−</button><button id="zfit" style="font-size:15px">⤢</button></div></div>
+<div id="side"><div class="card" id="place"><div><div class="nm" id="pn"></div><div class="tv" id="pt"></div></div><div class="rows" id="pr"></div></div>
 <div class="card" style="padding:8px 6px 4px"><canvas id="tl"></canvas></div>
-<div class="bar"><button class="btn" id="play"></button><button class="btn alt" id="snd"></button></div>
+<div class="bar"><button class="btn" id="play"></button><button class="btn alt" id="snd"></button></div></div></div>
 <script>
 'use strict';
 const Q = new URLSearchParams(location.search), tg = window.Telegram && Telegram.WebApp;
@@ -95,12 +99,13 @@ function setup() {
   for (const [x, y] of all) { lo0 = Math.min(lo0, x); lo1 = Math.max(lo1, x); la0 = Math.min(la0, y); la1 = Math.max(la1, y); }
   kx = Math.cos((la0 + la1) / 2 * Math.PI / 180);
   const pw = (lo1 - lo0) * kx * 1.02, ph = (la1 - la0) * 1.04;
-  W = cv.clientWidth; Hc = Math.round(Math.min(window.innerHeight * 0.6, W * 1.1));
+  const wide = window.innerWidth >= 760;  // side by side: the map as tall as the window
+  W = cv.clientWidth; Hc = Math.round(wide ? Math.max(320, window.innerHeight - document.querySelector('header').offsetHeight - 8) : Math.min(window.innerHeight * 0.6, W * 1.1));
   const dpr = devicePixelRatio || 1; cv.width = W * dpr; cv.height = Hc * dpr; cv.style.height = Hc + 'px'; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
   PS0 = Math.min(W / pw, Hc / ph); P0 = [(lo0 + lo1) / 2, (la0 + la1) / 2];
   if (!inited) {  // the first view: the country as tall as the map, the chosen city in sight
-    Z = Math.min(2.2, Math.max(1, (Hc / ph) / PS0 * 0.82)); PAN = [0, 0];
-    const [x, y] = proj(sel.lon, sel.lat); PAN = [(W / 2 - x) * 0.6, 0]; clampPan();
+    Z = wide ? 1 : Math.min(2.2, Math.max(1, (Hc / ph) / PS0 * 0.82)); PAN = [0, 0];  // a wide screen shows the whole country
+    if (!wide) { const [x, y] = proj(sel.lon, sel.lat); PAN = [(W / 2 - x) * 0.6, 0]; clampPan(); }
   }
   const tl = $('tl'); tl.width = tl.clientWidth * dpr; tl.height = 130 * dpr; tl.style.height = '130px'; tl.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
   if (inited) return; inited = true;
@@ -125,6 +130,13 @@ function setup() {
   let drag = false; const seek = e => { const r = tl.getBoundingClientRect(); hour = Math.max(0, Math.min(H - 1, (e.clientX - r.left - 30) / (r.width - 44) * (H - 1))); stop(); draw(); };
   tl.addEventListener('pointerdown', e => { drag = true; tl.setPointerCapture(e.pointerId); seek(e); });
   tl.addEventListener('pointermove', e => drag && seek(e)); tl.addEventListener('pointerup', () => { drag = false; hour = Math.round(hour); draw(); });
+  // full screen: Telegram's own (phone and computer apps), or the browser's
+  $('fs').onclick = () => {
+    try { if (tg && tg.requestFullscreen && tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) { tg.isFullscreen ? tg.exitFullscreen() : tg.requestFullscreen(); return; } } catch (e) {}
+    try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {}
+  };
+  try { tg && tg.onEvent && tg.onEvent('fullscreenChanged', () => setTimeout(() => { setup(); draw(); }, 150)); } catch (e) {}
+  document.addEventListener('fullscreenchange', () => setTimeout(() => { setup(); draw(); }, 150));
   $('play').onclick = () => playing ? stop() : start();
   $('snd').onclick = toggleSound;
   addEventListener('resize', () => { setup(); draw(); });
