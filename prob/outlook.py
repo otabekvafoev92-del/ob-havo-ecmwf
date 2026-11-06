@@ -131,15 +131,16 @@ def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summar
     cls = lambda v: cols[int(np.clip(np.digitize(v, lv) - 1, 0, len(cols) - 1))]
     fig = plt.figure(figsize=(12.8, 7.2), dpi=100); fig.patch.set_facecolor(PAPER)
     # title band
-    fig.patches.append(matplotlib.patches.Rectangle((0, 0.872), 1, 0.128, transform=fig.transFigure, facecolor=NAVY, edgecolor='none', zorder=-6))
+    fig.patches.append(matplotlib.patches.Rectangle((0, 0.93), 1, 0.07, transform=fig.transFigure, facecolor=NAVY, edgecolor='none', zorder=-6))
     ink0 = Rn.INK; Rn.INK = '#ffffff'
-    try: x = Rn._brand(fig, 0.024, 0.936, size=13)
+    try: x = Rn._brand(fig, 0.016, 0.965, size=11)
     finally: Rn.INK = ink0
-    fig.text(x + 0.018, 0.952, title, fontsize=19, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center')
-    fig.text(x + 0.018, 0.905, f"{TX[lang]['title']} · {badge}", fontsize=10.5, color='#a9bdd6', va='center')
-    fig.text(0.976, 0.936, when, fontsize=17, fontweight='bold', color='#f0b88a', ha='right', va='center')
+    tt_ = fig.text(x + 0.014, 0.965, title, fontsize=14, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center')
+    bb_ = tt_.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+    fig.text(bb_.x1 + 0.016, 0.965, badge, fontsize=11, color='#a9bdd6', va='center')
+    fig.text(0.984, 0.965, when, fontsize=14, fontweight='bold', color='#f0b88a', ha='right', va='center')
     # the map: the country's outline fills the box
-    box = [0.018, 0.165, 0.665, 0.69]
+    box = [0.006, 0.105, 0.79, 0.82]  # the map takes most of the picture
     ax = fig.add_axes(box); ax.axis('off')
     rings = R.cpoly.get('UZ', [])
     xs = np.concatenate([r[:, 0] for r in rings]); ys = np.concatenate([r[:, 1] for r in rings])
@@ -199,30 +200,30 @@ def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summar
         lc, ll = cols[i0:i1], [f"{Rn.fmt_t(a)}…{Rn.fmt_t(b)}" for a, b in zip(lv[i0:i1], lv[i0 + 1:i1 + 1])]
     n = len(lc); bx0, bw = box[0] + 0.01, box[2] - 0.02; cw = bw / n
     for i, (c, t) in enumerate(zip(lc, ll)):
-        Rn._card(fig, bx0 + i * cw + 0.001, 0.105, cw - 0.002, 0.03, fc=c, ec='#c9d1db' if _lum(c) > 0.9 else 'none', r=0.003)
-        fig.text(bx0 + i * cw + cw / 2, 0.082, t, fontsize=8.6 if n < 10 else 7.6, color=NAVY, ha='center', va='center')
+        Rn._card(fig, bx0 + i * cw + 0.001, 0.058, cw - 0.002, 0.026, fc=c, ec='#c9d1db' if _lum(c) > 0.9 else 'none', r=0.003)
+        fig.text(bx0 + i * cw + cw / 2, 0.038, t, fontsize=8.2 if n < 10 else 7.4, color=NAVY, ha='center', va='center')
     if kind == 'aq':
-        for i, t in enumerate(DX[lang]['bands']): fig.text(bx0 + i * cw + cw / 2, 0.06, t, fontsize=7.2, color=Rn.MUTED, ha='center', va='center')
-    fig.text(bx0, 0.148, (unit or title), fontsize=9, color=Rn.MUTED, va='center')
+        for i, t in enumerate(DX[lang]['bands']): fig.text(bx0 + i * cw + cw / 2, 0.018, t, fontsize=7.2, color=Rn.MUTED, ha='center', va='center')
+    fig.text(bx0, 0.095, (unit or title), fontsize=8.5, color=Rn.MUTED, va='center')
     # right column: the main city big, then all the cities ranked with bars
-    X0 = 0.705; Rn._card(fig, X0, 0.165, 0.277, 0.69, fc='#ffffff', ec='#dde3ea', r=0.012)
-    fig.text(X0 + 0.018, 0.815, Rn.city_name(cities[0], lang), fontsize=12, fontweight='bold', color=Rn.MUTED, va='center')
+    X0 = 0.804; Rn._card(fig, X0, 0.105, 0.19, 0.82, fc='#ffffff', ec='#dde3ea', r=0.012)
+    fig.text(X0 + 0.016, 0.885, Rn.city_name(cities[0], lang), fontsize=12, fontweight='bold', color=Rn.MUTED, va='center')
     c0 = cls(vals[0]) if np.isfinite(vals[0]) else Rn.ACCENT
-    fig.text(X0 + 0.018, 0.76, big, fontsize=30, fontfamily=Rn.DISPLAY, fontweight='bold', color=c0 if _lum(c0) < 0.7 else NAVY, va='center')
-    for j, line in enumerate(__import__('textwrap').wrap(sub, 38)[:2]): fig.text(X0 + 0.018, 0.71 - j * 0.03, line, fontsize=10, color=NAVY, va='center')
-    yy = 0.625; fig.add_artist(matplotlib.lines.Line2D([X0 + 0.018, X0 + 0.259], [yy + 0.02, yy + 0.02], color='#e3e8ee', lw=1, transform=fig.transFigure))
+    fig.text(X0 + 0.016, 0.83, big, fontsize=26, fontfamily=Rn.DISPLAY, fontweight='bold', color=c0 if _lum(c0) < 0.7 else NAVY, va='center')
+    for j, line in enumerate(__import__('textwrap').wrap(sub, 26)[:2]): fig.text(X0 + 0.016, 0.78 - j * 0.028, line, fontsize=9.5, color=NAVY, va='center')
+    yy = 0.7; fig.add_artist(matplotlib.lines.Line2D([X0 + 0.016, X0 + 0.174], [yy + 0.02, yy + 0.02], color='#e3e8ee', lw=1, transform=fig.transFigure))
     order = sorted([(v, p) for v, p in zip(vals, cities) if np.isfinite(v)], key=lambda t: -t[0])
-    mx = max([abs(v) for v, _ in order] + [1e-6]); dy = min(0.047, 0.44 / max(1, len(order)))
+    mx = max([abs(v) for v, _ in order] + [1e-6]); dy = min(0.055, 0.56 / max(1, len(order)))
     for v, p in order:
-        fig.text(X0 + 0.018, yy - dy / 2, Rn.city_name(p, lang), fontsize=9.5, fontweight='bold' if p is cities[0] else 'normal', color=NAVY, va='center')
-        bw_ = 0.075 * abs(v) / mx
-        Rn._card(fig, X0 + 0.135, yy - dy / 2 - 0.009, max(bw_, 0.003), 0.018, fc=cls(v), ec='none', r=0.003)
-        fig.text(X0 + 0.259, yy - dy / 2, fv(v) + (f" {unit}" if unit and kind == 'pr' else ''), fontsize=10, fontweight='bold', color=NAVY, ha='right', va='center')
+        fig.text(X0 + 0.016, yy - dy / 2, Rn.city_name(p, lang), fontsize=9, fontweight='bold' if p is cities[0] else 'normal', color=NAVY, va='center')
+        bw_ = 0.04 * abs(v) / mx
+        Rn._card(fig, X0 + 0.098, yy - dy / 2 - 0.009, max(bw_, 0.003), 0.018, fc=cls(v), ec='none', r=0.003)
+        fig.text(X0 + 0.176, yy - dy / 2, fv(v) + (f" {unit}" if unit and kind == 'pr' else ''), fontsize=10, fontweight='bold', color=NAVY, ha='right', va='center')
         yy -= dy
     # footer
-    fig.text(0.024, 0.025, summary, fontsize=10.5, fontweight='bold', color=NAVY, va='center')
-    fig.text(0.976, 0.025, src + '  ·  t.me/ObHavo_ECMWF_bot', fontsize=8, color=Rn.FAINT, va='center', ha='right')
-    fig.savefig(path, dpi=200, facecolor=PAPER)  # 2560×1440: the most Telegram keeps for a photo; plt.close(fig)
+    # (the summary is in the bot's caption; the picture keeps only the source)
+    fig.text(0.994, 0.012, src + '  ·  t.me/ObHavo_ECMWF_bot', fontsize=6.5, color=Rn.FAINT, va='center', ha='right')
+    fig.savefig(path, dpi=200, facecolor=PAPER); plt.close(fig)  # 2560×1440: the most Telegram keeps for a photo
 
 
 def draw_dust(R, aq, lang, path, cities):
