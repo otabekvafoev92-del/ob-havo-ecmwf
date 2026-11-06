@@ -154,7 +154,7 @@ export default {
     return new Response('ok');
   },
   async scheduled(ev, env, ctx) {
-    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await staleTick(env); await statsTick(env); await backupTick(env); } await buildTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
+    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await mtnTick(env).catch(e => console.log('mtn', e && e.stack)); await staleTick(env); await statsTick(env); await backupTick(env); } await buildTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
   },
 };
 
@@ -233,18 +233,87 @@ async function sendOutlook(env, chat, lang) {
   }
   return r;
 }
+/* ---------- mountains of Uzbekistan: fresh snow and good days for a trip (site/prob/mountains.json, prob/mountains.py) ---------- */
+const MTX = {
+  ru: { title: '🏔 <b>Горы Узбекистана: снег и поездки</b>', m: 'м', snow: '❄️ Свежий снег', noSnow: '❄️ Снегопадов в ближайшие 16 дней не видно', cm: 'см', cover: '⛄ Снег лежит', go: '🥾 Когда ехать', noGo: '🥾 Хороших дней для поездки пока не видно', after: '👉 После снега лучше всего', wind: 'ветер до', ms: 'м/с',
+    foot: 'Прогноз на 16 дней с поправкой на высоту · ECMWF, DWD, NOAA (Open-Meteo). Снегопад — от 2 см за сутки; хороший день — сухо, солнечно, без сильного ветра.', sub: '🔔 Сигнал о снеге в горах', unsub: '🔕 Выключить сигнал о снеге', on: '🔔 Сигнал включён: напишу, как только в горах ожидается свежий снег, и подскажу, в какой день лучше ехать.', off: '🔕 Сигнал о снеге выключен.', alert: '❄️ <b>Снег в горах!</b>', fresh: 'свежего снега', all: '🏔 Все горы', none: 'Данные по горам ещё готовятся, попробуйте чуть позже.' },
+  uz: { title: '🏔 <b>O‘zbekiston tog‘lari: qor va sayohat</b>', m: 'm', snow: '❄️ Yangi qor', noSnow: '❄️ Yaqin 16 kunda qor yog‘ishi kutilmayapti', cm: 'sm', cover: '⛄ Qor qoplami', go: '🥾 Qachon borish kerak', noGo: '🥾 Hozircha sayohat uchun yaxshi kun ko‘rinmayapti', after: '👉 Qordan keyin eng yaxshi kun', wind: 'shamol', ms: 'm/s',
+    foot: '16 kunlik prognoz, balandlikka moslangan · ECMWF, DWD, NOAA (Open-Meteo). Qor yog‘ishi — sutkada 2 sm dan; yaxshi kun — quruq, quyoshli, kuchli shamolsiz.', sub: '🔔 Tog‘da qor haqida xabar', unsub: '🔕 Qor xabarini o‘chirish', on: '🔔 Xabar yoqildi: tog‘larda yangi qor kutilishi bilan yozaman va qaysi kuni borish yaxshiligini aytaman.', off: '🔕 Qor xabari o‘chirildi.', alert: '❄️ <b>Tog‘larda qor!</b>', fresh: 'yangi qor', all: '🏔 Barcha tog‘lar', none: 'Tog‘lar ma’lumoti hali tayyorlanmoqda, birozdan keyin urinib ko‘ring.' },
+  tr: { title: '🏔 <b>Özbekistan dağları: kar ve gezi</b>', m: 'm', snow: '❄️ Taze kar', noSnow: '❄️ Önümüzdeki 16 günde kar yağışı görünmüyor', cm: 'cm', cover: '⛄ Kar örtüsü', go: '🥾 Ne zaman gidilir', noGo: '🥾 Şimdilik gezi için iyi gün görünmüyor', after: '👉 Kardan sonra en iyi gün', wind: 'rüzgâr', ms: 'm/s',
+    foot: 'Yüksekliğe göre düzeltilmiş 16 günlük tahmin · ECMWF, DWD, NOAA (Open-Meteo). Kar yağışı — günde 2 cm’den; iyi gün — kuru, güneşli, sert rüzgârsız.', sub: '🔔 Dağlarda kar bildirimi', unsub: '🔕 Kar bildirimini kapat', on: '🔔 Bildirim açık: dağlarda taze kar beklendiğinde yazacağım ve hangi gün gitmenin iyi olduğunu söyleyeceğim.', off: '🔕 Kar bildirimi kapatıldı.', alert: '❄️ <b>Dağlarda kar!</b>', fresh: 'taze kar', all: '🏔 Tüm dağlar', none: 'Dağ verileri henüz hazırlanıyor, biraz sonra deneyin.' },
+};
+const wIcon = c => c == null ? '' : c <= 1 ? '☀️' : c === 2 ? '🌤' : c === 3 ? '☁️' : c <= 48 ? '🌫' : c <= 67 ? '🌧' : c <= 77 ? '🌨' : c <= 82 ? '🌦' : c <= 86 ? '🌨' : '⛈';
+const sgn = t => `${t > 0 ? '+' : t < 0 ? '−' : ''}${Math.abs(Math.round(t))}°`;
+async function mountainsData(env) {
+  const r = await fetch(`${base(env)}/prob/mountains.json?t=${Date.now()}`, { cf: { cacheTtl: 0 } });
+  return r.ok ? r.json().catch(() => null) : null;
+}
+const dayW = (d, lang) => { const X = MTX[lang] || MTX.ru; return `${dayLabel(d.d, lang)} ${wIcon(d.code)} ${sgn(d.tmin)}…${sgn(d.tmax)}, ${X.wind} ${Math.round(d.gust)} ${X.ms}`; };
+// the first good day after a snow day (the same three days), for "when to go and see the snow"
+const afterSnow = (sp, d) => sp.days.find(x => x.d > d && x.good > 0 && (new Date(x.d) - new Date(d)) <= 3 * 864e5);
+async function mtnSub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM mtn WHERE chat_id = ?1').bind(chat).first(); }
+async function sendMountains(env, chat, lang) {
+  const X = MTX[lang] || MTX.ru, M = await mountainsData(env);
+  if (!M || !M.spots) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  const today = todayTZ(), out = [X.title];
+  for (const sp of M.spots) {
+    const days = sp.days.filter(d => d.d >= today), snow = days.filter(d => d.sn >= (M.snow_cm || 2));
+    out.push('', `<b>${esc(sp.name[lang] || sp.name.ru)}</b> · ${sp.elev} ${X.m} · ${esc(sp.area[lang] || sp.area.ru)}`);
+    out.push(snow.length ? `${X.snow}: ${snow.slice(0, 4).map(d => `${dayLabel(d.d, lang)} ~${Math.round(d.sn)} ${X.cm}`).join(', ')}` : X.noSnow);
+    if (days[0] && days[0].depth >= 1) out.push(`${X.cover}: ~${days[0].depth} ${X.cm}`);
+    const a = snow.length ? afterSnow(sp, snow[0].d) : null;
+    if (a) out.push(`${X.after}: <b>${dayW(a, lang)}</b>`);
+    const g = days.slice(0, 10).filter(d => d.good > 0).sort((p, q) => q.good - p.good || (p.d < q.d ? -1 : 1)).slice(0, 3).sort((p, q) => p.d < q.d ? -1 : 1);
+    if (g.length) { out.push(`${X.go}:`); g.forEach(d => out.push(`   • ${dayW(d, lang)}`)); } else out.push(X.noGo);
+  }
+  out.push('', `<i>${X.foot}</i>`);
+  const s = await mtnSub(env, chat);
+  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n').slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: [[{ text: s ? X.unsub : X.sub, callback_data: `MS:${lang}`, style: s ? undefined : 'success' }]] } });
+}
+// after each update: tell everyone who asked about NEW fresh snow in the next 6 days, with the best day to go (07–21 h)
+async function mtnTick(env) {
+  if (!env.DB) return; await db(env);
+  const hour = new Date(Date.now() + TZ * 3600e3).getUTCHours();
+  if (hour < 7 || hour > 21) return;
+  const M = await mountainsData(env); if (!M || !M.spots) return;
+  if ((await kv(env, 'mtn_made')) !== M.made) {
+    const today = todayTZ(), lim = new Date(Date.now() + TZ * 3600e3 + 6 * 864e5).toISOString().slice(0, 10);
+    const prev = JSON.parse((await kv(env, 'mtn_keys')) || '[]'), ev = [];
+    for (const sp of M.spots) for (const d of sp.days) if (d.sn >= (M.snow_cm || 2) && d.d >= today && d.d <= lim && !prev.includes(`${sp.id}|${d.d}`)) ev.push({ id: sp.id, d: d.d });
+    if (ev.length) {
+      await setKv(env, 'mtn_new', JSON.stringify(ev)); await setKv(env, 'mtn_ver', M.made);
+      await setKv(env, 'mtn_keys', JSON.stringify([...prev.slice(-200), ...ev.map(e => `${e.id}|${e.d}`)]));
+    }
+    await setKv(env, 'mtn_made', M.made);
+  }
+  const ver = await kv(env, 'mtn_ver'); if (!ver) return;
+  const ev = JSON.parse((await kv(env, 'mtn_new')) || '[]'); if (!ev.length) return;
+  const due = (await env.DB.prepare("SELECT * FROM mtn WHERE COALESCE(ver, '') <> ?1 LIMIT 10").bind(ver).all()).results;
+  for (const s of due) {
+    const lang = MTX[s.lang] ? s.lang : 'ru', X = MTX[lang], out = [X.alert];
+    for (const e of ev) {
+      const sp = M.spots.find(x => x.id === e.id), d = sp && sp.days.find(x => x.d === e.d); if (!d) continue;
+      out.push('', `<b>${esc(sp.name[lang] || sp.name.ru)}</b> — ${dayLabel(d.d, lang)}: ~${Math.round(d.sn)} ${X.cm} ${X.fresh} ${wIcon(d.code)}`);
+      const a = afterSnow(sp, d.d); if (a) out.push(`${X.after}: <b>${dayW(a, lang)}</b>`);
+    }
+    const r = await tg(env, 'sendMessage', { chat_id: s.chat_id, text: out.join('\n'), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: X.all, callback_data: `MT:${lang}` }]] } });
+    if (!r.ok && /blocked|deactivated|chat not found|kicked/i.test(r.description || '')) { await env.DB.prepare('DELETE FROM mtn WHERE chat_id = ?1').bind(s.chat_id).run(); continue; }
+    await env.DB.prepare('UPDATE mtn SET ver = ?2 WHERE chat_id = ?1').bind(s.chat_id, ver).run();
+  }
+}
 // the menu is a keyboard under the input field (white buttons, as in the screenshot): one place for everything, no buttons under messages
 const RKL = {
-  ru: { hourly: '⏱ Сегодня и завтра по часам', days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', back: '⬅️ Назад', help: 'ℹ️ Помощь' },
-  uz: { hourly: '⏱ Bugun va ertaga soatma-soat', days: '🗓 15 kun', video: '🎬 15 kunlik video', outlook: '📅 Haftalar va oylar', now: '🌡 Hozir', cities: '🏙 Shaharlar', loc: '📍 Mening joyim', countries: '🌍 Davlatlar', daily: '🔔 Har kuni', accuracy: '🎯 Aniqlik', alerts: '⚠️ Ogohlantirishlar', site: '🗺 Sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qayta boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yordam' },
-  tr: { hourly: '⏱ Bugün ve yarın saat saat', days: '🗓 15 gün', video: '🎬 15 günlük video', outlook: '📅 Haftalar ve aylar', now: '🌡 Şimdi', cities: '🏙 Şehirler', loc: '📍 Konumum', countries: '🌍 Ülkeler', daily: '🔔 Her gün', accuracy: '🎯 Doğruluk', alerts: '⚠️ Uyarılar', site: '🗺 Site ve küre', home: '🏠 Ana menü', reset: '🔄 Sıfırla', back: '⬅️ Geri', help: 'ℹ️ Yardım' } };
+  ru: { hourly: '⏱ Сегодня и завтра по часам', days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', mtn: '🏔 Горы и снег', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', back: '⬅️ Назад', help: 'ℹ️ Помощь' },
+  uz: { hourly: '⏱ Bugun va ertaga soatma-soat', days: '🗓 15 kun', video: '🎬 15 kunlik video', outlook: '📅 Haftalar va oylar', mtn: '🏔 Tog‘lar va qor', now: '🌡 Hozir', cities: '🏙 Shaharlar', loc: '📍 Mening joyim', countries: '🌍 Davlatlar', daily: '🔔 Har kuni', accuracy: '🎯 Aniqlik', alerts: '⚠️ Ogohlantirishlar', site: '🗺 Sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qayta boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yordam' },
+  tr: { hourly: '⏱ Bugün ve yarın saat saat', days: '🗓 15 gün', video: '🎬 15 günlük video', outlook: '📅 Haftalar ve aylar', mtn: '🏔 Dağlar ve kar', now: '🌡 Şimdi', cities: '🏙 Şehirler', loc: '📍 Konumum', countries: '🌍 Ülkeler', daily: '🔔 Her gün', accuracy: '🎯 Doğruluk', alerts: '⚠️ Uyarılar', site: '🗺 Site ve küre', home: '🏠 Ana menü', reset: '🔄 Sıfırla', back: '⬅️ Geri', help: 'ℹ️ Yardım' } };
 const rkAct = text => { for (const L of Object.values(RKL)) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
 function replyKb(env, lang, id) {
   const X = RKL[lang] || RKL.ru, b = t => ({ text: t });
   return { keyboard: [
     [b(X.hourly)],
     [b(X.days), b(X.video)],
-    ...(id === 'UZ' ? [[b(X.outlook)]] : []),
+    ...(id === 'UZ' ? [[b(X.outlook), b(X.mtn)]] : []),
     [b(X.now), b(X.cities)],
     [{ text: X.loc, request_location: true }, b(X.countries)],
     [b(X.daily), b(X.alerts)],
@@ -716,6 +785,14 @@ async function handle(up, env) {
   }
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
   if (kind === 'O') return sendOutlook(env, chat.id, lang);
+  if (kind === 'MT') return sendMountains(env, chat.id, lang);
+  if (kind === 'MS') {  // the snow signal on / off: the button under the mountains message changes with it
+    const X = MTX[lang] || MTX.ru, cur = await mtnSub(env, chat.id);
+    if (cur) await env.DB.prepare('DELETE FROM mtn WHERE chat_id = ?1').bind(chat.id).run();
+    else await env.DB.prepare('INSERT OR REPLACE INTO mtn (chat_id, lang, ver, added) VALUES (?1, ?2, ?3, ?4)').bind(chat.id, lang, (await kv(env, 'mtn_ver')) || '', new Date().toISOString()).run();
+    await tg(env, 'editMessageReplyMarkup', { chat_id: chat.id, message_id: cb.message.message_id, reply_markup: { inline_keyboard: [[{ text: cur ? X.sub : X.unsub, callback_data: `MS:${lang}` }]] } });
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: cur ? X.off : X.on });
+  }
   if (kind === 'Q') { const [, , la, lo] = cb.data.split(':'); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 5)); }
   if (kind === 'DC') {  // 15 days for one city of the country list: the same numbers as its video, and the video under it
     const [, , rid, ci] = cb.data.split(':'), C = (await cities(env, rid, lang)) || (await cities(env, rid, 'ru')), c = C && C.cities[+ci];
@@ -897,6 +974,7 @@ async function privateMsg(msg, env) {
     if (act === 'reset') return cbk(`RS:${lang}`);
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
     if (act === 'outlook') return sendOutlook(env, chat.id, lang);
+    if (act === 'mtn') return sendMountains(env, chat.id, lang);
     if (act === 'accuracy') return sendAccuracy(env, chat.id, lang);
     if (act === 'now') {  // right now at the user's place (or the country's capital), with the forecast below
       const pl = u && u.place ? JSON.parse(u.place) : null;
@@ -1031,6 +1109,7 @@ async function db(env) {
   await env.DB.exec('CREATE TABLE IF NOT EXISTS searches (day TEXT, q TEXT, found INTEGER, n INTEGER, PRIMARY KEY (day, q))');
   try { await env.DB.exec('ALTER TABLE subs ADD COLUMN post_hour INTEGER'); } catch (e) { /* already there */ }
   try { await env.DB.exec('ALTER TABLE subs ADD COLUMN alert_run TEXT'); } catch (e) { /* already there */ }
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS mtn (chat_id INTEGER PRIMARY KEY, lang TEXT, ver TEXT, added TEXT)');
 }
 async function sub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM subs WHERE chat_id = ?1').bind(chat).first(); }
 async function saveSub(env, chat, regions, lang, lastDay, hour = POST_HOUR) {
