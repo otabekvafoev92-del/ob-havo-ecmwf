@@ -219,11 +219,18 @@ async function sendOutlook(env, chat, lang) {
   const I = await (await fetch(`${base(env)}/prob/outlook/index.json?t=${Date.now()}`)).json().catch(() => null);
   let its = I ? I.items.filter(i => i.lang === lang) : []; if (I && !its.length) its = I.items.filter(i => i.lang === 'ru');
   if (!its.length) return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].none });
-  const cap = [`🇺🇿 <b>${OLK[lang]}</b>`, '', ...its.map(i => `<b>${i.title}</b> (${i.start.slice(8, 10)}.${i.start.slice(5, 7)}–${i.end.slice(8, 10)}.${i.end.slice(5, 7)})\n${esc(i.text)}`)].join('\n').slice(0, 1024);
-  const media = its.map((i, k) => ({ type: 'photo', media: `${base(env)}/prob/${i.img}?v=${encodeURIComponent(I.made || '')}`, ...(k === 0 ? { caption: cap, parse_mode: 'HTML' } : {}) }));
-  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
-  const r = await tg(env, 'sendMediaGroup', { chat_id: chat, media });
-  if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML' });
+  // every map is its own message with its own caption: big enough to read, clear what it shows
+  const dd = x => `${x.slice(8, 10)}.${x.slice(5, 7)}`, v = encodeURIComponent(I.made || '');
+  await tg(env, 'sendMessage', { chat_id: chat, text: `🇺🇿 <b>${OLK[lang]}</b>`, parse_mode: 'HTML' });
+  let r = null;
+  for (const i of its) {
+    const imgs = i.imgs || [i.img], caps = i.caps || [];
+    for (let k = 0; k < imgs.length; k++) {
+      const cap = `<b>${esc(i.title)}</b>${caps[k] ? ` · ${esc(caps[k])}` : ''}\n${dd(i.start)}–${dd(i.end)}${k === 0 && i.text ? `\n${esc(i.text)}` : ''}`;
+      await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
+      r = await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/${imgs[k]}?v=${v}`, caption: cap.slice(0, 1024), parse_mode: 'HTML' });
+    }
+  }
   return r;
 }
 // the menu is a keyboard under the input field (white buttons, as in the screenshot): one place for everything, no buttons under messages

@@ -2150,7 +2150,7 @@ async function renderProbPage() {
     if (!PROB.OL) return;
     const its = PROB.OL.items.filter(i => i.lang === lang); if (!its.length) return;
     box.hidden = false;
-    box.innerHTML = `<h2>${U.outlook}</h2><div class="ol-grid">${its.map(i => `<figure><a href="prob/${i.img}" target="_blank" rel="noopener"><img loading="lazy" src="prob/${i.img}" alt="${i.title}"></a><figcaption><b>${i.title}</b> <span class="muted">${i.start.slice(8, 10)}.${i.start.slice(5, 7)}–${i.end.slice(8, 10)}.${i.end.slice(5, 7)}</span><br>${i.text}</figcaption></figure>`).join('')}</div>`;
+    box.innerHTML = `<h2>${U.outlook}</h2><div class="ol-grid">${its.flatMap(i => (i.imgs || [i.img]).map((im, k) => `<figure><a href="prob/${im}" target="_blank" rel="noopener"><img loading="lazy" src="prob/${im}" alt="${i.title}"></a><figcaption><b>${i.title}</b>${(i.caps || [])[k] ? ` · ${i.caps[k]}` : ''} <span class="muted">${i.start.slice(8, 10)}.${i.start.slice(5, 7)}–${i.end.slice(8, 10)}.${i.end.slice(5, 7)}</span>${k === 0 ? `<br>${i.text}` : ''}</figcaption></figure>`)).join('')}</div>`;
   })();
   (async () => {  // the professional briefing (prob/broadcast.py): video, thumbnail and the YouTube text
     if (PROB.YT === undefined) { try { PROB.YT = await (await fetch('prob/yt/index.json', { cache: 'no-cache' })).json(); } catch { PROB.YT = null; } }

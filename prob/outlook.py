@@ -92,6 +92,75 @@ DX = {'ru': dict(title='Пыль и качество воздуха', sub='PM10,
       'tr': dict(title='Toz ve hava kalitesi', sub='PM10, günlük en yüksek, µg/m³', bands=['iyi', 'orta', 'hassaslar için zararlı', 'zararlı', 'çok zararlı', 'tehlikeli'], src='CAMS tahmini (ECMWF Copernicus) · Open-Meteo verisi')}
 
 
+BOX = list(Rn.MAP_BOX)   # one big map per picture (left), the explanation card on the right
+CARD_X, CARD_W = 0.776, 0.212
+PR_LAB = ['< 1', '1–3', '3–5', '5–10', '10–20', '20–40', '40–80', '80+']
+TA_LAB = ['−4° и ниже', '−4…−3°', '−3…−2°', '−2…−1°', '−1…−½°', '≈ норма', '+½…+1°', '+1…+2°', '+2…+3°', '+3…+4°', '+4° и выше']
+TA_LAB = {'ru': TA_LAB, 'uz': [x.replace('и ниже', 'va past').replace('и выше', 'va yuqori').replace('≈ норма', '≈ me’yor') for x in TA_LAB],
+          'tr': [x.replace('и ниже', 've altı').replace('и выше', 've üstü').replace('≈ норма', '≈ normal') for x in TA_LAB]}
+T_ABS = [(-40, -10), (-10, -5), (-5, 0), (0, 5), (5, 10), (10, 15), (15, 20), (20, 25), (25, 30), (30, 35), (35, 50)]
+
+
+def _fit(R, box):
+    """Widen the map window to the picture's box, so the map fills it edge to edge."""
+    x0, x1, y0, y1 = R.ext; asp = box[2] * 12.8 / (box[3] * 7.2); w, h = x1 - x0, y1 - y0
+    if w / h < asp: c = (x0 + x1) / 2; w = h * asp; return (c - w / 2, c + w / 2, y0, y1)
+    c = (y0 + y1) / 2; h = w / asp; return (x0, x1, c - h / 2, c + h / 2)
+
+
+def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summary, src, label):
+    """Full HD 16:9: a single large map with the cities' numbers, and a card that says what the colours mean."""
+    fig = plt.figure(figsize=(12.8, 7.2), dpi=100); fig.patch.set_facecolor(Rn.BG)
+    x = Rn._brand(fig, 0.022, 0.948)
+    nm = fig.text(x + 0.012, 0.948, TX[lang]['title'], fontsize=18, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
+    bb = nm.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+    tx = fig.text(bb.x1 + 0.026, 0.948, badge.upper(), fontsize=9, fontweight='bold', color=Rn.SKY, va='center')
+    tb = tx.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+    Rn._card(fig, tb.x0 - 0.01, 0.93, tb.width + 0.02, 0.036, fc=Rn.CARD2, ec=Rn.LINE, r=0.012)
+    fig.text(0.985, 0.95, when, fontsize=15, fontweight='bold', color=Rn.ACCENT, ha='right', va='center')
+    R.view = None; R.main = cities[0]
+    ax = Rn._basemap(fig, R, BOX)
+    if F is not None:
+        U = Rn._up(R, F)
+        if kind == 'pr': ax.contourf(R.XU, R.YU, U, levels=PR_LV, colors=PR_COL, zorder=2, antialiased=True); lv, cols = PR_LV[1:-1], PR_COL[1:]
+        elif kind == 'ta': ax.contourf(R.XU, R.YU, U, levels=TA_LV, colors=TA_COL, extend='both', zorder=2, antialiased=True); lv, cols = TA_LV[1:-1], TA_COL[1:]
+        elif kind == 'aq': ax.contourf(R.XU, R.YU, U, levels=AQ_LV, colors=AQ_COL, zorder=2, antialiased=True); lv, cols = AQ_LV[1:-1], AQ_COL[1:]
+        else: ax.contourf(R.XU, R.YU, U, levels=Rn.T_LV, colors=Rn.T_COL[:len(Rn.T_LV) - 1], extend='both', zorder=2, antialiased=True); lv = cols = None
+        if lv: ax.contour(R.XU, R.YU, U, levels=lv, colors=[Rn.OUTLINE], linewidths=0.35, alpha=0.35, zorder=2.05)  # crisp steps
+    Rn._borders(ax, R)
+    lab = {}
+    for p in cities:
+        gx, gy = R._xy(p); v = float(Rn.bilinear(F, gx, gy)) if F is not None else np.nan
+        lab[id(p)] = label(p, v)
+    R.cities_bak = R.cities; R.cities = cities; R.cxy = [R.proj(p['lon'], p['lat']) for p in cities]
+    Rn._cities(fig, ax, R, lambda p, main: lab.get(id(p), Rn.city_name(p, lang)))
+    R.cities = R.cities_bak; R.cxy = [R.proj(p['lon'], p['lat']) for p in R.cities]
+    # the card: what this map shows, the main city, and the colour key
+    X0, X1 = CARD_X + 0.016, CARD_X + CARD_W - 0.014
+    Rn._card(fig, CARD_X, BOX[1] - 0.005, CARD_W, BOX[3] + 0.01)
+    yy = BOX[1] + BOX[3] - 0.04
+    for line in __import__('textwrap').wrap(title, 22)[:3]: fig.text(X0, yy, line, fontsize=12, fontweight='bold', color=Rn.INK, va='center'); yy -= 0.034
+    yy -= 0.01
+    fig.text(X0, yy, Rn.city_name(cities[0], lang), fontsize=10, color=Rn.MUTED, va='center'); yy -= 0.055
+    fig.text(X0, yy, big, fontsize=26, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.ACCENT, va='center'); yy -= 0.05
+    for line in __import__('textwrap').wrap(sub, 30)[:2]: fig.text(X0, yy, line, fontsize=9.5, color=Rn.INK, va='center'); yy -= 0.03
+    yy -= 0.025
+    if kind == 'pr': rows = list(zip(PR_COL, PR_LAB))[::-1]
+    elif kind == 'ta': rows = list(zip(TA_COL, TA_LAB[lang]))[::-1]
+    elif kind == 'aq': rows = list(zip(AQ_COL, [f"{a}–{b}  {n}" if b < 5000 else f"{a}+  {n}" for a, b, n in zip(AQ_LV, AQ_LV[1:], DX[lang]['bands'])]))[::-1]
+    else: rows = [(Rn.T_COL[min(len(Rn.T_COL) - 1, max(0, int((a + b) / 2 + 40) // 4))], f"{Rn.fmt_t(a) if a > -40 else '…'} … {Rn.fmt_t(b) if b < 50 else '…'}") for a, b in T_ABS][::-1]
+    dy = min(0.034, (yy - BOX[1] - 0.03) / max(1, len(rows)))
+    for c, t in rows:
+        Rn._card(fig, X0, yy - dy * 0.42, 0.034, dy * 0.84, fc=c, ec=Rn.LINE, r=0.004)
+        fig.text(X0 + 0.042, yy, t, fontsize=8.6 if len(t) < 26 else 7.4, color=Rn.INK, va='center'); yy -= dy
+    # bottom line: the main city in words and the source
+    Rn._card(fig, 0.012, 0.04, 0.976, 0.125)
+    fig.text(0.028, 0.118, summary, fontsize=14, fontweight='bold', color=Rn.INK, va='center')
+    fig.text(0.028, 0.072, src, fontsize=9, color=Rn.MUTED, va='center')
+    fig.text(0.972, 0.072, 't.me/ObHavo_ECMWF_bot · ECMWF CC BY 4.0', fontsize=9, color=Rn.FAINT, va='center', ha='right')
+    fig.savefig(path, dpi=150, facecolor=Rn.BG); plt.close(fig)
+
+
 def draw_dust(R, aq, lang, path, cities):
     X = DX[lang]; L = Rn.T[lang]
     fig = plt.figure(figsize=(12.8, 7.2), dpi=100); fig.patch.set_facecolor(Rn.BG)
@@ -217,6 +286,37 @@ def draw(R, per, lang, path, cities):
     return words
 
 
+def draw_period(R, per, lang, out, cities):
+    """Two separate pictures for one period: precipitation total, and temperature (against the normal when there is one)."""
+    X = TX[lang]; mon = X['months']; s, e = per['start'], per['end']
+    when = f"{mon[s.month - 1].capitalize()} {s.year}" if per['key'] in ('m0', 'm1') else f"{s:%d.%m} – {e:%d.%m.%Y}"
+    src = X['src_p'] if per['key'] == 'past' else X['src_m'] if per['key'] in ('m0', 'm1') else X['src_f']
+    m = cities[0]; gx, gy = R._xy(m)
+    v = lambda a: float(Rn.bilinear(field(a, R), gx, gy)) if a is not None and field(a, R) is not None else np.nan
+    pr, pa, tt, ta = v(per['pr']), v(per['pa']), v(per['t']), v(per['ta'])
+    pw = (X['more'] if pa > 0.15 * max(pr - pa, 1) else X['less'] if pa < -0.15 * max(pr - pa, 1) else X['about']) if np.isfinite(pa) and pr > 1 else ''
+    tw = (X['warmer'] if ta >= 0.5 else X['colder'] if ta <= -0.5 else X['about']) if np.isfinite(ta) else ''
+    words = f"{Rn.city_name(m, lang)}: {pr:.0f} {X['mm']}" + (f" ({pw})" if pw else '')
+    if np.isfinite(tt): words += f" · {Rn.fmt_t(tt)}"
+    if np.isfinite(ta): words += f" ({'+' if ta > 0 else ''}{ta:.1f}° {X['norm']}, {tw})"
+    badge = X[per['key']] + (f" · {X['fact']}" if per['key'] == 'past' else '')
+    imgs = []
+    f1 = out / f"{per['key']}_p_{lang}.png"
+    one_map(R, lang, f1, cities, badge, when, X['pr'] + (' · ' + X['fact'] if per['key'] == 'past' else ''), field(per['pr'], R), 'pr', f"{pr:.0f} {X['mm']}",
+            pw or X['pr'], words, src, lambda p, v_: f"{Rn.city_name(p, lang)} {v_:.0f} {X['mm']}" if np.isfinite(v_) else Rn.city_name(p, lang))
+    imgs.append(f"outlook/{f1.name}")
+    f2 = out / f"{per['key']}_t_{lang}.png"
+    if per['ta'] is not None:
+        one_map(R, lang, f2, cities, badge, when, X['ta'], field(per['ta'], R), 'ta', f"{'+' if ta > 0 else ''}{ta:.1f}°" if np.isfinite(ta) else '—',
+                (f"{tw} · {X['tm'].lower()} {Rn.fmt_t(tt)}" if np.isfinite(tt) else tw), words, src,
+                lambda p, v_: f"{Rn.city_name(p, lang)} {'+' if v_ > 0.05 else ''}{v_:.1f}°" if np.isfinite(v_) else Rn.city_name(p, lang))
+    else:
+        one_map(R, lang, f2, cities, badge, when, X['tm'], field(per['t'], R), 't', Rn.fmt_t(tt) if np.isfinite(tt) else '—', X['tm'], words, src,
+                lambda p, v_: f"{Rn.city_name(p, lang)} {Rn.fmt_t(v_)}" if np.isfinite(v_) else Rn.city_name(p, lang))
+    imgs.append(f"outlook/{f2.name}")
+    return words, imgs
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('npz'); ap.add_argument('wx'); ap.add_argument('out'); ap.add_argument('--langs', default='uz,ru,tr')
     a = ap.parse_args()
@@ -230,18 +330,30 @@ def main():
     for lang in a.langs.split(','):
         cities = [R.mains[lang]] + [p for p in R.cities if p is not R.mains[lang]][:9]
         for per in pers:
-            words = draw(R, per, lang, out / f"{per['key']}_{lang}.png", cities)
-            idx['items'].append({'key': per['key'], 'lang': lang, 'img': f"outlook/{per['key']}_{lang}.png", 'start': per['start'].isoformat(), 'end': per['end'].isoformat(),
-                                 'title': TX[lang][per['key']], 'text': words})
+            words, imgs = draw_period(R, per, lang, out, cities)
+            idx['items'].append({'key': per['key'], 'lang': lang, 'img': imgs[0], 'imgs': imgs, 'caps': [TX[lang]['pr'], TX[lang]['ta'] if per['ta'] is not None else TX[lang]['tm']],
+                                 'start': per['start'].isoformat(), 'end': per['end'].isoformat(), 'title': TX[lang][per['key']], 'text': words})
             print('outlook', per['key'], lang, words, flush=True)
     # dust and air quality (CAMS): one map of four days, and warnings for very dusty days at the cities
     try:
         aq = fetch_aq(pts); alerts = []
         for lang in a.langs.split(','):
             cities = [R.mains[lang]] + [p for p in R.cities if p is not R.mains[lang]][:9]
-            w = draw_dust(R, aq, lang, out / f'dust_{lang}.png', cities)
-            txt = f"{Rn.city_name(w[0], lang)} {w[1]:%d.%m}: PM10 {w[2]:.0f}" if w else ''
-            idx['items'].append({'key': 'dust', 'lang': lang, 'img': f'outlook/dust_{lang}.png', 'start': aq[0]['date'].isoformat(), 'end': aq[-1]['date'].isoformat(), 'title': DX[lang]['title'], 'text': txt})
+            imgs, caps, worst = [], [], None
+            for k, day in enumerate(aq[:4]):  # one picture per day
+                F = field(day['pm10'], R); gx, gy = R._xy(cities[0]); v0 = float(Rn.bilinear(F, gx, gy))
+                for p in cities:
+                    q = float(Rn.bilinear(F, *R._xy(p)))
+                    if np.isfinite(q) and (worst is None or q > worst[2]): worst = (p, day['date'], q)
+                band = DX[lang]['bands'][int(np.clip(np.digitize(v0, AQ_LV) - 1, 0, 5))]
+                d = day['date']; wd = f"{Rn.T[lang]['wd'][d.weekday()]} {d:%d.%m}"
+                f = out / f'dust{k}_{lang}.png'
+                one_map(R, lang, f, cities, DX[lang]['title'], wd, DX[lang]['sub'], F, 'aq', f'{v0:.0f}', band,
+                        f"{Rn.city_name(cities[0], lang)} {wd}: PM10 {v0:.0f} — {band}", DX[lang]['src'],
+                        lambda p, v_: f"{Rn.city_name(p, lang)} {v_:.0f}" if np.isfinite(v_) else Rn.city_name(p, lang))
+                imgs.append(f'outlook/{f.name}'); caps.append(wd)
+            txt = f"{Rn.city_name(worst[0], lang)} {worst[1]:%d.%m}: PM10 {worst[2]:.0f}" if worst else ''
+            idx['items'].append({'key': 'dust', 'lang': lang, 'img': imgs[0], 'imgs': imgs, 'caps': caps, 'start': aq[0]['date'].isoformat(), 'end': aq[-1]['date'].isoformat(), 'title': DX[lang]['title'], 'text': txt})
         for p in R.cities:
             gx, gy = R._xy(p)
             for day in aq[:3]:
