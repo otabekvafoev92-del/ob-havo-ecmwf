@@ -94,12 +94,15 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
     rainy, snowy = rain * (1 - snow), rain * snow
     out = np.zeros((2, n))
     # real rain: two recordings (light rain, heavy rain) crossfaded by how likely and heavy the rain is
-    rl, rh = _rec('rain_light'), _rec('rain_heavy')
+    rl, rm, rh = _rec('rain_light'), _rec('rain_medium'), _rec('rain_heavy')
     real = rl is not None and rh is not None
-    if real:
-        gl = np.clip(rainy / 0.35, 0, 1) * (1 - np.clip((rainy - 0.55) / 0.35, 0, 1) * 0.6)
-        gh = np.clip((rainy - 0.45) / 0.4, 0, 1)
+    if real:  # three steps: light → rain on concrete (moderate) → heavy, each fading into the next
+        ramp = lambda a, b: np.clip((rainy - a) / (b - a), 0, 1)
+        gl = ramp(0.0, 0.3) * (1 - 0.7 * ramp(0.4, 0.65))
+        gm = ramp(0.3, 0.5) * (1 - 0.6 * ramp(0.7, 0.9)) if rm is not None else 0
+        gh = ramp(0.65, 0.9)
         out += _loop(rl, n, int(rng.integers(rl.shape[1]))) * 1.0 * gl + _loop(rh, n, int(rng.integers(rh.shape[1]))) * 0.95 * gh
+        if rm is not None: out += _loop(rm, n, int(rng.integers(rm.shape[1]))) * 0.9 * gm
     for ch in range(2):  # two decorrelated channels: a wide, natural sound
         wn = rng.standard_normal(n)
         # wind: brown noise, low and breathy, with slow gusts; a light breeze is always there
