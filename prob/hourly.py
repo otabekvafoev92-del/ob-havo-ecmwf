@@ -81,7 +81,7 @@ NAVY, PAPER, LAND, ICE = '#2b3a4e', '#f3f5f7', '#e6e9ed', '#ffffff'
 RAIN_C = ['#bcdcf2', '#8cc0e6', '#5a9fd6', '#3a78b5']   # 30–50–70–90 %: soft blues
 SNOW_C = ['#e4d4f0', '#ccb0e3', '#ad8bd0', '#8a63b8']   # the same steps for snow: soft lilac
 P_LV = [30, 50, 70, 90, 101]
-LEG = {'ru': ('Вероятность осадков', 'синий — дождь, сиреневый — снег'), 'uz': ('Yog‘in ehtimoli', 'ko‘k — yomg‘ir, binafsha — qor'), 'tr': ('Yağış olasılığı', 'mavi — yağmur, mor — kar')}
+LEG = {'ru': ('Вероятность осадков', 'синий — дождь, сиреневый — снег; пунктир — температура'), 'uz': ('Yog‘in ehtimoli', 'ko‘k — yomg‘ir, binafsha — qor; punktir — harorat'), 'tr': ('Yağış olasılığı', 'mavi — yağmur, mor — kar; kesikli — sıcaklık')}
 
 
 def _kind(p, c, t):
@@ -149,7 +149,17 @@ def frame(R, k, lang, path, loc, info, city):
         if F is None or F.max() < P_LV[0]: continue
         out_ = ax.contourf(R.XU, R.YU, F, levels=P_LV, colors=cols, alpha=0.35, zorder=1.2)  # the neighbours: faint
         cs = ax.contourf(R.XU, R.YU, F, levels=P_LV, colors=cols, zorder=2)
-        clip = matplotlib.patches.PathPatch(matplotlib.path.Path(verts, codes), transform=ax.transData, facecolor='none', edgecolor='none'); ax.add_patch(clip); cs.set_clip_path(clip)
+        edge = ax.contour(R.XU, R.YU, F, levels=P_LV[:-1], colors=[cols[-1]], linewidths=[0.9, 0.9, 1.1, 1.3], alpha=0.75, zorder=2.2)  # the edges of the rain/snow areas
+        clip = matplotlib.patches.PathPatch(matplotlib.path.Path(verts, codes), transform=ax.transData, facecolor='none', edgecolor='none'); ax.add_patch(clip); cs.set_clip_path(clip); edge.set_clip_path(clip)
+    if TU is not None and np.isfinite(TU).any():  # isotherms every 5°, labelled, inside the country
+        lo_, hi_ = np.nanmin(TU), np.nanmax(TU); lv_ = [v for v in range(-40, 50, 5) if lo_ < v < hi_]
+        if lv_:
+            iso = ax.contour(R.XU, R.YU, TU, levels=lv_, colors='#e0895a', linewidths=0.9, linestyles='--', alpha=0.85, zorder=2.6)
+            clip2 = matplotlib.patches.PathPatch(matplotlib.path.Path(verts, codes), transform=ax.transData, facecolor='none', edgecolor='none'); ax.add_patch(clip2); iso.set_clip_path(clip2)
+            lab = ax.clabel(iso, fmt=lambda v: Rn.fmt_t(v), fontsize=8, inline=True, inline_spacing=4)
+            for t_ in lab:
+                t_.set_color('#c8784a'); t_.set_fontweight('bold')
+                if not matplotlib.path.Path(verts, codes).contains_point(t_.get_position()): t_.set_visible(False)
     ax.add_collection(LC(R.a1, colors='#c9d3de', linewidths=0.7, zorder=3))
     ax.add_collection(LC(rings, colors=NAVY, linewidths=6, alpha=0.06, zorder=3.5))
     ax.add_collection(LC(rings, colors=NAVY, linewidths=1.8, zorder=4))
@@ -176,11 +186,11 @@ def frame(R, k, lang, path, loc, info, city):
             ax.annotate(Rn.fmt_t(tt), (cx, cy), xytext=(0, 7), textcoords='offset points', ha='center', va='bottom', fontsize=9.5, fontweight='bold', color=NAVY, zorder=7,
                         bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.8', fc='#ffffff', ec='#d5dce4', lw=0.8))
     # what the colours mean: a small key in the corner of the map (its own axes, above the map)
-    lg = fig.add_axes([0.012, 0.16, 0.2, 0.062], zorder=20); lg.set_xlim(0, 1); lg.set_ylim(0, 1); lg.axis('off')
+    lg = fig.add_axes([0.012, 0.16, 0.25, 0.062], zorder=20); lg.set_xlim(0, 1); lg.set_ylim(0, 1); lg.axis('off')
     lg.add_patch(matplotlib.patches.FancyBboxPatch((0, 0), 1, 1, boxstyle='round,pad=0,rounding_size=0.08', fc='#ffffff', ec='#dde3ea', lw=0.8, transform=lg.transAxes, mutation_aspect=0.3))
     lg.text(0.04, 0.8, LEG[lang][0], fontsize=7.6, fontweight='bold', color=NAVY, va='center')
     for i_, (c1, c2, lv) in enumerate(zip(RAIN_C, SNOW_C, ('30', '50', '70', '90 %'))):
-        x_ = 0.04 + i_ * 0.235
+        x_ = 0.04 + i_ * 0.19
         lg.add_patch(matplotlib.patches.Rectangle((x_, 0.4), 0.06, 0.22, fc=c1, ec='none')); lg.add_patch(matplotlib.patches.Rectangle((x_ + 0.06, 0.4), 0.04, 0.22, fc=c2, ec='none'))
         lg.text(x_ + 0.115, 0.51, lv, fontsize=7.2, color=NAVY, va='center')
     lg.text(0.04, 0.17, LEG[lang][1], fontsize=6.8, color=Rn.MUTED, va='center')

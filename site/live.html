@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700&family=Unbounded:wght@600;700&display=swap">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <style>
 :root{--navy:#2b3a4e;--paper:#f3f5f7;--card:#fff;--line:#dde3ea;--ink:#2b3a4e;--muted:#6b7a8c;--accent:#e0895a;--rain:#4f8cc4;--snow:#8a63b8}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -154,6 +155,50 @@ function paint(f) {  // the grid image over its cells (each pixel is the centre 
   cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(f, x0 - dx / 2, y0 - dy / 2, x1 - x0 + dx, y1 - y0 + dy);
 }
 
+// the edges of the rain/snow areas and the isotherms every 5° (labelled), inside the country
+function lines(h) {
+  if (!window.d3) return;
+  // a 3× finer grid (bilinear between the model points) so the lines are smooth curves, not steps
+  const n = LAT_N(), s_ = LAT_S(), F = 3, GX = (NX - 1) * F + 1, GY = (NY - 1) * F + 1, Pv = new Float64Array(GX * GY), Tv = new Float64Array(GX * GY);
+  for (let y = 0; y < GY; y++) for (let x = 0; x < GX; x++) {
+    const lat = n - (n - s_) * y / (GY - 1), lon = M.lon[0] + (M.lon[1] - M.lon[0]) * x / (GX - 1), i = y * GX + x;
+    Pv[i] = val(h, 0, lat, lon) || 0; const t = val(h, 1, lat, lon); Tv[i] = isFinite(t) ? t : -99;
+  }
+  // a light blur: temperature is stored in 0.5° steps, which would draw stairs
+  const blur = (A, r) => { const B2 = new Float64Array(A.length);
+    for (let pass = 0; pass < 2; pass++) {
+      const src = pass ? B2.slice() : A, dst = pass ? A : B2, horiz = !pass;
+      for (let y = 0; y < GY; y++) for (let x = 0; x < GX; x++) { let s2 = 0, k = 0;
+        for (let d = -r; d <= r; d++) { const xx = horiz ? x + d : x, yy = horiz ? y : y + d; if (xx < 0 || yy < 0 || xx >= GX || yy >= GY) continue; const v = src[yy * GX + xx]; if (v > -90) { s2 += v; k++; } }
+        dst[y * GX + x] = src[y * GX + x] > -90 && k ? s2 / k : src[y * GX + x]; } } };
+  blur(Tv, 3); blur(Pv, 2);
+  const g2ll = ([x, y]) => [M.lon[0] + (M.lon[1] - M.lon[0]) * (x - 0.5) / (GX - 1), n - (n - s_) * (y - 0.5) / (GY - 1)];
+  const stroke = (geo) => { cx.beginPath(); for (const poly of geo.coordinates) for (const ring of poly) ring.forEach((p, i) => { const [a, b] = proj(...g2ll(p)); i ? cx.lineTo(a, b) : cx.moveTo(a, b); }); cx.stroke(); };
+  cx.save(); path(M.country); cx.clip();
+  cx.setLineDash([]);
+  for (const g of d3.contours().size([GX, GY]).thresholds([30, 50, 70, 90])(Array.from(Pv))) { cx.strokeStyle = 'rgba(58,120,181,.75)'; cx.lineWidth = g.value >= 70 ? 1.4 : 1; stroke(g); }
+  const ok = Array.from(Tv).filter(t => t > -90), lo = Math.min(...ok), hi = Math.max(...ok), th = [];
+  for (let v = -40; v <= 45; v += 5) if (v > lo && v < hi) th.push(v);
+  const iso = d3.contours().size([GX, GY]).thresholds(th)(Array.from(Tv));
+  cx.setLineDash([5, 4]); cx.strokeStyle = 'rgba(224,137,90,.9)'; cx.lineWidth = 1.1;
+  for (const g of iso) stroke(g);
+  cx.setLineDash([]);
+  // a label on the longest piece of each isotherm, where it is inside the country
+  cx.font = "700 11px 'Golos Text',sans-serif"; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  const cp = new Path2D(); for (const r of M.country) r.forEach(([x, y], i) => { const [a, b] = proj(x, y); i ? cp.lineTo(a, b) : cp.moveTo(a, b); });
+  for (const g of iso) {
+    let best = null; for (const poly of g.coordinates) for (const ring of poly) if (!best || ring.length > best.length) best = ring;
+    if (!best || best.length < 12) continue;
+    for (const f of [0.5, 0.3, 0.7]) {
+      const [a, b] = proj(...g2ll(best[Math.floor(best.length * f)]));
+      const dp = devicePixelRatio || 1; if (a < 20 || b < 12 || a > W - 20 || b > Hc - 12 || !cx.isPointInPath(cp, a * dp, b * dp)) continue;
+      const t = fmtT(g.value), w = cx.measureText(t).width + 8;
+      cx.fillStyle = 'rgba(255,255,255,.92)'; cx.fillRect(a - w / 2, b - 8, w, 16); cx.fillStyle = '#c8784a'; cx.fillText(t, a, b + 0.5); break;
+    }
+  }
+  cx.restore(); cx.textAlign = 'left';
+}
+
 function draw() {
   const h = hour;
   cx.clearRect(0, 0, W, Hc); cx.fillStyle = '#e6e9ed'; cx.fillRect(0, 0, W, Hc);
@@ -162,6 +207,7 @@ function draw() {
   const f = field(h);
   cx.save(); cx.globalAlpha = 0.35; paint(f); cx.restore();          // the neighbours: faint
   cx.save(); path(M.country); cx.clip(); paint(f); cx.restore();     // the country: full colour
+  lines(h);
   cx.strokeStyle = '#c9d3de'; cx.lineWidth = 0.7; path(M.admin); cx.stroke();
   cx.strokeStyle = '#2b3a4e'; cx.lineWidth = 1.8; path(M.country); cx.stroke();
   // the cities: a white pill with the name and temperature
