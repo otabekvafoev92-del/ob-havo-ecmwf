@@ -237,10 +237,12 @@ function draw() {
   card(h); timeline(h); header(h); if (sound) sound.set(h);
 }
 
-function when(h) { return M.times ? new Date(M.times[Math.min(H - 1, Math.round(h))] + ':00Z') : new Date(new Date(M.start + ':00Z').getTime() + Math.round(h) * 3600e3); }
+// every time on the page in the phone's own time zone (the data comes in the bot's time, M.off)
+const SHIFT = () => (-new Date().getTimezoneOffset() / 60 - M.off) * 3600e3;
+function when(h) { return new Date((M.times ? new Date(M.times[Math.min(H - 1, Math.round(h))] + ':00Z').getTime() : new Date(M.start + ':00Z').getTime() + Math.round(h) * 3600e3) + SHIFT()); }
 const p2 = n => String(n).padStart(2, '0');
 function header(h) {
-  const t = when(h), d0 = new Date(M.start + ':00Z'), day = Math.floor((t - d0) / 864e5);
+  const t = when(h), nowL = new Date(Date.now() - new Date().getTimezoneOffset() * 60000), day = Math.round((Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) - Date.UTC(nowL.getUTCFullYear(), nowL.getUTCMonth(), nowL.getUTCDate())) / 864e5);
   if (M.times) {  // a model window: its day and its hours
     const i = Math.min(H - 1, Math.round(h)), e = i + 1 < H ? new Date(M.times[i + 1] + ':00Z') : new Date(t.getTime() + 6 * 3600e3);
     $('ht').textContent = `${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)}`;

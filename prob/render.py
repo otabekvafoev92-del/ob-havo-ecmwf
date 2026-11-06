@@ -517,6 +517,10 @@ def _card(fig, x, y, w, h, fc=CARD, ec=LINE, r=0.012, z=-5):  # under the axes
                                       mutation_aspect=fig.get_figwidth() / fig.get_figheight()))
 
 
+VIEW_TZ = {'uz': 5, 'ru': 5, 'tr': 3}
+VIEW_TZ_LABEL = {'uz': 'Toshkent vaqti', 'ru': 'по Ташкенту', 'tr': 'TSİ'}
+
+
 def _when(lang, run, step, off, win):
     """('Сб 31.10 · 17:00–20:00', tz) — the forecast window in local time."""
     t1 = run + dt.timedelta(hours=int(step) - int(win) + off); t2 = run + dt.timedelta(hours=int(step) + off)
@@ -551,8 +555,12 @@ def _header(fig, R, D, s, lang, title):
     nm = fig.text(x + 0.014, 0.965, NAMES[R.id][lang], fontsize=14, fontfamily=DISPLAY, fontweight='bold', color='#ffffff', va='center')
     bb = nm.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
     fig.text(bb.x1 + 0.018, 0.965, title, fontsize=11, color='#a9bdd6', va='center')
-    wt = fig.text(0.984, 0.965, _when(lang, run, step, off, D['win'][s]), fontsize=14, fontweight='bold', color='#f0b88a', ha='right', va='center')
-    return run, step, off
+    # the time is the viewer's: the bot's audience reads Russian and Uzbek in Tashkent (UTC+5), Turkish in Türkiye (UTC+3)
+    vo = VIEW_TZ.get(lang, off)
+    wt = fig.text(0.984, 0.965, _when(lang, run, step, vo, D['win'][s]), fontsize=14, fontweight='bold', color='#f0b88a', ha='right', va='center')
+    wb = wt.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+    fig.text(wb.x0 - 0.01, 0.965, VIEW_TZ_LABEL[lang], fontsize=9.5, color='#a9bdd6', ha='right', va='center')
+    return run, step, vo
 
 
 def zoom_view(R, p, z):

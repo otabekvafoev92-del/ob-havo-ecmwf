@@ -129,7 +129,7 @@ def frame(R, k, lang, path, loc, info, city):
     t = loc[k]; day = X['today'] if t.date() == loc[0].date() else X['tomorrow'] if t.date() == loc[0].date() + dt.timedelta(days=1) else ''
     tm = fig.text(0.984, 0.965, f"{t:%H}:00", fontsize=19, fontfamily=Rn.DISPLAY, fontweight='bold', color='#f0b88a', ha='right', va='center')
     tb2 = tm.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    fig.text(tb2.x0 - 0.012, 0.965, f"{day} · {L['wd'][t.weekday()]} {t:%d.%m}", fontsize=11, fontweight='bold', color='#c9d6e5', ha='right', va='center')
+    fig.text(tb2.x0 - 0.012, 0.965, f"{day} · {L['wd'][t.weekday()]} {t:%d.%m} · {Rn.VIEW_TZ_LABEL.get(lang, '')}", fontsize=11, fontweight='bold', color='#c9d6e5', ha='right', va='center')
     # the map
     box = [0.004, 0.15, 0.81, 0.775]  # the map takes most of the frame
     ax = fig.add_axes(box); ax.axis('off')
@@ -296,49 +296,57 @@ def main():
     out = pathlib.Path(a.out) / 'hr'; out.mkdir(parents=True, exist_ok=True)
     index = []
     for region in a.regions.split(','):
-        R = Rn.Region(D, geo, region, P, D['amt']); off = R.off if R.off is not None else 5
-        # the day's chance from the model windows (before they become hours): the same rule as the daily texts
-        win_day = [Rn.local_day(run, st, off, D['win'][i]) for i, st in enumerate(D['steps'])]
-        pw = {lang: R.series(R.mains[lang]) for lang in a.langs.split(',') if R.mains.get(lang) is not None}
-        try:  # the 15 days for the interactive map: the model windows themselves, each with its local start time
-            tw = [(run + dt.timedelta(hours=int(st) - int(D['win'][i]) + off)).strftime('%Y-%m-%dT%H:00') for i, st in enumerate(D['steps'])]
-            export_live(R, region, None, out, run, off, 'live15', tw)
-        except Exception as e: print('live15 export failed:', region, e, flush=True)
-        hrs, loc = to_hours(R, D, run, off)
-        try: export_live(R, region, loc, out, run, off)
-        except Exception as e: print('live export failed:', region, e, flush=True)
+        groups = {}
         for lang in a.langs.split(','):
             if lang == 'tr' and region not in ('TR', 'AZ'): continue
-            city = R.mains[lang]
-            if city is None: continue
-            Pc, Tc = np.clip(R.series(city), 0, 100), R.tseries(city); Wc = R.wseries(city) if getattr(R, 'Wd', None) is not None else np.zeros(HOURS)
-            info = {}
-            for key, dd in (('today', loc[0].date()), ('tomorrow', loc[0].date() + dt.timedelta(days=1))):
-                idx = [i for i, h in enumerate(loc) if h.date() == dd]
-                if not idx or Tc is None: info[key] = None; continue
-                tmin, tmax = float(np.nanmin(Tc[idx])), float(np.nanmax(Tc[idx]))
-                wd_ = [i for i, d_ in enumerate(win_day) if d_ == dd]
-                pmax = float(np.nanmax(pw[lang][wd_])) if lang in pw and wd_ else float(Pc[idx].max())
-                snow = bool(np.nanmean(Tc[[i for i in idx if Pc[i] >= 30] or idx]) <= 0.5)
-                info[key] = {'range': f"{Rn.fmt_t(tmin)}…{Rn.fmt_t(tmax)}", 'rain': rain_spans(Pc, loc, lang, dd, pmax), 'wear': wear(lang, tmin, tmax, pmax, snow, float(np.nanmax(Wc[idx]))),
-                             'p': int(round(pmax)), 'snow': snow}
-            REG[(region, lang)] = (R, loc, info, city)
-            fdir = out / f'frames_{region}_{lang}'; fdir.mkdir(exist_ok=True)
-            jobs = [(region, lang, k, fdir / f'{k:03d}.png') for k in range(HOURS)]
-            import multiprocessing as mp
-            with mp.get_context('fork').Pool(a.jobs) as pool: list(pool.imap_unordered(_frame, jobs, chunksize=4))
-            mp4 = out / f'{region}_{lang}.mp4'
-            subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '1', '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=25:interp_start=140:interp_end=255:scene=100,format=yuv420p', '-c:v', 'libx264', '-crf', '21', '-tune', 'animation',
-                            '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
-            try:  # the weather heard hour by hour: rain, snow, wind (and a real video in Telegram, not a silent GIF)
-                import sound as S_
-                S_.mux(mp4, S_.track(S_.from_series(Pc[:HOURS], Tc[:HOURS] if Tc is not None else None, Wc[:HOURS]), 1.0, str(mp4) + '.wav'))
-            except Exception as e: print('sound failed:', mp4, e, flush=True)
-            import shutil; shutil.rmtree(fdir)
-            json.dump({'region': region, 'lang': lang, 'off': off, 'city': Rn.city_name(city, lang), 'start': loc[0].strftime('%Y-%m-%dT%H:00'), 'info': info, 'video': f'hr/{mp4.name}'},
-                      open(out / f'{region}_{lang}.json', 'w'), ensure_ascii=False)
-            index.append({'region': region, 'lang': lang, 'video': f'hr/{mp4.name}'})
-            print('hourly', region, lang, mp4.stat().st_size // 1024, 'KB', flush=True)
+            groups.setdefault(Rn.VIEW_TZ.get(lang, 5), []).append(lang)
+        first = True
+        for vo, langs_g in groups.items():
+            R = Rn.Region(D, geo, region, P, D['amt']); off = vo  # the viewer's time: Tashkent for Russian and Uzbek, Türkiye for Turkish
+            # the day's chance from the model windows (before they become hours): the same rule as the daily texts
+            win_day = [Rn.local_day(run, st, off, D['win'][i]) for i, st in enumerate(D['steps'])]
+            pw = {lang: R.series(R.mains[lang]) for lang in a.langs.split(',') if R.mains.get(lang) is not None}
+            if first:
+              try:  # the 15 days for the interactive map: the model windows themselves, each with its local start time
+                tw = [(run + dt.timedelta(hours=int(st) - int(D['win'][i]) + off)).strftime('%Y-%m-%dT%H:00') for i, st in enumerate(D['steps'])]
+                export_live(R, region, None, out, run, off, 'live15', tw)
+              except Exception as e: print('live15 export failed:', region, e, flush=True)
+            hrs, loc = to_hours(R, D, run, off)
+            if first:
+                try: export_live(R, region, loc, out, run, off)
+                except Exception as e: print('live export failed:', region, e, flush=True)
+            first = False
+            for lang in langs_g:
+                city = R.mains[lang]
+                if city is None: continue
+                Pc, Tc = np.clip(R.series(city), 0, 100), R.tseries(city); Wc = R.wseries(city) if getattr(R, 'Wd', None) is not None else np.zeros(HOURS)
+                info = {}
+                for key, dd in (('today', loc[0].date()), ('tomorrow', loc[0].date() + dt.timedelta(days=1))):
+                    idx = [i for i, h in enumerate(loc) if h.date() == dd]
+                    if not idx or Tc is None: info[key] = None; continue
+                    tmin, tmax = float(np.nanmin(Tc[idx])), float(np.nanmax(Tc[idx]))
+                    wd_ = [i for i, d_ in enumerate(win_day) if d_ == dd]
+                    pmax = float(np.nanmax(pw[lang][wd_])) if lang in pw and wd_ else float(Pc[idx].max())
+                    snow = bool(np.nanmean(Tc[[i for i in idx if Pc[i] >= 30] or idx]) <= 0.5)
+                    info[key] = {'range': f"{Rn.fmt_t(tmin)}…{Rn.fmt_t(tmax)}", 'rain': rain_spans(Pc, loc, lang, dd, pmax), 'wear': wear(lang, tmin, tmax, pmax, snow, float(np.nanmax(Wc[idx]))),
+                                 'p': int(round(pmax)), 'snow': snow}
+                REG[(region, lang)] = (R, loc, info, city)
+                fdir = out / f'frames_{region}_{lang}'; fdir.mkdir(exist_ok=True)
+                jobs = [(region, lang, k, fdir / f'{k:03d}.png') for k in range(HOURS)]
+                import multiprocessing as mp
+                with mp.get_context('fork').Pool(a.jobs) as pool: list(pool.imap_unordered(_frame, jobs, chunksize=4))
+                mp4 = out / f'{region}_{lang}.mp4'
+                subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '1', '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=25:interp_start=140:interp_end=255:scene=100,format=yuv420p', '-c:v', 'libx264', '-crf', '21', '-tune', 'animation',
+                                '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
+                try:  # the weather heard hour by hour: rain, snow, wind (and a real video in Telegram, not a silent GIF)
+                    import sound as S_
+                    S_.mux(mp4, S_.track(S_.from_series(Pc[:HOURS], Tc[:HOURS] if Tc is not None else None, Wc[:HOURS]), 1.0, str(mp4) + '.wav'))
+                except Exception as e: print('sound failed:', mp4, e, flush=True)
+                import shutil; shutil.rmtree(fdir)
+                json.dump({'region': region, 'lang': lang, 'off': off, 'city': Rn.city_name(city, lang), 'start': loc[0].strftime('%Y-%m-%dT%H:00'), 'info': info, 'video': f'hr/{mp4.name}'},
+                          open(out / f'{region}_{lang}.json', 'w'), ensure_ascii=False)
+                index.append({'region': region, 'lang': lang, 'video': f'hr/{mp4.name}'})
+                print('hourly', region, lang, mp4.stat().st_size // 1024, 'KB', flush=True)
     json.dump({'run': D['run'], 'items': index}, open(out / 'index.json', 'w'))
 
 
