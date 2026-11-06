@@ -93,7 +93,7 @@ BIG_SHIFT = 0  # the big number of the city card: a darker shade on the light th
 # "day": the default since Nov 2026, a soft light-grey paper that is easy on the eyes; OSMON_THEME=night keeps the dark one
 DAY = dict(BG='#e9edf1', CARD='#f6f7f9', CARD2='#dfe5ec', LINE='#d0d8e1', INK='#1f2a36', MUTED='#5f6c7b', FAINT='#8693a1', ACCENT='#d9772b', SKY='#2f7fc1',
            SEA='#d3dee7', LAND='#f2f0ea', BORDER='#aab5c1', FOCUS='#23303d',
-           COLORS=['#c4e4ee', '#8ccbe3', '#4fa9d6', '#2a7cba', '#18548f'], SNOW=['#f4dbe9', '#ebb4d1', '#dc86b3', '#c0548f', '#8d2c66'],
+           COLORS=['#9fd8f7', '#4fb0ee', '#1f86dc', '#1259b4', '#0a327a'], SNOW=['#f2c4ea', '#e08fd6', '#c45cc0', '#93309a', '#621571'],  # saturated, clearly separate steps
            CLOUD_COL=[(0.33, 0.38, 0.45, 0.10), (0.33, 0.38, 0.45, 0.20)], CL_COL=['#e4e8ec', '#d0d6dd', '#b8c0ca', '#9ba5b2', '#7e8996'],
            W_COL=['#eef1ee', '#d5ebe1', '#acdcc6', '#7cc3a4', '#bdd66b', '#efd14f', '#f2a843', '#e97741', '#cf4651', '#962c69'],
            LOW_BAR='#dbe2e9', HEAVY='#b7740c', ISO_COLD='#4767c9', ISO_WARM='#cf7a2b',
@@ -681,8 +681,10 @@ def draw_fields(ax, R, s, product):
         if has_c: ax.contourf(XU, YU, U(np.nan_to_num(R.C[s])), levels=CLOUD_LV, colors=CLOUD_COL, zorder=1.5, antialiased=True)
         snow = np.nan_to_num(R.T[s] <= 0.5).astype(bool) if has_t else np.zeros_like(R.P[s], bool)
         Pr, Ps = np.where(snow, 0, R.P[s]), np.where(snow, R.P[s], 0)
-        ax.contourf(XU, YU, U(Pr), levels=LEVELS, cmap=ListedColormap(COLORS), norm=BoundaryNorm(LEVELS, 5), zorder=2, antialiased=True, alpha=0.92)
-        if Ps.max() >= LEVELS[0]: ax.contourf(XU, YU, U(Ps), levels=LEVELS, cmap=ListedColormap(SNOW), norm=BoundaryNorm(LEVELS, 5), zorder=2.1, antialiased=True, alpha=0.92)
+        ax.contourf(XU, YU, U(Pr), levels=LEVELS, cmap=ListedColormap(COLORS), norm=BoundaryNorm(LEVELS, 5), zorder=2, antialiased=True, alpha=1.0)
+        if Pr.max() >= LEVELS[1]: ax.contour(XU, YU, U(Pr), levels=LEVELS[1:-1], colors=COLORS[1:], linewidths=0.6, zorder=2.05)  # crisp edges between the steps
+        if Ps.max() >= LEVELS[0]: ax.contourf(XU, YU, U(Ps), levels=LEVELS, cmap=ListedColormap(SNOW), norm=BoundaryNorm(LEVELS, 5), zorder=2.1, antialiased=True, alpha=1.0)
+        if Ps.max() >= LEVELS[1]: ax.contour(XU, YU, U(Ps), levels=LEVELS[1:-1], colors=SNOW[1:], linewidths=0.6, zorder=2.15)
         if (R.Asm[s] >= 5).any(): ax.contour(XU, YU, U(R.Asm[s]), levels=[5], colors=[HEAVY], linewidths=1.1, linestyles='dashed', zorder=3)
         St = storm(R, s)
         if St is not None and St.max() >= 1:  # thunderstorms: rain likely and enough convective energy (GEFS CAPE)
@@ -840,7 +842,7 @@ def city_list(R, geo, lang):
 
 def _video(fdir, mp4, fps, width=None, crf=None, intro=None):
     w = width or _CTX.get('width', 1440); vf = f"fps=25,scale={w}:-2:flags=lanczos,format=yuv420p"
-    enc = ['-c:v', 'libx264', '-crf', str(crf or _CTX.get('crf', 24)), '-preset', 'medium', '-movflags', '+faststart', str(mp4)]
+    enc = ['-c:v', 'libx264', '-crf', str(crf or _CTX.get('crf', 20)), '-preset', 'medium', '-tune', 'animation', '-movflags', '+faststart', str(mp4)]
     if intro is None:
         subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(fps), '-i', str(fdir / '%03d.png'), '-vf', vf] + enc, check=True)
     else:  # the zoom-in, then the forecast frames
@@ -966,11 +968,11 @@ def main():
     ap.add_argument('--geo', default='', help='boundary pack (default prob/geo_prob.json; continents: prob/geo_world.json)')
     ap.add_argument('--dpi', type=int, default=150, help='frame resolution: 150 → 1920×1080 (Full HD 16:9)')
     ap.add_argument('--width', type=int, default=1920, help='video width in pixels (Full HD)')
-    ap.add_argument('--crf', type=int, default=26, help='video quality (lower = sharper, bigger files)')
+    ap.add_argument('--crf', type=int, default=20, help='video quality (lower = sharper, bigger files)')
     ap.add_argument('--append', action='store_true', help='add these maps to an existing manifest.json instead of replacing it')
     ap.add_argument('--city-videos', default='', help='regions that also get one precipitation video per city, e.g. UZ,KZ')
     ap.add_argument('--city-langs', default='ru,uz', help='languages of the city videos')
-    ap.add_argument('--city-width', type=int, default=1920); ap.add_argument('--city-crf', type=int, default=28); ap.add_argument('--city-dpi', type=int, default=150)
+    ap.add_argument('--city-width', type=int, default=1920); ap.add_argument('--city-crf', type=int, default=21); ap.add_argument('--city-dpi', type=int, default=150)
     a = ap.parse_args()
     D = load(a.npz)
     P, models, members = probability(D)
