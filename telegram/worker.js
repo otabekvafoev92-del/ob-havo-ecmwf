@@ -257,6 +257,8 @@ async function mtnSub(env, chat) { if (!env.DB) return null; await db(env); retu
 async function sendMountains(env, chat, lang) {
   const X = MTX[lang] || MTX.ru, M = await mountainsData(env);
   if (!M || !M.spots) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  // the picture first: 10 days for every place (snow, good days, the best day after snow), then the text
+  await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${MTX[lang] ? lang : 'ru'}.png?v=${fresh()}` });
   const today = todayTZ(), out = [X.title];
   for (const sp of M.spots) {
     const days = sp.days.filter(d => d.d >= today), snow = days.filter(d => d.sn >= (M.snow_cm || 2));
