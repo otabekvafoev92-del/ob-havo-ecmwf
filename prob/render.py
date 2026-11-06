@@ -291,7 +291,7 @@ class Region:
         self.id, self.iso, self.off, self.cap = region, iso, off, cap
         g = D['grid'].item() if hasattr(D['grid'], 'item') else D['grid']
         glon0, glat0, d, W, H = g['lon0'], g['lat0'], g['d'], g['W'], g['H']
-        m = 14 if self.cont and region != 'world' else 1.5  # azimuthal continent maps reach past their lon/lat box at the corners
+        m = 14 if self.cont and region != 'world' else 1.5 if region == 'world' else 8  # conic and azimuthal maps reach past their lon/lat box at the corners (and the country maps are widened to the frame)
         x0 = max(0, int((lon0 - m - glon0) / d)); x1 = min(W, int((lon1 + m - glon0) / d) + 2)
         y0 = max(0, int((glat0 - lat1 - m) / d)); y1 = min(H, int((glat0 - lat0 + m) / d) + 2)
         lons = glon0 + np.arange(x0, x1) * d; lats = glat0 - np.arange(y0, y1) * d
