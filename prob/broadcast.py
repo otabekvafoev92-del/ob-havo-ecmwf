@@ -248,6 +248,17 @@ def main():
             for p in parts: f.write(f"file '{p.resolve()}'\n")
         mp4 = out / f'briefing_{lang}.mp4'
         subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(fdir / 'all.txt'), '-c', 'copy', '-movflags', '+faststart', str(mp4)], check=True)
+        try:  # sound: Uzbekistan's part follows Tashkent's rain, snow and wind; the rest a light breeze and the calm pad
+            import sound as S_
+            lv = []
+            for g, n, dur in groups:
+                secs = max(1, int(round(dur)))
+                seg_ = next(((R_, ss_) for k_, R_, _, ss_ in segs if k_ == g), None)
+                if g == 'uz' and seg_ is not None and seg_[0].mains.get(lang) is not None:
+                    L = Rn._sound_levels(seg_[0], seg_[1], seg_[0].mains[lang]); lv += [L[min(len(L) - 1, int(j * len(L) / secs))] for j in range(secs)]
+                else: lv += [{'wind': 0.08}] * secs
+            S_.mux(mp4, S_.track(lv, 1.0, str(mp4) + '.wav'))
+        except Exception as e: print('sound failed:', e, flush=True)
         ch = '\n'.join(f"{int(tt // 60)}:{int(tt % 60):02d} {nm}" for tt, nm in chapters)
         today = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=5)).strftime('%d.%m.%Y')
         allb = [f"• {X['world']}. " + '; '.join(bul['world'])[:300], f"• {X['cis']}. " + '; '.join(bul['cis'])[:300], f"• {X['uz']}. " + '; '.join(bul['uz'])[:400]]

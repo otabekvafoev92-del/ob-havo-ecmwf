@@ -841,7 +841,22 @@ def city_list(R, geo, lang):
     return (([R.mains[lang]] if R.mains[lang] else []) + cities)[:15]
 
 
-def _video(fdir, mp4, fps, width=None, crf=None, intro=None):
+def _sound_levels(R, sel, city=None):
+    """The weather sound of a video, frame by frame: the city's rain, snow, wind and thunder (a country video also
+    rains when a large part of the country is wet)."""
+    p = city or getattr(R, 'main', None)
+    if p is None: return [{} for _ in sel]
+    import sound
+    take = lambda a: None if a is None else np.asarray(a)[list(sel)]
+    L = sound.from_series(take(R.series(p)), take(R.tseries(p)), take(R.wseries(p)), take(R.kseries(p)))
+    if city is None:
+        for l, s in zip(L, sel):
+            a = R.area_share([s]) if not R.cont else None
+            if a: l['rain'] = max(l['rain'], min(1.0, a * 1.5))
+    return L
+
+
+def _video(fdir, mp4, fps, width=None, crf=None, intro=None, sound=None):
     w = width or _CTX.get('width', 1440); vf = f"fps=25,scale={w}:-2:flags=lanczos,format=yuv420p"
     enc = ['-c:v', 'libx264', '-crf', str(crf or _CTX.get('crf', 20)), '-preset', 'medium', '-tune', 'animation', '-movflags', '+faststart', str(mp4)]
     if intro is None:
@@ -849,6 +864,11 @@ def _video(fdir, mp4, fps, width=None, crf=None, intro=None):
     else:  # the zoom-in, then the forecast frames
         subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(INTRO), '-i', str(intro / '%03d.png'), '-framerate', str(fps), '-i', str(fdir / '%03d.png'),
                         '-filter_complex', f'[0]{vf}[a];[1]{vf}[b];[a][b]concat=n=2:v=1[v]', '-map', '[v]'] + enc, check=True)
+    if sound is not None:  # the weather heard: rain, snow, wind, thunder (and a real video in Telegram, not a silent GIF)
+        try:
+            import sound as S_
+            S_.mux(mp4, S_.track(sound, 1.0 / fps, str(mp4) + '.wav', intro_sec=1.0 if intro is not None else 0.0))
+        except Exception as e: print('sound failed:', mp4, e, flush=True)
 
 
 def _city_job(args):
@@ -874,7 +894,7 @@ def _city_job(args):
         day = local_day(run, D['steps'][s], off, D['win'][s])
         draw_frame(R, D, s, lang, models, members, fdir / f'{i:03d}.png', 'prob', com.get(day.isoformat(), ''), main=city, zoom=Z, dpi=dpi)
     mp4 = out / f'{region}_{lang}_c{ci:02d}.mp4'
-    _video(fdir, mp4, fps, _CTX.get('city_width'), _CTX.get('city_crf'), intro=idir)
+    _video(fdir, mp4, fps, _CTX.get('city_width'), _CTX.get('city_crf'), intro=idir, sound=_sound_levels(R, sel, city))
     print(region, lang, city_name(city, lang), 'city video ok', flush=True)
     return region, lang, ci, mp4.name
 
@@ -943,7 +963,7 @@ def _job(args):
                 day = local_day(run, D['steps'][s], off, D['win'][s])
                 draw_frame(R, D, s, lang, models, members, fdir / f'{i:03d}.png', product, com.get(day.isoformat(), ''))
             mp4 = out / f'{region}_{lang}{suf}.mp4'
-            _video(fdir, mp4, fps)
+            _video(fdir, mp4, fps, sound=_sound_levels(R, sel))
             res.append({'region': region, 'lang': lang, 'product': product, 'video': mp4.name, 'frames': len(sel), 'name': NAMES[region][lang]})
             print(region, lang, product, 'ok', flush=True)
         res.append({'region': region, 'lang': lang, 'product': 'days', 'days': com, 'off': off, 'city': city_name(R.mains[lang], lang) if R.mains[lang] else ''})

@@ -188,6 +188,10 @@ def main():
             mp4 = out / f'{region}_{lang}.mp4'
             subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '1', '-i', str(fdir / '%03d.png'), '-vf', 'fps=25,format=yuv420p', '-c:v', 'libx264', '-crf', '21', '-tune', 'animation',
                             '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
+            try:  # the weather heard hour by hour: rain, snow, wind (and a real video in Telegram, not a silent GIF)
+                import sound as S_
+                S_.mux(mp4, S_.track(S_.from_series(Pc[:HOURS], Tc[:HOURS] if Tc is not None else None, Wc[:HOURS]), 1.0, str(mp4) + '.wav'))
+            except Exception as e: print('sound failed:', mp4, e, flush=True)
             import shutil; shutil.rmtree(fdir)
             json.dump({'region': region, 'lang': lang, 'off': off, 'city': Rn.city_name(city, lang), 'start': loc[0].strftime('%Y-%m-%dT%H:00'), 'info': info, 'video': f'hr/{mp4.name}'},
                       open(out / f'{region}_{lang}.json', 'w'), ensure_ascii=False)
