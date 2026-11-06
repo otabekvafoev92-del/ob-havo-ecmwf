@@ -3,7 +3,7 @@ and once the day is over it is compared with what happened (Open-Meteo: daily pr
 temperature from the latest analysis and short-range data).
   out/verify/history.json   {"fc": {date: {city: [rain %, t mean]}}, "obs": {date: {city: [mm, t mean]}}}
   out/verify/index.json     30-day scores: overall, per city, per day
-Usage: python3 prob/verify.py glob.npz wx.npz out [previous history.json]"""
+Usage: python3 prob/verify.py glob.npz wx.npz out [previous history.json ...]"""
 import datetime as dt, json, pathlib, sys, time
 import numpy as np, requests
 
@@ -69,12 +69,17 @@ def score(pairs):
 
 def main():
     npz, wx, out = sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3]) / 'verify'
-    prev = pathlib.Path(sys.argv[4]) if len(sys.argv) > 4 else None
     out.mkdir(parents=True, exist_ok=True)
     H = {'fc': {}, 'obs': {}}
-    if prev and prev.exists():
-        try: H = json.load(open(prev))
-        except Exception as e: print('history unreadable:', e)
+    # every saved copy (the build cache and the live site): one lost copy must not wipe the history
+    for prev in map(pathlib.Path, sys.argv[4:]):
+        if not prev.exists(): continue
+        try:
+            h = json.load(open(prev))
+            for k in ('fc', 'obs'):
+                for d, v in h.get(k, {}).items(): H[k].setdefault(d, {}).update({c: x for c, x in v.items() if c not in H[k].get(d, {})})
+            print('history', prev, len(h.get('fc', {})), 'forecast days')
+        except Exception as e: print('history unreadable:', prev, e)
     D = Rn.load(npz); P, _, _ = Rn.probability(D); W = Rn.load_wx_npz(D, wx) if pathlib.Path(wx).exists() else {}
     pl = places()
     # 1. tomorrow's forecast, only the first one made (so the lead time is a fair 24–48 h)

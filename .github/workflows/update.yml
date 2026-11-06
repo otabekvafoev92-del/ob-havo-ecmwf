@@ -99,6 +99,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: npz
+      - name: Restore the forecast-accuracy history
+        if: matrix.part == 'globe'
+        uses: actions/cache/restore@v4
+        with:
+          path: vh
+          key: verify-${{ github.run_id }}
+          restore-keys: verify-
       - name: Render ${{ matrix.part }}
         run: |
           sudo apt-get install -y -qq ffmpeg >/dev/null
@@ -121,14 +128,21 @@ jobs:
             python prob/broadcast.py prob.npz glob.npz wx.npz out --langs ru,uz
           elif [ "${{ matrix.part }}" = globe ]; then
             python prob/export_5d.py glob.npz wx.npz out/d5
-            python prob/points.py glob.npz wx.npz out
-            # forecast accuracy: the saved history lives on the site itself
-            curl -sfo /tmp/vh.json https://otabekvafoev92-del.github.io/ob-havo-ecmwf/prob/verify/history.json || echo 'no history yet'
-            python prob/verify.py glob.npz wx.npz out /tmp/vh.json || echo 'verify failed'
+            python prob/points.py glob.npz wx.npz out prob.npz
+            # forecast accuracy: the history is kept in the build cache and on the site (both are read, so one lost copy loses nothing)
+            curl -sfo /tmp/vh.json https://otabekvafoev92-del.github.io/ob-havo-ecmwf/prob/verify/history.json || echo 'no live history'
+            python prob/verify.py prob.npz wx.npz out vh/history.json /tmp/vh.json || echo 'verify failed'
+            mkdir -p vh && cp out/verify/history.json vh/history.json || true
           else
             python prob/render.py ${{ matrix.npz }} out ${{ matrix.args }} --wx wx.npz
           fi
           rm -rf out/frames
+      - name: Save the forecast-accuracy history
+        if: matrix.part == 'globe'
+        uses: actions/cache/save@v4
+        with:
+          path: vh
+          key: verify-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/upload-artifact@v4
         with:
           name: prob-${{ matrix.part }}

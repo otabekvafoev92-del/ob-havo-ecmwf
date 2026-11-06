@@ -481,7 +481,8 @@ def daily_comments(R, D, lang, off, p=None, area=True):
     out = {}
     for d_, idx in days.items():
         pm = float(np.nanmax(P[idx])); mm = float(np.nansum(A[idx]))
-        snow = Tm is not None and np.isfinite(Tm[idx]).any() and np.nanmin(Tm[idx]) <= 0.5 and pm >= 30
+        wet = [i for i in idx if P[i] >= 30]  # rain or snow: the mean temperature of the wet windows, as in the hourly forecast, the 15 days and the warnings
+        snow = Tm is not None and bool(wet) and np.isfinite(Tm[wet]).any() and float(np.nanmean(Tm[wet])) <= 0.5
         t = ''
         if Tm is not None and np.isfinite(Tm[idx]).any():
             t = f"{fmt_t(np.nanmin(Tm[idx]))}…{fmt_t(np.nanmax(Tm[idx]))}"

@@ -541,12 +541,21 @@ function nowLine(c, lang) {
   return `${wmoIcon(c.weather_code, c.is_day)} <b>${X.now}: ${f(c.temperature_2m)}</b>${w ? `, ${w}` : ''}\n      ${X.feels} ${f(c.apparent_temperature)} · ${X.hum} ${Math.round(c.relative_humidity_2m)}% · ${X.wind} ${Math.round(c.wind_speed_10m)} ${X.ms}${c.wind_gusts_10m >= 10 ? ` (${X.gust} ${Math.round(c.wind_gusts_10m)})` : ''}`;
 }
 async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
-  const L = PT[lang], I = await memo('ptidx', 600e3, async () => (await fetch(`${base(env)}/prob/pt/index.json`, { cf: { cacheTtl: 600 } })).json().catch(() => null));
+  const L = PT[lang];
   await saveUser(env, chat, { place: JSON.stringify([lat, lon]) });
-  if (!I || lat > 80 || lat <= -60) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
+  // the 0.25° tiles of the region first (the same numbers as the videos, city texts and hourly forecast), the 0.5° world tiles elsewhere
+  const idx = dir => memo(dir, 600e3, async () => (await fetch(`${base(env)}/prob/${dir}/index.json`, { cf: { cacheTtl: 600 } })).json().catch(() => null));
+  let I = null, r = null;
+  for (const dir of ['pt25', 'pt']) {
+    const J = await idx(dir); if (!J) continue;
+    if (J.box && !(lon >= J.box[0] && lon <= J.box[1] - J.d && lat >= J.box[2] + J.d && lat <= J.box[3])) continue;
+    if (!J.box && (lat > 80 || lat <= -60)) continue;
+    const t = Math.ceil(lat / J.tile) * J.tile, l = Math.floor(lon / J.tile) * J.tile;
+    const q = await fetch(`${base(env)}/prob/${dir}/${t}_${l}.bin`, { cf: { cacheTtl: 600 } });
+    if (q.ok) { I = J; r = q; break; }
+  }
+  if (!I) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
   const top = Math.ceil(lat / I.tile) * I.tile, left = Math.floor(lon / I.tile) * I.tile, n = I.n, S = I.steps.length;
-  const r = await fetch(`${base(env)}/prob/pt/${top}_${left}.bin`, { cf: { cacheTtl: 600 } });
-  if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: L.far });
   const B = new Uint8Array(await r.arrayBuffer()), fy = (top - lat) / I.d, fx = (lon - left) / I.d;
   const y0 = Math.min(n - 2, Math.floor(fy)), x0 = Math.min(n - 2, Math.floor(fx)), ay = fy - y0, ax = fx - x0;
   const val = (s, v) => { let sum = 0, w = 0;

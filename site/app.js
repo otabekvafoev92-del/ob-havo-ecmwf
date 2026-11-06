@@ -2008,14 +2008,25 @@ async function probCountries(lang, U) {
   box.querySelectorAll('button').forEach(b => b.onclick = () => { PROB.ctry = PROB.ctry === b.dataset.c ? null : b.dataset.c; box.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.c === PROB.ctry))); ptCard(list.find(x => x.p[4] === PROB.ctry), lang, U); });
   if (PROB.ctry) ptCard(list.find(x => x.p[4] === PROB.ctry), lang, U);
 }
-async function pointDays(lat, lon) {
-  const I = PROB.PI || (PROB.PI = await (await fetch('prob/pt/index.json', { cache: 'no-cache' })).json());
+// local time of a country (as the bot): the same calendar days in every panel
+const TZC = { UZ: 5, KZ: 5, KG: 6, TJ: 5, TM: 5, AZ: 4, AM: 4, GE: 4, TR: 3, BY: 3, MD: 2, UA: 2, AF: 4.5, IR: 3.5, CN: 8, IN: 5.5 };
+async function pointDays(lat, lon, iso) {
+  // the 0.25° regional tiles first (the very numbers of the videos and city texts), the 0.5° world tiles elsewhere
+  PROB.PIX = PROB.PIX || {};
+  let I = null, r = null;
+  for (const dir of ['pt25', 'pt']) {
+    if (!(dir in PROB.PIX)) { try { PROB.PIX[dir] = await (await fetch(`prob/${dir}/index.json`, { cache: 'no-cache' })).json(); } catch { PROB.PIX[dir] = null; } }
+    const J = PROB.PIX[dir]; if (!J) continue;
+    if (J.box && !(lon >= J.box[0] && lon <= J.box[1] - J.d && lat >= J.box[2] + J.d && lat <= J.box[3])) continue;
+    const q = await fetch(`prob/${dir}/${Math.ceil(lat / J.tile) * J.tile}_${Math.floor(lon / J.tile) * J.tile}.bin`);
+    if (q.ok) { I = J; r = q; break; }
+  }
+  if (!I) return null;
   const top = Math.ceil(lat / I.tile) * I.tile, left = Math.floor(lon / I.tile) * I.tile, n = I.n, S = I.steps.length;
-  const r = await fetch(`prob/pt/${top}_${left}.bin`); if (!r.ok) return null;
   const B = new Uint8Array(await r.arrayBuffer()), fy = (top - lat) / I.d, fx = (lon - left) / I.d;
   const y0 = Math.min(n - 2, Math.floor(fy)), x0 = Math.min(n - 2, Math.floor(fx)), ay = fy - y0, ax = fx - x0;
   const val = (s, v) => { let sum = 0, w = 0; for (const [dy, dx, k] of [[0, 0, (1 - ay) * (1 - ax)], [0, 1, (1 - ay) * ax], [1, 0, ay * (1 - ax)], [1, 1, ay * ax]]) { const b = B[((s * 5 + v) * n + y0 + dy) * n + x0 + dx]; if (b !== 255) { sum += b * k; w += k; } } return w ? sum / w : NaN; };
-  const off = Math.max(-11, Math.min(12, Math.round(lon / 15))), run = Date.parse(I.run), days = new Map();
+  const off = TZC[iso] ?? (iso === 'RU' ? Math.max(2, Math.min(12, Math.round(lon / 15))) : Math.max(-11, Math.min(12, Math.round(lon / 15)))), run = Date.parse(I.run), days = new Map();
   for (let s = 0; s < S; s++) {
     const d = new Date(run + (I.steps[s] - I.win[s] / 2 + off) * 3600e3).toISOString().slice(0, 10), x = days.get(d) || { P: 0, T: [], A: 0, W: 0, wet: [] };
     const p = val(s, 0) / 2.5, t = val(s, 1) / 2 - 60, w = val(s, 3) / 5, a = Math.expm1(val(s, 4) / 40);
@@ -2029,7 +2040,7 @@ async function ptCard(item, lang, U) {
   const el = $('ptCard'); if (!el) return;
   if (!item) { el.hidden = true; return; }
   el.hidden = false; el.innerHTML = '<p class="muted">…</p>';
-  const p = item.p, D = await pointDays(p[5], p[6]).catch(() => null);
+  const p = item.p, D = await pointDays(p[5], p[6], p[4]).catch(() => null);
   if (!D || !D.length) { el.innerHTML = `<p class="muted">—</p>`; return; }
   const city = lang === 'uz' ? (p[1] || p[2]) : lang === 'tr' ? (p[3] || p[2]) : (p[0] || p[2]), t = v => `${v > 0.5 ? '+' : ''}${Math.round(v)}°`;
   const lo = Math.min(...D.map(x => x.lo)), hi = Math.max(...D.map(x => x.hi)), sp = Math.max(1, hi - lo);

@@ -16,15 +16,15 @@ from regions import NAMES, T as TT
 HOURS = 48
 TX = {
     'ru': dict(title='Сегодня и завтра по часам', today='Сегодня', tomorrow='Завтра', now='Сейчас', rain='дождь', snow='снег', dry='без осадков', wind='ветер', ms='м/с',
-               when='Осадки', none='Осадков не ожидается', likely='вероятны {a}–{b} ч (до {p} %)', wear='Что надеть', umbrella='зонт', boots='непромокаемая обувь', windbr='ветровка',
+               when='Осадки', none='Осадков не ожидается', low='Осадки маловероятны ({p} %)', likely='вероятны {a}–{b} ч (до {p} %)', wear='Что надеть', umbrella='зонт', boots='непромокаемая обувь', windbr='ветровка',
                c=['зимняя куртка, шапка, перчатки', 'тёплая куртка и шапка', 'куртка или пальто, шарф', 'лёгкая куртка или свитер', 'кофта, вечером лёгкая куртка', 'футболка и лёгкая одежда', 'лёгкая одежда, головной убор, вода'],
                strip='48 часов: вероятность осадков и температура', feel='ощущается как'),
     'uz': dict(title='Bugun va ertaga soatma-soat', today='Bugun', tomorrow='Ertaga', now='Hozir', rain='yomg‘ir', snow='qor', dry='yog‘insiz', wind='shamol', ms='m/s',
-               when='Yog‘in', none='Yog‘in kutilmaydi', likely='{a}–{b} soatlarda ehtimoli bor ({p} % gacha)', wear='Nima kiyish kerak', umbrella='soyabon', boots='suv o‘tkazmaydigan poyabzal', windbr='shamoldan himoya kurtka',
+               when='Yog‘in', none='Yog‘in kutilmaydi', low='Yog‘in ehtimoli past ({p} %)', likely='{a}–{b} soatlarda ehtimoli bor ({p} % gacha)', wear='Nima kiyish kerak', umbrella='soyabon', boots='suv o‘tkazmaydigan poyabzal', windbr='shamoldan himoya kurtka',
                c=['qishki kurtka, telpak, qo‘lqop', 'issiq kurtka va telpak', 'kurtka yoki palto, sharf', 'yengil kurtka yoki sviter', 'kofta, kechqurun yengil kurtka', 'futbolka, yengil kiyim', 'yengil kiyim, bosh kiyim, suv'],
                strip='48 soat: yog‘in ehtimoli va harorat', feel='his qilinadi'),
     'tr': dict(title='Bugün ve yarın saat saat', today='Bugün', tomorrow='Yarın', now='Şimdi', rain='yağmur', snow='kar', dry='yağışsız', wind='rüzgâr', ms='m/s',
-               when='Yağış', none='Yağış beklenmiyor', likely='{a}–{b} saatleri arasında olası (%{p} e kadar)', wear='Ne giymeli', umbrella='şemsiye', boots='su geçirmez ayakkabı', windbr='rüzgârlık',
+               when='Yağış', none='Yağış beklenmiyor', low='Yağış olasılığı düşük (%{p})', likely='{a}–{b} saatleri arasında olası (%{p} e kadar)', wear='Ne giymeli', umbrella='şemsiye', boots='su geçirmez ayakkabı', windbr='rüzgârlık',
                c=['kışlık mont, bere, eldiven', 'kalın mont ve bere', 'mont veya kaban, atkı', 'ince ceket veya kazak', 'hırka, akşam ince ceket', 'tişört ve hafif giysiler', 'hafif giysiler, şapka, su'],
                strip='48 saat: yağış olasılığı ve sıcaklık', feel='hissedilen'),
 }
@@ -39,17 +39,19 @@ def wear(lang, tmin, tmax, pmax, snow, wmax):
     return ', '.join(out)
 
 
-def rain_spans(P, hours, lang, day0):
-    """Hours of a local day with probability ≥ 40 % as 'a–b' spans."""
+def rain_spans(P, hours, lang, day0, pday=None):
+    """Hours of a local day with probability ≥ 40 % as 'a–b' spans. pday: the day's chance from the model windows,
+    the same number as the 15-day text and the city list (below 20 % "no precipitation", as there)."""
     X = TX[lang]; idx = [i for i, h in enumerate(hours) if h.date() == day0]
     if not idx: return None
     wet = [i for i in idx if P[i] >= 40]
-    if not wet: return X['none']
+    pd_ = int(round(pday)) if pday is not None else int(P[idx].max())
+    if not wet: return X['none'] if pd_ < 20 else X['low'].format(p=pd_)
     spans, a = [], wet[0]
     for i, j in zip(wet, wet[1:] + [None]):
         if j != i + 1: spans.append((a, i)); a = j
     a, b = max(spans, key=lambda s: P[s[0]:s[1] + 1].max())
-    return X['likely'].format(a=hours[a].hour, b=(hours[b].hour + 1) % 24 or 24, p=int(P[a:b + 1].max()))
+    return X['likely'].format(a=hours[a].hour, b=(hours[b].hour + 1) % 24 or 24, p=max(int(P[a:b + 1].max()), pd_))
 
 
 def to_hours(R, D, run, off):
@@ -159,6 +161,9 @@ def main():
     index = []
     for region in a.regions.split(','):
         R = Rn.Region(D, geo, region, P, D['amt']); off = R.off if R.off is not None else 5
+        # the day's chance from the model windows (before they become hours): the same rule as the daily texts
+        win_day = [Rn.local_day(run, st, off, D['win'][i]) for i, st in enumerate(D['steps'])]
+        pw = {lang: R.series(R.mains[lang]) for lang in a.langs.split(',') if R.mains.get(lang) is not None}
         hrs, loc = to_hours(R, D, run, off)
         for lang in a.langs.split(','):
             if lang == 'tr' and region not in ('TR', 'AZ'): continue
@@ -169,9 +174,11 @@ def main():
             for key, dd in (('today', loc[0].date()), ('tomorrow', loc[0].date() + dt.timedelta(days=1))):
                 idx = [i for i, h in enumerate(loc) if h.date() == dd]
                 if not idx or Tc is None: info[key] = None; continue
-                tmin, tmax, pmax = float(np.nanmin(Tc[idx])), float(np.nanmax(Tc[idx])), float(Pc[idx].max())
+                tmin, tmax = float(np.nanmin(Tc[idx])), float(np.nanmax(Tc[idx]))
+                wd_ = [i for i, d_ in enumerate(win_day) if d_ == dd]
+                pmax = float(np.nanmax(pw[lang][wd_])) if lang in pw and wd_ else float(Pc[idx].max())
                 snow = bool(np.nanmean(Tc[[i for i in idx if Pc[i] >= 30] or idx]) <= 0.5)
-                info[key] = {'range': f"{Rn.fmt_t(tmin)}…{Rn.fmt_t(tmax)}", 'rain': rain_spans(Pc, loc, lang, dd), 'wear': wear(lang, tmin, tmax, pmax, snow, float(np.nanmax(Wc[idx]))),
+                info[key] = {'range': f"{Rn.fmt_t(tmin)}…{Rn.fmt_t(tmax)}", 'rain': rain_spans(Pc, loc, lang, dd, pmax), 'wear': wear(lang, tmin, tmax, pmax, snow, float(np.nanmax(Wc[idx]))),
                              'p': int(pmax), 'snow': snow}
             REG[(region, lang)] = (R, loc, info, city)
             fdir = out / f'frames_{region}_{lang}'; fdir.mkdir(exist_ok=True)
