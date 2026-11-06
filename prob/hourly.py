@@ -78,9 +78,10 @@ def to_hours(R, D, run, off):
 
 
 NAVY, PAPER, LAND, ICE = '#2b3a4e', '#f3f5f7', '#e6e9ed', '#ffffff'
-RAIN_C = ['#d5e8f5', '#a9cfec', '#78b0de', '#4f8cc4']   # 30–50–70–90 %: soft blues
-SNOW_C = ['#ece1f4', '#d8c3ea', '#bc9fd9', '#9a78c2']   # the same steps for snow: soft lilac
+RAIN_C = ['#bcdcf2', '#8cc0e6', '#5a9fd6', '#3a78b5']   # 30–50–70–90 %: soft blues
+SNOW_C = ['#e4d4f0', '#ccb0e3', '#ad8bd0', '#8a63b8']   # the same steps for snow: soft lilac
 P_LV = [30, 50, 70, 90, 101]
+LEG = {'ru': ('Вероятность осадков', 'синий — дождь, сиреневый — снег'), 'uz': ('Yog‘in ehtimoli', 'ko‘k — yomg‘ir, binafsha — qor'), 'tr': ('Yağış olasılığı', 'mavi — yağmur, mor — kar')}
 
 
 def _kind(p, c, t):
@@ -119,26 +120,23 @@ def frame(R, k, lang, path, loc, info, city):
     right, and 48 hours along the bottom."""
     X = TX[lang]; L = TT[lang]
     fig = plt.figure(figsize=(12.8, 7.2), dpi=100); fig.patch.set_facecolor(PAPER)
-    # title band
-    fig.patches.append(matplotlib.patches.Rectangle((0, 0.882), 1, 0.118, transform=fig.transFigure, facecolor=NAVY, edgecolor='none', zorder=-6))
+    # a thin title band: brand, country, the hour
+    fig.patches.append(matplotlib.patches.Rectangle((0, 0.93), 1, 0.07, transform=fig.transFigure, facecolor=NAVY, edgecolor='none', zorder=-6))
     ink0 = Rn.INK; Rn.INK = '#ffffff'
-    try: x = Rn._brand(fig, 0.022, 0.941, size=13)
+    try: x = Rn._brand(fig, 0.016, 0.965, size=11)
     finally: Rn.INK = ink0
-    fig.text(x + 0.016, 0.952, NAMES[R.id][lang], fontsize=19, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center')
-    fig.text(x + 0.016, 0.910, X['title'], fontsize=10.5, color='#a9bdd6', va='center')
+    fig.text(x + 0.014, 0.965, NAMES[R.id][lang], fontsize=14, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center')
     t = loc[k]; day = X['today'] if t.date() == loc[0].date() else X['tomorrow'] if t.date() == loc[0].date() + dt.timedelta(days=1) else ''
-    tm = fig.text(0.978, 0.941, f"{t:%H}:00", fontsize=28, fontfamily=Rn.DISPLAY, fontweight='bold', color='#f0b88a', ha='right', va='center')
+    tm = fig.text(0.984, 0.965, f"{t:%H}:00", fontsize=19, fontfamily=Rn.DISPLAY, fontweight='bold', color='#f0b88a', ha='right', va='center')
     tb2 = tm.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    fig.text(tb2.x0 - 0.016, 0.952, day, fontsize=14, fontweight='bold', color='#ffffff', ha='right', va='center')
-    fig.text(tb2.x0 - 0.016, 0.912, f"{L['wd'][t.weekday()]} {t:%d.%m}", fontsize=10.5, color='#a9bdd6', ha='right', va='center')
+    fig.text(tb2.x0 - 0.012, 0.965, f"{day} · {L['wd'][t.weekday()]} {t:%d.%m}", fontsize=11, fontweight='bold', color='#c9d6e5', ha='right', va='center')
     # the map
-    box = [0.012, 0.215, 0.69, 0.655]
-    Rn._card(fig, box[0], box[1], box[2], box[3], fc='#ffffff', ec='#dde3ea', r=0.012)
-    ax = fig.add_axes([box[0] + 0.006, box[1] + 0.01, box[2] - 0.012, box[3] - 0.02]); ax.axis('off')
+    box = [0.004, 0.15, 0.81, 0.775]  # the map takes most of the frame
+    ax = fig.add_axes(box); ax.axis('off')
     rings = R.cpoly.get(R.id, []) or [r for rr in R.cpoly.values() for r in rr]
     xs = np.concatenate([r[:, 0] for r in rings]); ys = np.concatenate([r[:, 1] for r in rings])
-    e0, e1, f0, f1 = xs.min(), xs.max(), ys.min(), ys.max(); px, py = (e1 - e0) * 0.03, (f1 - f0) * 0.06
-    e0, e1, f0, f1 = e0 - px, e1 + px, f0 - py, f1 + py; asp = (box[2] - 0.012) * 12.8 / ((box[3] - 0.02) * 7.2)
+    e0, e1, f0, f1 = xs.min(), xs.max(), ys.min(), ys.max(); px, py = (e1 - e0) * 0.015, (f1 - f0) * 0.03
+    e0, e1, f0, f1 = e0 - px, e1 + px, f0 - py, f1 + py; asp = box[2] * 12.8 / (box[3] * 7.2)
     if (e1 - e0) / (f1 - f0) < asp: c_ = (e0 + e1) / 2; w_ = (f1 - f0) * asp; e0, e1 = c_ - w_ / 2, c_ + w_ / 2
     else: c_ = (f0 + f1) / 2; h_ = (e1 - e0) / asp; f0, f1 = c_ - h_ / 2, c_ + h_ / 2
     ax.set_xlim(e0, e1); ax.set_ylim(f0, f1); ax.set_aspect('equal', adjustable='box')
@@ -152,9 +150,9 @@ def frame(R, k, lang, path, loc, info, city):
         out_ = ax.contourf(R.XU, R.YU, F, levels=P_LV, colors=cols, alpha=0.35, zorder=1.2)  # the neighbours: faint
         cs = ax.contourf(R.XU, R.YU, F, levels=P_LV, colors=cols, zorder=2)
         clip = matplotlib.patches.PathPatch(matplotlib.path.Path(verts, codes), transform=ax.transData, facecolor='none', edgecolor='none'); ax.add_patch(clip); cs.set_clip_path(clip)
-    ax.add_collection(LC(R.a1, colors='#dfe5ec', linewidths=0.8, zorder=3))
+    ax.add_collection(LC(R.a1, colors='#c9d3de', linewidths=0.7, zorder=3))
     ax.add_collection(LC(rings, colors=NAVY, linewidths=6, alpha=0.06, zorder=3.5))
-    ax.add_collection(LC(rings, colors=NAVY, linewidths=1.5, zorder=4))
+    ax.add_collection(LC(rings, colors=NAVY, linewidths=1.8, zorder=4))
     # the cities: a white pill with the temperature, the name under it, an icon at the left
     fig.canvas.draw(); rnd = fig.canvas.get_renderer(); placed = []; axb = ax.get_window_extent()
     cities = [city] + [p for p in R.cities if p is not city]
@@ -167,48 +165,53 @@ def frame(R, k, lang, path, loc, info, city):
         if not np.isfinite(tt): continue
         for (ox, oy, ha, va) in ((0, 8, 'center', 'bottom'), (10, 0, 'left', 'center'), (-10, 0, 'right', 'center'), (0, -8, 'center', 'top'),
                                  (10, 9, 'left', 'bottom'), (-10, 9, 'right', 'bottom'), (10, -9, 'left', 'top'), (-10, -9, 'right', 'top')):
-            pill = ax.annotate('         ' + Rn.fmt_t(tt), (cx, cy), xytext=(ox, oy), textcoords='offset points', ha=ha, va=va, fontsize=14 if main else 11.5, fontweight='bold', color=NAVY, zorder=7,
-                               bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.9', fc='#ffffff', ec=('#f0b88a' if main else '#d5dce4'), lw=1.8 if main else 1.0))
-            down = va == 'top'
-            name = ax.annotate(Rn.city_name(p, lang), xy=(0.5, 0 if down else 1), xycoords=pill, xytext=(0, -3 if down else 3), textcoords='offset points', ha='center', va='top' if down else 'bottom',
-                               fontsize=9.5 if main else 8.2, fontweight='bold', color=NAVY, zorder=7, path_effects=[matplotlib.patheffects.withStroke(linewidth=3, foreground='#ffffff')])
-            pb = pill.get_window_extent(rnd); bb = matplotlib.transforms.Bbox.union([pb.padded(4), name.get_window_extent(rnd)]).padded(2)
+            pill = ax.annotate(f"{Rn.city_name(p, lang)}  {Rn.fmt_t(tt)}", (cx, cy), xytext=(ox, oy), textcoords='offset points', ha=ha, va=va, fontsize=13 if main else 10.5, fontweight='bold', color=NAVY, zorder=7,
+                               bbox=dict(boxstyle='round,pad=0.32,rounding_size=0.9', fc='#ffffff', ec=('#e0895a' if main else '#cfd7e0'), lw=1.8 if main else 1.0, alpha=0.96))
+            name = None
+            pb = pill.get_window_extent(rnd); bb = pb.padded(4)
             ok = axb.contains(bb.x0, bb.y0) and axb.contains(bb.x1, bb.y1) and not any(bb.overlaps(o) for o in placed) and not any(bb.contains(*d) for i_, d in enumerate(dots) if i_ != j)
-            if ok:
-                placed.append(bb); fb = pb.transformed(fig.transFigure.inverted())
-                icon(fig, fb.x0 + (0.018 if main else 0.015), (fb.y0 + fb.y1) / 2, 0.040 if main else 0.033, _kind(pp, cc, tt)); break
-            pill.remove(); name.remove()
+            if ok: placed.append(bb); break
+            pill.remove()
         else:  # no free place: a small pill above the dot, no name
             ax.annotate(Rn.fmt_t(tt), (cx, cy), xytext=(0, 7), textcoords='offset points', ha='center', va='bottom', fontsize=9.5, fontweight='bold', color=NAVY, zorder=7,
                         bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.8', fc='#ffffff', ec='#d5dce4', lw=0.8))
+    # what the colours mean: a small key in the corner of the map (its own axes, above the map)
+    lg = fig.add_axes([0.012, 0.16, 0.2, 0.062], zorder=20); lg.set_xlim(0, 1); lg.set_ylim(0, 1); lg.axis('off')
+    lg.add_patch(matplotlib.patches.FancyBboxPatch((0, 0), 1, 1, boxstyle='round,pad=0,rounding_size=0.08', fc='#ffffff', ec='#dde3ea', lw=0.8, transform=lg.transAxes, mutation_aspect=0.3))
+    lg.text(0.04, 0.8, LEG[lang][0], fontsize=7.6, fontweight='bold', color=NAVY, va='center')
+    for i_, (c1, c2, lv) in enumerate(zip(RAIN_C, SNOW_C, ('30', '50', '70', '90 %'))):
+        x_ = 0.04 + i_ * 0.235
+        lg.add_patch(matplotlib.patches.Rectangle((x_, 0.4), 0.06, 0.22, fc=c1, ec='none')); lg.add_patch(matplotlib.patches.Rectangle((x_ + 0.06, 0.4), 0.04, 0.22, fc=c2, ec='none'))
+        lg.text(x_ + 0.115, 0.51, lv, fontsize=7.2, color=NAVY, va='center')
+    lg.text(0.04, 0.17, LEG[lang][1], fontsize=6.8, color=Rn.MUTED, va='center')
     # the chosen city
-    PX, PW = 0.716, 0.272; X0, X1 = PX + 0.018, PX + PW - 0.018
-    Rn._card(fig, PX, box[1], PW, box[3], fc='#ffffff', ec='#dde3ea', r=0.012)
+    PX, PW = 0.82, 0.172; X0, X1 = PX + 0.014, PX + PW - 0.014
+    Rn._card(fig, PX, 0.15, PW, 0.77, fc='#ffffff', ec='#dde3ea', r=0.012)
     tt = R.value_at(k, city, 'T'); v = max(0, min(100, R.value_at(k, city)))
     c = R.value_at(k, city, 'C') if getattr(R, 'C', None) is not None else np.nan; ws = R.value_at(k, city, 'Wd') if getattr(R, 'Wd', None) is not None else np.nan
     snow = np.isfinite(tt) and tt <= 0.5
-    fig.text(X0, 0.828, Rn.city_name(city, lang), fontsize=13, fontweight='bold', color=Rn.MUTED, va='center')
-    icon(fig, X0 + 0.03, 0.758, 0.085, _kind(v, c if np.isfinite(c) else 0.5, tt if np.isfinite(tt) else 10))
-    fig.text(X0 + 0.07, 0.758, Rn.fmt_t(tt) if np.isfinite(tt) else '—', fontsize=34, fontfamily=Rn.DISPLAY, fontweight='bold', color=NAVY, va='center')
+    fig.text(X0, 0.88, Rn.city_name(city, lang), fontsize=12.5, fontweight='bold', color=Rn.MUTED, va='center')
+    icon(fig, X0 + 0.022, 0.81, 0.07, _kind(v, c if np.isfinite(c) else 0.5, tt if np.isfinite(tt) else 10))
+    fig.text(X0 + 0.052, 0.81, Rn.fmt_t(tt) if np.isfinite(tt) else '—', fontsize=30, fontfamily=Rn.DISPLAY, fontweight='bold', color=NAVY, va='center')
     rows = [((X['snow'] if snow else X['rain']).capitalize(), f'{v:.0f} %')]
     if np.isfinite(c): rows.append((L['clouds'][0], f'{c * 100:.0f} %'))
     if np.isfinite(ws): rows.append((X['wind'].capitalize(), f"{ws:.0f} {X['ms']}"))
     for i, (a_, b_) in enumerate(rows):
-        y = 0.678 - i * 0.04
-        fig.text(X0, y, a_, fontsize=10, color=Rn.MUTED, va='center'); fig.text(X1, y, b_, fontsize=12, fontweight='bold', color=NAVY, va='center', ha='right')
-        fig.add_artist(matplotlib.lines.Line2D([X0, X1], [y - 0.02, y - 0.02], color='#e8edf2', lw=0.8, transform=fig.transFigure))
-    y = 0.535
+        y = 0.73 - i * 0.045
+        fig.text(X0, y, a_, fontsize=10.5, color=Rn.MUTED, va='center'); fig.text(X1, y, b_, fontsize=12.5, fontweight='bold', color=NAVY, va='center', ha='right')
+        fig.add_artist(matplotlib.lines.Line2D([X0, X1], [y - 0.022, y - 0.022], color='#e8edf2', lw=0.8, transform=fig.transFigure))
+    # today and tomorrow in two short lines each: the range and the chance of rain or snow (the details are in the bot's text)
+    y = 0.565
     for lbl, d in ((X['today'], info['today']), (X['tomorrow'], info['tomorrow'])):
         if not d: continue
-        fig.text(X0, y, lbl, fontsize=11.5, fontweight='bold', color=NAVY, va='center'); fig.text(X1, y, d['range'], fontsize=11.5, fontweight='bold', color=NAVY, va='center', ha='right'); y -= 0.033
-        rain_t = d['rain'] if (d['rain'] == X['none'] or d['rain'].startswith(X['when'])) else f"{X['when']}: {d['rain']}"
-        for line in textwrap.wrap(rain_t, 38)[:2]: fig.text(X0, y, line, fontsize=9.5, color=Rn.MUTED, va='center'); y -= 0.028
-        for line in textwrap.wrap(f"{X['wear']}: {d['wear']}", 38)[:2]: fig.text(X0, y, line, fontsize=9.5, color='#c8784a', va='center'); y -= 0.028
-        y -= 0.022
+        fig.text(X0, y, lbl, fontsize=11.5, fontweight='bold', color=NAVY, va='center'); y -= 0.04
+        fig.text(X0, y, d['range'], fontsize=17, fontfamily=Rn.DISPLAY, fontweight='bold', color=NAVY, va='center'); y -= 0.04
+        pr = int(d.get('p', 0)); kind_ = X['snow'] if d.get('snow') else X['rain']
+        fig.text(X0, y, f"{kind_.capitalize()} {pr} %" if pr >= 20 else X['dry'].capitalize(), fontsize=10.5, color='#4f8cc4' if pr >= 20 else Rn.MUTED, va='center'); y -= 0.07
     # 48 hours
-    Rn._card(fig, 0.012, 0.03, 0.976, 0.168, fc='#ffffff', ec='#dde3ea', r=0.012)
-    fig.text(0.026, 0.178, X['strip'], fontsize=9, color=Rn.MUTED, va='center')
-    bx = fig.add_axes([0.045, 0.062, 0.915, 0.098]); bx.set_facecolor('none')
+    Rn._card(fig, 0.004, 0.022, 0.988, 0.12, fc='#ffffff', ec='#dde3ea', r=0.012)
+    fig.text(0.016, 0.126, X['strip'], fontsize=8, color=Rn.MUTED, va='center')
+    bx = fig.add_axes([0.04, 0.045, 0.925, 0.07]); bx.set_facecolor('none')
     P = np.clip(R.series(city), 0, 100)[:HOURS]; Ts = R.tseries(city); Ts = Ts[:HOURS] if Ts is not None else None
     cols = [(SNOW_C if (Ts is not None and Ts[i] <= 0.5) else RAIN_C)[int(np.clip(np.digitize(p, P_LV) - 1, 0, 3))] if p >= 20 else '#edf1f5' for i, p in enumerate(P)]
     bx.bar(np.arange(HOURS), np.maximum(P, 4), width=0.72, color=cols, zorder=2); bx.set_ylim(0, 100); bx.set_xlim(-0.6, HOURS - 0.4)
@@ -266,7 +269,7 @@ def main():
                 pmax = float(np.nanmax(pw[lang][wd_])) if lang in pw and wd_ else float(Pc[idx].max())
                 snow = bool(np.nanmean(Tc[[i for i in idx if Pc[i] >= 30] or idx]) <= 0.5)
                 info[key] = {'range': f"{Rn.fmt_t(tmin)}…{Rn.fmt_t(tmax)}", 'rain': rain_spans(Pc, loc, lang, dd, pmax), 'wear': wear(lang, tmin, tmax, pmax, snow, float(np.nanmax(Wc[idx]))),
-                             'p': int(pmax), 'snow': snow}
+                             'p': int(round(pmax)), 'snow': snow}
             REG[(region, lang)] = (R, loc, info, city)
             fdir = out / f'frames_{region}_{lang}'; fdir.mkdir(exist_ok=True)
             jobs = [(region, lang, k, fdir / f'{k:03d}.png') for k in range(HOURS)]
