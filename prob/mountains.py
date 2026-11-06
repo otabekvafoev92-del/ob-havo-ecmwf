@@ -68,11 +68,11 @@ def main():
 
 PX = {
     'ru': dict(title='Горы Узбекистана', sub='снег и дни для поездки', good='хороший день', great='отличный день', snow='снег, см', best='лучший день после снега',
-               wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], m='м', s_snow='снег', s_go='ехать лучше', none='снега нет', cm='см', rain='дождь, мм', s_rain='дождь', mm='мм'),
+               wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], m='м', s_snow='ожидается снег', s_go='ехать лучше', none='снега не ожидается', cm='см', rain='дождь, мм', s_rain='дождь', mm='мм'),
     'uz': dict(title='O‘zbekiston tog‘lari', sub='qor va sayohat kunlari', good='yaxshi kun', great='a’lo kun', snow='qor, sm', best='qordan keyingi eng yaxshi kun',
-               wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], m='m', s_snow='qor', s_go='borish yaxshi', none='qor yo‘q', cm='sm', rain='yomg‘ir, mm', s_rain='yomg‘ir', mm='mm'),
+               wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], m='m', s_snow='qor kutilmoqda', s_go='borish yaxshi', none='qor kutilmayapti', cm='sm', rain='yomg‘ir, mm', s_rain='yomg‘ir', mm='mm'),
     'tr': dict(title='Özbekistan dağları', sub='kar ve gezi günleri', good='iyi gün', great='çok iyi gün', snow='kar, cm', best='kardan sonraki en iyi gün',
-               wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'], m='m', s_snow='kar', s_go='gitmek için', none='kar yok', cm='cm', rain='yağmur, mm', s_rain='yağmur', mm='mm'),
+               wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'], m='m', s_snow='kar bekleniyor', s_go='gitmek için', none='kar beklenmiyor', cm='cm', rain='yağmur, mm', s_rain='yağmur', mm='mm'),
 }
 
 
