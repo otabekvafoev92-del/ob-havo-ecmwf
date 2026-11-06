@@ -162,9 +162,29 @@ export default {
 
 // the admin's own command menu and buttons: /users, /admin, /yt
 const ADMIN_BTN = '👤 Пользователи';
-const ADMIN_KB = { inline_keyboard: [[{ text: ADMIN_BTN, callback_data: 'AU:ru' }, { text: '📺 YouTube', callback_data: 'AY:ru' }]] };
+const ADMIN_KB = { inline_keyboard: [[{ text: ADMIN_BTN, callback_data: 'AU:ru' }, { text: '📺 YouTube', callback_data: 'AY:ru' }], [{ text: '🆕 Изменения', callback_data: 'AC:ru' }]] };
+// admin: what changed lately (telegram/changes.json in the repository) and how the last site builds went (GitHub Actions)
+async function sendChanges(env, chat) {
+  const REPO = 'otabekvafoev92-del/ob-havo-ecmwf', H = { 'User-Agent': 'osmon-bot', Accept: 'application/vnd.github+json' };
+  const [ch, runs] = await Promise.all([
+    fetch(`https://raw.githubusercontent.com/${REPO}/main/telegram/changes.json?t=${Date.now()}`).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(`https://api.github.com/repos/${REPO}/actions/runs?per_page=6`, { headers: H }).then(r => r.ok ? r.json() : null).catch(() => null)]);
+  const st = { success: '✅ готово', failure: '❌ ошибка', cancelled: '⏭ заменена новой', in_progress: '⏳ идёт', queued: '🕓 в очереди', pending: '🕓 в очереди' };
+  const out = ['🆕 <b>Последние изменения</b>', ''];
+  for (const it of ((ch && ch.items) || []).slice(0, 12)) out.push(`• <b>${esc(it.d.slice(8, 10) + '.' + it.d.slice(5, 7) + ' ' + it.d.slice(11))}</b> — ${esc(it.t)}`);
+  if (!ch) out.push('Список изменений сейчас недоступен.');
+  if (runs && runs.workflow_runs) {
+    out.push('', '🛠 <b>Сборки сайта и видео</b>');
+    for (const r of runs.workflow_runs.slice(0, 5)) {
+      const s = r.status === 'completed' ? (st[r.conclusion] || r.conclusion) : (st[r.status] || r.status);
+      const mins = r.run_started_at ? Math.max(0, Math.round(((r.status === 'completed' ? Date.parse(r.updated_at) : Date.now()) - Date.parse(r.run_started_at)) / 60000)) : 0;
+      out.push(`• ${tkt(r.created_at)} — ${s}${r.status !== 'queued' && mins ? ` · ${mins} мин` : ''} · ${r.event === 'schedule' ? 'по расписанию' : r.event === 'push' ? 'после изменений' : 'вручную'}`);
+    }
+  }
+  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n').slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true });
+}
 async function adminMenu(env, chat) {
-  await tg(env, 'setMyCommands', { scope: { type: 'chat', chat_id: Number(chat) }, commands: [{ command: 'users', description: '👤 Пользователи бота' }, { command: 'searches', description: '🔎 Что ищут (7 дней)' }, { command: 'accuracy', description: '🎯 Точность прогноза' }, { command: 'admin', description: '👑 Статистика' }, { command: 'yt', description: '📺 Видеообзор для YouTube' }, { command: 'start', description: 'Меню' }] });
+  await tg(env, 'setMyCommands', { scope: { type: 'chat', chat_id: Number(chat) }, commands: [{ command: 'users', description: '👤 Пользователи бота' }, { command: 'searches', description: '🔎 Что ищут (7 дней)' }, { command: 'accuracy', description: '🎯 Точность прогноза' }, { command: 'admin', description: '👑 Статистика' }, { command: 'yt', description: '📺 Видеообзор для YouTube' }, { command: 'changes', description: '🆕 Последние изменения' }, { command: 'start', description: 'Меню' }] });
 }
 async function setup(env, url) {
   { const a = await kv(env, 'admin'); if (a) await adminMenu(env, a); }
@@ -804,6 +824,7 @@ async function handle(up, env) {
     await tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryRk(lang) });
   }
+  if (kind === 'AC' && chat.type === 'private' && String(chat.id) === (await kv(env, 'admin'))) return sendChanges(env, chat.id);
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
   if (kind === 'O') return sendOutlook(env, chat.id, lang);
   if (kind === 'MT') return sendMountains(env, chat.id, lang);
@@ -912,6 +933,7 @@ async function privateMsg(msg, env) {
     const t = await (await fetch(`${base(env)}/prob/${b.text}`)).text().catch(() => '');
     return tg(env, 'sendMessage', { chat_id: chat.id, text: (r.ok ? '' : `⚠️ ${r.description || ''}\n${url}\n\n`) + t.slice(0, 4000), disable_web_page_preview: true });
   }
+  if (cmd === 'changes' && admin === String(chat.id)) return sendChanges(env, chat.id);
   if (cmd === 'searches' && admin === String(chat.id)) {
     const S = await searchStats(env, 7);
     return tg(env, 'sendMessage', { chat_id: chat.id, parse_mode: 'HTML', text: `🔎 <b>Поиск городов за 7 дней</b>: ${S.tot}\n\n${S.top.map((x, i) => `${i + 1}. ${esc(x.q)} — ${x.n}`).join('\n') || '—'}${S.miss.length ? `\n\n❓ <b>Не нашлось</b>:\n${S.miss.map(x => `• ${esc(x.q)} — ${x.n}`).join('\n')}` : ''}` });
