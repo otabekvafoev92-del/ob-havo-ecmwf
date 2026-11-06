@@ -35,9 +35,9 @@ TX = {
                months=['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık']),
 }
 PR_LV = [0, 1, 3, 5, 10, 20, 40, 80, 500]
-PR_COL = ['#f2f5f7', '#d6ecf3', '#a9d7ea', '#72bde0', '#3f9bd2', '#2a77b5', '#1b5592', '#5b2c7e']
+PR_COL = ['#f3f5f7', '#bfe3f7', '#86c8f0', '#4aa6e6', '#1f7fd1', '#1559ae', '#0c3a80', '#6a2c91']
 TA_LV = [-8, -4, -3, -2, -1, -0.5, 0.5, 1, 2, 3, 4, 8]
-TA_COL = ['#2c3f94', '#3c64b8', '#6a93d0', '#a2c2e4', '#d4e4f2', '#f1f1ee', '#f9dcc4', '#f4b48e', '#e8805f', '#cf4d3f', '#9c2232']
+TA_COL = ['#1e2f8f', '#2f56c4', '#4f86e0', '#8ab6ef', '#c6dcf6', '#f2f2ee', '#fbd3b3', '#f6a375', '#ec6b45', '#d03a2c', '#9c1626']
 
 
 def get(url, params):
@@ -86,7 +86,7 @@ def fetch_aq(points):
 
 
 AQ_LV = [0, 20, 50, 100, 200, 400, 5000]
-AQ_COL = ['#dff1e2', '#b9dfa8', '#f3dd7a', '#f2a65a', '#d9534f', '#7d2a5c']
+AQ_COL = ['#cfeccf', '#8fd18a', '#f2d750', '#f39a3d', '#de4a3f', '#7a1f5c']
 DX = {'ru': dict(title='Пыль и качество воздуха', sub='PM10, максимум за день, мкг/м³', bands=['хорошо', 'умеренно', 'вредно для чувствительных', 'вредно', 'очень вредно', 'опасно'], src='Прогноз CAMS (ECMWF Copernicus) · данные Open-Meteo'),
       'uz': dict(title='Chang va havo sifati', sub='PM10, kunlik maksimum, mkg/m³', bands=['yaxshi', 'o‘rtacha', 'sezgirlar uchun zararli', 'zararli', 'juda zararli', 'xavfli'], src='CAMS prognozi (ECMWF Copernicus) · Open-Meteo ma’lumotlari'),
       'tr': dict(title='Toz ve hava kalitesi', sub='PM10, günlük en yüksek, µg/m³', bands=['iyi', 'orta', 'hassaslar için zararlı', 'zararlı', 'çok zararlı', 'tehlikeli'], src='CAMS tahmini (ECMWF Copernicus) · Open-Meteo verisi')}
@@ -156,7 +156,8 @@ def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summar
         cs = ax.contourf(R.XU, R.YU, U, levels=lv, colors=cols, extend='both' if kind in ('ta', 't') else 'neither', zorder=2, antialiased=True)
         verts = np.concatenate(rings); codes = np.concatenate([[1] + [2] * (len(r) - 2) + [79] for r in rings])
         clip = matplotlib.patches.PathPatch(matplotlib.path.Path(verts, codes), transform=ax.transData, facecolor='none', edgecolor='none')
-        ax.add_patch(clip); cs.set_clip_path(clip)
+        ln = ax.contour(R.XU, R.YU, U, levels=lv[1:-1], colors='#ffffff', linewidths=0.9, alpha=0.85, zorder=2.1)  # a thin white line between the colour steps
+        ax.add_patch(clip); cs.set_clip_path(clip); ln.set_clip_path(clip)
     ax.add_collection(LC(R.a1, colors='#ffffff', linewidths=1.0, alpha=0.9, zorder=3))
     ax.add_collection(LC(rings, colors=NAVY, linewidths=6, alpha=0.08, zorder=3.5))
     ax.add_collection(LC(rings, colors=NAVY, linewidths=1.6, zorder=4))
@@ -198,7 +199,7 @@ def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summar
         lc, ll = cols[i0:i1], [f"{Rn.fmt_t(a)}…{Rn.fmt_t(b)}" for a, b in zip(lv[i0:i1], lv[i0 + 1:i1 + 1])]
     n = len(lc); bx0, bw = box[0] + 0.01, box[2] - 0.02; cw = bw / n
     for i, (c, t) in enumerate(zip(lc, ll)):
-        Rn._card(fig, bx0 + i * cw + 0.001, 0.105, cw - 0.002, 0.03, fc=c, ec='none', r=0.003)
+        Rn._card(fig, bx0 + i * cw + 0.001, 0.105, cw - 0.002, 0.03, fc=c, ec='#c9d1db' if _lum(c) > 0.9 else 'none', r=0.003)
         fig.text(bx0 + i * cw + cw / 2, 0.082, t, fontsize=8.6 if n < 10 else 7.6, color=NAVY, ha='center', va='center')
     if kind == 'aq':
         for i, t in enumerate(DX[lang]['bands']): fig.text(bx0 + i * cw + cw / 2, 0.06, t, fontsize=7.2, color=Rn.MUTED, ha='center', va='center')
@@ -221,7 +222,7 @@ def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summar
     # footer
     fig.text(0.024, 0.025, summary, fontsize=10.5, fontweight='bold', color=NAVY, va='center')
     fig.text(0.976, 0.025, src + '  ·  t.me/ObHavo_ECMWF_bot', fontsize=8, color=Rn.FAINT, va='center', ha='right')
-    fig.savefig(path, dpi=150, facecolor=PAPER); plt.close(fig)
+    fig.savefig(path, dpi=200, facecolor=PAPER)  # 2560×1440: the most Telegram keeps for a photo; plt.close(fig)
 
 
 def draw_dust(R, aq, lang, path, cities):
