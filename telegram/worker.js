@@ -162,7 +162,42 @@ export default {
 
 // the admin's own command menu and buttons: /users, /admin, /yt
 const ADMIN_BTN = '👤 Пользователи';
-const ADMIN_KB = { inline_keyboard: [[{ text: ADMIN_BTN, callback_data: 'AU:ru' }, { text: '📺 YouTube', callback_data: 'AY:ru' }], [{ text: '🆕 Изменения', callback_data: 'AC:ru' }]] };
+const ADMIN_KB = { inline_keyboard: [[{ text: ADMIN_BTN, callback_data: 'AU:ru' }, { text: '📺 YouTube', callback_data: 'AY:ru' }], [{ text: '📈 Динамика', callback_data: 'AD:ru' }, { text: '🆕 Изменения', callback_data: 'AC:ru' }]] };
+// admin: day by day — how many people used the bot, how many were new, site visits, and how many have the daily auto-send on
+async function dstatSnap(env) {  // today's subscription counts, kept per day (so unsubscribes show in the history too)
+  const one = async q => ((await env.DB.prepare(q).first()) || {}).n || 0;
+  const prv = await one("SELECT COUNT(*) AS n FROM subs WHERE type = 'private'"), grp = await one("SELECT COUNT(*) AS n FROM subs WHERE type <> 'private'");
+  const mtn = await one('SELECT COUNT(*) AS n FROM mtn'), users = await one('SELECT COUNT(*) AS n FROM users');
+  await env.DB.prepare('INSERT INTO dstat (day, prv, grp, mtn, users) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(day) DO UPDATE SET prv = ?2, grp = ?3, mtn = ?4, users = ?5').bind(todayTZ(), prv, grp, mtn, users).run();
+  return { prv, grp, mtn, users };
+}
+async function sendDynamics(env, chat, n = 14) {
+  if (!env.DB) return; await db(env);
+  const now = await dstatSnap(env), all = async (q, ...a) => (await env.DB.prepare(q).bind(...a).all()).results;
+  const days = []; for (let i = n - 1; i >= 0; i--) days.push(new Date(Date.now() + TZ * 3600e3 - i * 864e5).toISOString().slice(0, 10));
+  const from = days[0], map = (rows, k = 'n') => Object.fromEntries(rows.map(r => [r.day, r[k]]));
+  const act = map(await all('SELECT day, COUNT(*) AS n FROM daily WHERE day >= ?1 GROUP BY day', from));
+  const neu = map(await all(`SELECT date(first, '+${TZ} hours') AS day, COUNT(*) AS n FROM users WHERE first IS NOT NULL AND chat_id > 0 GROUP BY day HAVING day >= ?1`, from));
+  let site = {}; try { site = map(await all('SELECT day, SUM(n) AS n FROM hits WHERE day >= ?1 GROUP BY day', from)); } catch (e) { /* no site counter yet */ }
+  const snap = Object.fromEntries((await all('SELECT * FROM dstat WHERE day >= ?1', from)).map(r => [r.day, r]));
+  // days before the snapshots began: today's subscribers counted by the day they subscribed
+  const added = await all(`SELECT date(added, '+${TZ} hours') AS day, type FROM subs WHERE added IS NOT NULL`);
+  const subsOn = d => snap[d] ? snap[d].prv + snap[d].grp : added.filter(x => x.day <= d).length;
+  const newSubs = map(await all(`SELECT date(added, '+${TZ} hours') AS day, COUNT(*) AS n FROM subs GROUP BY day HAVING day >= ?1`, from));
+  const top = Math.max(1, ...days.map(d => act[d] || 0)), bar = v => '█'.repeat(Math.round((v || 0) / top * 8)).padEnd(8, '·');
+  const pad = (v, w) => String(v ?? 0).padStart(w);
+  const rows = days.map(d => `${d.slice(8, 10)}.${d.slice(5, 7)} ${bar(act[d])}${pad(act[d], 4)}${pad(neu[d], 4)}${pad(site[d], 5)}${pad(subsOn(d), 4)}${newSubs[d] ? '+' + newSubs[d] : ''}`);
+  const sum = k => days.reduce((a, d) => a + (k[d] || 0), 0), avg = Math.round(sum(act) / Math.max(1, days.filter(d => act[d]).length));
+  const text = [`📈 <b>Динамика за ${n} дней</b> (по Ташкенту)`, '',
+    `<pre>${esc(`Дата  Заходили    Нов Сайт  🔔\n${rows.join('\n')}`)}</pre>`,
+    `👤 Заходили: в среднем <b>${avg}</b> в день · всего уникальных за период: <b>${((await env.DB.prepare('SELECT COUNT(DISTINCT chat_id) AS n FROM daily WHERE day >= ?1').bind(from).first()) || {}).n || 0}</b>`,
+    `🆕 Новых за период: <b>${sum(neu)}</b> · всего пользователей: <b>${now.users}</b>`,
+    `🔔 Автоотправка погоды включена: <b>${now.prv + now.grp}</b> (👤 личных ${now.prv} · 👥 групп и каналов ${now.grp})`,
+    `❄️ Сигнал о снеге в горах: <b>${now.mtn}</b>`,
+    `<i>«Заходили» считается с ${(await env.DB.prepare('SELECT MIN(day) AS d FROM daily').first() || {}).d || 'сегодня'}; столбец 🔔 — сколько подписок было в тот день, «+» — новые подписки.</i>`].join('\n');
+  return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: [[7, 14, 30].map(k => ({ text: `${k === n ? '✅ ' : ''}${k} дней`, callback_data: `AD:ru:${k}` }))] } });
+}
 // admin: what changed lately (telegram/changes.json in the repository) and how the last site builds went (GitHub Actions)
 async function sendChanges(env, chat) {
   const REPO = 'otabekvafoev92-del/ob-havo-ecmwf', H = { 'User-Agent': 'osmon-bot', Accept: 'application/vnd.github+json' };
@@ -184,7 +219,7 @@ async function sendChanges(env, chat) {
   return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n').slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true });
 }
 async function adminMenu(env, chat) {
-  await tg(env, 'setMyCommands', { scope: { type: 'chat', chat_id: Number(chat) }, commands: [{ command: 'users', description: '👤 Пользователи бота' }, { command: 'searches', description: '🔎 Что ищут (7 дней)' }, { command: 'accuracy', description: '🎯 Точность прогноза' }, { command: 'admin', description: '👑 Статистика' }, { command: 'yt', description: '📺 Видеообзор для YouTube' }, { command: 'changes', description: '🆕 Последние изменения' }, { command: 'start', description: 'Меню' }] });
+  await tg(env, 'setMyCommands', { scope: { type: 'chat', chat_id: Number(chat) }, commands: [{ command: 'users', description: '👤 Пользователи бота' }, { command: 'searches', description: '🔎 Что ищут (7 дней)' }, { command: 'accuracy', description: '🎯 Точность прогноза' }, { command: 'admin', description: '👑 Статистика' }, { command: 'yt', description: '📺 Видеообзор для YouTube' }, { command: 'changes', description: '🆕 Последние изменения' }, { command: 'dyn', description: '📈 Динамика по дням' }, { command: 'start', description: 'Меню' }] });
 }
 async function setup(env, url) {
   { const a = await kv(env, 'admin'); if (a) await adminMenu(env, a); }
@@ -236,22 +271,47 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 const langKb = (p = 'L') => ({ inline_keyboard: [[{ text: '🇺🇿 O‘zbekcha', callback_data: `${p}:uz` }, { text: '🇷🇺 Русский', callback_data: `${p}:ru` }, { text: '🇹🇷 Türkçe', callback_data: `${p}:tr` }]] });
 const countryKb = (lang, p = 'C') => ({ inline_keyboard: GROUPS.map(row => row.map(id => ({ text: `${FLAG[id]} ${NAMES[id][lang]}`, callback_data: `${p}:${lang}:${id}` }))) });
 const OLK = { uz: '📅 Haftalar va oylar', ru: '📅 Недели и месяцы', tr: '📅 Haftalar ve aylar' };
-// Uzbekistan: the past week, the next two weeks and this and next month as five maps (prob/outlook.py)
-async function sendOutlook(env, chat, lang) {
+// Uzbekistan: the past week, the next two weeks, this and next month and the dust (prob/outlook.py), in segments:
+// first a menu of periods, then each period's maps on their own with the same buttons under the last one
+const OLA = { ru: { pick: 'Выберите период — пришлю его карты:', all: '📤 Все карты сразу', dust: '🌫' },
+              uz: { pick: 'Davrni tanlang — xaritalarini yuboraman:', all: '📤 Barcha xaritalar', dust: '🌫' },
+              tr: { pick: 'Dönemi seçin — haritalarını göndereyim:', all: '📤 Tüm haritalar', dust: '🌫' } };
+const OL_ICON = { past: '⏪', w1: '📆', w2: '📆', m0: '🗓', m1: '🗓', dust: '🌫' };
+async function outlookItems(env, lang) {
   const I = await (await fetch(`${base(env)}/prob/outlook/index.json?t=${Date.now()}`)).json().catch(() => null);
   let its = I ? I.items.filter(i => i.lang === lang) : []; if (I && !its.length) its = I.items.filter(i => i.lang === 'ru');
+  return { I, its };
+}
+const ddm = x => `${x.slice(8, 10)}.${x.slice(5, 7)}`;
+// the segments as buttons: the past week alone, the two weeks side by side, the two months side by side, the dust, "all at once"
+function outlookKb(its, lang, cur) {
+  const A = OLA[lang] || OLA.ru, btn = i => ({ text: `${cur === i.key ? '✅' : OL_ICON[i.key] || '📅'} ${i.title}${/^w/.test(i.key) ? ` · ${ddm(i.start)}–${ddm(i.end)}` : ''}`, callback_data: `OP:${lang}:${i.key}` });
+  const by = k => its.filter(i => k.includes(i.key)).map(btn), rows = [by(['past']), by(['w1', 'w2']), by(['m0', 'm1']), by(['dust']),
+    its.filter(i => !['past', 'w1', 'w2', 'm0', 'm1', 'dust'].includes(i.key)).map(btn)].filter(r => r.length);
+  rows.push([{ text: A.all, callback_data: `OA:${lang}` }]);
+  return { inline_keyboard: rows };
+}
+async function sendOutlook(env, chat, lang) {
+  const { its } = await outlookItems(env, lang);
   if (!its.length) return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].none });
-  // every map is its own message with its own caption: big enough to read, clear what it shows
-  const dd = x => `${x.slice(8, 10)}.${x.slice(5, 7)}`, v = encodeURIComponent(I.made || '');
-  await tg(env, 'sendMessage', { chat_id: chat, text: `🇺🇿 <b>${OLK[lang]}</b>`, parse_mode: 'HTML' });
-  let r = null;
-  for (const i of its) {
+  return tg(env, 'sendMessage', { chat_id: chat, text: `🇺🇿 <b>${OLK[lang]}</b>\n${(OLA[lang] || OLA.ru).pick}`, parse_mode: 'HTML', reply_markup: outlookKb(its, lang) });
+}
+// one period (key) or all of them: every map is its own photo with its own caption; the segment buttons go under the last one
+async function sendOutlookPart(env, chat, lang, key) {
+  const { I, its } = await outlookItems(env, lang);
+  if (!its.length) return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].none });
+  const v = encodeURIComponent(I.made || ''), list = key ? its.filter(i => i.key === key) : its;
+  if (!list.length) return sendOutlook(env, chat, lang);
+  const shots = [];
+  for (const i of list) {
     const imgs = i.imgs || [i.img], caps = i.caps || [];
-    for (let k = 0; k < imgs.length; k++) {
-      const cap = `<b>${esc(i.title)}</b>${caps[k] ? ` · ${esc(caps[k])}` : ''}\n${dd(i.start)}–${dd(i.end)}${k === 0 && i.text ? `\n${esc(i.text)}` : ''}`;
-      await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
-      r = await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/${imgs[k]}?v=${v}`, caption: cap.slice(0, 1024), parse_mode: 'HTML' });
-    }
+    imgs.forEach((im, k) => shots.push({ im, cap: `<b>${esc(i.title)}</b>${caps[k] ? ` · ${esc(caps[k])}` : ''}\n${ddm(i.start)}–${ddm(i.end)}${k === 0 && i.text ? `\n${esc(i.text)}` : ''}` }));
+  }
+  let r = null;
+  for (let n = 0; n < shots.length; n++) {
+    await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
+    r = await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/${shots[n].im}?v=${v}`, caption: shots[n].cap.slice(0, 1024), parse_mode: 'HTML',
+      ...(n === shots.length - 1 ? { reply_markup: outlookKb(its, lang, key) } : {}) });
   }
   return r;
 }
@@ -274,26 +334,45 @@ const dayW = (d, lang) => { const X = MTX[lang] || MTX.ru; return `${dayLabel(d.
 // the first good day after a snow day (the same three days), for "when to go and see the snow"
 const afterSnow = (sp, d) => sp.days.find(x => x.d > d && x.good > 0 && (new Date(x.d) - new Date(d)) <= 3 * 864e5);
 async function mtnSub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM mtn WHERE chat_id = ?1').bind(chat).first(); }
+const MTA = { ru: { pick: 'Выберите место — расскажу про снег и лучшие дни:', all: '📋 Все горы текстом' },
+              uz: { pick: 'Joyni tanlang — qor va eng yaxshi kunlarni aytaman:', all: '📋 Barcha tog‘lar matnda' },
+              tr: { pick: 'Yeri seçin — karı ve en iyi günleri anlatayım:', all: '📋 Tüm dağlar metin olarak' } };
+function spotLines(sp, M, lang) {
+  const X = MTX[lang] || MTX.ru, today = todayTZ(), days = sp.days.filter(d => d.d >= today), snow = days.filter(d => d.sn >= (M.snow_cm || 2)), out = [];
+  out.push(`<b>${esc(sp.name[lang] || sp.name.ru)}</b> · ${sp.elev} ${X.m} · ${esc(sp.area[lang] || sp.area.ru)}`);
+  out.push(snow.length ? `${X.snow}: ${snow.slice(0, 4).map(d => `${dayLabel(d.d, lang)} ~${Math.round(d.sn)} ${X.cm}`).join(', ')}` : X.noSnow);
+  if (days[0] && days[0].depth >= 1) out.push(`${X.cover}: ~${days[0].depth} ${X.cm}`);
+  const a = snow.length ? afterSnow(sp, snow[0].d) : null;
+  if (a) out.push(`${X.after}: <b>${dayW(a, lang)}</b>`);
+  const g = days.slice(0, 10).filter(d => d.good > 0).sort((p, q) => q.good - p.good || (p.d < q.d ? -1 : 1)).slice(0, 3).sort((p, q) => p.d < q.d ? -1 : 1);
+  if (g.length) { out.push(`${X.go}:`); g.forEach(d => out.push(`   • ${dayW(d, lang)}`)); } else out.push(X.noGo);
+  return out;
+}
+// the segment buttons: one per place (two in a row, a snowflake where fresh snow is coming), all as text, the snow signal
+async function mountainsKb(env, chat, lang, M, cur) {
+  const X = MTX[lang] || MTX.ru, A = MTA[lang] || MTA.ru, today = todayTZ(), s = await mtnSub(env, chat);
+  const b = M.spots.map(sp => ({ text: `${cur === sp.id ? '✅' : sp.days.some(d => d.d >= today && d.sn >= (M.snow_cm || 2)) ? '❄️' : '⛰'} ${sp.name[lang] || sp.name.ru}`, callback_data: `MP:${lang}:${sp.id}` }));
+  const rows = []; for (let i = 0; i < b.length; i += 2) rows.push(b.slice(i, i + 2));
+  rows.push([{ text: A.all, callback_data: `MA:${lang}` }]);
+  rows.push([{ text: s ? X.unsub : X.sub, callback_data: `MS:${lang}`, style: s ? undefined : 'success' }]);
+  return { inline_keyboard: rows };
+}
 async function sendMountains(env, chat, lang) {
   const X = MTX[lang] || MTX.ru, M = await mountainsData(env);
   if (!M || !M.spots) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
-  // the picture first: 10 days for every place (snow, good days, the best day after snow), then the text
-  await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${MTX[lang] ? lang : 'ru'}.png?v=${fresh()}` });
-  const today = todayTZ(), out = [X.title];
-  for (const sp of M.spots) {
-    const days = sp.days.filter(d => d.d >= today), snow = days.filter(d => d.sn >= (M.snow_cm || 2));
-    out.push('', `<b>${esc(sp.name[lang] || sp.name.ru)}</b> · ${sp.elev} ${X.m} · ${esc(sp.area[lang] || sp.area.ru)}`);
-    out.push(snow.length ? `${X.snow}: ${snow.slice(0, 4).map(d => `${dayLabel(d.d, lang)} ~${Math.round(d.sn)} ${X.cm}`).join(', ')}` : X.noSnow);
-    if (days[0] && days[0].depth >= 1) out.push(`${X.cover}: ~${days[0].depth} ${X.cm}`);
-    const a = snow.length ? afterSnow(sp, snow[0].d) : null;
-    if (a) out.push(`${X.after}: <b>${dayW(a, lang)}</b>`);
-    const g = days.slice(0, 10).filter(d => d.good > 0).sort((p, q) => q.good - p.good || (p.d < q.d ? -1 : 1)).slice(0, 3).sort((p, q) => p.d < q.d ? -1 : 1);
-    if (g.length) { out.push(`${X.go}:`); g.forEach(d => out.push(`   • ${dayW(d, lang)}`)); } else out.push(X.noGo);
-  }
+  // the picture (10 days for every place) with the places as buttons under it
+  const kb = await mountainsKb(env, chat, lang, M), cap = `${X.title}\n${(MTA[lang] || MTA.ru).pick}`;
+  const r = await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${MTX[lang] ? lang : 'ru'}.png?v=${fresh()}`, caption: cap, parse_mode: 'HTML', reply_markup: kb });
+  return r.ok ? r : tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
+}
+// one place (id) or all of them as text, with the same buttons
+async function sendMountainText(env, chat, lang, id) {
+  const X = MTX[lang] || MTX.ru, M = await mountainsData(env);
+  if (!M || !M.spots) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  const spots = id ? M.spots.filter(sp => sp.id === id) : M.spots, out = id ? [] : [X.title];
+  spots.forEach(sp => { if (out.length) out.push(''); out.push(...spotLines(sp, M, lang)); });
   out.push('', `<i>${X.foot}</i>`);
-  const s = await mtnSub(env, chat);
-  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n').slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true,
-    reply_markup: { inline_keyboard: [[{ text: s ? X.unsub : X.sub, callback_data: `MS:${lang}`, style: s ? undefined : 'success' }]] } });
+  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n').slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: await mountainsKb(env, chat, lang, M, id) });
 }
 // after each update: tell everyone who asked about NEW fresh snow in the next 6 days, with the best day to go (07–21 h)
 async function mtnTick(env) {
@@ -817,7 +896,7 @@ async function handle(up, env) {
     }
     return tg(env, 'sendMessage', { chat_id: chat.id, text, parse_mode: 'HTML', reply_markup: kb });
   }
-  await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(['T', 'V', 'DC', 'Q', 'O'].includes(kind) ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', tr: '⏳ Hazırlanıyor…' })[lang] || '⏳' } : {}) });
+  await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(['T', 'V', 'DC', 'Q', 'O', 'OP', 'OA'].includes(kind) ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', tr: '⏳ Hazırlanıyor…' })[lang] || '⏳' } : {}) });
   if (chat.type === 'private') await saveUser(env, chat.id, who(cb.from));
   if (kind === 'S') {  // first language choice after /start: the guide, then the countries
     await saveUser(env, chat.id, { lang });
@@ -825,14 +904,21 @@ async function handle(up, env) {
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryRk(lang) });
   }
   if (kind === 'AC' && chat.type === 'private' && String(chat.id) === (await kv(env, 'admin'))) return sendChanges(env, chat.id);
+  if (kind === 'AD' && chat.type === 'private' && String(chat.id) === (await kv(env, 'admin'))) return sendDynamics(env, chat.id, +(id || 14));
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
   if (kind === 'O') return sendOutlook(env, chat.id, lang);
+  if (kind === 'OP') return sendOutlookPart(env, chat.id, lang, id);
+  if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
+  if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
+  if (kind === 'MA') return sendMountainText(env, chat.id, lang, null);
   if (kind === 'MT') return sendMountains(env, chat.id, lang);
   if (kind === 'MS') {  // the snow signal on / off: the button under the mountains message changes with it
     const X = MTX[lang] || MTX.ru, cur = await mtnSub(env, chat.id);
     if (cur) await env.DB.prepare('DELETE FROM mtn WHERE chat_id = ?1').bind(chat.id).run();
     else await env.DB.prepare('INSERT OR REPLACE INTO mtn (chat_id, lang, ver, added) VALUES (?1, ?2, ?3, ?4)').bind(chat.id, lang, (await kv(env, 'mtn_ver')) || '', new Date().toISOString()).run();
-    await tg(env, 'editMessageReplyMarkup', { chat_id: chat.id, message_id: cb.message.message_id, reply_markup: { inline_keyboard: [[{ text: cur ? X.sub : X.unsub, callback_data: `MS:${lang}` }]] } });
+    const old = cb.message.reply_markup && cb.message.reply_markup.inline_keyboard;  // keep the place buttons, flip only the signal button
+    const kb = old ? old.map(row => row.map(x => x.callback_data && x.callback_data.startsWith('MS:') ? { text: cur ? X.sub : X.unsub, callback_data: `MS:${lang}`, ...(cur ? { style: 'success' } : {}) } : x)) : [[{ text: cur ? X.sub : X.unsub, callback_data: `MS:${lang}` }]];
+    await tg(env, 'editMessageReplyMarkup', { chat_id: chat.id, message_id: cb.message.message_id, reply_markup: { inline_keyboard: kb } });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: cur ? X.off : X.on });
   }
   if (kind === 'Q') { const [, , la, lo] = cb.data.split(':'); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 5)); }
@@ -934,6 +1020,7 @@ async function privateMsg(msg, env) {
     return tg(env, 'sendMessage', { chat_id: chat.id, text: (r.ok ? '' : `⚠️ ${r.description || ''}\n${url}\n\n`) + t.slice(0, 4000), disable_web_page_preview: true });
   }
   if (cmd === 'changes' && admin === String(chat.id)) return sendChanges(env, chat.id);
+  if (cmd === 'dyn' && admin === String(chat.id)) return sendDynamics(env, chat.id);
   if (cmd === 'searches' && admin === String(chat.id)) {
     const S = await searchStats(env, 7);
     return tg(env, 'sendMessage', { chat_id: chat.id, parse_mode: 'HTML', text: `🔎 <b>Поиск городов за 7 дней</b>: ${S.tot}\n\n${S.top.map((x, i) => `${i + 1}. ${esc(x.q)} — ${x.n}`).join('\n') || '—'}${S.miss.length ? `\n\n❓ <b>Не нашлось</b>:\n${S.miss.map(x => `• ${esc(x.q)} — ${x.n}`).join('\n')}` : ''}` });
@@ -1100,6 +1187,7 @@ async function saveUser(env, id, f) {
   if (!env.DB) return; await db(env);
   await env.DB.prepare('INSERT INTO users (chat_id, lang, mode, name, seen, region, username, place, first) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?5) ON CONFLICT(chat_id) DO UPDATE SET lang = COALESCE(?2, lang), mode = COALESCE(?3, mode), name = COALESCE(?4, name), seen = ?5, region = COALESCE(?6, region), username = COALESCE(?7, username), place = COALESCE(?8, place)')
     .bind(id, f.lang ?? null, f.mode ?? null, f.name ?? null, new Date().toISOString(), f.region ?? null, f.username ?? null, f.place ?? null).run();
+  if (id > 0) await env.DB.prepare('INSERT OR IGNORE INTO daily (day, chat_id) VALUES (?1, ?2)').bind(todayTZ(), id).run();  // people only, not groups
 }
 // the PDF guide: uploaded once from the repository, then re-sent by Telegram's file_id
 const GUIDE_V = 3;
@@ -1153,6 +1241,9 @@ async function db(env) {
   try { await env.DB.exec('ALTER TABLE subs ADD COLUMN post_hour INTEGER'); } catch (e) { /* already there */ }
   try { await env.DB.exec('ALTER TABLE subs ADD COLUMN alert_run TEXT'); } catch (e) { /* already there */ }
   await env.DB.exec('CREATE TABLE IF NOT EXISTS mtn (chat_id INTEGER PRIMARY KEY, lang TEXT, ver TEXT, added TEXT)');
+  // who used the bot on which day (Tashkent date) and a daily snapshot of the auto-send subscriptions: for the admin's 📈 Динамика
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS daily (day TEXT, chat_id INTEGER, PRIMARY KEY (day, chat_id))');
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS dstat (day TEXT PRIMARY KEY, prv INTEGER, grp INTEGER, mtn INTEGER, users INTEGER)');
 }
 async function sub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM subs WHERE chat_id = ?1').bind(chat).first(); }
 async function saveSub(env, chat, regions, lang, lastDay, hour = POST_HOUR) {
