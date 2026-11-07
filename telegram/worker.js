@@ -181,7 +181,14 @@ export default {
     return new Response('ok');
   },
   async scheduled(ev, env, ctx) {
-    ctx.waitUntil((async () => { const r = await broadcast(env); if (!r || !r.due) { await alertTick(env); await mtnTick(env).catch(e => console.log('mtn', e && e.stack)); await notifTick(env).catch(e => console.log('notif', e && e.stack)); await staleTick(env); await statsTick(env); await backupTick(env); } await buildTick(env); })().catch(e => console.log('broadcast', e && e.stack)));
+    // each job on its own, so one failure (or Cloudflare's limit of requests per run) cannot stop the others;
+    // the check of the site builds goes first: it is small and it matters most
+    const run = (name, f) => f().catch(e => console.log(name, e && e.stack));
+    ctx.waitUntil((async () => {
+      await run('stale', () => staleTick(env));
+      const r = await broadcast(env).catch(e => { console.log('broadcast', e && e.stack); return null; });
+      if (!r || !r.due) for (const [n, f] of [['alert', alertTick], ['mtn', mtnTick], ['notif', notifTick], ['stats', statsTick], ['backup', backupTick]]) await run(n, () => f(env));
+    })());
   },
 };
 
@@ -930,16 +937,6 @@ async function statsTick(env) {
   await tg(env, 'sendMessage', { chat_id: admin, text: `📊 <b>Бот за сутки</b> (${day})\n👤 Заходили: <b>${act.n}</b>\n🆕 Новых: <b>${neu.n}</b>\n👥 Всего пользователей: ${tot.n}\n💬 Групп и каналов: ${grp.n}\n🔔 Личных подписок: ${prv.n}\n🗣 Языки: ${langs.map(x => `${x.lang || '?'} ${x.n}`).join(', ') || '—'}${site}\n\n/users — список`, parse_mode: 'HTML' });
 }
 // GitHub often skips scheduled runs: the worker starts the site build itself every 3 hours (needs the GH_TOKEN secret)
-async function buildTick(env) {
-  if (!env.GH_TOKEN || !env.DB) return;
-  const last = +(await kv(env, 'build_at') || 0);
-  if (Date.now() - last < 3 * 3600e3 - 10 * 60e3) return;
-  const r = await fetch('https://api.github.com/repos/otabekvafoev92-del/ob-havo-ecmwf/actions/workflows/update.yml/dispatches', {
-    method: 'POST', headers: { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'osmon-bot', 'content-type': 'application/json' },
-    body: JSON.stringify({ ref: 'main' }) });
-  await setKv(env, 'build_at', String(Date.now()));
-  if (r.status !== 204) { const a = await kv(env, 'admin'); if (a) await tg(env, 'sendMessage', { chat_id: a, text: `⚠️ Не удалось запустить обновление данных (GitHub ${r.status}). Проверьте ключ GH_TOKEN.` }); }
-}
 // a copy of the bot's database (users, subscriptions, settings) sent to the admin as a file every night at 03:00
 async function backupTick(env) {
   if (!env.DB) return;
@@ -956,14 +953,53 @@ async function backupTick(env) {
   fd.append('document', new Blob([JSON.stringify(dump, null, 1)], { type: 'application/json' }), `osmon_backup_${day}.json`);
   await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd });
 }
+// the second safety net for the site builds (the first is the hourly knock in .github/workflows/update.yml): this worker's
+// own cron, which never skips, looks at when the live site was built (site/build.json). Over 3.5 h old and no build
+// running → it starts a new build itself (needs the GH_TOKEN secret: a GitHub token with Actions read & write for this
+// repository) and tells the admin; when the fresh data is on the site, it says so too.
+const REPO = 'otabekvafoev92-del/ob-havo-ecmwf';
+async function ghApi(env, path, init = {}) {
+  return fetch(`https://api.github.com/repos/${REPO}/${path}`, { ...init, headers: { 'user-agent': 'osmon-bot', accept: 'application/vnd.github+json',
+    ...(env.GH_TOKEN ? { authorization: `Bearer ${env.GH_TOKEN}` } : {}), ...(init.headers || {}) } });
+}
 async function staleTick(env) {
-  const M = await manifest(env); if (!M || !M.run) return;
-  const age = (Date.now() - Date.parse(M.run)) / 3600e3;
-  if (age < 33) return;
-  const last = +(await kv(env, 'stale_at') || 0), admin = await kv(env, 'admin');
-  if (!admin || Date.now() - last < 12 * 3600e3) return;
-  await setKv(env, 'stale_at', String(Date.now()));
-  await tg(env, 'sendMessage', { chat_id: admin, text: `⚠️ Данные сайта и бота не обновлялись ${Math.round(age)} ч (последний расчёт ${tkt(M.run)} по Ташкенту).\nПроверьте вкладку Actions в репозитории на GitHub.`, disable_web_page_preview: true });
+  const admin = await kv(env, 'admin');
+  const B = await fetch(`${base(env)}/build.json?t=${Date.now()}`).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!B || !B.built) return;  // the stamp comes with the first build after this change
+  const built = Date.parse(B.built), age = (Date.now() - built) / 3600e3;
+  const kicked = +(await kv(env, 'kick_at') || 0);
+  // a build we started has reached the site: good news, once
+  if (kicked && built > kicked) {
+    await setKv(env, 'kick_at', '');
+    if (admin) await tg(env, 'sendMessage', { chat_id: admin, text: `✅ Данные обновлены после перезапуска: сайт собран ${tkt(B.built)} по Ташкенту.` });
+    return;
+  }
+  if (age < 3.5) return;
+  if (kicked && Date.now() - kicked < 100 * 60e3) return;  // a build we started is still on its way (they take 40–80 min)
+  const runs = await ghApi(env, 'actions/workflows/update.yml/runs?per_page=5').then(r => r.ok ? r.json() : null).catch(() => null);
+  const busy = runs && (runs.workflow_runs || []).find(r => r.status === 'in_progress' || r.status === 'queued' || r.status === 'pending' || r.status === 'waiting');
+  if (busy) {  // GitHub is building already: only worry when it hangs
+    const mins = (Date.now() - Date.parse(busy.run_started_at || busy.created_at)) / 60e3;
+    if (mins > 150 && admin && Date.now() - +(await kv(env, 'hang_at') || 0) > 6 * 3600e3) {
+      await setKv(env, 'hang_at', String(Date.now()));
+      await tg(env, 'sendMessage', { chat_id: admin, text: `⚠️ Сборка сайта идёт уже ${Math.round(mins)} мин (обычно 40–80). Посмотреть: ${busy.html_url}`, disable_web_page_preview: true });
+    }
+    return;
+  }
+  const last = runs && (runs.workflow_runs || [])[0], why = last && last.conclusion && last.conclusion !== 'success' ? ` Последняя сборка: ${last.conclusion}.` : '';
+  if (env.GH_TOKEN) {
+    const r = await ghApi(env, 'actions/workflows/update.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main' }), headers: { 'content-type': 'application/json' } });
+    await setKv(env, 'kick_at', String(Date.now()));
+    if (admin) await tg(env, 'sendMessage', { chat_id: admin, text: r.status === 204
+      ? `🔄 Обновление было пропущено: данным на сайте ${Math.round(age)} ч.${why} Запустил новую сборку сам — данные будут примерно через 45 мин, я напишу.`
+      : `⚠️ Данным ${Math.round(age)} ч, но запустить сборку не удалось (GitHub ответил ${r.status}). Проверьте токен GH_TOKEN в Cloudflare.` });
+    return;
+  }
+  // no token: tell the admin how to fix it (at most twice a day)
+  if (admin && Date.now() - +(await kv(env, 'stale_at') || 0) > 12 * 3600e3) {
+    await setKv(env, 'stale_at', String(Date.now()));
+    await tg(env, 'sendMessage', { chat_id: admin, text: `⚠️ Данные сайта и бота не обновлялись ${Math.round(age)} ч.${why}\nЧтобы я сам перезапускал пропущенные сборки, добавьте в Cloudflare секрет GH_TOKEN (токен GitHub с правом Actions: Read and write).` });
+  }
 }
 const dayLabel = (d, lang) => { const dt = new Date(d + 'T12:00:00Z'); return `${WD[lang][dt.getUTCDay()]} ${String(dt.getUTCDate()).padStart(2, '0')}.${String(dt.getUTCMonth() + 1).padStart(2, '0')}`; };
 const localToday = off => new Date(Date.now() + (off || 0) * 3600e3).toISOString().slice(0, 10);
