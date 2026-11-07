@@ -6,8 +6,9 @@ name: Update ECMWF forecast
 #            cities, world) ────────────┘
 on:
   schedule:
-    # every 3 hours: the newest complete model run as soon as it is out, and fresh "today and tomorrow by the hour" videos
-    - cron: '7 */3 * * *'
+    # GitHub often runs scheduled builds late or skips them when it is busy, so we knock every hour: the gate job
+    # below lets a build through only when the live site was built over 2 h 10 min ago (so about every 3 hours) or the code changed
+    - cron: '17 * * * *'
   workflow_dispatch: {}
   push:
     branches: [main]
@@ -23,7 +24,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.g.outputs.go }}
+    steps:
+      - id: g
+        run: |
+          # the live site says which code built it and when (written by the assemble job below)
+          go=true
+          if [ "${{ github.event_name }}" = schedule ] && curl -sfo b.json https://otabekvafoev92-del.github.io/ob-havo-ecmwf/build.json; then
+            cat b.json; echo
+            sha=$(python3 -c "import json;print(json.load(open('b.json')).get('sha',''))")
+            t=$(python3 -c "import json;print(json.load(open('b.json')).get('built',''))")
+            if [ "$sha" = "${{ github.sha }}" ] && [ -n "$t" ] && [ $(( $(date +%s) - $(date -d "$t" +%s) )) -lt 7800 ]; then go=false; fi
+          fi
+          echo "go=$go" | tee -a "$GITHUB_OUTPUT"
+
   charts:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -48,6 +68,8 @@ jobs:
           retention-days: 1
 
   fetch:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -111,9 +133,12 @@ jobs:
           sudo apt-get install -y -qq ffmpeg >/dev/null
           pip install numpy scipy matplotlib pyproj pillow requests
           if [ "${{ matrix.part }}" = outlook ]; then
-            # weekly and monthly outlooks change once a day: draw them twice a day (free Open-Meteo quota), otherwise reuse the live ones
-            H=$(date -u +%H); SITE=https://otabekvafoev92-del.github.io/ob-havo-ecmwf/prob
-            if [ "${{ github.event_name }}" != schedule ] && [ "${{ github.event_name }}" != workflow_dispatch ] || [ $((10#$H % 12)) -lt 3 ] || ! curl -sfo /tmp/ol.json $SITE/outlook/index.json || ! grep -q '"imgs"' /tmp/ol.json; then
+            # weekly and monthly outlooks change once a day: draw them when the live ones are 11 h old (twice a day, the free
+            # Open-Meteo quota) or the code changed; otherwise reuse the live ones
+            SITE=https://otabekvafoev92-del.github.io/ob-havo-ecmwf/prob
+            OLD=1; if curl -sfo /tmp/ol.json $SITE/outlook/index.json && grep -q '"imgs"' /tmp/ol.json; then
+              OLD=$(python3 -c "import json,datetime as d;m=json.load(open('/tmp/ol.json')).get('made','');t=d.datetime.strptime(m[:16],'%Y-%m-%dT%H:%M').replace(tzinfo=d.timezone.utc) if m else None;print(1 if not t or (d.datetime.now(d.timezone.utc)-t).total_seconds()>11*3600 else 0)" || echo 1); fi
+            if [ "${{ github.event_name }}" != schedule ] && [ "${{ github.event_name }}" != workflow_dispatch ] || [ "$OLD" = 1 ]; then
               python prob/outlook.py prob.npz wx.npz out
             else
               mkdir -p out/outlook && cp /tmp/ol.json out/outlook/index.json
@@ -196,6 +221,8 @@ jobs:
         run: |
           pip install requests
           python prob/telegram_send.py site/prob
+      - name: Note which code built the site and when (the gate job reads it)
+        run: python3 -c "import json,datetime;json.dump({'sha':'${{ github.sha }}','built':datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),'run':'${{ github.run_id }}'},open('site/build.json','w'))"
       - name: Point the site at the bot worker (visit counter, Telegram)
         if: vars.BOT_URL != ''
         run: sed -i 's|<meta name="osmon-api" content="">|<meta name="osmon-api" content="${{ vars.BOT_URL }}">|' site/index.html
