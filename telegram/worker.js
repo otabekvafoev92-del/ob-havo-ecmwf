@@ -84,6 +84,7 @@ Bo‘limlar ostida «⏰ Avtomatik yuborish» tugmasi bor: vaqtni tanlang — bo
 1. Botni guruhga qo‘shing (kanalda — admin qilib, «xabar yuborish» huquqi bilan).
 2. Admin /sozla yozadi: til → davlatlar (bir nechta) → «Tayyor» → yuborish vaqti.
 3. Har kuni tanlangan vaqtda har bir davlat uchun post keladi.
+4. Keyin «⏰ Bu chatga nima yuborilsin» chiqadi: soatma-soat, haftalar, tog‘lar, havo sifati, qor xabari — har biriga vaqt, yoki «✅ Hammasini yoqish». Keyinroq: /notify
 /bugun — guruhda hozirgi prognoz.
 
 ✉️ Savol yoki taklif — /admin, javob shu yerga keladi
@@ -115,6 +116,7 @@ Ma’lumot: ECMWF, NOAA, DWD modellari; havo sifati — CAMS. Har 3 soatda yangi
 1. Добавьте бота в группу (в канал — администратором с правом публикации).
 2. Администратор пишет /settings: язык → страны (можно несколько) → «Готово» → время отправки.
 3. Каждый день в выбранное время по каждой стране приходит пост.
+4. Затем появится «⏰ Что присылать в этот чат»: по часам, недели и месяцы, горы, воздух, сигнал о снеге — у каждого своё время, или «✅ Включить всё». Позже: /notify
 /bugun — прогноз в группу прямо сейчас.
 
 ✉️ Вопрос или предложение — /admin, ответ придёт сюда
@@ -146,6 +148,7 @@ Bölümlerin altında «⏰ Otomatik gönder» düğmesi var: saati seçin — b
 1. Botu gruba ekleyin (kanalda yönetici olarak, gönderme izniyle).
 2. Yönetici /settings yazar: dil → ülkeler (birden fazla) → «Tamam» → gönderme saati.
 3. Her gün seçilen saatte her ülke için gönderi gelir.
+4. Ardından «⏰ Bu sohbete ne gönderilsin» çıkar: saat saat, haftalar, dağlar, hava kalitesi, kar bildirimi — her birine saat ya da «✅ Hepsini aç». Sonra: /notify
 
 ✉️ Soru veya öneri — /admin, cevap buraya gelir
 📄 /guide — PDF kılavuz
@@ -251,7 +254,7 @@ async function setup(env, url) {
     { command: 'help', description: 'ℹ️ Yordam, PDF / Помощь, PDF' },
     { command: 'admin', description: '✉️ Adminga yozish / Написать админу' },
     { command: 'start', description: '🔤 Til / Язык / Dil' }] });
-  await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'help', description: 'Yordam / Помощь' }] });
+  await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'notify', description: '⏰ Nima yuborilsin / Что присылать (adminlar)' }, { command: 'help', description: 'Yordam / Помощь' }] });
   await tg(env, 'setChatMenuButton', { menu_button: { type: 'commands' } });  // ☰ opens the command menu
   await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода · Hava — 15 kun, 6 model (ECMWF, NOAA). Guruhlarga avtomatik prognoz.' });
   await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 6 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 6 моделям. Добавьте в группу — бот сам будет присылать прогноз.' });
@@ -321,6 +324,7 @@ async function sendOutlook(env, chat, lang) {
 }
 // one period (key) or all of them: every map is its own photo with its own caption; the segment buttons go under the last one
 async function sendOutlookPart(env, chat, lang, key) {
+  const quiet = chat < 0;  // a group or channel: just the maps
   const { I, its } = await outlookItems(env, lang);
   if (!its.length) return tg(env, 'sendMessage', { chat_id: chat, text: T[lang].none });
   const v = encodeURIComponent(I.made || ''), list = key ? its.filter(i => i.key === key) : its;
@@ -334,7 +338,7 @@ async function sendOutlookPart(env, chat, lang, key) {
   for (let n = 0; n < shots.length; n++) {
     await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
     r = await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/${shots[n].im}?v=${v}`, caption: shots[n].cap.slice(0, 1024), parse_mode: 'HTML',
-      ...(n === shots.length - 1 ? { reply_markup: outlookKb(its, lang, key) } : {}) });
+      ...(n === shots.length - 1 && !quiet ? { reply_markup: outlookKb(its, lang, key) } : {}) });
   }
   return r;
 }
@@ -355,12 +359,13 @@ async function notifAsk(env, chat, lang, sec) {
   return tg(env, 'sendMessage', { chat_id: chat, text: N.ask.replace('{s}', secName(sec, lang)) + (NWEEKLY[sec] ? N.weekly : ''), reply_markup: { inline_keyboard: rows } });
 }
 async function notifSet(env, chat, lang, sec, hour, msgId) {
-  const N = NX_[lang] || NX_.ru, now = new Date(Date.now() + TZ * 3600e3), u = await getUser(env, chat);
+  const N = NX_[lang] || NX_.ru, now = new Date(Date.now() + TZ * 3600e3), u = chat > 0 ? await getUser(env, chat) : { region: regionsOf(await sub(env, chat))[0] };
   // an hour already past today: the first one comes tomorrow
   const last = hour <= now.getUTCHours() ? todayTZ() : '';
   await env.DB.prepare('INSERT INTO notif (chat_id, sec, hour, lang, region, last_day, added) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(chat_id, sec) DO UPDATE SET hour = ?3, lang = ?4, region = ?5, last_day = ?6')
     .bind(chat, sec, hour, lang, (u && u.region) || 'UZ', last, new Date().toISOString()).run();
   const text = (NWEEKLY[sec] ? N.onW : N.on).replace('{s}', secName(sec, lang)).replace('{h}', hh(hour));
+  if (chat < 0) { if (msgId) await tg(env, 'deleteMessage', { chat_id: chat, message_id: msgId }); return groupNotif(env, chat, lang, null, text); }  // a group: back to its menu
   return msgId ? tg(env, 'editMessageText', { chat_id: chat, message_id: msgId, text }) : tg(env, 'sendMessage', { chat_id: chat, text });
 }
 async function notifList(env, chat, lang) {
@@ -373,6 +378,34 @@ async function notifList(env, chat, lang) {
   const kb = NSEC.map(sec => [{ text: `${by[sec] ? '✅' : '➕'} ${(RKL[lang] || RKL.ru)[sec]}${by[sec] ? ` · ${hh(by[sec].hour)}` : ''}`, callback_data: `NS:${lang}:${sec}` }]);
   return tg(env, 'sendMessage', { chat_id: chat, text: lines.join('\n') + (d ? '' : `\n\n<i>${N.daily}</i>`), parse_mode: 'HTML', reply_markup: { inline_keyboard: kb } });
 }
+// a group or channel: one message with every section that can come by itself, its hour, and "turn everything on / off"
+const GNX = {
+  ru: { head: '⏰ <b>Что присылать в этот чат</b>', main: '🗓 Ежедневный прогноз (главный пост) — в {h}, страны: {c}. Изменить: /settings', snow: '❄️ Сигнал о снеге в горах', tip: 'Нажмите раздел, чтобы выбрать время или выключить. Время — по Ташкенту. Менять могут только администраторы.', all: '✅ Включить всё', allOff: '🔕 Выключить всё', allOn: '✅ Включено всё: разделы будут приходить в {h} (недели и месяцы — по понедельникам).', offAll: '🔕 Дополнительные разделы выключены. Ежедневный прогноз остаётся.' },
+  uz: { head: '⏰ <b>Bu chatga nima yuborilsin</b>', main: '🗓 Kunlik prognoz (asosiy post) — soat {h}, davlatlar: {c}. O‘zgartirish: /sozla', snow: '❄️ Tog‘larda qor haqida xabar', tip: 'Vaqtni tanlash yoki o‘chirish uchun bo‘limni bosing. Vaqt — Toshkent bo‘yicha. Faqat adminlar o‘zgartira oladi.', all: '✅ Hammasini yoqish', allOff: '🔕 Hammasini o‘chirish', allOn: '✅ Hammasi yoqildi: bo‘limlar soat {h} da keladi (haftalar va oylar — dushanba kunlari).', offAll: '🔕 Qo‘shimcha bo‘limlar o‘chirildi. Kunlik prognoz qoladi.' },
+  tr: { head: '⏰ <b>Bu sohbete ne gönderilsin</b>', main: '🗓 Günlük tahmin (ana gönderi) — saat {h}, ülkeler: {c}. Değiştirmek: /settings', snow: '❄️ Dağlarda kar bildirimi', tip: 'Saati seçmek veya kapatmak için bölüme dokunun. Saat — Taşkent saati. Yalnızca yöneticiler değiştirebilir.', all: '✅ Hepsini aç', allOff: '🔕 Hepsini kapat', allOn: '✅ Hepsi açıldı: bölümler saat {h} gelecek (haftalar ve aylar — pazartesi günleri).', offAll: '🔕 Ek bölümler kapatıldı. Günlük tahmin devam ediyor.' } };
+async function groupNotif(env, chat, lang, msgId, note) {
+  if (!env.DB) return; await db(env);
+  const G = GNX[lang] || GNX.ru, s0 = await sub(env, chat), regs = regionsOf(s0), uz = !regs.length || regs.includes('UZ');
+  const rows = (await env.DB.prepare('SELECT * FROM notif WHERE chat_id = ?1').bind(chat).all()).results, by = Object.fromEntries(rows.map(r => [r.sec, r]));
+  const snow = await mtnSub(env, chat), secs = NSEC.filter(x => uz || !['outlook', 'mtn'].includes(x));  // weeks/months and the mountains are about Uzbekistan
+  const text = [...(note ? [note, ''] : []), G.head, '', G.main.replace('{h}', hh(s0 && s0.post_hour != null ? s0.post_hour : POST_HOUR)).replace('{c}', (regs.length ? regs : ['UZ']).map(r => `${FLAG[r] || ''} ${NAMES[r] ? NAMES[r][lang] : r}`).join(', ')), '', G.tip].join('\n');
+  const kb = [...secs.map(sec => [{ text: `${by[sec] ? '✅' : '➕'} ${(RKL[lang] || RKL.ru)[sec]}${by[sec] ? ` · ${hh(by[sec].hour)}` : ''}`, callback_data: `NS:${lang}:${sec}` }]),
+    ...(uz ? [[{ text: `${snow ? '✅' : '➕'} ${G.snow}`, callback_data: `WS:${lang}` }]] : []),
+    [{ text: G.all, callback_data: `WA:${lang}` }, { text: G.allOff, callback_data: `WX:${lang}` }]];
+  const body = { chat_id: chat, text, parse_mode: 'HTML', reply_markup: { inline_keyboard: kb } };
+  if (msgId) { const r = await tg(env, 'editMessageText', { ...body, message_id: msgId }); if (r.ok || /not modified/.test(r.description || '')) return r; }
+  return tg(env, 'sendMessage', body);
+}
+async function groupAll(env, chat, lang, on) {  // every section at the group's post hour (and the snow signal), or all of them off
+  const s0 = await sub(env, chat), h = s0 && s0.post_hour != null ? s0.post_hour : POST_HOUR, regs = regionsOf(s0), uz = !regs.length || regs.includes('UZ');
+  if (!on) { await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1').bind(chat).run(); await env.DB.prepare('DELETE FROM mtn WHERE chat_id = ?1').bind(chat).run(); return; }
+  const last = h <= new Date(Date.now() + TZ * 3600e3).getUTCHours() ? todayTZ() : '';
+  for (const sec of NSEC.filter(x => uz || !['outlook', 'mtn'].includes(x)))
+    await env.DB.prepare('INSERT INTO notif (chat_id, sec, hour, lang, region, last_day, added) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(chat_id, sec) DO UPDATE SET hour = ?3, lang = ?4, region = ?5')
+      .bind(chat, sec, h, lang, regs[0] || 'UZ', last, new Date().toISOString()).run();
+  if (uz) await env.DB.prepare('INSERT OR REPLACE INTO mtn (chat_id, lang, ver, added) VALUES (?1, ?2, ?3, ?4)').bind(chat, lang, (await kv(env, 'mtn_ver')) || '', new Date().toISOString()).run();
+}
+
 // each cron run: the sections that are due now (a few per run: videos and pictures take time)
 async function notifTick(env) {
   if (!env.DB) return; await db(env);
@@ -381,7 +414,7 @@ async function notifTick(env) {
   for (const n of due) {
     await env.DB.prepare('UPDATE notif SET last_day = ?3 WHERE chat_id = ?1 AND sec = ?2').bind(n.chat_id, n.sec, day).run();
     if (NWEEKLY[n.sec] && !monday) continue;
-    const lang = RKL[n.lang] ? n.lang : 'ru', rid = NAMES[n.region] ? n.region : 'UZ';
+    const lang = RKL[n.lang] ? n.lang : 'ru', rid = NAMES[n.region] ? n.region : 'UZ';  // (groups: saved from their settings)
     let r = null;
     try {
       if (n.sec === 'hourly') r = await sendHourly(env, n.chat_id, lang, rid);
@@ -389,7 +422,7 @@ async function notifTick(env) {
       else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
       else if (n.sec === 'air') r = await sendAir(env, n.chat_id, lang, rid);
     } catch (e) { console.log('notif', n.sec, e && e.stack); }
-    if (r && !r.ok && /blocked|deactivated|chat not found|kicked/i.test(r.description || '')) await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1').bind(n.chat_id).run();
+    if (r && !r.ok && /blocked|deactivated|chat not found|kicked|not a member|was deleted|not enough rights/i.test(r.description || '')) await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1').bind(n.chat_id).run();
   }
 }
 
@@ -410,13 +443,13 @@ const AQX = {
 const aqBand = v => v == null ? 0 : v <= 50 ? 0 : v <= 100 ? 1 : v <= 150 ? 2 : v <= 200 ? 3 : v <= 300 ? 4 : 5;
 const AQ_DOT = ['🟢', '🟡', '🟠', '🔴', '🟣', '🟤'];
 async function sendAir(env, chat, lang, rid) {
-  const X = AQX[lang] || AQX.ru, u = await getUser(env, chat), pl = u && u.place ? JSON.parse(u.place) : null;
+  const X = AQX[lang] || AQX.ru, u = chat > 0 ? await getUser(env, chat) : null, pl = u && u.place ? JSON.parse(u.place) : null;
   let lat, lon, name;
   if (pl) { lat = +pl[0]; lon = +pl[1]; const np = await nearestPlace(env, lat, lon); name = np ? `${FLAG[np[4]] || '📍'} ${pname(np, lang)}` : `📍 ${lat.toFixed(2)}, ${lon.toFixed(2)}`; }
   else { const C = (await cities(env, rid, lang)) || (await cities(env, rid, 'ru')), c = C && C.cities.find(c => c.lat != null);
     if (c) { lat = c.lat; lon = c.lon; name = `${FLAG[rid] || ''} ${c.name}`; } else { lat = 41.31; lon = 69.28; name = '🇺🇿 Toshkent'; } }
   const j = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&hourly=us_aqi,pm10,pm2_5,dust&current=us_aqi,pm10,pm2_5,dust&timezone=auto&forecast_days=1`).then(r => r.ok ? r.json() : null).catch(() => null);
-  if (!j || !j.hourly) return tg(env, 'sendMessage', { chat_id: chat, text: X.none, reply_markup: { inline_keyboard: [[notifBtn(lang, 'air')]] } });
+  if (!j || !j.hourly) return tg(env, 'sendMessage', { chat_id: chat, text: X.none, ...(chat > 0 ? { reply_markup: { inline_keyboard: [[notifBtn(lang, 'air')]] } } : {}) });
   const Hh = j.hourly, c = j.current || {}, b = aqBand(c.us_aqi), r0 = v => v == null ? '—' : Math.round(v);
   let mi = 0; Hh.us_aqi.forEach((v, i) => { if (v != null && v > (Hh.us_aqi[mi] ?? -1)) mi = i; });
   const hrs = []; for (let i = 0; i < Hh.time.length; i += 3) { const v = Hh.us_aqi[i]; hrs.push(`${Hh.time[i].slice(11, 13)}:00 ${AQ_DOT[aqBand(v)]} ${r0(v)}`); }
@@ -426,13 +459,13 @@ async function sendAir(env, chat, lang, rid) {
     ...(X.tips[Math.max(b, aqBand(Hh.us_aqi[mi]))] ? ['', X.tips[Math.max(b, aqBand(Hh.us_aqi[mi]))]] : []),
     '', `<b>${X.hours}</b>`, `<pre>${hrs.reduce((a, x, i) => a + x.padEnd(14) + (i % 2 ? '\n' : ''), '')}</pre>`,
     `🟢 ≤50 · 🟡 ≤100 · 🟠 ≤150 · 🔴 ≤200 · 🟣 ≤300 · 🟤 >300`, `<i>${X.src}</i>`];
-  const kb = { inline_keyboard: [[notifBtn(lang, 'air')]] };
+  const kb = chat > 0 ? { inline_keyboard: [[notifBtn(lang, 'air')]] } : undefined;
   // in Uzbekistan the dust map of today goes first (prob/outlook.py, dust0)
   if (rid === 'UZ') {
     const I = await (await fetch(`${base(env)}/prob/outlook/index.json?t=${fresh()}`)).json().catch(() => null), it = I && (I.items.find(i => i.key === 'dust' && i.lang === lang) || I.items.find(i => i.key === 'dust'));
     if (it) await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/${(it.imgs || [it.img])[0]}?v=${encodeURIComponent(I.made || '')}`, caption: `🌫 ${X.map}` });
   }
-  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n'), parse_mode: 'HTML', reply_markup: kb });
+  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n'), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
 }
 
 /* ---------- mountains of Uzbekistan: fresh snow and good days for a trip (site/prob/mountains.json, prob/mountains.py) ---------- */
@@ -484,6 +517,10 @@ async function sendMountains(env, chat, lang) {
   const X = MTX[lang] || MTX.ru, M = await mountainsData(env);
   if (!M || !M.spots) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   // the picture (10 days for every place) with the places as buttons under it
+  if (chat < 0) {  // a group or channel: the picture and every place as text, no buttons
+    await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${MTX[lang] ? lang : 'ru'}.png?v=${fresh()}`, caption: X.title, parse_mode: 'HTML' });
+    return sendMountainText(env, chat, lang, null);
+  }
   const kb = await mountainsKb(env, chat, lang, M), cap = `${X.title}\n${(MTA[lang] || MTA.ru).pick}`;
   const r = await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${MTX[lang] ? lang : 'ru'}.png?v=${fresh()}`, caption: cap, parse_mode: 'HTML', reply_markup: kb });
   return r.ok ? r : tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
@@ -495,7 +532,7 @@ async function sendMountainText(env, chat, lang, id) {
   const spots = id ? M.spots.filter(sp => sp.id === id) : M.spots, out = id ? [] : [X.title];
   spots.forEach(sp => { if (out.length) out.push(''); out.push(...spotLines(sp, M, lang)); });
   out.push('', `<i>${X.foot}</i>`);
-  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n').slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: await mountainsKb(env, chat, lang, M, id) });
+  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n').slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true, ...(chat > 0 ? { reply_markup: await mountainsKb(env, chat, lang, M, id) } : {}) });
 }
 // after each update: tell everyone who asked about NEW fresh snow in the next 6 days, with the best day to go (07–21 h)
 async function mtnTick(env) {
@@ -730,10 +767,11 @@ async function sendHourly(env, chat, lang, id) {
   const part = (lbl, d) => d ? `<b>${lbl}</b> ${d.range}\n☂️ ${d.rain}\n🧥 ${K.wear}: ${d.wear}` : '';
   const cap = [`${FLAG[id] || ''} <b>${esc(NAMES[id][lang])}</b> · ${esc(H.city)} — ${X[0].toLowerCase()} / ${X[1].toLowerCase()} ${X[2]}`, '', part(X[0], H.info.today), '', part(X[1], H.info.tomorrow)].join('\n').slice(0, 1024);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
-  const url = `${base(env)}/prob/${H.video}?v=${fresh()}`, kb0 = menuKb(env, lang, id);
+  const url = `${base(env)}/prob/${H.video}?v=${fresh()}`;
   // the interactive map (a Telegram mini app): touch the map, drag the hours, hear the weather — private chats only
   // (the keyboard under the input field stays as it is; this message carries the mini-app button)
-  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], [notifBtn(lang, 'hourly')]] } : kb0;
+  // groups and channels: only a link to the interactive map (keyboards under the input field and mini-app buttons work in private chats only)
+  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], [notifBtn(lang, 'hourly')]] } : { inline_keyboard: [[liveBtn(env, lang, id, chat)]] };
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
   if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
@@ -969,6 +1007,11 @@ async function handle(up, env) {
         if (!(await isAdmin(env, chat, msg.from, msg.sender_chat))) { const s = await sub(env, chat.id); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[(s && s.lang) || 'ru'].gAdm, reply_to_message_id: msg.message_id }); }
         return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gLang + ' / ' + T.ru.gLang, reply_markup: langKb('GL') });
       }
+      if (cmd === 'notify' || cmd === 'xabar' || cmd === 'bildirim') {
+        const s = await sub(env, chat.id), lg = (s && s.lang) || 'ru';
+        if (!(await isAdmin(env, chat, msg.from, msg.sender_chat))) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lg].gAdm, reply_to_message_id: msg.message_id });
+        return groupNotif(env, chat.id, lg);
+      }
       if (cmd === 'help') { const s = await sub(env, chat.id); return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[(s && s.lang) || 'ru'], parse_mode: 'HTML' }); }
       if (cmd === 'bugun' || cmd === 'today') { const s = await sub(env, chat.id), regs = regionsOf(s).length ? regionsOf(s) : ['UZ']; for (const r of regs) await sendToday(env, chat.id, s ? s.lang : cmd === 'today' ? 'ru' : 'uz', r, true); return; }
       return;
@@ -993,7 +1036,7 @@ async function handle(up, env) {
     await edit(T[lang].gSet.replace('{time}', hh(h)).replace('{name}', sel.map(r => `${FLAG[r]} ${esc(NAMES[r][lang])}`).join(', ')).replace('{lang}', T[lang].lang), null, true);
     const M = await manifest(env), me = await tg(env, 'getMe', {});
     if (M) for (const r of sel) await post(env, M, chat.id, lang, r, me.ok ? me.result.username : '');
-    return;
+    return groupNotif(env, chat.id, lang);  // next: what else to send here (hourly, weeks, mountains, air) — or everything at once
   }
   if (kind === 'Y' || kind === 'Z') {  // cities of a country: Y list, Z:lang:id:index one city
     await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(kind === 'Z' ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', tr: '⏳ Hazırlanıyor…' })[lang] || '⏳' } : {}) });
@@ -1040,9 +1083,14 @@ async function handle(up, env) {
   if (kind === 'OP') return sendOutlookPart(env, chat.id, lang, id);
   if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
+  if (chat.type !== 'private' && ['NS', 'NT', 'NO', 'MS', 'WS', 'WA', 'WX'].includes(kind) && !(await isAdmin(env, chat, cb.from)))
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].gAdm });
+  if (kind === 'WS') { if (await mtnSub(env, chat.id)) await env.DB.prepare('DELETE FROM mtn WHERE chat_id = ?1').bind(chat.id).run(); else await env.DB.prepare('INSERT OR REPLACE INTO mtn (chat_id, lang, ver, added) VALUES (?1, ?2, ?3, ?4)').bind(chat.id, lang, (await kv(env, 'mtn_ver')) || '', new Date().toISOString()).run(); return groupNotif(env, chat.id, lang, cb.message.message_id); }
+  if (kind === 'WA' || kind === 'WX') { await groupAll(env, chat.id, lang, kind === 'WA'); const G = GNX[lang] || GNX.ru, s0 = await sub(env, chat.id);
+    return groupNotif(env, chat.id, lang, cb.message.message_id, kind === 'WA' ? G.allOn.replace('{h}', hh(s0 && s0.post_hour != null ? s0.post_hour : POST_HOUR)) : G.offAll); }
   if (kind === 'NS' && NSEC.includes(id)) return notifAsk(env, chat.id, lang, id);
   if (kind === 'NT' && NSEC.includes(id)) return notifSet(env, chat.id, lang, id, +cb.data.split(':')[3], cb.message.message_id);
-  if (kind === 'NO' && NSEC.includes(id)) { await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1 AND sec = ?2').bind(chat.id, id).run(); return tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: (NX_[lang] || NX_.ru).offT.replace('{s}', secName(id, lang)) }); }
+  if (kind === 'NO' && NSEC.includes(id)) { await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1 AND sec = ?2').bind(chat.id, id).run(); if (chat.id < 0) { await tg(env, 'deleteMessage', { chat_id: chat.id, message_id: cb.message.message_id }); return groupNotif(env, chat.id, lang); } return tg(env, 'editMessageText', { chat_id: chat.id, message_id: cb.message.message_id, text: (NX_[lang] || NX_.ru).offT.replace('{s}', secName(id, lang)) }); }
   if (kind === 'MA') return sendMountainText(env, chat.id, lang, null);
   if (kind === 'MT') return sendMountains(env, chat.id, lang);
   if (kind === 'MS') {  // the snow signal on / off: the button under the mountains message changes with it
@@ -1390,7 +1438,7 @@ async function saveSub(env, chat, regions, lang, lastDay, hour = POST_HOUR) {
 async function memberChange(m, env) {
   const chat = m.chat, st = m.new_chat_member && m.new_chat_member.status;
   if (chat.type === 'private') { if (st === 'kicked' && env.DB) { await db(env); await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(chat.id).run(); } return; }
-  if (st === 'left' || st === 'kicked') { if (env.DB) { await db(env); await env.DB.prepare('DELETE FROM subs WHERE chat_id = ?1').bind(chat.id).run(); } return; }
+  if (st === 'left' || st === 'kicked') { if (env.DB) { await db(env); for (const t of ['subs', 'notif', 'mtn']) await env.DB.prepare(`DELETE FROM ${t} WHERE chat_id = ?1`).bind(chat.id).run(); } return; }
   if ((st === 'member' || st === 'administrator') && !(await sub(env, chat.id))) {
     await saveSub(env, chat, ['UZ'], 'uz', '');  // default until an admin chooses
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.gHi + '\n\n' + T.ru.gHi, reply_markup: langKb('GL') });
