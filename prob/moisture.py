@@ -441,7 +441,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         for a in dyn: a.remove()
         dyn = []
         Q = interp(F, h); T = Q['tcwv'][np.ix_(ri, ci)]; P = gaussian_filter(Q['pr'][np.ix_(ri, ci)], 0.8); M = gaussian_filter(Q['msl'][np.ix_(ri, ci)], 2.0)
-        C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.40, 0.45, 0.51); cl[..., 3] = np.clip((C - 0.2) / 0.7, 0, 1) ** 1.1 * 0.6
+        C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.40, 0.45, 0.51); cl[..., 3] = np.clip((C - 0.3) / 0.7, 0, 1) ** 1.3 * 0.42
         img.set_data(cl); ax.set_aspect(1 / k)
         T2 = gaussian_filter(Q['t2'][np.ix_(ri, ci)], 1.0); SN = T2 <= 0.5
         GU = gaussian_filter(Q['gust'][np.ix_(ri, ci)], 1.0) if 'gust' in Q else gaussian_filter(np.hypot(Q['u'], Q['v'])[np.ix_(ri, ci)], 1.0) * 0.9
