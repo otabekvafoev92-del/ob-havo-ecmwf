@@ -410,6 +410,15 @@ async function sendMoist15(env, chat, lang, rid) {  // the long video: 15 days o
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   return tg(env, 'sendVideo', { chat_id: chat, video: `${url}?v=${fresh()}`, caption: `📅 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist15}`, supports_streaming: true });
 }
+let TJ_CACHE = null;
+async function sendTrajLite(env, chat, lang, rid) {  // the morning 🧭: only the video, with buttons for the rest
+  const X = TJX[lang] || TJX.ru, L = lang === 'tr' ? 'ru' : lang;
+  if (!TJ_CACHE || TJ_CACHE.t < Date.now() - 600e3) TJ_CACHE = { t: Date.now(), J: {} };
+  if (!(rid in TJ_CACHE.J)) TJ_CACHE.J[rid] = await trajData(env, rid);
+  const J = TJ_CACHE.J[rid], v = encodeURIComponent(J ? J.run : fresh());
+  return tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `🧭 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true,
+    reply_markup: { inline_keyboard: [[{ text: X.btn, callback_data: `TJ:${lang}:${rid}` }], [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }]] } });
+}
 async function sendTraj(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, J = await trajData(env, rid);
   if (!J || !J.items.length) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
@@ -493,7 +502,7 @@ const NX_ = {
   ru: { btn: '⏰ Присылать автоматически', ask: '⏰ Во сколько присылать «{s}»? Время — по Ташкенту.', weekly: ' (по понедельникам)', off: '🔕 Не присылать', on: '✅ «{s}» будет приходить каждый день в {h}.', onW: '✅ «{s}» будет приходить по понедельникам в {h}.', offT: '🔕 «{s}» больше не присылаю.', list: '⏰ <b>Мои уведомления</b>', none: 'Пока ничего не приходит автоматически. Нажмите раздел ниже и выберите время:', at: 'в', edit: 'Нажмите раздел, чтобы поменять время или выключить:', daily: '🔔 Прогноз каждое утро — включается кнопкой «🔔 Прогноз каждое утро»' },
   uz: { btn: '⏰ Avtomatik yuborish', ask: '⏰ «{s}» soat nechada kelsin? Vaqt — Toshkent bo‘yicha.', weekly: ' (dushanba kunlari)', off: '🔕 Yubormaslik', on: '✅ «{s}» har kuni soat {h} da keladi.', onW: '✅ «{s}» har dushanba soat {h} da keladi.', offT: '🔕 «{s}» endi yuborilmaydi.', list: '⏰ <b>Bildirishnomalarim</b>', none: 'Hozircha hech narsa avtomatik kelmaydi. Quyidagi bo‘limni bosing va vaqtni tanlang:', at: 'soat', edit: 'Vaqtni o‘zgartirish yoki o‘chirish uchun bo‘limni bosing:', daily: '🔔 Har tongi prognoz — «🔔 Har tongi prognoz» tugmasi bilan yoqiladi' },
   tr: { btn: '⏰ Otomatik gönder', ask: '⏰ «{s}» saat kaçta gelsin? Saat — Taşkent saati.', weekly: ' (pazartesi günleri)', off: '🔕 Gönderme', on: '✅ «{s}» her gün saat {h} gelecek.', onW: '✅ «{s}» her pazartesi saat {h} gelecek.', offT: '🔕 «{s}» artık gönderilmeyecek.', list: '⏰ <b>Bildirimlerim</b>', none: 'Şu anda otomatik bir şey gelmiyor. Aşağıdan bölüm seçip saati belirleyin:', at: 'saat', edit: 'Saati değiştirmek veya kapatmak için bölüme dokunun:', daily: '🔔 Her sabah tahmin — «🔔 Her sabah tahmin» düğmesiyle açılır' } };
-const NSEC = ['hourly', 'outlook', 'mtn', 'air'];  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
+const NSEC = ['hourly', 'outlook', 'mtn', 'air', 'traj'];  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
 const NWEEKLY = { outlook: true };                   // the weeks and months change slowly: once a week is enough
 const secName = (sec, lang) => ((RKL[lang] || RKL.ru)[sec] || sec).replace(/^\S+\s/, '');
 const notifBtn = (lang, sec) => ({ text: (NX_[lang] || NX_.ru).btn, callback_data: `NS:${lang}:${sec}` });
@@ -556,9 +565,12 @@ async function groupAll(env, chat, lang, on) {  // every section at the group's 
 async function notifTick(env) {
   if (!env.DB) return; await db(env);
   const now = new Date(Date.now() + TZ * 3600e3), day = todayTZ(), hour = now.getUTCHours(), monday = now.getUTCDay() === 1;
-  let due = (await env.DB.prepare("SELECT * FROM notif WHERE hour <= ?1 AND COALESCE(last_day, '') <> ?2 ORDER BY hour LIMIT 18").bind(hour, day).all()).results;
+  let due = (await env.DB.prepare("SELECT * FROM notif WHERE hour <= ?1 AND COALESCE(last_day, '') <> ?2 ORDER BY hour LIMIT 30").bind(hour, day).all()).results;
   if (due.some(n => n.sec !== 'air')) { const F = await siteFresh(env); if (!F.fresh) due = due.filter(n => n.sec === 'air' || hour - n.hour >= HOLD_MAX_H); }
-  for (const n of due.slice(0, 6)) {
+  // a light section (one video each: 🧭) lets more people through in one run; the others stay at 6
+  let heavy = 0, done = 0;
+  due = due.filter(n => (n.sec === 'traj' ? done++ < 20 : heavy++ < 6));
+  for (const n of due) {
     await env.DB.prepare('UPDATE notif SET last_day = ?3 WHERE chat_id = ?1 AND sec = ?2').bind(n.chat_id, n.sec, day).run();
     if (NWEEKLY[n.sec] && !monday) continue;
     const lang = RKL[n.lang] ? n.lang : 'ru', rid = NAMES[n.region] ? n.region : 'UZ';  // (groups: saved from their settings)
@@ -568,6 +580,7 @@ async function notifTick(env) {
       else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
       else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
       else if (n.sec === 'air') r = await sendAir(env, n.chat_id, lang, rid);
+      else if (n.sec === 'traj') r = await sendTrajLite(env, n.chat_id, lang, TRJ.has(rid) ? rid : 'UZ');
     } catch (e) { console.log('notif', n.sec, e && e.stack); }
     if (r && !r.ok && /blocked|deactivated|chat not found|kicked|not a member|was deleted|not enough rights/i.test(r.description || '')) await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1').bind(n.chat_id).run();
   }
@@ -714,9 +727,9 @@ async function mtnTick(env) {
 }
 // the menu is a keyboard under the input field (white buttons, as in the screenshot): one place for everything, no buttons under messages
 const RKL = {
-  ru: { hourly: '⏱ Сегодня и завтра по часам', regions: '🗺 Погода по регионам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
-  uz: { hourly: '⏱ Bugun va ertaga soatma-soat', regions: '🗺 Viloyatlar bo‘yicha', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
-  tr: { hourly: '⏱ Bugün ve yarın saat saat', regions: '🗺 Bölgelere göre', days: '🗓 15 günlük tahmin', video: '🎬 15 günlük video tahmin', outlook: '📅 Haftalar ve aylar (haritalar)', mtn: '🏔 Dağlar: kar ve gezi', now: '🌡 Şu anki hava', air: '🌫 Bugün hava kalitesi', cities: '🏙 Şehir seç', loc: '📍 Konumumu gönder', countries: '🌍 Ülke değiştir', daily: '🔔 Her sabah tahmin', notif: '⏰ Bildirimlerim', accuracy: '🎯 Tahmin doğruluğu', alerts: '⚠️ Tehlikeli hava', site: '🗺 Harita-site ve küre', home: '🏠 Ana menü', reset: '🔄 Baştan başla', back: '⬅️ Geri', help: 'ℹ️ Kılavuz' } };
+  ru: { traj: '🧭 Откуда придут осадки', hourly: '⏱ Сегодня и завтра по часам', regions: '🗺 Погода по регионам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
+  uz: { traj: '🧭 Yog‘in qayerdan keladi', hourly: '⏱ Bugun va ertaga soatma-soat', regions: '🗺 Viloyatlar bo‘yicha', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
+  tr: { traj: '🧭 Yağış nereden gelecek', hourly: '⏱ Bugün ve yarın saat saat', regions: '🗺 Bölgelere göre', days: '🗓 15 günlük tahmin', video: '🎬 15 günlük video tahmin', outlook: '📅 Haftalar ve aylar (haritalar)', mtn: '🏔 Dağlar: kar ve gezi', now: '🌡 Şu anki hava', air: '🌫 Bugün hava kalitesi', cities: '🏙 Şehir seç', loc: '📍 Konumumu gönder', countries: '🌍 Ülke değiştir', daily: '🔔 Her sabah tahmin', notif: '⏰ Bildirimlerim', accuracy: '🎯 Tahmin doğruluğu', alerts: '⚠️ Tehlikeli hava', site: '🗺 Harita-site ve küre', home: '🏠 Ana menü', reset: '🔄 Baştan başla', back: '⬅️ Geri', help: 'ℹ️ Kılavuz' } };
 // the labels the keyboard had before (people may still have the old keyboard on their phone): they keep working
 const RKL_OLD = {
   ru: { days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', mtn: '🏔 Горы и снег', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', help: 'ℹ️ Помощь' },
