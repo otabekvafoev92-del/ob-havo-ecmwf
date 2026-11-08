@@ -439,9 +439,10 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
         lv = np.arange(np.floor(M.min() / 4) * 4, M.max() + 4, 4)
         cs = ax.contour(LON, LAT, M, levels=lv, colors='#4b5d70', linewidths=0.6, alpha=0.35, zorder=3); dyn.append(cs)
         A = M - np.median(M)  # the cyclone (low pressure) in red, the anticyclone in blue: deeper = stronger colour
-        if A.min() < -3: dyn.append(ax.contourf(LON, LAT, A, levels=[A.min() - 1, -10, -6, -3], colors=['#e0503a', '#ec7a68', '#f6b1a5'], alpha=0.35, zorder=1.5))
+        lo_ = min(A.min() - 1, -10.5)  # the levels must rise even when the low is shallow
+        if A.min() < -3: dyn.append(ax.contourf(LON, LAT, A, levels=[lo_, -10, -6, -3], colors=['#e0503a', '#ec7a68', '#f6b1a5'], alpha=0.35, zorder=1.5))
         if A.min() < -3: dyn.append(ax.contour(LON, LAT, A, levels=[-3], colors='#d6402b', linewidths=1.6, linestyles='--', alpha=0.8, zorder=3.2))
-        if A.max() > 3: dyn.append(ax.contourf(LON, LAT, A, levels=[3, 6, 10, A.max() + 1], colors=['#bcd6f5', '#8fb8ec', '#5f97e0'], alpha=0.3, zorder=1.5))
+        if A.max() > 3: dyn.append(ax.contourf(LON, LAT, A, levels=[3, 6, 10, max(A.max() + 1, 10.5)], colors=['#bcd6f5', '#8fb8ec', '#5f97e0'], alpha=0.3, zorder=1.5))
         mx, mn = maximum_filter(M, size=25) == M, minimum_filter(M, size=25) == M
         for mask, lab, col in ((mx, X['hi'], '#2f6fd0'), (mn, X['lo'], '#d6402b')):
             for (yy, xx) in zip(*np.nonzero(mask)):
