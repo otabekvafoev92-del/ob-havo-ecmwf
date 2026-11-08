@@ -85,11 +85,20 @@ def from_series(P, T, W, K=None):
     return out
 
 
-def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
+# which weather each video sounds like (the 15-day videos): the precipitation video only rain, snow and thunder; the wind
+# video only the wind; the cloud video the sound of clouds (soft air and a warm hum that grows with the cover); the
+# temperature video a calm pad; 'all' (the hourly and city videos) everything together
+MODES = {'all': dict(precip=1, wind=1, pad=1, cloud=0), 'precip': dict(precip=1, wind=0, pad=0, cloud=0),
+         'wind': dict(precip=0, wind=1.35, pad=0, cloud=0), 'cloud': dict(precip=0, wind=0, pad=0, cloud=1),
+         'temp': dict(precip=0, wind=0.35, pad=1.8, cloud=0)}
+
+
+def track(levels, frame_sec, path, intro_sec=0.0, seed=7, mode='all'):
+    K = MODES.get(mode, MODES['all'])
     rng = np.random.default_rng(seed)
     dur = intro_sec + frame_sec * max(1, len(levels)); n = int(dur * SR) + SR // 2
     g = lambda key: _env([float(l.get(key, 0)) for l in levels], frame_sec, intro_sec, n)
-    rain, wind, storm = g('rain'), g('wind'), g('storm')
+    rain, wind, storm, cloud = g('rain') * K['precip'], g('wind'), g('storm') * K['precip'], g('cloud')
     snow = _env([1.0 if l.get('snow') else 0.0 for l in levels], frame_sec, intro_sec, n)
     rainy, snowy = rain * (1 - snow), rain * snow
     out = np.zeros((2, n))
@@ -109,7 +118,14 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
         br = np.cumsum(rng.standard_normal(n)); br -= _lp(br, 0.5); br /= np.percentile(np.abs(br), 99) + 1e-9
         gust = np.interp(np.arange(n), np.linspace(0, n, max(4, int(dur / 2.5))), 0.55 + 0.45 * rng.random(max(4, int(dur / 2.5))))  # a gust every few seconds
         wsig = _lp(br, 500) * 0.9 + _bp(wn, 250, 1100) * 0.12
-        out[ch] += wsig * (0.06 + 0.55 * wind ** 1.2) * gust
+        out[ch] += wsig * (0.06 + 0.55 * wind ** 1.2) * gust * K['wind']
+        if K['wind'] > 1:  # the wind video: strong wind also whistles
+            fcw = 600 + 300 * np.sin(2 * np.pi * np.cumsum(np.full(n, 0.09)) / SR + rng.random() * 6); wh = np.zeros(n)
+            for lo in (420, 640, 900): wh += _bp(wn, lo, lo * 1.22) * np.exp(-((fcw - lo * 1.1) / 160) ** 2)
+            out[ch] += wh * 0.45 * np.clip((wind - 0.35) / 0.5, 0, 1) * gust
+        if K['cloud']:  # clouds: soft air that breathes slowly, fuller as the sky closes
+            breath = np.interp(np.arange(n), np.linspace(0, n, max(4, int(dur / 4))), 0.6 + 0.4 * rng.random(max(4, int(dur / 4))))
+            out[ch] += _bp(wn, 1200, 4500) * 0.055 * (0.35 + 0.65 * cloud) * breath + _lp(br, 260) * 0.16 * (0.2 + 0.8 * cloud) * breath
         # rain, four layers (procedural rain): a soft roar of distant rain, a bright hiss that flickers,
         # drops that land as bubbles (a short tone that rises in pitch: the sound of a drop in water), and thuds on roofs
         flick = np.interp(np.arange(n), np.linspace(0, n, int(dur * 8) + 2), 0.75 + 0.25 * rng.random(int(dur * 8) + 2))
@@ -157,8 +173,12 @@ def track(levels, frame_sec, path, intro_sec=0.0, seed=7):
     t = np.arange(n) / SR; pad = np.zeros(n)
     for f, a in ((130.81, 1.0), (196.0, 0.7), (261.63, 0.6), (293.66, 0.35), (329.63, 0.45)):
         pad += a * np.sin(2 * np.pi * f * t + 0.3 * np.sin(2 * np.pi * 0.07 * t))
-    pad *= (0.5 + 0.5 * np.sin(2 * np.pi * 0.05 * t)) * 0.018 * (1 - 0.7 * np.clip(rain + wind, 0, 1))
-    out += pad
+    pad *= (0.5 + 0.5 * np.sin(2 * np.pi * 0.05 * t)) * 0.018 * (1 - 0.7 * np.clip(rain + wind * K['wind'], 0, 1))
+    out += pad * K['pad']
+    if K['cloud']:  # clouds: a warm low hum under a closed sky, a light high shimmer when it is clear
+        hum = sum(a * np.sin(2 * np.pi * f * t + 0.4 * np.sin(2 * np.pi * 0.05 * t)) for f, a in ((98.0, 1.0), (146.83, 0.6), (196.0, 0.4)))
+        shim = sum(a * np.sin(2 * np.pi * f * t + 0.5 * np.sin(2 * np.pi * 0.11 * t)) for f, a in ((523.25, 0.5), (659.25, 0.35), (783.99, 0.3)))
+        out += hum * 0.035 * cloud + shim * 0.02 * (1 - cloud) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.07 * t))
     # fade in and out; fixed levels (a calm day stays quiet, a storm is loud), a soft limiter for the peaks
     f = int(0.8 * SR); ramp = np.ones(n); ramp[:f] = np.linspace(0, 1, f); ramp[-f:] = np.linspace(1, 0, f)
     out = np.tanh(out * ramp * 1.1) * 0.9

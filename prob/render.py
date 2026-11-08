@@ -846,7 +846,7 @@ def city_list(R, geo, lang):
     return (([R.mains[lang]] if R.mains[lang] else []) + cities)[:15]
 
 
-def _sound_levels(R, sel, city=None):
+def _sound_levels(R, sel, city=None, product=None):
     """The weather sound of a video, frame by frame: the city's rain, snow, wind and thunder (a country video also
     rains when a large part of the country is wet)."""
     p = city or getattr(R, 'main', None)
@@ -858,6 +858,11 @@ def _sound_levels(R, sel, city=None):
         for l, s in zip(L, sel):
             a = R.area_share([s]) if not R.cont else None
             if a: l['rain'] = max(l['rain'], min(1.0, a * 1.5))
+    C = take(R.cseries(p))
+    if C is not None:  # cloud cover 0..1 (for the cloud video's sound)
+        C = np.nan_to_num(C) / (100.0 if np.nanmax(C) > 1.5 else 1.0)
+        for l, c in zip(L, C): l['cloud'] = float(np.clip(c, 0, 1))
+    if product: L = {'levels': L, 'mode': product}  # the 15-day videos: each sounds like its own weather
     return L
 
 
@@ -872,7 +877,8 @@ def _video(fdir, mp4, fps, width=None, crf=None, intro=None, sound=None):
     if sound is not None:  # the weather heard: rain, snow, wind, thunder (and a real video in Telegram, not a silent GIF)
         try:
             import sound as S_
-            S_.mux(mp4, S_.track(sound, 1.0 / fps, str(mp4) + '.wav', intro_sec=1.0 if intro is not None else 0.0))
+            lv, md = (sound['levels'], sound['mode']) if isinstance(sound, dict) else (sound, 'all')
+            S_.mux(mp4, S_.track(lv, 1.0 / fps, str(mp4) + '.wav', intro_sec=1.0 if intro is not None else 0.0, mode=md))
         except Exception as e: print('sound failed:', mp4, e, flush=True)
     fit_size(mp4)
 
@@ -985,7 +991,7 @@ def _job(args):
                 day = local_day(run, D['steps'][s], off, D['win'][s])
                 draw_frame(R, D, s, lang, models, members, fdir / f'{i:03d}.png', product, com.get(day.isoformat(), ''))
             mp4 = out / f'{region}_{lang}{suf}.mp4'
-            _video(fdir, mp4, fps, sound=_sound_levels(R, sel))
+            _video(fdir, mp4, fps, sound=_sound_levels(R, sel, product={'prob': 'precip'}.get(product, product)))
             res.append({'region': region, 'lang': lang, 'product': product, 'video': mp4.name, 'frames': len(sel), 'name': NAMES[region][lang]})
             print(region, lang, product, 'ok', flush=True)
         res.append({'region': region, 'lang': lang, 'product': 'days', 'days': com, 'off': off, 'city': city_name(R.mains[lang], lang) if R.mains[lang] else ''})
