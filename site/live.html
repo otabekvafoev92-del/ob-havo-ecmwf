@@ -31,6 +31,8 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 #hint{position:absolute;left:10px;right:58px;bottom:8px;transition:opacity .4s;font-size:11px;color:var(--muted);background:rgba(255,255,255,.85);padding:3px 8px;border-radius:8px}
 #place{position:absolute;left:8px;top:8px;background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:12px;padding:7px 10px;box-shadow:0 2px 8px rgba(43,58,78,.12);max-width:58%;pointer-events:none}
 #place .nm{font-weight:700;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#place .wh{font-size:10.5px;color:var(--muted);line-height:1.25;margin-top:1px}
+#place .wh:empty{display:none}
 #place .tv{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;line-height:1.15}
 #place .rows{font-size:11px;line-height:1.45;color:var(--muted)}
 #place .rows b{font-size:11.5px;color:var(--ink)}
@@ -41,7 +43,7 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 <div id="load">…</div>
 <header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div><button id="fs" title="Во весь экран" aria-label="Во весь экран">⛶</button></header>
 <div id="main"><div id="mapwrap"><canvas id="map"></canvas><div id="hint"></div>
-<div id="place"><div class="nm" id="pn"></div><div class="tv" id="pt"></div><div class="rows" id="pr"></div></div>
+<div id="place"><div class="nm" id="pn"></div><div class="wh" id="pw"></div><div class="tv" id="pt"></div><div class="rows" id="pr"></div></div>
 <div id="zoom"><button id="zin" aria-label="+">+</button><button id="zout" aria-label="−">−</button><button id="zfit" aria-label="⤢" style="font-size:15px">⤢</button></div></div>
 <div id="dock"><button class="rb" id="play"></button><button class="rb alt" id="snd"></button><canvas id="tl"></canvas></div></div>
 <script>
@@ -65,6 +67,9 @@ async function load() {
   const [m, b] = await Promise.all([fetch(base + '.json?t=' + Date.now()).then(r => r.ok ? r.json() : null), fetch(base + '.bin?t=' + Date.now()).then(r => r.ok ? r.arrayBuffer() : null)]);
   if (!m || !b) { $('load').textContent = TX.err; return; }
   M = m; B = new Uint8Array(b); H = M.hours; NX = M.nx; NY = M.ny;
+  // the regions and districts (Uzbekistan, Kazakhstan, Kyrgyzstan): borders, names, and where a tapped point lies
+  try { const g = await fetch('prob/hr/' + REG + '_geo.json?t=' + Date.now()).then(r => r.ok ? r.json() : null);
+    if (g) { GEO = g; M.a1 = g.adm1.flatMap(a => a.r); M.a2 = g.adm2.flatMap(a => a.r); } } catch (e) {}
   const st = new Date(M.start + ':00Z'), now = new Date(Date.now() + M.off * 3600e3);
   hour = M.times ? Math.max(0, M.times.findIndex((t, i) => i === H - 1 || new Date(M.times[i + 1] + ':00Z') > now)) : Math.max(0, Math.min(H - 1, Math.floor((now - st) / 3600e3)));
   const mc = M.cities.find(c => c.ru === (M.main[LANG] || M.main.ru)) || M.cities[0];
@@ -239,6 +244,15 @@ function lines(h) {
   cx.restore(); cx.textAlign = 'left';
 }
 
+let GEO = null;
+function inRing(x, y, r) { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
+const WHERE = {};
+function where(lon, lat) {  // "Kibray district · Tashkent region" for a point (kept per point)
+  if (!GEO) return ''; const k = lon.toFixed(3) + ',' + lat.toFixed(3); if (k in WHERE) return WHERE[k];
+  const hit = L => L.find(a => a.r.some(r => inRing(lon, lat, r)));
+  const d = hit(GEO.adm2), a = d ? GEO.adm1.find(x => x.id === d.p) : hit(GEO.adm1), nm = o => o ? (o.name[LANG] || o.name.ru) : '';
+  return WHERE[k] = [nm(d), nm(a)].filter(Boolean).filter((v, i, x) => x.indexOf(v) === i).join(' · ');
+}
 function draw() {
   const h = hour;
   cx.clearRect(0, 0, W, Hc); cx.fillStyle = '#e6e9ed'; cx.fillRect(0, 0, W, Hc);
@@ -251,7 +265,19 @@ function draw() {
   cx.save(); both(0.35); cx.restore();                               // the neighbours: faint
   cx.save(); cx.clip(co); both(1); cx.restore();                     // the country: full colour
   lines(h);
-  if (M.admin) { cx.strokeStyle = '#c9d3de'; cx.lineWidth = 0.7; cx.stroke(P2('admin')); }
+  if (M.a1) {  // the districts when the map is close enough, the regions always
+    if (Z >= 1.6) { cx.strokeStyle = '#d3dbe4'; cx.lineWidth = 0.5; cx.stroke(P2('a2')); }
+    cx.strokeStyle = '#9fb0c2'; cx.lineWidth = 0.9; cx.stroke(P2('a1'));
+  } else if (M.admin) { cx.strokeStyle = '#c9d3de'; cx.lineWidth = 0.7; cx.stroke(P2('admin')); }
+  const nameBoxes = [];
+  if (GEO && Z >= 1.35) {  // the region names (and the district names very close), faint, under the city pills
+    const L = Z >= 3.2 ? GEO.adm2 : GEO.adm1; cx.font = `${Z >= 3.2 ? 500 : 600} ${Z >= 3.2 ? 10 : 11}px 'Golos Text',sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = 'rgba(80,98,120,.62)';
+    for (const a of L) { const [px, py] = proj(a.c[0], a.c[1]); if (px < 20 || py < 20 || px > W - 20 || py > Hc - 20) continue;
+      const tx = (a.name[LANG] || a.name.ru).replace(/ обл\.$| viloyati$/, ''), w = cx.measureText(tx).width, b = [px - w / 2 - 3, py - 8, w + 6, 16];
+      if (nameBoxes.some(q => b[0] < q[0] + q[2] && q[0] < b[0] + b[2] && b[1] < q[1] + q[3] && q[1] < b[1] + b[3])) continue;
+      nameBoxes.push(b); cx.fillText(tx, px, py); }
+    cx.textAlign = 'left';
+  }
   cx.strokeStyle = '#2b3a4e'; cx.lineWidth = 1.8; cx.stroke(co);
   // the cities: a white pill with the name and temperature
   const boxes = [], dots = M.cities.map(c => proj(c.lon, c.lat));
@@ -296,7 +322,7 @@ function header(h) {
 }
 function card(h) {
   const p = val(h, 0, sel.lat, sel.lon), t = val(h, 1, sel.lat, sel.lon), c = val(h, 2, sel.lat, sel.lon), w = val(h, 3, sel.lat, sel.lon);
-  $('pn').textContent = sel.name; $('pt').textContent = isFinite(t) ? fmtT(t) : '—';
+  $('pn').textContent = sel.name; $('pw').textContent = where(sel.lon, sel.lat); $('pt').textContent = isFinite(t) ? fmtT(t) : '—';
   $('pr').innerHTML = `${t <= 0.5 ? '❄' : '☂'} <b>${isFinite(p) ? Math.round(p) : '—'}%</b> · ☁ <b>${isFinite(c) ? Math.round(c * 100) : '—'}%</b> · 💨 <b>${isFinite(w) ? Math.round(w) : '—'} ${TX.ms}</b>`;
 }
 const TLH = 74;  // the strip of hours: small, the map gets the room

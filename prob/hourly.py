@@ -12,6 +12,7 @@ sys.path.insert(0, str(HERE))
 import render as Rn
 from render import plt, matplotlib, FancyBboxPatch, Rectangle
 from regions import NAMES, T as TT
+import admin_wx as AW
 
 HOURS = 48
 TX = {
@@ -311,10 +312,14 @@ def main():
                 tw = [(run + dt.timedelta(hours=int(st) - int(D['win'][i]) + off)).strftime('%Y-%m-%dT%H:00') for i, st in enumerate(D['steps'])]
                 export_live(R, region, None, out, run, off, 'live15', tw)
               except Exception as e: print('live15 export failed:', region, e, flush=True)
+            Pw = np.array(R.P, copy=True)  # the chance on the model windows, before they become hours (the daily rule)
             hrs, loc = to_hours(R, D, run, off)
             if first:
                 try: export_live(R, region, loc, out, run, off)
                 except Exception as e: print('live export failed:', region, e, flush=True)
+                if region in AW.COUNTRIES:  # the weather by regions and districts (Uzbekistan, Kazakhstan, Kyrgyzstan)
+                    try: AW.build(R, region, loc, win_day, Pw, out, [l for l in a.langs.split(',') if l != 'tr'], run)
+                    except Exception as e: print('admin failed:', region, e, flush=True)
             first = False
             for lang in langs_g:
                 city = R.mains[lang]

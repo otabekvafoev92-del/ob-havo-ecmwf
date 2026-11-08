@@ -350,6 +350,65 @@ async function sendOutlookPart(env, chat, lang, key) {
   }
   return r;
 }
+/* ---------- the weather by regions and districts (Uzbekistan, Kazakhstan, Kyrgyzstan; prob/admin_wx.py) ---------- */
+const ADM = new Set(['UZ', 'KZ', 'KG']);
+const RGX = {
+  ru: { btn: '🗺 Погода по регионам и районам', title: 'Погода по регионам', pick: 'Нажмите регион — покажу погоду по его районам:', today: 'сегодня', tomorrow: 'завтра', none: 'Погода по регионам ещё готовится, попробуйте чуть позже.', back: '⬅️ Все регионы', dists: 'по районам', foot: 'Температура: ночь…день. ☂ — вероятность дождя, ❄ — снега, ☀ — без осадков.' },
+  uz: { btn: '🗺 Viloyat va tumanlar bo‘yicha', title: 'Viloyatlar bo‘yicha ob-havo', pick: 'Viloyatni bosing — tumanlari bo‘yicha ob-havoni ko‘rsataman:', today: 'bugun', tomorrow: 'ertaga', none: 'Viloyatlar bo‘yicha ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.', back: '⬅️ Barcha viloyatlar', dists: 'tumanlar bo‘yicha', foot: 'Harorat: tun…kun. ☂ — yomg‘ir ehtimoli, ❄ — qor, ☀ — yog‘insiz.' },
+  tr: { btn: '🗺 Bölge ve ilçelere göre', title: 'Bölgelere göre hava', pick: 'Bölgeye dokunun — ilçelerine göre havayı göstereyim:', today: 'bugün', tomorrow: 'yarın', none: 'Bölge verileri hazırlanıyor, biraz sonra deneyin.', back: '⬅️ Tüm bölgeler', dists: 'ilçelere göre', foot: 'Sıcaklık: gece…gündüz. ☂ — yağmur olasılığı, ❄ — kar, ☀ — yağışsız.' } };
+const t0 = v => v == null ? '—' : `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace('+0°', '0°').replace('-0°', '0°');
+const admLine = v => !v ? '—' : `${t0(v[0])}…${t0(v[1])} ${v[2] >= 20 ? `${v[3] ? '❄' : '☂'}${v[2]}%` : '☀'}`;
+const admName = (a, lang) => (a.name[lang] || a.name.ru);
+async function adminData(env, rid) { return fetch(`${base(env)}/prob/hr/${rid}_admin.json?v=${fresh()}`).then(r => r.ok ? r.json() : null).catch(() => null); }
+function regionsKb(A, lang, rid, cur) {
+  const b = [...A.adm1].sort((x, y) => admName(x, lang).localeCompare(admName(y, lang))).map(a => ({ text: `${cur === a.id ? '✅ ' : ''}${admName(a, lang).replace(/ обл\.$| viloyati$/, '')}`, callback_data: `RD:${lang}:${rid}:${a.id}` }));
+  const rows = []; for (let i = 0; i < b.length; i += 2) rows.push(b.slice(i, i + 2));
+  return { inline_keyboard: rows };
+}
+// the two maps (today, tomorrow), then every region in a line with buttons that open its districts
+async function sendRegions(env, chat, lang, rid) {
+  const X = RGX[lang] || RGX.ru, A = await adminData(env, rid);
+  if (!A) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  const L = lang === 'tr' ? 'ru' : lang, v = encodeURIComponent(A.run);
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
+  await tg(env, 'sendMediaGroup', { chat_id: chat, media: [0, 1].map(k => ({ type: 'photo', media: `${base(env)}/prob/hr/${rid}_adm_${L}_${k}.png?v=${v}`, ...(k ? {} : { caption: `${FLAG[rid]} ${NAMES[rid][lang]} · ${X.title}` }) })) });
+  return tg(env, 'sendMessage', regionsList(A, lang, rid, chat));
+}
+function regionsList(A, lang, rid, chat) {
+  const X = RGX[lang] || RGX.ru, lines = [...A.adm1].sort((x, y) => admName(x, lang).localeCompare(admName(y, lang)))
+    .map(a => `<b>${esc(admName(a, lang))}</b>\n   ${X.today} ${admLine(a.v[0])} · ${X.tomorrow} ${admLine(a.v[1])}`);
+  return { chat_id: chat, text: [`${FLAG[rid]} <b>${NAMES[rid][lang]} — ${X.title}</b>`, '', ...lines, '', `<i>${X.foot}</i>`, '', X.pick].join('\n').slice(0, 4000), parse_mode: 'HTML', reply_markup: regionsKb(A, lang, rid) };
+}
+// one region: its districts, today and tomorrow (the message changes in place when another region is pressed)
+async function sendDistricts(env, chat, lang, rid, id, msgId) {
+  const X = RGX[lang] || RGX.ru, A = await adminData(env, rid);
+  if (!A) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  const r = A.adm1.find(a => a.id === id); if (!r) return sendRegions(env, chat, lang, rid);
+  const ds = A.adm2.filter(d => d.p === id).sort((x, y) => admName(x, lang).localeCompare(admName(y, lang)));
+  const text = [`🗺 <b>${esc(admName(r, lang))}</b> — ${X.dists}`, `${X.today} ${admLine(r.v[0])} · ${X.tomorrow} ${admLine(r.v[1])}`, '',
+    ...ds.map(d => `• ${esc(admName(d, lang))}: ${admLine(d.v[0])} · ${X.tomorrow} ${admLine(d.v[1])}`), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000);
+  const kb = regionsKb(A, lang, rid, id); kb.inline_keyboard.push([{ text: X.back, callback_data: `RB:${lang}:${rid}` }]);
+  const body = { chat_id: chat, text, parse_mode: 'HTML', reply_markup: kb };
+  if (msgId) { const e = await tg(env, 'editMessageText', { ...body, message_id: msgId }); if (e.ok || /not modified/.test(e.description || '')) return e; }
+  return tg(env, 'sendMessage', body);
+}
+
+/* ---------- where the rain and snow come from (prob/trajectory.py: the air's path 2 days back) ---------- */
+const TRJ = new Set(['UZ', 'KZ']);
+const TJX = { ru: { btn: '🧭 Откуда придут осадки', title: 'Откуда придут осадки', none: 'В ближайшие 3 дня осадков в крупных городах не ожидается — показывать нечего. ☀️', foot: 'Линия — путь воздуха (на высоте ~3 км), который принесёт осадки, за 2 суток до их начала. Модель ECMWF.' },
+              uz: { btn: '🧭 Yog‘in qayerdan keladi', title: 'Yog‘in qayerdan keladi', none: 'Yaqin 3 kunda yirik shaharlarda yog‘in kutilmaydi — ko‘rsatadigan narsa yo‘q. ☀️', foot: 'Chiziq — yog‘in olib keladigan havoning (~3 km balandlikda) boshlanishidan 2 kun oldingi yo‘li. ECMWF modeli.' },
+              tr: { btn: '🧭 Yağış nereden gelecek', title: 'Yağış nereden gelecek', none: 'Önümüzdeki 3 günde büyük şehirlerde yağış beklenmiyor. ☀️', foot: 'Çizgi — yağışı getirecek havanın (~3 km yükseklikte) başlamadan önceki 2 günlük yolu. ECMWF modeli.' } };
+async function trajData(env, rid) { return fetch(`${base(env)}/prob/hr/${rid}_traj.json?v=${fresh()}`).then(r => r.ok ? r.json() : null).catch(() => null); }
+async function sendTraj(env, chat, lang, rid) {
+  const X = TJX[lang] || TJX.ru, J = await trajData(env, rid);
+  if (!J || !J.items.length) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
+  await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/hr/${rid}_traj_${lang === 'tr' ? 'ru' : lang}.png?v=${encodeURIComponent(J.run)}`, caption: `🧭 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.title}` });
+  const seen = new Set(), lines = [...J.items].sort((a, b) => a.k - b.k || b.p - a.p).filter(it => !seen.has(it.city.ru + it.day) && seen.add(it.city.ru + it.day)).slice(0, 10)
+    .map(it => `<b>${esc(it.city[lang] || it.city.ru)} · ${dayLabel(it.day, lang)} · ${it.snow ? '❄' : '☂'} ${it.p}%</b>\n🧭 ${esc(it.text[lang] || it.text.ru)}`);
+  return tg(env, 'sendMessage', { chat_id: chat, text: [`🧭 <b>${X.title}</b>`, '', lines.join('\n\n'), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000), parse_mode: 'HTML' });
+}
+
 /* ---------- automatic sending of one section at the hour the person picked (⏰) ---------- */
 const NX_ = {
   ru: { btn: '⏰ Присылать автоматически', ask: '⏰ Во сколько присылать «{s}»? Время — по Ташкенту.', weekly: ' (по понедельникам)', off: '🔕 Не присылать', on: '✅ «{s}» будет приходить каждый день в {h}.', onW: '✅ «{s}» будет приходить по понедельникам в {h}.', offT: '🔕 «{s}» больше не присылаю.', list: '⏰ <b>Мои уведомления</b>', none: 'Пока ничего не приходит автоматически. Нажмите раздел ниже и выберите время:', at: 'в', edit: 'Нажмите раздел, чтобы поменять время или выключить:', daily: '🔔 Прогноз каждое утро — включается кнопкой «🔔 Прогноз каждое утро»' },
@@ -576,9 +635,9 @@ async function mtnTick(env) {
 }
 // the menu is a keyboard under the input field (white buttons, as in the screenshot): one place for everything, no buttons under messages
 const RKL = {
-  ru: { hourly: '⏱ Сегодня и завтра по часам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
-  uz: { hourly: '⏱ Bugun va ertaga soatma-soat', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
-  tr: { hourly: '⏱ Bugün ve yarın saat saat', days: '🗓 15 günlük tahmin', video: '🎬 15 günlük video tahmin', outlook: '📅 Haftalar ve aylar (haritalar)', mtn: '🏔 Dağlar: kar ve gezi', now: '🌡 Şu anki hava', air: '🌫 Bugün hava kalitesi', cities: '🏙 Şehir seç', loc: '📍 Konumumu gönder', countries: '🌍 Ülke değiştir', daily: '🔔 Her sabah tahmin', notif: '⏰ Bildirimlerim', accuracy: '🎯 Tahmin doğruluğu', alerts: '⚠️ Tehlikeli hava', site: '🗺 Harita-site ve küre', home: '🏠 Ana menü', reset: '🔄 Baştan başla', back: '⬅️ Geri', help: 'ℹ️ Kılavuz' } };
+  ru: { hourly: '⏱ Сегодня и завтра по часам', regions: '🗺 Погода по регионам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
+  uz: { hourly: '⏱ Bugun va ertaga soatma-soat', regions: '🗺 Viloyatlar bo‘yicha', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
+  tr: { hourly: '⏱ Bugün ve yarın saat saat', regions: '🗺 Bölgelere göre', days: '🗓 15 günlük tahmin', video: '🎬 15 günlük video tahmin', outlook: '📅 Haftalar ve aylar (haritalar)', mtn: '🏔 Dağlar: kar ve gezi', now: '🌡 Şu anki hava', air: '🌫 Bugün hava kalitesi', cities: '🏙 Şehir seç', loc: '📍 Konumumu gönder', countries: '🌍 Ülke değiştir', daily: '🔔 Her sabah tahmin', notif: '⏰ Bildirimlerim', accuracy: '🎯 Tahmin doğruluğu', alerts: '⚠️ Tehlikeli hava', site: '🗺 Harita-site ve küre', home: '🏠 Ana menü', reset: '🔄 Baştan başla', back: '⬅️ Geri', help: 'ℹ️ Kılavuz' } };
 // the labels the keyboard had before (people may still have the old keyboard on their phone): they keep working
 const RKL_OLD = {
   ru: { days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', mtn: '🏔 Горы и снег', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', help: 'ℹ️ Помощь' },
@@ -591,6 +650,7 @@ function replyKb(env, lang, id) {
     [b(X.hourly)],
     [b(X.days), b(X.video)],
     ...(id === 'UZ' ? [[b(X.outlook), b(X.mtn)]] : []),
+    ...(ADM.has(id) ? [[b(X.regions)]] : []),
     [b(X.now), b(X.air)],
     [b(X.cities), b(X.countries)],
     [{ text: X.loc, request_location: true }, b(X.alerts)],
@@ -774,13 +834,16 @@ async function sendHourly(env, chat, lang, id) {
   if (!H) return sendToday(env, chat, lang, id);
   const K = PK[lang], X = { ru: ['Сегодня', 'Завтра', 'по часам'], uz: ['Bugun', 'Ertaga', 'soatma-soat'], tr: ['Bugün', 'Yarın', 'saat saat'] }[lang];
   const part = (lbl, d) => d ? `<b>${lbl}</b> ${d.range}\n☂️ ${d.rain}\n🧥 ${K.wear}: ${d.wear}` : '';
-  const cap = [`${FLAG[id] || ''} <b>${esc(NAMES[id][lang])}</b> · ${esc(H.city)} — ${X[0].toLowerCase()} / ${X[1].toLowerCase()} ${X[2]}`, '', part(X[0], H.info.today), '', part(X[1], H.info.tomorrow)].join('\n').slice(0, 1024);
+  // where the coming rain or snow of the main city comes from (Uzbekistan, Kazakhstan; prob/trajectory.py)
+  const TJ = TRJ.has(id) ? await trajData(env, id) : null, ti = TJ && TJ.items.filter(it => it.city[lang] === H.city || it.city.ru === H.city).sort((a, b) => a.k - b.k)[0];
+  const cap = [`${FLAG[id] || ''} <b>${esc(NAMES[id][lang])}</b> · ${esc(H.city)} — ${X[0].toLowerCase()} / ${X[1].toLowerCase()} ${X[2]}`, '', part(X[0], H.info.today), '', part(X[1], H.info.tomorrow),
+    ...(ti ? ['', `🧭 ${esc(ti.text[lang] || ti.text.ru)}`] : [])].join('\n').slice(0, 1024);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   const url = `${base(env)}/prob/${H.video}?v=${fresh()}`;
   // the interactive map (a Telegram mini app): touch the map, drag the hours, hear the weather — private chats only
   // (the keyboard under the input field stays as it is; this message carries the mini-app button)
   // groups and channels: only a link to the interactive map (keyboards under the input field and mini-app buttons work in private chats only)
-  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], [notifBtn(lang, 'hourly')]] } : { inline_keyboard: [[liveBtn(env, lang, id, chat)]] };
+  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], ...(ADM.has(id) ? [[{ text: (RGX[lang] || RGX.ru).btn, callback_data: `RG:${lang}:${id}` }]] : []), ...(TRJ.has(id) ? [[{ text: (TJX[lang] || TJX.ru).btn, callback_data: `TJ:${lang}:${id}` }]] : []), [notifBtn(lang, 'hourly')]] } : { inline_keyboard: [[liveBtn(env, lang, id, chat)]] };
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
   if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
@@ -1121,6 +1184,10 @@ async function handle(up, env) {
   if (kind === 'OP') return sendOutlookPart(env, chat.id, lang, id);
   if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
+  if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
+  if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
+  if (kind === 'RB' && ADM.has(id)) { const A = await adminData(env, id); if (A) return tg(env, 'editMessageText', { ...regionsList(A, lang, id, chat.id), message_id: cb.message.message_id }); }
+  if (kind === 'RD' && ADM.has(id)) return sendDistricts(env, chat.id, lang, id, +cb.data.split(':')[3], cb.message.message_id);
   if (chat.type !== 'private' && ['NS', 'NT', 'NO', 'MS', 'WS', 'WA', 'WX'].includes(kind) && !(await isAdmin(env, chat, cb.from)))
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].gAdm });
   if (kind === 'WS') { if (await mtnSub(env, chat.id)) await env.DB.prepare('DELETE FROM mtn WHERE chat_id = ?1').bind(chat.id).run(); else await env.DB.prepare('INSERT OR REPLACE INTO mtn (chat_id, lang, ver, added) VALUES (?1, ?2, ?3, ?4)').bind(chat.id, lang, (await kv(env, 'mtn_ver')) || '', new Date().toISOString()).run(); return groupNotif(env, chat.id, lang, cb.message.message_id); }
@@ -1324,6 +1391,7 @@ async function privateMsg(msg, env) {
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
     if (act === 'outlook') return sendOutlook(env, chat.id, lang);
     if (act === 'mtn') return sendMountains(env, chat.id, lang);
+    if (act === 'regions') return sendRegions(env, chat.id, lang, ADM.has(rid) ? rid : 'UZ');
     if (act === 'air') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'typing' }); return sendAir(env, chat.id, lang, rid); }
     if (act === 'notif') return notifList(env, chat.id, lang);
     if (act === 'accuracy') return sendAccuracy(env, chat.id, lang);

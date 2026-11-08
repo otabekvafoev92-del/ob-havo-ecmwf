@@ -149,6 +149,9 @@ jobs:
             python prob/mountains.py out || echo 'mountains failed'  # snow and trip days in the mountains, every run
           elif [ "${{ matrix.part }}" = hr-a ] || [ "${{ matrix.part }}" = hr-b ]; then
             python prob/hourly.py prob.npz wx.npz out ${{ matrix.args }}
+            if [ "${{ matrix.part }}" = hr-a ]; then  # where the rain and snow come from (Uzbekistan, Kazakhstan)
+              pip install eccodes >/dev/null && python prob/trajectory.py prob.npz out --regions UZ,KZ --langs ru,uz || echo 'trajectories failed'
+            fi
           elif [ "${{ matrix.part }}" = yt ]; then
             python prob/broadcast.py prob.npz glob.npz wx.npz out --langs ru,uz
           elif [ "${{ matrix.part }}" = globe ]; then
