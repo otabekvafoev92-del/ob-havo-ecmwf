@@ -172,6 +172,7 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname === '/setup') return setup(env, url);
     if (url.pathname === '/hit' || url.pathname === '/stats') return visits(req, env, url);
+    if (req.method === 'GET' && url.pathname === '/invite') return new Response(JSON.stringify(await invite(env, +(url.searchParams.get('n') || 12))), { headers: { 'content-type': 'application/json' } });
     if (req.method === 'GET' && url.pathname === '/broadcast') { const r = await broadcast(env); return new Response(JSON.stringify(r), { headers: { 'content-type': 'application/json' } }); }
     if (req.method !== 'POST') return new Response('Osmon bot is running. Open /setup once to connect it to Telegram.');
     if (req.headers.get('x-telegram-bot-api-secret-token') !== await secret(env)) return new Response('forbidden', { status: 403 });
@@ -1510,6 +1511,31 @@ async function siteFresh(env) {
   if (!B || !B.built) return { fresh: true, age: 0 };  // no stamp yet: do not hold anything
   const age = (Date.now() - Date.parse(B.built)) / 3600e3;
   return { fresh: age < FRESH_H, age, built: B.built };
+}
+// one invitation for the people who use the bot without the daily forecast: today's forecast for their country and a
+// button to get it every morning. Each person gets it once at most (table invited), in small batches per call
+const INV = { ru: { head: '☀️ Свежий прогноз от Osmon', btn: '🔔 Получать прогноз каждое утро', tip: 'Хотите получать такой прогноз каждый день в удобное время? Нажмите кнопку ниже.' },
+              uz: { head: '☀️ Osmon’dan yangi prognoz', btn: '🔔 Har kuni ertalab prognoz olish', tip: 'Bunday prognozni har kuni qulay vaqtda olishni xohlaysizmi? Quyidagi tugmani bosing.' },
+              tr: { head: '☀️ Osmon’dan taze tahmin', btn: '🔔 Her sabah tahmin al', tip: 'Bu tahmini her gün istediğiniz saatte almak ister misiniz? Aşağıdaki düğmeye dokunun.' } };
+async function invite(env, n) {
+  if (!env.DB) return { ok: false }; await db(env);
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS invited (chat_id INTEGER PRIMARY KEY, at TEXT, ok INTEGER)');
+  const rows = (await env.DB.prepare('SELECT u.chat_id, u.lang, u.region FROM users u WHERE u.chat_id > 0 AND u.chat_id NOT IN (SELECT chat_id FROM subs) AND u.chat_id NOT IN (SELECT chat_id FROM invited) LIMIT ?1').bind(Math.min(20, n)).all()).results;
+  if (!rows.length) return { ok: true, sent: 0, left: 0 };
+  const M = await manifest(env, true); if (!M) return { ok: false, error: 'no manifest' };
+  let sent = 0, failed = 0;
+  for (const u of rows) {
+    const lang = INV[u.lang] ? u.lang : 'uz', id = NAMES[u.region] ? u.region : 'UZ', X = INV[lang];
+    await env.DB.prepare('INSERT OR REPLACE INTO invited (chat_id, at, ok) VALUES (?1, ?2, 0)').bind(u.chat_id, new Date().toISOString()).run();  // first: never twice
+    const days = M.items.find(i => i.region === id && i.lang === lang && i.product === 'days') || M.items.find(i => i.region === id && i.lang === 'ru' && i.product === 'days');
+    const txt = forecastText(days, lang, NAMES[id][lang], id, { more: 3 });
+    if (!txt) { failed++; continue; }
+    const r = await tg(env, 'sendMessage', { chat_id: u.chat_id, text: `<b>${X.head}</b>\n\n${txt}\n\n${X.tip}`.slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [[{ text: X.btn, callback_data: `B:${lang}:${id}`, style: 'success' }]] } });
+    if (r.ok) { sent++; await env.DB.prepare('UPDATE invited SET ok = 1 WHERE chat_id = ?1').bind(u.chat_id).run(); } else failed++;
+  }
+  const left = ((await env.DB.prepare('SELECT COUNT(*) AS n FROM users WHERE chat_id > 0 AND chat_id NOT IN (SELECT chat_id FROM subs) AND chat_id NOT IN (SELECT chat_id FROM invited)').first()) || {}).n || 0;
+  return { ok: true, sent, failed, left };
 }
 async function broadcast(env) {
   if (!env.DB) return { ok: false, error: 'no DB' };
