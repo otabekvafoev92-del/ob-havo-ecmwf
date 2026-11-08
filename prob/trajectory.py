@@ -71,9 +71,11 @@ def fetch_winds(run):
     jobs = []
     for hr, r, st in want:
         d, hh = r.strftime('%Y%m%d'), r.strftime('%H')
-        stream = 'oper' if hh in ('00', '12') else 'scda'  # the 06/18 runs are the short "scda" stream
-        base = f'{ECM}/{d}/{hh}z/ifs/0p25/{stream}/{d}{hh}0000-{st}h-{stream}-fc'
-        idx = get(base + '.index')
+        idx = None
+        for stream in (('oper', 'scda') if hh in ('00', '12') else ('scda', 'oper')):  # the 06/18 runs: the short "scda" stream (or "oper")
+            base = f'{ECM}/{d}/{hh}z/ifs/0p25/{stream}/{d}{hh}0000-{st}h-{stream}-fc'
+            idx = get(base + '.index')
+            if idx: break
         if not idx: print('traj: missing', base, flush=True); continue
         for line in idx.decode().strip().split('\n'):
             x = json.loads(line)
