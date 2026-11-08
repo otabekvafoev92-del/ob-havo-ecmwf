@@ -26,7 +26,9 @@ _WN = [((50.6, 42.6), ('Каспийское\nморе', 'Kaspiy\ndengizi', 'Haz
        ((62.4, 39.9), ('Амударья', 'Amudaryo', 'Amu Derya'), 7.5), ((66.6, 44.3), ('Сырдарья', 'Sirdaryo', 'Siri Derya'), 7.5), ((88.0, 52.0), ('Обь', 'Ob', 'Obi'), 7.5)]
 WATER_NAMES = {l: [(p_, n_[i], f_) for p_, n_, f_ in _WN] for i, l in enumerate(('ru', 'uz', 'tr'))}
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
-VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5)}
+VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5), 'KG': (62.0, 86.0, 36.0, 46.0)}
+TZ = {'UZ': (5, {'ru': 'по Ташкенту', 'uz': 'Toshkent vaqti', 'tr': 'Taşkent saati'}), 'KZ': (5, {'ru': 'по Астане', 'uz': 'Ostona vaqti', 'tr': 'Astana saati'}),
+      'KG': (6, {'ru': 'по Бишкеку', 'uz': 'Bishkek vaqti', 'tr': 'Bişkek saati'})}
 TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое с чёрным пунктиром — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер (темнее — сильнее)', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
                  hi='В', lo='Н', hiw='антициклон: ясно, сухо', low='циклон: тучи, дождь, ветер', tz='по Ташкенту', src='влага: {s}', leg='путь влаги к городу',
                  c_intro='Серое — тучи, синее — дождь, фиолетовое — снег. Линии показывают, куда дует ветер.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
@@ -320,7 +322,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     from scipy.ndimage import gaussian_filter, maximum_filter, minimum_filter
     from regions import NAMES
     from hourly import NAVY
-    X = TX.get(lang, TX['ru'])
+    X = TX.get(lang, TX['ru']); off = TZ.get(region, (off,))[0]
     x0, x1, y0, y1 = VIEW[region]
     lon = LON0 + np.arange(next(iter(F.values()))['tcwv'].shape[1]) * RES; lat = LAT0 + np.arange(next(iter(F.values()))['tcwv'].shape[0]) * RES
     ci = np.flatnonzero((lon >= x0 - 1) & (lon <= x1 + 1)); ri = np.flatnonzero((lat >= y0 - 1) & (lat <= y1 + 1))
@@ -406,12 +408,12 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     prog = tax.add_patch(matplotlib.patches.Rectangle((0, 0), 0.01, 1, color='#f0b88a', alpha=0.5, zorder=0.5)); head = tax.axvline(0, color='#f0b88a', lw=2.5, zorder=3)
     knob = tax.plot([0], [0.5], 'o', ms=9, mfc='#f0b88a', mec='#ffffff', mew=1.5, zorder=4, clip_on=False)[0]
     # flowing streaks: particles carried by the 700 hPa wind, each with a fading tail
-    rng = np.random.default_rng(3); N = 650; TAIL = 10
+    rng = np.random.default_rng(3); N = 480; TAIL = 10
     def seed(n): return np.c_[rng.uniform(x0, x1, n), rng.uniform(y0v, y1v, n)]
     pts = seed(N); age = rng.integers(0, 60, N); hist = np.repeat(pts[None], TAIL, 0)
-    TAIL = 14; hist = np.repeat(pts[None], TAIL, 0)
-    FLOW = LinearSegmentedColormap.from_list('flow', ['#9fb6cc', '#5c87b3', '#2c5a91', '#1b3a73', '#3a1f7a'])
-    fades = np.linspace(0.04, 0.75, TAIL - 1) ** 1.6
+    TAIL = 12; hist = np.repeat(pts[None], TAIL, 0)
+    FLOW = LinearSegmentedColormap.from_list('flow', ['#a9bdd1', '#7095bb', '#40699b', '#2a4f80'])
+    fades = np.linspace(0.03, 0.6, TAIL - 1) ** 1.6
     lines = [LC([], linewidths=0.7, zorder=6, capstyle='round') for a in fades]
     heads = ax.scatter([], [], s=[], c=[], zorder=6.05, linewidths=0)
     for l in lines: ax.add_collection(l)
@@ -462,7 +464,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         for a in dyn: a.remove()
         dyn = []
         Q = interp(F, h); T = Q['tcwv'][np.ix_(ri, ci)]; P = gaussian_filter(Q['pr'][np.ix_(ri, ci)], 0.8); M = gaussian_filter(Q['msl'][np.ix_(ri, ci)], 2.0)
-        C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.40, 0.45, 0.51); cl[..., 3] = np.clip((C - 0.3) / 0.7, 0, 1) ** 1.3 * 0.42
+        C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.33, 0.37, 0.42); cl[..., 3] = np.clip((C - 0.3) / 0.65, 0, 1) ** 1.1 * 0.58
         img.set_data(cl); ax.set_aspect(1 / k)
         if C.max() > 0.55:  # the edge of the cloud masses: a black dashed line, so their movement is easy to follow
             dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.55], colors='#111111', linewidths=1.3, linestyles=[(0, (4, 3))], alpha=0.75, zorder=3.3))
@@ -470,8 +472,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         T2 = gaussian_filter(Q['t2'][np.ix_(ri, ci)], 1.0); SN = T2 <= 0.5
         GU = gaussian_filter(Q['gust'][np.ix_(ri, ci)], 1.0) if 'gust' in Q else gaussian_filter(np.hypot(Q['u'], Q['v'])[np.ix_(ri, ci)], 1.0) * 0.9
         if GU.max() >= WIND_LV[0]:
-            dyn.append(ax.contourf(LON, LAT, GU, levels=WIND_LV, colors=WIND_COL, alpha=0.5, zorder=1.9, antialiased=True))
-            dyn.append(ax.contourf(LON, LAT, GU, levels=[WIND_LV[0], 99], colors='none', hatches=['////'], zorder=1.95))
+            dyn.append(ax.contourf(LON, LAT, GU, levels=WIND_LV, colors=WIND_COL, alpha=0.32, zorder=1.9, antialiased=True))
             dyn.append(ax.contour(LON, LAT, GU, levels=[WIND_LV[0]], colors='#c99400', linewidths=1.0, zorder=1.96))
         if P.max() >= PR_LV[0]:
             if (~SN).any(): dyn.append(ax.contourf(LON, LAT, np.where(SN, 0, P), levels=PR_LV, colors=RAIN_COL, alpha=0.88, zorder=2, antialiased=True))
@@ -480,7 +481,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         cs = ax.contour(LON, LAT, M, levels=lv, colors='#4b5d70', linewidths=0.6, alpha=0.35, zorder=3); dyn.append(cs)
         A = M - np.median(M)  # the cyclone (low pressure) in red, the anticyclone in blue: deeper = stronger colour
         lo_ = min(A.min() - 1, -10.5)  # the levels must rise even when the low is shallow
-        if A.min() < -3: dyn.append(ax.contourf(LON, LAT, A, levels=[lo_, -10, -6, -3], colors=['#e0503a', '#ec7a68', '#f6b1a5'], alpha=0.35, zorder=1.5))
+        if A.min() < -3: dyn.append(ax.contourf(LON, LAT, A, levels=[lo_, -10, -6, -3], colors=['#ec7a68', '#f3a395', '#f9cdc5'], alpha=0.22, zorder=1.5))
         if A.min() < -3: dyn.append(ax.contour(LON, LAT, A, levels=[-3], colors='#d6402b', linewidths=1.6, linestyles='--', alpha=0.8, zorder=3.2))
         if A.max() > 3: dyn.append(ax.contourf(LON, LAT, A, levels=[3, 6, 10, max(A.max() + 1, 10.5)], colors=['#bcd6f5', '#8fb8ec', '#5f97e0'], alpha=0.3, zorder=1.5))
         mx, mn = maximum_filter(M, size=25) == M, minimum_filter(M, size=25) == M
@@ -515,9 +516,9 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         for i, l in enumerate(lines):
             seg = np.stack([hist[i], hist[i + 1]], 1); ok = ~dead & (np.hypot(*(seg[:, 1] - seg[:, 0]).T) < 3)
             sp_ = np.clip(spd[ok] / 25, 0, 1); col = FLOW(sp_); col[:, 3] = fades[i] * (0.55 + 0.45 * sp_)
-            l.set_segments(seg[ok]); l.set_linewidths((0.35 + 1.6 * sp_) * (0.5 + 0.5 * i / (TAIL - 2))); l.set_color(col)
+            l.set_segments(seg[ok]); l.set_linewidths((0.35 + 0.9 * sp_) * (0.5 + 0.5 * i / (TAIL - 2))); l.set_color(col)
         sp_ = np.clip(spd / 25, 0, 1); hc = FLOW(sp_); hc[:, 3] = np.where(dead, 0, 0.55 + 0.4 * sp_)
-        heads.set_offsets(pts); heads.set_sizes(1.5 + 7 * sp_); heads.set_color(hc)
+        heads.set_offsets(pts); heads.set_sizes(1.2 + 4 * sp_); heads.set_color(hc)
         # the cities: their tags (☂ in blue while it rains there), a widening ring when the rain starts
         wet_c = []; snow_c = []
         for j_, (p, gx_, gy_) in enumerate(zip(pl, cgx, cgy)):
@@ -552,20 +553,20 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         else: msg = X['c_wet'] if (land.any() and float(np.mean(T[land] >= 25)) > 0.4) else X['c_dry']
         cap.set_text(msg)
         t = run + dt.timedelta(hours=float(h) + off)
-        clock.set_text(f"{X['wd'][t.weekday()]} {t:%d.%m} · {t:%H}:{t:%M} · {X['tz']}")
+        clock.set_text(f"{X['wd'][t.weekday()]} {t:%d.%m} · {t:%H}:{t:%M} · {TZ.get(region, (5, {}))[1].get(lang, X['tz'])}")
         fig.savefig(fdir / f'{f:03d}.png', dpi=150, facecolor=fig.get_facecolor())
         # the sound: the wind of the region, the rain when it falls on the country
         wet = float(np.mean(P[land] >= 1)) if land.any() else 0.0
         levels.append({'rain': min(1.0, wet * 2.5), 'snow': bool(land.any() and (P[land & SN] >= 1).sum() > (P[land & ~SN] >= 1).sum()), 'wind': float(np.clip(np.mean(spd) / 22, 0.15, 0.9)), 'storm': 0.0})
     plt.close(fig)
     for e in range(4 * FPS): shutil.copy(fdir / f'{len(hours) - 1:03d}.png', fdir / f'{len(hours) + e:03d}.png'); levels.append(levels[-1])  # hold the last frame
-    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS), '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=24:interp_start=0:interp_end=255:scene=100,scale=1920:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '21',
-                    '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS), '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=12:interp_start=0:interp_end=255:scene=100,scale=1920:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '19', '-tune', 'animation',
+                    '-preset', 'slow', '-movflags', '+faststart', str(mp4)], check=True)
     try:
         import sound as S_
         S_.mux(mp4, S_.track(levels, 1 / FPS, str(mp4) + '.wav', mode='all'))
     except Exception as e: print('moist sound failed', e, flush=True)
-    Rn.fit_size(mp4)
+    Rn.fit_size(mp4, 19e6)  # Telegram takes a video by link up to 20 MB
     shutil.rmtree(fdir)
 
 
