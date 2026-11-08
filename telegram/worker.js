@@ -417,8 +417,9 @@ async function groupAll(env, chat, lang, on) {  // every section at the group's 
 async function notifTick(env) {
   if (!env.DB) return; await db(env);
   const now = new Date(Date.now() + TZ * 3600e3), day = todayTZ(), hour = now.getUTCHours(), monday = now.getUTCDay() === 1;
-  const due = (await env.DB.prepare("SELECT * FROM notif WHERE hour <= ?1 AND COALESCE(last_day, '') <> ?2 LIMIT 6").bind(hour, day).all()).results;
-  for (const n of due) {
+  let due = (await env.DB.prepare("SELECT * FROM notif WHERE hour <= ?1 AND COALESCE(last_day, '') <> ?2 ORDER BY hour LIMIT 18").bind(hour, day).all()).results;
+  if (due.some(n => n.sec !== 'air')) { const F = await siteFresh(env); if (!F.fresh) due = due.filter(n => n.sec === 'air' || hour - n.hour >= HOLD_MAX_H); }
+  for (const n of due.slice(0, 6)) {
     await env.DB.prepare('UPDATE notif SET last_day = ?3 WHERE chat_id = ?1 AND sec = ?2').bind(n.chat_id, n.sec, day).run();
     if (NWEEKLY[n.sec] && !monday) continue;
     const lang = RKL[n.lang] ? n.lang : 'ru', rid = NAMES[n.region] ? n.region : 'UZ';  // (groups: saved from their settings)
@@ -1512,12 +1513,34 @@ async function post(env, M, chat, lang0, id0, bot) {
   return r;
 }
 
+// is the data on the site fresh? (site/build.json: when the last build finished). Normally a new build every ~3 hours;
+// over 5 hours means an update was skipped or late (the watchdog in staleTick is already restarting it)
+const FRESH_H = 5, HOLD_MAX_H = 3;  // wait for fresh data at most 3 hours past the person's hour, then send what there is
+async function siteFresh(env) {
+  const B = await fetch(`${base(env)}/build.json?t=${Date.now()}`).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!B || !B.built) return { fresh: true, age: 0 };  // no stamp yet: do not hold anything
+  const age = (Date.now() - Date.parse(B.built)) / 3600e3;
+  return { fresh: age < FRESH_H, age, built: B.built };
+}
 async function broadcast(env) {
   if (!env.DB) return { ok: false, error: 'no DB' };
   await db(env);
   const hour = new Date(Date.now() + TZ * 3600e3).getUTCHours(), day = todayTZ();
-  const due = (await env.DB.prepare("SELECT * FROM subs WHERE COALESCE(last_run, '') <> ?1 AND COALESCE(post_hour, ?3) <= ?2 LIMIT ?4").bind(day, hour, POST_HOUR, PER_TICK).all()).results;
+  let due = (await env.DB.prepare("SELECT * FROM subs WHERE COALESCE(last_run, '') <> ?1 AND COALESCE(post_hour, ?3) <= ?2 ORDER BY COALESCE(post_hour, ?3) LIMIT ?4").bind(day, hour, POST_HOUR, PER_TICK * 3).all()).results;
   if (!due.length) return { ok: true, day, hour, due: 0 };
+  // late data: the daily posts wait (not marked as sent) and go out at the first run after the fresh data arrives —
+  // unless the wait is already 3 hours past the chosen hour; then the forecast we have is better than none
+  const F = await siteFresh(env);
+  if (!F.fresh) {
+    const waiting = due.filter(s => hour - (s.post_hour ?? POST_HOUR) < HOLD_MAX_H);
+    due = due.filter(s => hour - (s.post_hour ?? POST_HOUR) >= HOLD_MAX_H);
+    if (waiting.length && (await kv(env, 'hold_day')) !== day) {
+      await setKv(env, 'hold_day', day); const a = await kv(env, 'admin');
+      if (a) await tg(env, 'sendMessage', { chat_id: a, text: `⏳ Утренняя рассылка ждёт свежих данных: на сайте данные ${Math.round(F.age)} ч назад. Как только сборка закончится, рассылка уйдёт сразу (самое позднее — через ${HOLD_MAX_H} ч после времени подписчика, с тем, что есть).` });
+    }
+    if (!due.length) return { ok: true, day, hour, due: 0, held: waiting.length };
+  }
+  due = due.slice(0, PER_TICK);
   const M = await manifest(env, true);
   if (!M) return { ok: false, error: 'no manifest' };
   const me = await tg(env, 'getMe', {}), bot = me.ok ? me.result.username : '';
