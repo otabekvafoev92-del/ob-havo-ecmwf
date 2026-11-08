@@ -12,6 +12,7 @@ import numpy as np
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 ECM = 'https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com'
+ECM_ALT = 'https://data.ecmwf.int/forecasts'  # the same files at ECMWF (slower, used when the mirror fails)
 LON0, LON1, LAT0, LAT1, RES = 0.0, 120.0, 15.0, 70.0, 0.5   # the area the paths may cross
 BACK = 48                                                   # hours back
 SEAS = [  # name ru/uz/tr, lon0, lon1, lat0, lat1 (checked only where no country is)
@@ -47,9 +48,11 @@ def get(url, rng=None):
         try:
             r = S.get(url, headers={'Range': f'bytes={rng[0]}-{rng[1]}'} if rng else {}, timeout=60)
             if r.status_code in (200, 206): return r.content
-            if r.status_code in (403, 404): return None
+            if r.status_code in (403, 404): break
         except Exception: pass
-        time.sleep(2 * (a + 1))
+        time.sleep(2 * (a + 1) + (5 if a > 2 else 0))  # also when the mirror asks to slow down (503 SlowDown)
+    if url.startswith(ECM):  # the mirror failed: ECMWF's own server
+        return get(ECM_ALT + url[len(ECM):], rng)
     return None
 
 

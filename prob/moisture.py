@@ -85,7 +85,7 @@ def fetch(run, steps=None):
             g_ = next((f[k] for k in ('10fg', 'fg10', 'i10fg') if k in f), None)
             if g_ is not None: out[st]['gust'] = g_
             elif 'ws' in out[st]: out[st]['gust'] = out[st]['ws'] * 1.6  # no gusts in the data: the usual gust factor
-    print('moist: fields at', len(out), 'steps', flush=True)
+    print('moist: fields at', len(out), 'steps, last', max(out) if out else None, 'h', flush=True)
     return out
 
 
