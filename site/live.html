@@ -266,18 +266,18 @@ function draw() {
   cx.save(); cx.clip(co); both(1); cx.restore();                     // the country: full colour
   lines(h);
   if (M.a1) {  // the districts when the map is close enough, the regions always
-    cx.strokeStyle = Z >= 1.6 ? '#b7c3d0' : '#c9d3de'; cx.lineWidth = Z >= 1.6 ? 0.7 : 0.45; cx.stroke(P2('a2'));  // the districts, always
-    cx.strokeStyle = '#9fb0c2'; cx.lineWidth = 0.9; cx.stroke(P2('a1'));
+    cx.strokeStyle = '#b3c0ce'; cx.lineWidth = Z >= 1.6 ? 0.75 : 0.55; cx.stroke(P2('a2'));  // the districts, always
+    cx.strokeStyle = '#7f93aa'; cx.lineWidth = 1.1; cx.stroke(P2('a1'));                    // the regions, clearer
   } else if (M.admin) { cx.strokeStyle = '#c9d3de'; cx.lineWidth = 0.7; cx.stroke(P2('admin')); }
   const nameBoxes = [];
-  if (GEO && Z >= 1.3) {  // zoomed in: the region names, and closer the district names too (under the city pills)
+  if (GEO) {  // every region's name, and every district's name where it fits (closer = more of them), under the city pills
     cx.textAlign = 'center'; cx.textBaseline = 'middle';
     const put = (a, font, color, pad) => { const [px, py] = proj(a.c[0], a.c[1]); if (px < 16 || py < 12 || px > W - 16 || py > Hc - 12) return;
       cx.font = font; const tx = (a.name[LANG] || a.name.ru).replace(/ обл\.$| viloyati$/, ''), w = cx.measureText(tx).width, b = [px - w / 2 - pad, py - 8, w + pad * 2, 16];
       if (nameBoxes.some(q => b[0] < q[0] + q[2] && q[0] < b[0] + b[2] && b[1] < q[1] + q[3] && q[1] < b[1] + b[3])) return;
       nameBoxes.push(b); cx.lineWidth = 3; cx.strokeStyle = 'rgba(255,255,255,.85)'; cx.strokeText(tx, px, py); cx.fillStyle = color; cx.fillText(tx, px, py); };
-    for (const a of GEO.adm1) put(a, `700 ${Z >= 2 ? 12.5 : 11.5}px 'Golos Text',sans-serif`, 'rgba(58,76,98,.78)', 4);       // regions first: they win the space
-    if (Z >= 2) for (const a of GEO.adm2) put(a, `500 ${Z >= 3.5 ? 11 : 10}px 'Golos Text',sans-serif`, 'rgba(90,108,130,.72)', 2);  // then the districts
+    for (const a of GEO.adm1) put(a, `700 ${Z >= 2 ? 12.5 : 11}px 'Golos Text',sans-serif`, 'rgba(50,68,92,.85)', 4);        // regions first: they win the space
+    for (const a of GEO.adm2) put(a, `500 ${Z >= 3.5 ? 11 : Z >= 2 ? 10 : 8.5}px 'Golos Text',sans-serif`, 'rgba(90,108,130,.75)', 1);  // then the districts
     cx.textAlign = 'left';
   }
   cx.strokeStyle = '#2b3a4e'; cx.lineWidth = 1.8; cx.stroke(co);
