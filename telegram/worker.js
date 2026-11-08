@@ -1201,8 +1201,8 @@ async function handle(up, env) {
     media[0].parse_mode = 'HTML';
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
     let r = await tg(env, 'sendMediaGroup', { chat_id: chat.id, media });
-    // Telegram could not fetch the files by link: download them here and upload them
-    if (!r.ok) r = await uploadGroup(env, chat.id, media);
+    // Telegram could not take them by link: the two lightest ones (uploading from here breaks on big files)
+    if (!r.ok) { console.log('album', chat.id, id, r.description); const m2 = media.slice(-2); m2[0] = { ...m2[0], caption: media[0].caption, parse_mode: 'HTML' }; r = await tg(env, 'sendMediaGroup', { chat_id: chat.id, media: m2 }); }
     if (!r.ok) await tg(env, 'sendMessage', { chat_id: chat.id, text: `${T[lang].none}\n(${r.description || r.error_code || '?'})` });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].menu, reply_markup: menuKb(env, lang, id) });
   }
@@ -1425,20 +1425,6 @@ async function sendGuide(env, chat, lang) {
   return r;
 }
 
-async function uploadGroup(env, chat, media) {
-  const fd = new FormData();
-  fd.append('chat_id', String(chat));
-  const m2 = [];
-  for (let i = 0; i < media.length; i++) {
-    const f = await fetch(media[i].media);
-    if (!f.ok) return { ok: false, description: `site ${f.status}` };
-    fd.append(`v${i}`, new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `v${i}.mp4`);
-    m2.push({ ...media[i], media: `attach://v${i}` });
-  }
-  fd.append('media', JSON.stringify(m2));
-  const r = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMediaGroup`, { method: 'POST', body: fd });
-  return r.json();
-}
 
 async function sendToday(env, chat, lang, id, group) {
   const M = await manifest(env);
@@ -1504,8 +1490,11 @@ async function post(env, M, chat, lang0, id0, bot) {
   const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}?v=${fresh()}`, supports_streaming: true }));
   media[0].caption = cap; media[0].parse_mode = 'HTML';
   let r = await tg(env, 'sendMediaGroup', { chat_id: chat, media });
-  // Telegram could not fetch the videos by link: upload the files
-  if (!r.ok && !/kicked|blocked|deactivated|not a member|chat not found|have no rights|was deleted/i.test(r.description || '')) r = await uploadGroup(env, chat, media);
+  // Telegram could not take the videos by link (too big, the site slow): try the two lightest ones, then the text alone.
+  // (Uploading the files from here broke the whole daily sending: "Network connection lost" on ~50 MB of video.)
+  const gone = x => /kicked|blocked|deactivated|not a member|chat not found|have no rights|was deleted/i.test(x.description || '');
+  if (!r.ok && !gone(r)) { console.log('album', chat, id, r.description); const m2 = media.slice(-2); m2[0] = { ...m2[0], caption: cap, parse_mode: 'HTML' }; r = await tg(env, 'sendMediaGroup', { chat_id: chat, media: m2 }); }
+  if (!r.ok && !gone(r)) r = await tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot, chat), disable_web_page_preview: true });
   if (!r.ok) return r;
   // weather by city for today, with the buttons the album cannot carry
   const lines = await cityLines(env, id, lang);
@@ -1548,7 +1537,7 @@ async function broadcast(env) {
   for (const s of due) {
     let gone = false;
     for (const r of (regionsOf(s).length ? regionsOf(s) : ['UZ'])) {
-      const res = await post(env, M, s.chat_id, s.lang, r, s.type === 'private' ? '' : bot);
+      const res = await post(env, M, s.chat_id, s.lang, r, s.type === 'private' ? '' : bot).catch(e => { console.log('post', s.chat_id, r, e && e.stack); return { ok: false, description: String(e) }; });  // one bad chat never stops the rest
       if (res.ok) sent++;
       // the bot was removed or cannot write there: forget the chat
       if (!res.ok && [400, 403].includes(res.error_code) && /kicked|blocked|deactivated|not a member|chat not found|have no rights|was deleted/i.test(res.description || '')) { gone = true; break; }

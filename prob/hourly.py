@@ -342,6 +342,7 @@ def main():
                     import sound as S_
                     S_.mux(mp4, S_.track(S_.from_series(Pc[:HOURS], Tc[:HOURS] if Tc is not None else None, Wc[:HOURS]), 1.0, str(mp4) + '.wav'))
                 except Exception as e: print('sound failed:', mp4, e, flush=True)
+                Rn.fit_size(mp4)  # under Telegram's limit for videos sent by link
                 import shutil; shutil.rmtree(fdir)
                 json.dump({'region': region, 'lang': lang, 'off': off, 'city': Rn.city_name(city, lang), 'start': loc[0].strftime('%Y-%m-%dT%H:00'), 'info': info, 'video': f'hr/{mp4.name}'},
                           open(out / f'{region}_{lang}.json', 'w'), ensure_ascii=False)

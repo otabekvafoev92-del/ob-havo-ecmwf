@@ -874,6 +874,23 @@ def _video(fdir, mp4, fps, width=None, crf=None, intro=None, sound=None):
             import sound as S_
             S_.mux(mp4, S_.track(sound, 1.0 / fps, str(mp4) + '.wav', intro_sec=1.0 if intro is not None else 0.0))
         except Exception as e: print('sound failed:', mp4, e, flush=True)
+    fit_size(mp4)
+
+
+TG_MAX = 15e6  # Telegram fetches a video by link only up to 20 MB (and the bot sends albums of four): keep each under 15 MB
+def fit_size(mp4, limit=TG_MAX):
+    """A video over the limit is encoded again at the bit rate that brings it to ~92 % of the limit (sound copied)."""
+    import os
+    try:
+        if os.path.getsize(mp4) <= limit: return
+        dur = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', str(mp4)], capture_output=True, text=True).stdout.strip() or 0)
+        if dur <= 0: return
+        vb = max(300_000, int(limit * 0.92 * 8 / dur - 128_000)); tmp = str(mp4) + '.fit.mp4'
+        subprocess.run(['ffmpeg', '-y', '-v', 'error', '-i', str(mp4), '-c:v', 'libx264', '-b:v', str(vb), '-maxrate', str(int(vb * 1.3)), '-bufsize', str(vb * 2),
+                        '-preset', 'medium', '-tune', 'animation', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-movflags', '+faststart', tmp], check=True)
+        print(f'fit {mp4}: {os.path.getsize(mp4) / 1e6:.1f} -> {os.path.getsize(tmp) / 1e6:.1f} MB', flush=True)
+        os.replace(tmp, mp4)
+    except Exception as e: print('fit failed:', mp4, e, flush=True)
 
 
 def _city_job(args):
