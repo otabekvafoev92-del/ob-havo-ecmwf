@@ -327,13 +327,17 @@ function timeline(h) {
 // playing: one hour per 0.9 s, the map flowing smoothly between hours
 let raf, t0;
 const SPD = () => M.times ? 2800 : 3600;  // ms per step: a quarter of the old speed (0.25×), calm to watch
-function start() { playing = true; $('play').textContent = '❚❚'; t0 = performance.now() - (hour % 1) * SPD(); if (hour >= H - 1) hour = 0; const h0 = Math.floor(hour);
+let mute = false;  // the person turned the sound off: ▶ then plays silently
+function start() { playing = true; $('play').textContent = '❚❚';
+  if (!mute) { if (!sound) toggleSound(); else sound.resume(); }  // the sound starts with the picture (pressing ▶ lets the browser play it)
+  t0 = performance.now() - (hour % 1) * SPD(); if (hour >= H - 1) hour = 0; const h0 = Math.floor(hour);
   const step = now => { if (!playing) return; hour = Math.min(H - 1, h0 + (now - t0) / SPD()); draw(); if (hour >= H - 1) return stop(); raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
-function stop() { playing = false; cancelAnimationFrame(raf); $('play').textContent = '▶'; }
+function stop() { playing = false; cancelAnimationFrame(raf); $('play').textContent = '▶'; if (sound) sound.pause(); }  // pause: quiet too
 
 // the weather heard: wind, rain (hiss and single drops), snow (a soft hush and bells), all made here in the browser
 function toggleSound() {
-  if (sound) { sound.close(); sound = null; $('snd').textContent = '🔈'; $('snd').classList.remove('on'); return; }
+  if (sound) { sound.close(); sound = null; mute = true; $('snd').textContent = '🔈'; $('snd').classList.remove('on'); return; }
+  mute = false;
   const A = new (window.AudioContext || window.webkitAudioContext)(), sr = A.sampleRate;
   const nb = A.createBuffer(2, sr * 4, sr); for (let c = 0; c < 2; c++) { const d = nb.getChannelData(c); let b = 0; for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
   const bb = A.createBuffer(2, sr * 4, sr); for (let c = 0; c < 2; c++) { const d = bb.getChannelData(c); let b = 0; for (let i = 0; i < d.length; i++) { b = (b + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = b * 3.5; } }
@@ -362,6 +366,7 @@ function toggleSound() {
       gWind.gain.setTargetAtTime(0.04 + 0.35 * lv.wind ** 1.2, k, 0.4); const rr = real ? 0 : 1; gHiss.gain.setTargetAtTime(0.12 * lv.rain ** 1.5 * rr, k, 0.4); gRoar.gain.setTargetAtTime(0.09 * lv.rain ** 1.3 * rr, k, 0.4);
       if (real) { const rp = (a, b) => Math.max(0, Math.min(1, (lv.rain - a) / (b - a))), gl = rp(0, 0.3) * (1 - 0.7 * rp(0.4, 0.65)), gm = rp(0.3, 0.5) * (1 - 0.6 * rp(0.7, 0.9)), gh = rp(0.65, 0.9);
         gRL.gain.setTargetAtTime(0.9 * gl, k, 0.5); gRM.gain.setTargetAtTime(0.8 * gm, k, 0.5); gRH.gain.setTargetAtTime(0.85 * gh, k, 0.5); } gHush.gain.setTargetAtTime(0.05 * lv.snow, k, 0.4); },
+    pause() { A.suspend(); }, resume() { A.resume(); },
     close() { alive = false; A.close(); } };
   sound.set(hour); $('snd').textContent = '🔊'; $('snd').classList.add('on');
 }
