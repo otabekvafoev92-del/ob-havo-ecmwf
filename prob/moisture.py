@@ -27,15 +27,15 @@ _WN = [((50.6, 42.6), ('Каспийское\nморе', 'Kaspiy\ndengizi', 'Haz
 WATER_NAMES = {l: [(p_, n_[i], f_) for p_, n_, f_ in _WN] for i, l in enumerate(('ru', 'uz', 'tr'))}
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
 VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5)}
-TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер (темнее — сильнее)', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
+TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое с чёрным пунктиром — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер (темнее — сильнее)', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
                  hi='В', lo='Н', hiw='антициклон: ясно, сухо', low='циклон: тучи, дождь, ветер', tz='по Ташкенту', src='влага: {s}', leg='путь влаги к городу',
                  c_intro='Серое — тучи, синее — дождь, фиолетовое — снег. Линии показывают, куда дует ветер.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
                  c_dry='Над страной сухо — дождя нет', c_wet='Влажный воздух над страной — возможны осадки', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
-      'uz': dict(rainbar='ko‘k ustunlar — mamlakatda yomg‘ir', title='Yomg‘ir qayerdan keladi', sub='kulrang — bulut · ko‘k — yomg‘ir · binafsha — qor · qizil — siklon · chiziqlar — shamol', tcwv='Havo namligi', cl='Bulut', rn='Yomg‘ir', sn='Qor', snh='kuchli', wd_t='Shamol zarbasi', ms='m/s', wsub=' · sariq — kuchli shamol', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
+      'uz': dict(rainbar='ko‘k ustunlar — mamlakatda yomg‘ir', title='Yomg‘ir qayerdan keladi', sub='kulrang, qora punktir — bulut · ko‘k — yomg‘ir · binafsha — qor · qizil — siklon · chiziqlar — shamol', tcwv='Havo namligi', cl='Bulut', rn='Yomg‘ir', sn='Qor', snh='kuchli', wd_t='Shamol zarbasi', ms='m/s', wsub=' · sariq — kuchli shamol', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
                  hi='Y', lo='P', hiw='antisiklon: ochiq, quruq', low='siklon: bulut, yomg‘ir, shamol', tz='Toshkent vaqti', src='namlik: {s}', leg='namlikning shaharga yo‘li',
                  c_intro='Kulrang — bulut, ko‘k — yomg‘ir, binafsha — qor. Chiziqlar shamol yo‘nalishini ko‘rsatadi.', c_go='Nam havo ({s}) {c} shahriga kelmoqda', c_rain='Hozir yomg‘ir: {c}', c_snow='Hozir qor: {c}',
                  c_dry='Mamlakat ustida quruq — yomg‘ir yo‘q', c_wet='Mamlakat ustida nam havo — yog‘in bo‘lishi mumkin', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']),
-      'tr': dict(rainbar='mavi sütunlar — ülkede yağmur', title='Yağmur nereden geliyor', sub='gri — bulut · mavi — yağmur · mor — kar · kırmızı — siklon · çizgiler — rüzgâr', tcwv='Havanın nemi', cl='Bulut', rn='Yağmur', sn='Kar', snh='yoğun', wd_t='Rüzgâr hamlesi', ms='m/s', wsub=' · sarı — kuvvetli rüzgâr', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
+      'tr': dict(rainbar='mavi sütunlar — ülkede yağmur', title='Yağmur nereden geliyor', sub='gri, siyah kesikli — bulut · mavi — yağmur · mor — kar · kırmızı — siklon · çizgiler — rüzgâr', tcwv='Havanın nemi', cl='Bulut', rn='Yağmur', sn='Kar', snh='yoğun', wd_t='Rüzgâr hamlesi', ms='m/s', wsub=' · sarı — kuvvetli rüzgâr', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
                  hi='Y', lo='A', hiw='antisiklon: açık, kuru', low='siklon: bulut, yağmur, rüzgâr', tz='TSİ', src='nem: {s}', leg='nemin şehre yolu',
                  c_intro='Gri bulut, mavi yağmur, mor kar. Çizgiler rüzgârın yönünü gösterir.', c_go='Nemli hava ({s}) {c} şehrine geliyor', c_rain='Şu an yağmur: {c}', c_snow='Şu an kar: {c}',
                  c_dry='Ülke üzerinde hava kuru — yağmur yok', c_wet='Ülke üzerinde nemli hava — yağış olabilir', wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'])}
@@ -381,6 +381,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         if lo: fig.text(x, 0.028, lo, fontsize=8.5, color='#c9d6e5', zorder=21, va='center')
         if hi: fig.text(x + w, 0.028, hi, fontsize=8.5, color='#c9d6e5', ha='right', zorder=21, va='center')
     swatch(0.02, 0.075, ['#c4c9cf', '#9aa2ab', '#7a838e'], '☁ ' + X['cl'])
+    fig.lines.append(matplotlib.lines.Line2D([0.022, 0.093], [0.056, 0.056], transform=fig.transFigure, color='#111111', lw=1.6, ls=(0, (4, 3)), zorder=21))
     swatch(0.115, 0.125, RAIN_COL, X['rn'], X['prl'], X['prh'])
     swatch(0.26, 0.125, SNOW_COL, '❄ ' + X['sn'], X['prl'], X['snh'])
     swatch(0.405, 0.12, WIND_COL, X['wd_t'], '15', '25+ ' + X['ms'])
@@ -463,6 +464,9 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         Q = interp(F, h); T = Q['tcwv'][np.ix_(ri, ci)]; P = gaussian_filter(Q['pr'][np.ix_(ri, ci)], 0.8); M = gaussian_filter(Q['msl'][np.ix_(ri, ci)], 2.0)
         C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.40, 0.45, 0.51); cl[..., 3] = np.clip((C - 0.3) / 0.7, 0, 1) ** 1.3 * 0.42
         img.set_data(cl); ax.set_aspect(1 / k)
+        if C.max() > 0.55:  # the edge of the cloud masses: a black dashed line, so their movement is easy to follow
+            dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.55], colors='#111111', linewidths=1.3, linestyles=[(0, (4, 3))], alpha=0.75, zorder=3.3))
+            if C.max() > 0.9: dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.9], colors='#111111', linewidths=0.8, linestyles=[(0, (2, 3))], alpha=0.5, zorder=3.3))
         T2 = gaussian_filter(Q['t2'][np.ix_(ri, ci)], 1.0); SN = T2 <= 0.5
         GU = gaussian_filter(Q['gust'][np.ix_(ri, ci)], 1.0) if 'gust' in Q else gaussian_filter(np.hypot(Q['u'], Q['v'])[np.ix_(ri, ci)], 1.0) * 0.9
         if GU.max() >= WIND_LV[0]:
