@@ -31,11 +31,11 @@ DIR = {'ru': ['с севера', 'с северо-востока', 'с вост�
        'uz': ['shimoldan', 'shimoli-sharqdan', 'sharqdan', 'janubi-sharqdan', 'janubdan', 'janubi-g‘arbdan', 'g‘arbdan', 'shimoli-g‘arbdan'],
        'tr': ['kuzeyden', 'kuzeydoğudan', 'doğudan', 'güneydoğudan', 'güneyden', 'güneybatıdan', 'batıdan', 'kuzeybatıdan']}
 TX = {'ru': dict(title='Откуда придут осадки', rain='дождь', snow='снег', come='{w} придёт {d}', via='путь воздуха: {c}', src='влага — с {s} ({h} назад)', h='{n} ч', d1='сутки', d2='двое суток',
-                 sub='Путь воздуха, который принесёт осадки, за 2 суток до их начала', ago='{n} ч назад', none='В ближайшие дни осадков не ожидается'),
+                 sub='Путь воздуха, который принесёт осадки, за 2 суток до их начала', ago='{n} ч назад', none='В ближайшие дни осадков не ожидается', start='осадки начинаются'),
       'uz': dict(title='Yog‘in qayerdan keladi', rain='yomg‘ir', snow='qor', come='{w} {d} keladi', via='havo yo‘li: {c}', src='namlik — {s}dan ({h} oldin)', h='{n} soat', d1='bir kun', d2='ikki kun',
-                 sub='Yog‘in olib keladigan havoning boshlanishidan 2 kun oldingi yo‘li', ago='{n} soat oldin', none='Yaqin kunlarda yog‘in kutilmaydi'),
+                 sub='Yog‘in olib keladigan havoning boshlanishidan 2 kun oldingi yo‘li', ago='{n} soat oldin', none='Yaqin kunlarda yog‘in kutilmaydi', start='yog‘in boshlanadi'),
       'tr': dict(title='Yağış nereden gelecek', rain='yağmur', snow='kar', come='{w} {d} gelecek', via='havanın yolu: {c}', src='nem {s} kaynaklı ({h} önce)', h='{n} saat', d1='bir gün', d2='iki gün',
-                 sub='Yağışı getirecek havanın, başlamadan önceki 2 günlük yolu', ago='{n} saat önce', none='Önümüzdeki günlerde yağış beklenmiyor')}
+                 sub='Yağışı getirecek havanın, başlamadan önceki 2 günlük yolu', ago='{n} saat önce', none='Önümüzdeki günlerde yağış beklenmiyor', start='yağış başlıyor')}
 S = None
 
 
@@ -196,10 +196,13 @@ def main():
         for lang in a.langs.split(','):
             try: picture(R, region, items, lang, out / f'{region}_traj_{lang}.png', run, polys)
             except Exception as e: print('traj picture failed', region, lang, e, flush=True)
+            if items:
+                try: picture(R, region, items, lang, None, run, polys, anim=out / f'{region}_traj_{lang}.mp4')
+                except Exception as e: print('traj animation failed', region, lang, e, flush=True)
         print('traj', region, len(items), 'paths', flush=True)
 
 
-def picture(R, region, items, lang, path, run, polys):
+def picture(R, region, items, lang, path, run, polys, anim=None):
     import render as Rn
     from render import plt, matplotlib
     from regions import NAMES, T as TT
@@ -231,7 +234,9 @@ def picture(R, region, items, lang, path, run, polys):
         if rr: ax.add_collection(PC(rr, facecolor='#ffffff' if iso == region else LAND, edgecolor='#ffffff' if iso != region else NAVY, linewidths=1.6 if iso == region else 0.8, zorder=1 if iso != region else 1.5))
     for iso, c_ in G.items():  # country names (not our own), faint
         if iso == region: continue
-        rr = [np.asarray(r) for r in c_['rings']]; big = max(rr, key=len); cx_, cy_ = big[:, 0].mean(), big[:, 1].mean()
+        rr = [np.asarray(r) for r in c_['rings']]
+        if not rr: continue
+        big = max(rr, key=len); cx_, cy_ = big[:, 0].mean(), big[:, 1].mean()
         if x0 + 1 < cx_ < x1 - 1 and y0 + 0.8 < cy_ < y1 - 0.8 and len(big) > 30:
             ax.text(cx_, cy_, (UZN.get(iso) if lang == 'uz' else c_.get(lang)) or c_.get('name', iso), fontsize=8, color='#8a9bb0', ha='center', va='center', zorder=1.8)
     for nm, sx0, sx1, sy0, sy1 in SEAS:  # sea names
@@ -246,6 +251,7 @@ def picture(R, region, items, lang, path, run, polys):
     seen = set()
     show = sorted(items, key=lambda it: (it['k'], -it['p']))
     show = [it for it in show if not (it['city']['ru'] in seen or seen.add(it['city']['ru']))][:6]
+    if anim: return _animate(fig, ax, show, cols, lang, X, L, (x0, x1, y0, y1), anim)
     for j, it in enumerate(show):
         c = cols[j % len(cols)]; pth = np.array(it['path'])
         ax.plot(pth[:, 0], pth[:, 1], color=c, lw=2.6, alpha=0.9, zorder=5, solid_capstyle='round')
@@ -262,6 +268,53 @@ def picture(R, region, items, lang, path, run, polys):
                 bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.5', fc='#ffffffee', ec=c, lw=1.2))
     fig.text(0.016, 0.03, 'ECMWF IFS · ~3 км / km', fontsize=8.5, color='#5b6b80', va='center')
     fig.savefig(path, dpi=150, facecolor=fig.get_facecolor()); plt.close(fig)
+
+
+def _animate(fig, ax, show, cols, lang, X, L, view, mp4):
+    """The air moving: each path grows from 48 h before the rain to the city (a comet with a fading tail), the clock
+    counting down, then the rain starts at the cities. 16 frames a second, about 9 s, with the sound of wind and rain."""
+    import subprocess, shutil, tempfile
+    from render import plt
+    from hourly import NAVY
+    x0, x1, y0, y1 = view
+    fdir = pathlib.Path(tempfile.mkdtemp())
+    P = []
+    for j, it in enumerate(show):  # every path, densified to 0.5 h, oldest first
+        pth = np.array(it['path'], float)[::-1]; hs = np.arange(pth[0, 2], -0.01, -0.5)
+        P.append((it, cols[j % len(cols)], np.interp(-hs, -pth[:, 2], pth[:, 0]), np.interp(-hs, -pth[:, 2], pth[:, 1]), hs))
+    for it, c, *_ in P:  # the cities and their labels stay all the time
+        ax.plot(it['lon'], it['lat'], 'o', ms=8, mfc=c, mec='#ffffff', mew=2, zorder=8)
+        d = dt.date.fromisoformat(it['day']); right = it['lon'] > x0 + 0.72 * (x1 - x0)
+        ax.text(it['lon'] + (-0.35 if right else 0.35), it['lat'] - 0.35, f"{it['city'][lang]} · {L['wd'][d.weekday()]} {d:%d.%m} · {'❄' if it['snow'] else '☂'} {it['p']}%", fontsize=9, fontweight='bold', color=NAVY, zorder=9,
+                ha='right' if right else 'left', va='top', bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.5', fc='#ffffffee', ec=c, lw=1.2))
+    clock = ax.text(x0 + (x1 - x0) * 0.02, y1 - (y1 - y0) * 0.05, '', fontsize=22, fontweight='bold', color=NAVY, va='top', zorder=10,
+                    bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.8', fc='#ffffffee', ec='#c9d3de', lw=1))
+    taus = list(np.arange(48, -0.01, -0.5)) + [0.0] * 40; dyn = []; lv = []
+    for f, tau in enumerate(taus):
+        for a in dyn: a.remove()
+        dyn = []
+        for it, c, xs, ys, hs in P:
+            m = hs >= tau - 1e-6
+            if m.sum() < 1: continue
+            xx, yy = xs[m], ys[m]
+            dyn += ax.plot(xx, yy, color=c, lw=2.4, alpha=0.55, zorder=5, solid_capstyle='round')
+            tail = slice(max(0, len(xx) - 8), len(xx))  # the bright head of the comet
+            dyn += ax.plot(xx[tail], yy[tail], color=c, lw=4.2, alpha=0.95, zorder=5.5, solid_capstyle='round')
+            dyn += ax.plot(xx[-1], yy[-1], 'o', ms=10, mfc=c, mec='#ffffff', mew=2.2, zorder=7)
+            if tau <= 0.01:  # arrived: the rain (or snow) at the city, pulsing
+                k = (f - taus.index(0.0)) % 16 / 16
+                dyn += ax.plot(it['lon'], it['lat'], 'o', ms=14 + 22 * k, mfc='none', mec=c, mew=2.5 * (1 - k), alpha=1 - k, zorder=7.5)
+        clock.set_text(X['ago'].format(n=int(round(tau))) if tau > 0.01 else ('❄ ' if any(it['snow'] for it, *_ in P) else '☂ ') + X['start'])
+        fig.savefig(fdir / f'{f:03d}.png', dpi=100, facecolor=fig.get_facecolor())
+        lv.append({'rain': 0.0 if tau > 0.01 else 0.55, 'snow': tau <= 0.01 and any(it['snow'] for it, *_ in P), 'wind': 0.45 + 0.35 * (1 - tau / 48), 'storm': 0.0})
+    plt.close(fig)
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '16', '-i', str(fdir / '%03d.png'), '-vf', 'format=yuv420p', '-c:v', 'libx264', '-crf', '23', '-preset', 'medium',
+                    '-tune', 'animation', '-movflags', '+faststart', str(mp4)], check=True)
+    try:
+        import sound as S_
+        S_.mux(mp4, S_.track(lv, 1 / 16, str(mp4) + '.wav', mode='all'))
+    except Exception as e: print('traj sound failed', e, flush=True)
+    shutil.rmtree(fdir)
 
 
 if __name__ == '__main__':

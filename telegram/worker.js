@@ -403,7 +403,10 @@ async function sendTraj(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, J = await trajData(env, rid);
   if (!J || !J.items.length) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
-  await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/hr/${rid}_traj_${lang === 'tr' ? 'ru' : lang}.png?v=${encodeURIComponent(J.run)}`, caption: `🧭 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.title}` });
+  // the animation (the air moving to the cities, with sound); the still map if the video is not there
+  const L = lang === 'tr' ? 'ru' : lang, v = encodeURIComponent(J.run), cap = `🧭 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.title}`;
+  const r = await tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_traj_${L}.mp4?v=${v}`, caption: cap, supports_streaming: true });
+  if (!r.ok) await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/hr/${rid}_traj_${L}.png?v=${v}`, caption: cap });
   const seen = new Set(), lines = [...J.items].sort((a, b) => a.k - b.k || b.p - a.p).filter(it => !seen.has(it.city.ru + it.day) && seen.add(it.city.ru + it.day)).slice(0, 10)
     .map(it => `<b>${esc(it.city[lang] || it.city.ru)} · ${dayLabel(it.day, lang)} · ${it.snow ? '❄' : '☂'} ${it.p}%</b>\n🧭 ${esc(it.text[lang] || it.text.ru)}`);
   return tg(env, 'sendMessage', { chat_id: chat, text: [`🧭 <b>${X.title}</b>`, '', lines.join('\n\n'), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000), parse_mode: 'HTML' });
