@@ -19,17 +19,17 @@ from trajectory import ECM, get  # the same mirror and downloader
 STEPS = list(range(0, 73, 3))
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
 VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5)}
-TX = {'ru': dict(title='Откуда идёт дождь', tv_rain='дождь', tv_snow='снег', tv_flow='поток влаги', tv_cloud='облака', sub='стрелки — поток влажного воздуха · синее — дождь · сиреневое — снег', tcwv='Влажность воздуха', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
+TX = {'ru': dict(title='Откуда идёт дождь', sub='зелёное — влажный воздух · белые линии — ветер · синее — дождь', tcwv='Влажность воздуха', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
                  hi='В', lo='Н', hiw='антициклон · ясно', low='циклон · непогода', tz='по Ташкенту', src='влага: {s}', leg='путь влаги к городу',
-                 c_intro='Оранжевые стрелки — куда ветер несёт влажный воздух. Синее — дождь, сиреневое — снег.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
+                 c_intro='Зелёный цвет — влажный воздух. Белые линии показывают, куда дует ветер и несёт влагу.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
                  c_dry='Над страной сухо — дождя нет', c_wet='Влажный воздух над страной — возможны осадки', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
-      'uz': dict(title='Yomg‘ir qayerdan keladi', tv_rain='yomg‘ir', tv_snow='qor', tv_flow='namlik oqimi', tv_cloud='bulutlar', sub='strelkalar — nam havo oqimi · ko‘k — yomg‘ir · binafsha — qor', tcwv='Havo namligi', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
+      'uz': dict(title='Yomg‘ir qayerdan keladi', sub='yashil — nam havo · oq chiziqlar — shamol · ko‘k — yomg‘ir', tcwv='Havo namligi', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
                  hi='Y', lo='P', hiw='antisiklon · ochiq havo', low='siklon · yomon havo', tz='Toshkent vaqti', src='namlik: {s}', leg='namlikning shaharga yo‘li',
-                 c_intro='To‘q sariq strelkalar — shamol nam havoni qayerga olib ketmoqda. Ko‘k — yomg‘ir, binafsha — qor.', c_go='Nam havo ({s}) {c} shahriga kelmoqda', c_rain='Hozir yomg‘ir: {c}', c_snow='Hozir qor: {c}',
+                 c_intro='Yashil rang — nam havo. Oq chiziqlar shamol qayerga esib, namlikni olib ketayotganini ko‘rsatadi.', c_go='Nam havo ({s}) {c} shahriga kelmoqda', c_rain='Hozir yomg‘ir: {c}', c_snow='Hozir qor: {c}',
                  c_dry='Mamlakat ustida quruq — yomg‘ir yo‘q', c_wet='Mamlakat ustida nam havo — yog‘in bo‘lishi mumkin', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']),
-      'tr': dict(title='Yağmur nereden geliyor', tv_rain='yağmur', tv_snow='kar', tv_flow='nem akışı', tv_cloud='bulutlar', sub='oklar — nemli hava akışı · mavi — yağmur · mor — kar', tcwv='Havanın nemi', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
+      'tr': dict(title='Yağmur nereden geliyor', sub='yeşil — nemli hava · beyaz çizgiler — rüzgâr · mavi — yağmur', tcwv='Havanın nemi', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
                  hi='Y', lo='A', hiw='antisiklon · açık', low='siklon · kötü hava', tz='TSİ', src='nem: {s}', leg='nemin şehre yolu',
-                 c_intro='Turuncu oklar rüzgârın nemli havayı nereye taşıdığını gösterir. Mavi — yağmur, mor — kar.', c_go='Nemli hava ({s}) {c} şehrine geliyor', c_rain='Şu an yağmur: {c}', c_snow='Şu an kar: {c}',
+                 c_intro='Yeşil renk nemli havadır. Beyaz çizgiler rüzgârın nereye estiğini ve nemi nereye taşıdığını gösterir.', c_go='Nemli hava ({s}) {c} şehrine geliyor', c_rain='Şu an yağmur: {c}', c_snow='Şu an kar: {c}',
                  c_dry='Ülke üzerinde hava kuru — yağmur yok', c_wet='Ülke üzerinde nemli hava — yağış olabilir', wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'])}
 # water vapour on a dark map: the dry air dark slate, the moist air glowing teal-green (the moisture stands out like on satellite water-vapour images)
 TCWV_STOPS = [(0, '#1f2530'), (6, '#2a3340'), (12, '#2f4450'), (18, '#2e5a60'), (25, '#2d7470'), (32, '#3a927f'), (40, '#5fb08f'), (50, '#9ccf9f'), (70, '#e3f2c0')]  # dark dry air → glowing moist air
@@ -254,152 +254,6 @@ def video_tv(F, region, lang, mp4, run, off=5, paths=()):
     shutil.rmtree(fdir)
 
 
-STORY = {
-  'ru': dict(title='Откуда придёт дождь', sub='прогноз на 3 дня', s1_sea='Влага поднимается над водой: {s}', s1_land='Влажный воздух приходит из страны: {s}', s2='Ветер несёт эти облака к городу {c}',
-             s3='{d} — {w} в городе {c}', rain='дождь', snow='снег', none='В ближайшие 3 дня дождя не ожидается', sum='Итог: откуда придут осадки', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
-  'uz': dict(title='Yomg‘ir qayerdan keladi', sub='3 kunlik prognoz', s1_sea='Namlik suv ustida ko‘tariladi: {s}', s1_land='Nam havo shu davlatdan keladi: {s}', s2='Shamol bu bulutlarni {c} shahriga olib keladi',
-             s3='{d} — {c} shahrida {w}', rain='yomg‘ir', snow='qor', none='Yaqin 3 kunda yomg‘ir kutilmaydi', sum='Xulosa: yog‘in qayerdan keladi', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']),
-  'tr': dict(title='Yağmur nereden gelecek', sub='3 günlük tahmin', s1_sea='Nem suyun üzerinde yükseliyor: {s}', s1_land='Nemli hava şu ülkeden geliyor: {s}', s2='Rüzgâr bu bulutları {c} şehrine taşıyor',
-             s3='{d} — {c} şehrinde {w}', rain='yağmur', snow='kar', none='Önümüzdeki 3 günde yağmur beklenmiyor', sum='Özet: yağış nereden gelecek', wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'])}
-
-
-def video(F, region, lang, mp4, run, off=5, paths=()):
-    """The plainest version: a story in three steps per city, on a calm light map, no weather fields at all.
-    1) where the moisture rises (a pulsing drop at the sea or the country it comes from), 2) a thick arrow grows
-    along the real path of the air (ECMWF) while a cloud travels on it, 3) the rain (or snow) falls on the city, with
-    the day. A big plain sentence explains each step; at the end, a summary. About 3 s per step, sound of wind and rain."""
-    import render as Rn
-    from render import plt, matplotlib
-    from regions import NAMES
-    from hourly import NAVY
-    import matplotlib.patheffects as pe
-    X = STORY.get(lang, STORY['ru'])
-    G, POLYS = TJ.load_polys()
-    own = [np.asarray(r) for r in G.get(region, {}).get('rings', [])]
-    # the view: our country and every path's start, in 16:9
-    pts = np.vstack(own + [np.array(p['path'])[:, :2] for p in paths]) if paths else np.vstack(own)
-    x0, x1, y0, y1 = pts[:, 0].min() - 2.5, pts[:, 0].max() + 2.5, pts[:, 1].min() - 2, pts[:, 1].max() + 2
-    k = np.cos(np.radians((y0 + y1) / 2)); asp = 12.8 / (7.2 * 0.84)
-    if (x1 - x0) * k / (y1 - y0) < asp: c = (x0 + x1) / 2; w = (y1 - y0) * asp / k; x0, x1 = c - w / 2, c + w / 2
-    else: c = (y0 + y1) / 2; h_ = (x1 - x0) * k / asp; y0, y1 = c - h_ / 2, c + h_ / 2
-    fig = plt.figure(figsize=(12.8, 7.2), dpi=150); fig.patch.set_facecolor(NAVY)
-    ax = fig.add_axes([0, 0.16, 1, 0.84]); ax.set_xlim(x0, x1); ax.set_ylim(y0, y1); ax.set_aspect(1 / k); ax.axis('off')
-    # a soft relief map (height-tinted land, blue seas), slightly washed out so the story drawn on it stands out
-    base = tv_base(x0, x1, y0, y1, n=1400); base = base * 0.82 + 0.18
-    ax.imshow(base, extent=(x0, x1, y0, y1), origin='upper', zorder=0, aspect='auto', interpolation='bilinear')
-    PC, LC = matplotlib.collections.PolyCollection, matplotlib.collections.LineCollection
-    near = lambda r: np.asarray(r)[:, 0].max() > x0 - 3 and np.asarray(r)[:, 0].min() < x1 + 3 and np.asarray(r)[:, 1].max() > y0 - 3 and np.asarray(r)[:, 1].min() < y1 + 3
-    ax.add_collection(LC([np.asarray(r) for iso, c_ in G.items() if iso != region for r in c_['rings'] if near(r)], colors='#8f9aa5', linewidths=0.7, alpha=0.6, zorder=1))
-    ax.add_collection(PC(own, facecolor='#ffffff55', edgecolor='none', zorder=1.8))
-    ax.add_collection(LC(own, colors='#ffffff', linewidths=6, alpha=0.9, zorder=2)); ax.add_collection(LC(own, colors=NAVY, linewidths=2.2, zorder=2.1))
-    for iso, c_ in G.items():  # country names, faint
-        if iso == region or not c_['rings']: continue
-        big = max((np.asarray(r) for r in c_['rings']), key=len); cx_, cy_ = big[:, 0].mean(), big[:, 1].mean()
-        if x0 + 1.5 < cx_ < x1 - 1.5 and y0 + 1 < cy_ < y1 - 1 and len(big) > 30:
-            ax.text(cx_, cy_, (TJ.UZN.get(iso) if lang == 'uz' else c_.get(lang)) or c_.get('name', iso), fontsize=10, color='#5f6c78', ha='center', va='center', zorder=1.5, alpha=0.8, path_effects=[pe.withStroke(linewidth=2.5, foreground='#ffffffaa')])
-    ax.text(*np.array(own[0]).mean(0), NAMES[region][lang].upper(), fontsize=15, color=NAVY, alpha=0.45, fontweight='bold', ha='center', va='center', zorder=2.2)
-    # the frame: title, a big sentence bar at the bottom with the step number
-    fig.text(0.02, 0.955, f" {X['title']} ", fontsize=22, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center', zorder=20, bbox=dict(boxstyle='round,pad=0.4,rounding_size=0.5', fc=NAVY, ec='none'))
-    fig.text(0.024, 0.885, X['sub'], fontsize=13, fontweight='bold', color=NAVY, va='center', zorder=20, path_effects=[pe.withStroke(linewidth=3, foreground='#ffffff')])
-    fig.patches.append(matplotlib.patches.Rectangle((0, 0), 1, 0.16, transform=fig.transFigure, facecolor=NAVY, edgecolor='none', zorder=19))
-    step = fig.text(0.03, 0.08, '', fontsize=30, fontfamily=Rn.DISPLAY, fontweight='bold', color='#f0b88a', va='center', zorder=21)
-    dots = [fig.text(0.03 + 0.022 * i, 0.03, '●', fontsize=11, color='#4a5b70', va='center', zorder=21) for i in range(3)]
-    def set_step(i):  # the number and the three dots of the story's steps
-        step.set_text(str(i) if i else '')
-        for j_, d_ in enumerate(dots): d_.set_color('#f0b88a' if i and j_ < i else '#4a5b70')
-    sent = fig.text(0.1, 0.08, '', fontsize=21, fontweight='bold', color='#ffffff', va='center', zorder=21)
-    fig.text(0.985, 0.02, 'ECMWF · osmon', fontsize=8, color='#9fb0c2', ha='right', zorder=21)
-    halo = [pe.withStroke(linewidth=3.5, foreground='#ffffff')]
-    def drop(x, y, s, a=1.0):  # a teardrop shape
-        t = np.linspace(0, 2 * np.pi, 60); r = s * (1 - np.sin(t)) / 2
-        xs, ys = x + r * np.cos(t) * 0.75 / k, y + r * np.sin(t) * 0.75 + s * 0.35
-        return ax.fill(xs, ys, color='#2f7fd8', alpha=a, zorder=8, ec='#ffffff', lw=2)
-    def cloud(x, y, s, a=1.0):
-        out = []
-        for dx, dy, r in ((-0.55, 0, 0.42), (0, 0.22, 0.55), (0.55, 0, 0.42), (0, -0.1, 0.45)):
-            out.append(matplotlib.patches.Ellipse((x + dx * s / k, y + dy * s), 2 * r * s / k, 2 * r * s, fc='#ffffff', ec='#7d8b99', lw=1.6, alpha=a, zorder=8.5))
-        for o in out: ax.add_patch(o)
-        return out
-    frames = []; fdir = pathlib.Path(tempfile.mkdtemp()); n = [0]; lv = []
-    def shot(snd):
-        fig.savefig(fdir / f'{n[0]:04d}.png', dpi=150, facecolor=fig.get_facecolor()); n[0] += 1; lv.append(snd)
-    FPS, S = 12, 1.0 * (x1 - x0) / 40  # S: the size of the drawings relative to the map
-    keep = []  # what stays on the map after each city's story
-    sent.set_text(X['sub'].capitalize()); set_step(0)
-    for _ in range(24): shot({'wind': 0.15})
-    if not paths:
-        sent.set_text(X['none'] + ' ☀'); [shot({'wind': 0.15}) for _ in range(48)]
-    cols = ['#2f7fd8', '#e0703a', '#7a5bd0']
-    for j, pa in enumerate(paths):
-        q = np.array(pa['path'])[::-1]  # oldest first
-        inside = [i for i in range(len(q)) if x0 + 0.5 < q[i, 0] < x1 - 0.5 and y0 + 0.5 < q[i, 1] < y1 - 0.5]
-        if not inside: continue
-        q = q[inside[0]:]; dense = np.vstack([np.linspace(q[i], q[i + 1], 6, endpoint=False) for i in range(len(q) - 1)] + [q[-1:]])[:, :2]
-        is_sea = pa['src']['ru'] in TJ.SEA_NOM.values() or 'залив' in pa['src']['ru'] or 'море' in pa['src']['ru']
-        t_arr = run + dt.timedelta(hours=pa['h'] + off); snow = pa.get('snow', False)
-        city = next((Rn.city_name(p, lang) for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('ru') == pa['city']), pa['city'])
-        dyn = []
-        def clear():
-            for a in dyn:
-                try: a.remove()
-                except Exception: pass
-            dyn.clear()
-        # 1) the source: the sea it crossed, else the country where the path starts on the map (where the drop is)
-        sx, sy = dense[0]
-        if not is_sea:
-            iso = TJ.country_at(sx, sy, POLYS)
-            if iso and iso != region: pa = {**pa, 'src': {l: TJ.cname(iso, l, G) for l in ('ru', 'uz', 'tr')}}
-        set_step(1); sent.set_text((X['s1_sea'] if is_sea else X['s1_land']).format(s=pa['src'][lang]))
-        lab = ax.text(sx, sy - 1.3 * S, pa['src'][lang], fontsize=13, fontweight='bold', color=NAVY, ha='center', va='top', zorder=9, path_effects=halo)
-        for f in range(36):
-            clear(); pulse = 1 + 0.15 * np.sin(f / 3)
-            rr = (f % 18) / 18; dyn += ax.plot(sx, sy + 0.4 * S, 'o', ms=20 + 50 * rr, mfc='none', mec='#2f7fd8', mew=3 * (1 - rr), alpha=1 - rr, zorder=7.5)
-            dyn += drop(sx, sy, 1.1 * S * pulse)
-            shot({'wind': 0.2})
-        # 2) the arrow grows along the path, a cloud rides on its head
-        set_step(2); sent.set_text(X['s2'].format(c=city))
-        for f in range(48):
-            clear(); m = max(2, int(len(dense) * (f + 1) / 48)); seg = dense[:m]
-            dyn += ax.plot(seg[:, 0], seg[:, 1], color=cols[j % 3], lw=9, alpha=0.9, solid_capstyle='round', zorder=6, path_effects=[pe.withStroke(linewidth=13, foreground='#ffffff')])
-            if m >= 3:
-                ar = matplotlib.patches.FancyArrowPatch(seg[-3], seg[-1], arrowstyle='-|>', mutation_scale=45, color=cols[j % 3], zorder=6.5, lw=0); ax.add_patch(ar); dyn.append(ar)
-            dyn += drop(sx, sy, 1.0 * S, 0.6); dyn += cloud(seg[-1, 0], seg[-1, 1] + 0.9 * S, 0.9 * S)
-            shot({'wind': 0.25 + 0.4 * f / 48})
-        # 3) the rain (or snow) at the city, with the day
-        set_step(3); sent.set_text(X['s3'].format(d=f"{X['wd'][t_arr.weekday()]} {t_arr:%d.%m}", w=X['snow'] if snow else X['rain'], c=city))
-        cx, cy = pa['lon'], pa['lat']; rng = np.random.default_rng(j)
-        tag = ax.text(cx, cy - 1.0 * S, f"{city} · {X['wd'][t_arr.weekday()]} {t_arr:%d.%m}", fontsize=13, fontweight='bold', color=NAVY, ha='center', va='top', zorder=9.5,
-                      bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.6', fc='#ffffff', ec=cols[j % 3], lw=2))
-        drops = np.c_[rng.uniform(-1.1, 1.1, 26) * S / k, rng.uniform(0, 1.6, 26) * S]
-        for f in range(40):
-            clear()
-            dyn += ax.plot(dense[:, 0], dense[:, 1], color=cols[j % 3], lw=9, alpha=0.9, solid_capstyle='round', zorder=6, path_effects=[pe.withStroke(linewidth=13, foreground='#ffffff')])
-            dyn += cloud(cx, cy + 1.9 * S, 1.0 * S)
-            yy = (drops[:, 1] - f * 0.12 * S) % (1.6 * S)
-            if snow: dyn += ax.plot(cx + drops[:, 0], cy + yy, '*', ms=9, color='#8a6fd6', zorder=8)
-            else: dyn.append(ax.add_collection(LC([[(cx + dx, cy + y_), (cx + dx - 0.05 * S / k, cy + y_ - 0.35 * S)] for dx, y_ in zip(drops[:, 0], yy)], colors='#2f7fd8', linewidths=2.2, zorder=8)))
-            dyn += ax.plot(cx, cy, 'o', ms=10, mfc=NAVY, mec='#ffffff', mew=2, zorder=9)
-            shot({'rain': 0.0 if snow else 0.6, 'snow': snow, 'wind': 0.3})
-        clear(); lab.remove(); tag.remove()
-        keep += ax.plot(dense[:, 0], dense[:, 1], color=cols[j % 3], lw=5, alpha=0.45, solid_capstyle='round', zorder=5)
-        keep.append(ax.text(cx, cy - 0.9 * S, f"{'❄' if snow else '☂'} {city} · {X['wd'][t_arr.weekday()]} {t_arr:%d.%m}", fontsize=11, fontweight='bold', color=NAVY, ha='center', va='top', zorder=9,
-                            bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.5', fc='#ffffffee', ec=cols[j % 3], lw=1.5)))
-        keep.append(ax.text(sx, sy - 0.6 * S, pa['src'][lang], fontsize=11, fontweight='bold', color=cols[j % 3], ha='center', va='top', zorder=9, path_effects=halo))
-        keep += ax.plot(sx, sy, 'o', ms=9, mfc=cols[j % 3], mec='#ffffff', mew=2, zorder=8)
-    if paths:  # the summary: every path at once
-        set_step(0); sent.set_text(X['sum'])
-        for _ in range(48): shot({'wind': 0.15})
-    plt.close(fig)
-    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS), '-i', str(fdir / '%04d.png'), '-vf', 'scale=1920:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '21',
-                    '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
-    try:
-        import sound as S_
-        S_.mux(mp4, S_.track([{'rain': 0, 'snow': False, 'wind': 0.2, 'storm': 0, **l} for l in lv], 1 / FPS, str(mp4) + '.wav', mode='all'))
-    except Exception as e: print('moist sound failed', e, flush=True)
-    Rn.fit_size(mp4)
-    shutil.rmtree(fdir)
-
-
 def flow_arrows(U, V, Wv, LON, LAT, box, n=5):
     """A few big arrows of the moisture flow, the way TV weather draws them: start at the strongest streams of moist air
     (water vapour × wind), follow the wind 6° back and 9° forward while the air stays moist. [(line, width), ...]"""
@@ -435,6 +289,164 @@ def flow_arrows(U, V, Wv, LON, LAT, box, n=5):
         line = np.array(walk(-1, 6)[::-1] + [(x, y)] + walk(1, 9))
         if len(line) >= 8: out.append((line, 2.5 + 7 * q / top))
     return out
+
+
+def video(F, region, lang, mp4, run, off=5, paths=()):
+    import render as Rn
+    from render import plt, matplotlib
+    from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm, ListedColormap
+    from scipy.ndimage import gaussian_filter, maximum_filter, minimum_filter
+    from regions import NAMES
+    from hourly import NAVY
+    X = TX.get(lang, TX['ru'])
+    x0, x1, y0, y1 = VIEW[region]
+    lon = LON0 + np.arange(next(iter(F.values()))['tcwv'].shape[1]) * RES; lat = LAT0 + np.arange(next(iter(F.values()))['tcwv'].shape[0]) * RES
+    ci = np.flatnonzero((lon >= x0 - 1) & (lon <= x1 + 1)); ri = np.flatnonzero((lat >= y0 - 1) & (lat <= y1 + 1))
+    LON, LAT = np.meshgrid(lon[ci], lat[ri])
+    k = np.cos(np.radians((y0 + y1) / 2))
+    cmap = LinearSegmentedColormap.from_list('tcwv', [(v / 70, c) for v, c in TCWV_STOPS])
+    prc, prn = ListedColormap(PR_COL), BoundaryNorm(PR_LV, len(PR_COL))
+    G = json.load(open(HERE / 'geo_world.json'))['countries']; GA = json.load(open(HERE / 'geo_admin.json')).get(region, {})
+    fig = plt.figure(figsize=(12.8, 7.2), dpi=150); fig.patch.set_facecolor(NAVY)
+    ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(x0, x1); ax.set_ylim(y0, y1); ax.set_aspect(1 / k); ax.axis('off')
+    # the map width fills the frame; the height follows the latitude squeeze
+    fx = 12.8 / 7.2; span = (x1 - x0) * k / fx; cy = (y0 + y1) / 2; ax.set_ylim(cy - span / 2, cy + span / 2); y0v, y1v = cy - span / 2, cy + span / 2
+    PCOL, LC = matplotlib.collections.PolyCollection, matplotlib.collections.LineCollection
+    near = lambda r: np.asarray(r)[:, 0].max() > x0 - 3 and np.asarray(r)[:, 0].min() < x1 + 3 and np.asarray(r)[:, 1].max() > y0v - 3 and np.asarray(r)[:, 1].min() < y1v + 3
+    borders = [np.asarray(r) for c in G.values() for r in c['rings'] if near(r)]
+    ax.add_collection(LC(borders, colors='#ffffff', linewidths=0.7, alpha=0.75, zorder=4))
+    own = [np.asarray(r) for r in G.get(region, {}).get('rings', [])]
+    if GA: ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#ffffff', linewidths=0.45, alpha=0.45, zorder=4))
+    ax.add_collection(LC(own, colors='#ffffff', linewidths=1.6, zorder=4.5))
+    # the main cities of the country
+    pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region and x0 < p['lon'] < x1], key=lambda p: -p.get('pop', 0))[:8]
+    for p in pl:
+        ax.plot(p['lon'], p['lat'], 'o', ms=4, mfc='#ffffff', mec=NAVY, mew=0.8, zorder=8)
+        ax.text(p['lon'] + 0.25, p['lat'] + 0.2, Rn.city_name(p, lang), fontsize=8.5, fontweight='bold', color='#ffffff', zorder=8,
+                path_effects=[matplotlib.patheffects.withStroke(linewidth=2.2, foreground='#1d2a3a')])
+    # the title band, the clock, the legends (drawn once)
+    band = dict(boxstyle='round,pad=0.5,rounding_size=0.6', fc='#1d2a3acc', ec='none')
+    fig.text(0.018, 0.955, f"{NAMES[region][lang]} · {X['title']}", fontsize=17, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center', bbox=band, zorder=20)
+    fig.text(0.018, 0.893, X['sub'], fontsize=9.5, color='#e3ebf3', va='center', zorder=20, bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
+    fig.patches.append(matplotlib.patches.FancyBboxPatch((0.008, 0.012), 0.53, 0.115, boxstyle='round,pad=0,rounding_size=0.008', transform=fig.transFigure, facecolor='#1d2a3acc', edgecolor='none', zorder=19))
+    clock = fig.text(0.982, 0.955, '', fontsize=17, fontfamily=Rn.DISPLAY, fontweight='bold', color='#f0b88a', ha='right', va='center', bbox=band, zorder=20)
+    cax = fig.add_axes([0.018, 0.045, 0.26, 0.016]); cax.set_zorder(21); cb = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=matplotlib.colors.Normalize(0, 70), orientation='horizontal')
+    cb.set_ticks([3, 67]); cb.set_ticklabels([X['dry'], X['wet']]); cax.tick_params(labelsize=9, colors='#ffffff', length=0); cb.outline.set_visible(False)
+    fig.text(0.018, 0.085, X['tcwv'], fontsize=10, color='#ffffff', fontweight='bold', zorder=21)
+    pax = fig.add_axes([0.30, 0.045, 0.22, 0.016]); pax.set_zorder(21); pb = matplotlib.colorbar.ColorbarBase(pax, cmap=prc, norm=prn, orientation='horizontal', boundaries=PR_LV, ticks=PR_LV[:-1])
+    pb.set_ticks([]); pb.outline.set_visible(False)
+    fig.text(0.30, 0.03, X['prl'], fontsize=9, color='#ffffff', zorder=21); fig.text(0.52, 0.03, X['prh'], fontsize=9, color='#ffffff', ha='right', zorder=21)
+    fig.text(0.30, 0.085, X['pr'], fontsize=10, color='#ffffff', fontweight='bold', zorder=21)
+    fig.text(0.982, 0.03, 'ECMWF IFS · osmon', fontsize=8, color='#c9d6e5', ha='right')
+    # flowing streaks: particles carried by the 700 hPa wind, each with a fading tail
+    rng = np.random.default_rng(3); N = 650; TAIL = 10
+    def seed(n): return np.c_[rng.uniform(x0, x1, n), rng.uniform(y0v, y1v, n)]
+    pts = seed(N); age = rng.integers(0, 60, N); hist = np.repeat(pts[None], TAIL, 0)
+    lines = [LC([], colors='#ffffff', linewidths=0.7, alpha=a, zorder=6) for a in np.linspace(0.03, 0.45, TAIL - 1) ** 1.3]
+    for l in lines: ax.add_collection(l)
+    img = ax.imshow(np.zeros((len(ri), len(ci))), extent=(lon[ci[0]] - RES / 2, lon[ci[-1]] + RES / 2, lat[ri[0]] - RES / 2, lat[ri[-1]] + RES / 2), origin='lower', cmap=cmap, vmin=0, vmax=70,
+                    interpolation='bilinear', zorder=1, aspect='auto')
+    # where the moisture comes from: for the big cities that will get rain, the air's path 2 days back
+    # (prob/trajectory.py), drawn dashed with its source; a bright drop travels along it in time with the video
+    SRC = '#ffb15c'
+    placed = []
+    for pa in paths:
+        q = np.array(pa['path'])
+        ax.plot(q[:, 0], q[:, 1], color=SRC, lw=1.8, ls=(0, (5, 3)), alpha=0.9, zorder=6.5, path_effects=[matplotlib.patheffects.withStroke(linewidth=3.5, foreground='#1d2a3a88')])
+        for m in (len(q) // 3, 2 * len(q) // 3):
+            if 1 <= m < len(q): ax.annotate('', xy=q[m - 1, :2], xytext=q[m, :2], arrowprops=dict(arrowstyle='-|>', color=SRC, lw=1.8, mutation_scale=15), zorder=6.6)
+        # the source: at the start of the path, or (when it is off the map) where the path comes into the picture
+        mx, my = (x1 - x0) * 0.06, (y1v - y0v) * 0.08
+        inside = [i for i in range(len(q)) if x0 + mx < q[i, 0] < x1 - mx and y0v + (y1v - y0v) * 0.2 < q[i, 1] < y1v - my * 1.6]  # above the legend panel
+        if inside:
+            i = max(inside); sx, sy = q[i, 0], q[i, 1]; off_map = i < len(q) - 1
+            ax.plot(sx, sy, 'o', ms=7, mfc=SRC, mec='#ffffff', mew=1.5, zorder=7)
+            ly = sy + (y1v - y0v) * 0.03
+            while any(abs(ly - p_[1]) < (y1v - y0v) * 0.045 and abs(sx - p_[0]) < (x1 - x0) * 0.2 for p_ in placed): ly += (y1v - y0v) * 0.05  # not over another label
+            placed.append((sx, ly))
+            ax.text(sx, ly, (lambda t: t[:1].upper() + t[1:])(X['src'].format(s=pa['src'][lang])) + (' ↙' if off_map and q[-1, 0] < sx else ' ↘' if off_map else ''), fontsize=9.5, fontweight='bold',
+                    color='#1d2a3a', ha='center', va='bottom', zorder=9, bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.5', fc=SRC, ec='none'))
+    if paths:
+        ax.plot([], [], color=SRC, lw=1.8, ls=(0, (5, 3)), label=X['leg'])
+        fig.text(0.545, 0.06, '- - ▶  ' + X['leg'], fontsize=9, fontweight='bold', color=SRC, va='center', zorder=21,
+                 bbox=dict(boxstyle='round,pad=0.4,rounding_size=0.5', fc='#1d2a3acc', ec='none'))
+    cap = fig.text(0.5, 0.165, '', fontsize=15, fontweight='bold', color='#ffffff', ha='center', va='center', zorder=22,
+                   bbox=dict(boxstyle='round,pad=0.55,rounding_size=0.7', fc='#1d2a3ae6', ec='#ffb15c', lw=1.4))
+    cgx = [int(round((p['lon'] - lon[ci[0]]) / RES)) for p in pl]; cgy = [int(round((p['lat'] - lat[ri[0]]) / RES)) for p in pl]
+    dyn = []
+    fdir = pathlib.Path(tempfile.mkdtemp()); hours = list(np.arange(0, 72.01, 0.5)); levels = []
+    land = None
+    for f, h in enumerate(hours):
+        for a in dyn: a.remove()
+        dyn = []
+        Q = interp(F, h); T = Q['tcwv'][np.ix_(ri, ci)]; P = gaussian_filter(Q['pr'][np.ix_(ri, ci)], 0.8); M = gaussian_filter(Q['msl'][np.ix_(ri, ci)], 2.0)
+        img.set_data(gaussian_filter(T, 0.6)); img.set_extent(img.get_extent()); ax.set_aspect(1 / k)
+        if P.max() >= PR_LV[0]:
+            dyn.append(ax.contourf(LON, LAT, P, levels=PR_LV, cmap=prc, norm=prn, alpha=0.85, zorder=2, antialiased=True))
+        lv = np.arange(np.floor(M.min() / 4) * 4, M.max() + 4, 4)
+        cs = ax.contour(LON, LAT, M, levels=lv, colors='#d9e3ee', linewidths=0.6, alpha=0.3, zorder=3); dyn.append(cs)
+        mx, mn = maximum_filter(M, size=25) == M, minimum_filter(M, size=25) == M
+        for mask, lab, col in ((mx, X['hi'], '#7fb2e5'), (mn, X['lo'], '#f08a7a')):
+            for (yy, xx) in zip(*np.nonzero(mask)):
+                if 3 < yy < M.shape[0] - 3 and 3 < xx < M.shape[1] - 3 and abs(M[yy, xx] - np.median(M)) > 3:
+                    dyn.append(ax.text(LON[yy, xx], LAT[yy, xx], lab, fontsize=20, fontweight='bold', color=col, ha='center', va='center', zorder=7,
+                                       path_effects=[matplotlib.patheffects.withStroke(linewidth=2.5, foreground='#1d2a3a')]))
+                    dyn.append(ax.text(LON[yy, xx], LAT[yy, xx] - 1.0, X['hiw'] if lab == X['hi'] else X['low'], fontsize=9, fontweight='bold', color=col, ha='center', va='center', zorder=7,
+                                       path_effects=[matplotlib.patheffects.withStroke(linewidth=2.2, foreground='#1d2a3a')]))
+        for pa in paths:  # the drop of moisture on its way: where the air is now (hours before it reaches the city)
+            q = np.array(pa['path']); back = pa['h'] - h
+            if 0 <= back <= q[-1, 2]:
+                px, py = np.interp(back, q[:, 2], q[:, 0]), np.interp(back, q[:, 2], q[:, 1])
+                dyn += ax.plot(px, py, 'o', ms=16, mfc=SRC, mec='none', alpha=0.28, zorder=7.4)
+                dyn += ax.plot(px, py, 'o', ms=8, mfc=SRC, mec='#ffffff', mew=1.6, zorder=7.5)
+            elif -6 <= back < 0:  # it arrived: a ring at the city
+                kk = (-back) / 6; dyn += ax.plot(pa['lon'], pa['lat'], 'o', ms=10 + 26 * kk, mfc='none', mec=SRC, mew=2.4 * (1 - kk), alpha=1 - kk, zorder=7.5)
+        # move the streaks (sped up so the motion is visible: ~1.1 h of travel per frame)
+        U, V = Q['u'][np.ix_(ri, ci)], Q['v'][np.ix_(ri, ci)]
+        gx = np.clip(((pts[:, 0] - lon[ci[0]]) / RES).astype(int), 0, len(ci) - 1); gy = np.clip(((pts[:, 1] - lat[ri[0]]) / RES).astype(int), 0, len(ri) - 1)
+        u, v = U[gy, gx], V[gy, gx]; sec = 0.8 * 3600
+        pts = pts + np.c_[u * sec / (111320 * np.cos(np.radians(pts[:, 1]))), v * sec / 110540]
+        age += 1; dead = (age > 60) | (pts[:, 0] < x0) | (pts[:, 0] > x1) | (pts[:, 1] < y0v) | (pts[:, 1] > y1v)
+        if dead.any(): pts[dead] = seed(dead.sum()); age[dead] = 0; hist[:, dead] = pts[dead]
+        hist = np.roll(hist, -1, 0); hist[-1] = pts
+        spd = np.hypot(u, v)
+        for i, l in enumerate(lines):
+            seg = np.stack([hist[i], hist[i + 1]], 1); ok = ~dead & (np.hypot(*(seg[:, 1] - seg[:, 0]).T) < 3)
+            l.set_segments(seg[ok]); l.set_linewidths(0.4 + 1.0 * np.clip(spd[ok] / 25, 0, 1))
+        # the cities where it rains now: an umbrella next to the name; and the sentence of the moment
+        wet_c = []
+        for p, gx_, gy_ in zip(pl, cgx, cgy):
+            if 0 <= gy_ < P.shape[0] and 0 <= gx_ < P.shape[1] and P[gy_, gx_] >= 0.8:
+                wet_c.append(Rn.city_name(p, lang))
+                dyn.append(ax.text(p['lon'] - 0.3, p['lat'] - 0.15, '☂', fontsize=14, color='#8fd0ff', ha='right', va='center', zorder=8.5,
+                                   path_effects=[matplotlib.patheffects.withStroke(linewidth=2.5, foreground='#1d2a3a')]))
+        flying = [pa for pa in paths if 0 <= pa['h'] - h <= np.array(pa['path'])[-1, 2]]
+        if f < 30: msg = X['c_intro']
+        elif wet_c: msg = X['c_rain'].format(c=', '.join(wet_c[:3]))
+        elif flying: msg = X['c_go'].format(s=flying[0]['src'][lang], c=next((Rn.city_name(p, lang) for p in pl if p.get('ru') == flying[0]['city']), flying[0]['city']))
+        else: msg = X['c_wet'] if (land is not None and land.any() and float(np.mean(T[land] >= 25)) > 0.4) else X['c_dry']
+        cap.set_text(msg)
+        t = run + dt.timedelta(hours=float(h) + off)
+        clock.set_text(f"{X['wd'][t.weekday()]} {t:%d.%m} · {t:%H}:{t:%M} · {X['tz']}")
+        fig.savefig(fdir / f'{f:03d}.png', dpi=150, facecolor=fig.get_facecolor())
+        # the sound: the wind of the region, the rain when it falls on the country
+        if land is None:
+            from matplotlib.path import Path
+            pts_ = np.c_[LON.ravel(), LAT.ravel()]; m = np.zeros(len(pts_), bool)
+            for r in own: m |= Path(r).contains_points(pts_)
+            land = m.reshape(LON.shape)
+        wet = float(np.mean(P[land] >= 1)) if land.any() else 0.0
+        levels.append({'rain': min(1.0, wet * 2.5), 'snow': False, 'wind': float(np.clip(np.mean(spd) / 22, 0.15, 0.9)), 'storm': 0.0})
+    plt.close(fig)
+    for e in range(24): shutil.copy(fdir / f'{len(hours) - 1:03d}.png', fdir / f'{len(hours) + e:03d}.png'); levels.append(levels[-1])  # hold the last frame
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '6', '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=24:interp_start=0:interp_end=255:scene=100,scale=1920:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '21',
+                    '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
+    try:
+        import sound as S_
+        S_.mux(mp4, S_.track(levels, 1 / 6, str(mp4) + '.wav', mode='all'))
+    except Exception as e: print('moist sound failed', e, flush=True)
+    Rn.fit_size(mp4)
+    shutil.rmtree(fdir)
 
 
 def moisture_paths(F, W, region, n=3):
