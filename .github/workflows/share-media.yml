@@ -1,16 +1,21 @@
 name: Share media
-# copies a few published files from the site to the "media" branch (to look at them outside the site)
+# copies a few published files (from the site, or from a build's artifact) to the "media" branch, to look at them outside the site
 on:
   workflow_dispatch:
     inputs:
-      files: {description: 'paths on the site, space-separated', required: true}
-permissions: {contents: write}
+      files: {description: 'paths on the site (or inside the artifact), space-separated', required: true}
+      run: {description: 'build run id to take the files from (empty: the site)', required: false, default: ''}
+      artifact: {description: 'artifact name in that run', required: false, default: ''}
+permissions: {contents: write, actions: read}
 jobs:
   copy:
     runs-on: ubuntu-latest
     steps:
-      - run: |
+      - env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
           mkdir m && cd m && git init -q && git checkout -q -b media
-          for f in ${{ inputs.files }}; do mkdir -p "$(dirname "$f")"; curl -sfL "https://otabekvafoev92-del.github.io/ob-havo-ecmwf/$f" -o "$f" && ls -la "$f"; done
+          if [ -n "${{ inputs.run }}" ]; then gh run download ${{ inputs.run }} -R ${{ github.repository }} -n "${{ inputs.artifact }}" -D /tmp/a; fi
+          for f in ${{ inputs.files }}; do mkdir -p "$(dirname "$f")"
+            if [ -n "${{ inputs.run }}" ]; then src=$(find /tmp/a -path "*$(basename "$f")" | head -1); cp "$src" "$f"; else curl -sfL "https://otabekvafoev92-del.github.io/ob-havo-ecmwf/$f" -o "$f"; fi; ls -la "$f"; done
           git add -A && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm media
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" media
