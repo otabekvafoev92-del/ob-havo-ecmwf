@@ -17,6 +17,8 @@ import trajectory as TJ
 from trajectory import ECM, get  # the same mirror and downloader
 
 STEPS = list(range(0, 73, 3))
+STEPS15 = [(st, 'hres') for st in list(range(0, 144, 3)) + list(range(144, 241, 6))] + [(st, 'ens') for st in range(246, 361, 6)]
+FPS = 3  # 0.5× of the first version (6 frames a second)
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
 VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5)}
 TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
@@ -42,19 +44,24 @@ WIND_LV = [15, 20, 25, 80]
 SNOW_COL = ['#eadcff', '#d3bcfa', '#b897f0', '#9b72e2', '#8052cc', '#6639ae', '#4c2788']  # light snow → heavy snow, all violet  # blue (light rain) → yellow → red → magenta: apart from the green-teal moisture
 
 
-def fetch(run):
-    """{step: dict(tcwv, msl hPa, tp mm (accumulated from 0), u, v)} on the area grid (rows south → north)."""
+def fetch(run, steps=None):
+    """{step: dict(tcwv, msl hPa, tp mm (accumulated from 0), u, v, …)} on the area grid (rows south → north).
+    steps: [(hour, 'hres'|'ens')]; 'ens' takes the control member of the ensemble (it reaches 15 days)."""
     d, hh = run.strftime('%Y%m%d'), run.strftime('%H')
     jobs = []
-    for st in STEPS:
+    for st, kind in (steps or [(s_, 'hres') for s_ in STEPS]):
         idx = None
-        for stream in (('oper', 'scda') if hh in ('00', '12') else ('scda', 'oper')):
-            base = f'{ECM}/{d}/{hh}z/ifs/0p25/{stream}/{d}{hh}0000-{st}h-{stream}-fc'
-            idx = get(base + '.index')
-            if idx: break
+        if kind == 'ens':
+            base = f'{ECM}/{d}/{hh}z/ifs/0p25/enfo/{d}{hh}0000-{st}h-enfo-ef'; idx = get(base + '.index')
+        else:
+            for stream in (('oper', 'scda') if hh in ('00', '12') else ('scda', 'oper')):
+                base = f'{ECM}/{d}/{hh}z/ifs/0p25/{stream}/{d}{hh}0000-{st}h-{stream}-fc'
+                idx = get(base + '.index')
+                if idx: break
         if not idx: print('moist: missing step', st, flush=True); continue
         for line in idx.decode().strip().split('\n'):
             x = json.loads(line); p = x.get('param')
+            if kind == 'ens' and x.get('type') != 'cf': continue
             key = p if x.get('levtype') == 'sfc' and p in ('tcwv', 'msl', 'tp', 'tcc', '2t', '10u', '10v', '10fg', 'fg10', 'i10fg') else p if x.get('levtype') == 'pl' and x.get('levelist') == '700' and p in ('u', 'v') else None
             if key: jobs.append((st, key, base + '.grib2', (x['_offset'], x['_offset'] + x['_length'] - 1)))
     F = {}
@@ -70,7 +77,8 @@ def fetch(run):
             if buf: F.setdefault(st, {})[key] = crop(buf)
     out = {}
     for st, f in F.items():
-        if all(k in f for k in ('tcwv', 'msl', 'u', 'v')):
+        if all(k in f for k in ('msl', 'u', 'v')):
+            if 'tcwv' not in f: f['tcwv'] = f['tcc'] * 40 if 'tcc' in f else np.full_like(f['msl'], 15.0)
             out[st] = {'tcwv': f['tcwv'], 'msl': f['msl'] / 100.0, 'tp': f.get('tp', np.zeros_like(f['tcwv'])) * 1000.0, 'u': f['u'], 'v': f['v'],
                        'tcc': f.get('tcc', np.clip((f['tcwv'] - 10) / 25, 0, 1)), 't2': f['2t'] - 273.15 if '2t' in f else np.full_like(f['tcwv'], 10.0)}
             if '10u' in f and '10v' in f: out[st]['ws'] = np.hypot(f['10u'], f['10v']); out[st]['u10'] = f['10u']; out[st]['v10'] = f['10v']
@@ -86,7 +94,7 @@ def interp(F, h):
     ks = sorted(F); j = int(np.clip(np.searchsorted(ks, h), 1, len(ks) - 1)); a = float(np.clip((h - ks[j - 1]) / (ks[j] - ks[j - 1]), 0, 1))
     A, B = F[ks[j - 1]], F[ks[j]]
     out = {k: A[k] * (1 - a) + B[k] * a for k in ('tcwv', 'msl', 'u', 'v', 'tcc', 't2', 'ws', 'gust', 'u10', 'v10') if k in A and k in B}
-    rate = lambda i: np.clip(F[ks[i]]['tp'] - F[ks[i - 1]]['tp'], 0, None) if i >= 1 else np.zeros_like(A['tp'])  # mm in the 3 h before step i
+    rate = lambda i: np.clip(F[ks[i]]['tp'] - F[ks[i - 1]]['tp'], 0, None) * 3 / (ks[i] - ks[i - 1]) if i >= 1 else np.zeros_like(A['tp'])  # mm per 3 h before step i
     out['pr'] = rate(j) * (1 - abs(a - 0.5)) + (rate(j - 1) if a < 0.5 else rate(min(j + 1, len(ks) - 1))) * abs(a - 0.5)
     return out
 
@@ -299,7 +307,7 @@ def flow_arrows(U, V, Wv, LON, LAT, box, n=5):
     return out
 
 
-def video(F, region, lang, mp4, run, off=5, paths=()):
+def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     import render as Rn
     from render import plt, matplotlib
     from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm, ListedColormap
@@ -366,16 +374,17 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
     for r in own: land |= MPath(r).contains_points(pts0)
     land = land.reshape(LON.shape)
     fig.patches.append(matplotlib.patches.FancyBboxPatch((0.548, 0.012), 0.444, 0.115, boxstyle='round,pad=0,rounding_size=0.008', transform=fig.transFigure, facecolor='#1d2a3acc', edgecolor='none', zorder=19))
-    tax = fig.add_axes([0.565, 0.045, 0.41, 0.05]); tax.set_zorder(21); tax.set_xlim(0, 72); tax.set_ylim(0, 1); tax.axis('off')
-    share = [float(np.mean(gaussian_filter(interp(F, hh)['pr'][np.ix_(ri, ci)], 0.8)[land] >= 1)) if land.any() else 0 for hh in range(0, 73, 3)]
-    tax.bar(np.arange(0, 73, 3), [max(0.04, min(1, v * 2.2)) for v in share], width=2.6, color='#6cbcf7', alpha=0.6, align='center', zorder=1)
+    tax = fig.add_axes([0.565, 0.045, 0.41, 0.05]); tax.set_zorder(21); tax.set_xlim(0, H); tax.set_ylim(0, 1); tax.axis('off')
+    bs = 3 if H <= 72 else 12  # the rain bars: every 3 h, every 12 h in the long video
+    share = [float(np.mean(gaussian_filter(interp(F, hh)['pr'][np.ix_(ri, ci)], 0.8)[land] >= 1)) if land.any() else 0 for hh in range(0, H + 1, bs)]
+    tax.bar(np.arange(0, H + 1, bs), [max(0.04, min(1, v * 2.2)) for v in share], width=bs * 0.85, color='#6cbcf7', alpha=0.6, align='center', zorder=1)
     t0 = run + dt.timedelta(hours=off)
-    for dd in range(4):  # midnights and the day names
+    for dd in range(H // 24 + 2):  # midnights and the day names
         hh = (dt.datetime.combine(t0.date() + dt.timedelta(days=dd), dt.time()) - t0).total_seconds() / 3600
-        if 0 < hh < 72: tax.axvline(hh, color='#9fb0c2', lw=0.8, alpha=0.7, zorder=2)
-        mid = min(71, max(1, hh + 12))
-        if 0 <= hh + 12 <= 72:
-            d_ = t0.date() + dt.timedelta(days=dd); fig.text(0.565 + 0.41 * mid / 72, 0.108, f"{X['wd'][d_.weekday()]} {d_:%d.%m}", fontsize=9, fontweight='bold', color='#e3ebf3', ha='center', va='center', zorder=21)
+        if 0 < hh < H: tax.axvline(hh, color='#9fb0c2', lw=0.8 if H <= 72 else 0.5, alpha=0.7, zorder=2)
+        mid = min(H - 1, max(1, hh + 12))
+        if 0 <= hh + 12 <= H:
+            d_ = t0.date() + dt.timedelta(days=dd); fig.text(0.565 + 0.41 * mid / H, 0.108 if H <= 72 else 0.106, f"{X['wd'][d_.weekday()]} {d_:%d.%m}" if H <= 72 else f"{d_:%d}", fontsize=9 if H <= 72 else 8, fontweight='bold', color='#e3ebf3', ha='center', va='center', zorder=21)
     fig.text(0.565, 0.026, X['rainbar'], fontsize=8, color='#9fb0c2', va='center', zorder=21)
     prog = tax.add_patch(matplotlib.patches.Rectangle((0, 0), 0.01, 1, color='#f0b88a', alpha=0.5, zorder=0.5)); head = tax.axvline(0, color='#f0b88a', lw=2.5, zorder=3)
     knob = tax.plot([0], [0.5], 'o', ms=9, mfc='#f0b88a', mec='#ffffff', mew=1.5, zorder=4, clip_on=False)[0]
@@ -420,7 +429,9 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
         return np.degrees(np.arcsin(np.sin(la_) * np.sin(dec) + np.cos(la_) * np.cos(dec) * np.cos(ha)))
     wet_prev = set(); rings = {}
     dyn = []
-    fdir = pathlib.Path(tempfile.mkdtemp()); hours = list(np.arange(0, 72.01, 0.5)); levels = []
+    # the frames: every 30 min over 3 days; in the long video every hour to day 6, then every 2 h (the data are 6-hourly there)
+    hours = list(np.arange(0, H + 0.01, 0.5)) if H <= 72 else list(np.arange(0, 144, 1.0)) + list(np.arange(144, H + 0.01, 2.0))
+    fdir = pathlib.Path(tempfile.mkdtemp()); levels = []
     for f, h in enumerate(hours):
         for a in dyn: a.remove()
         dyn = []
@@ -498,7 +509,7 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
         prog.set_width(max(0.01, float(h)))
         head.set_xdata([h, h]); knob.set_xdata([h])
         flying = [pa for pa in paths if 0 <= pa['h'] - h <= np.array(pa['path'])[-1, 2]]
-        if f < 30: msg = X['c_intro']
+        if f < 5 * FPS: msg = X['c_intro']
         elif snow_c and len(snow_c) * 2 >= len(wet_c): msg = X['c_snow'].format(c=', '.join(snow_c[:3]))
         elif wet_c: msg = X['c_rain'].format(c=', '.join([c_ for c_ in wet_c if c_ not in snow_c][:3] or wet_c[:3]))
         elif flying: msg = X['c_go'].format(s=flying[0]['src'][lang], c=next((Rn.city_name(p, lang) for p in pl if p.get('ru') == flying[0]['city']), flying[0]['city']))
@@ -511,12 +522,12 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
         wet = float(np.mean(P[land] >= 1)) if land.any() else 0.0
         levels.append({'rain': min(1.0, wet * 2.5), 'snow': bool(land.any() and (P[land & SN] >= 1).sum() > (P[land & ~SN] >= 1).sum()), 'wind': float(np.clip(np.mean(spd) / 22, 0.15, 0.9)), 'storm': 0.0})
     plt.close(fig)
-    for e in range(24): shutil.copy(fdir / f'{len(hours) - 1:03d}.png', fdir / f'{len(hours) + e:03d}.png'); levels.append(levels[-1])  # hold the last frame
-    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '6', '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=24:interp_start=0:interp_end=255:scene=100,scale=1920:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '21',
+    for e in range(4 * FPS): shutil.copy(fdir / f'{len(hours) - 1:03d}.png', fdir / f'{len(hours) + e:03d}.png'); levels.append(levels[-1])  # hold the last frame
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS), '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=24:interp_start=0:interp_end=255:scene=100,scale=1920:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '21',
                     '-preset', 'medium', '-movflags', '+faststart', str(mp4)], check=True)
     try:
         import sound as S_
-        S_.mux(mp4, S_.track(levels, 1 / 6, str(mp4) + '.wav', mode='all'))
+        S_.mux(mp4, S_.track(levels, 1 / FPS, str(mp4) + '.wav', mode='all'))
     except Exception as e: print('moist sound failed', e, flush=True)
     Rn.fit_size(mp4)
     shutil.rmtree(fdir)
@@ -549,11 +560,12 @@ def moisture_paths(F, W, region, n=3):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('npz'); ap.add_argument('out'); ap.add_argument('--regions', default='UZ,KZ'); ap.add_argument('--langs', default='ru,uz')
-    ap.add_argument('--fields', help='saved fields (tests)'); ap.add_argument('--winds', help='saved steering winds (tests)')
+    ap.add_argument('--days', type=int, default=3); ap.add_argument('--fields', help='saved fields (tests)'); ap.add_argument('--winds', help='saved steering winds (tests)')
     a = ap.parse_args()
     import render as Rn
     D = Rn.load(a.npz); run = dt.datetime.fromisoformat(D['run'].replace('Z', '+00:00')).replace(tzinfo=None)
-    F = dict(np.load(a.fields, allow_pickle=True)['F'].item()) if a.fields else fetch(run)
+    if a.days > 3: run = run.replace(hour=0 if run.hour < 12 else 12)  # only the 00 and 12 UTC runs go 15 days ahead
+    F = dict(np.load(a.fields, allow_pickle=True)['F'].item()) if a.fields else fetch(run, STEPS15 if a.days > 3 else None)
     if len(F) < 6: print('moist: not enough fields', flush=True); return
     out = pathlib.Path(a.out) / 'hr'; out.mkdir(parents=True, exist_ok=True)
     try: W = dict(np.load(a.winds, allow_pickle=True)['W'].item()) if a.winds else TJ.fetch_winds(run)
@@ -564,7 +576,9 @@ def main():
         except Exception as e: print('moist paths failed', region, e, flush=True)
         print('moist paths', region, [(p['city'], p['h'], p['src']['ru']) for p in paths], flush=True)
         for lang in a.langs.split(','):
-            try: video(F, region, lang, out / f'{region}_moist_{lang}.mp4', run, paths=paths); print('moist', region, lang, 'ok', flush=True)
+            H = min(a.days * 24, max(F)) if a.days > 3 else 72
+            name = f'{region}_moist_{lang}.mp4' if a.days <= 3 else f'{region}_moist15_{lang}.mp4'
+            try: video(F, region, lang, out / name, run, paths=paths, H=int(H)); print('moist', region, lang, a.days, 'days ok', flush=True)
             except Exception as e:
                 import traceback; traceback.print_exc(); print('moist failed', region, lang, e, flush=True)
 

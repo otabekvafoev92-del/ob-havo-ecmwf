@@ -114,6 +114,7 @@ jobs:
           - { part: hr-a, args: '--regions UZ,KZ,KG,TJ,TM,AZ' }
           - { part: hr-b, args: '--regions AM,BY,MD,RU,TR --langs uz,ru,tr' }
           - { part: hr-moist, args: '' }  # the moisture coming in: a broadcast-style video (Uzbekistan, Kazakhstan)
+          - { part: hr-moist15, args: '' }  # the same over 15 days
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -148,6 +149,8 @@ jobs:
               echo reused the live outlook
             fi
             python prob/mountains.py out || echo 'mountains failed'  # snow and trip days in the mountains, every run
+          elif [ "${{ matrix.part }}" = hr-moist15 ]; then
+            pip install eccodes >/dev/null && python prob/moisture.py prob.npz out --regions UZ,KZ --langs ru,uz --days 15 || echo 'moisture 15-day video failed'
           elif [ "${{ matrix.part }}" = hr-moist ]; then
             pip install eccodes >/dev/null && python prob/moisture.py prob.npz out --regions UZ,KZ --langs ru,uz || echo 'moisture video failed'
           elif [ "${{ matrix.part }}" = hr-a ] || [ "${{ matrix.part }}" = hr-b ]; then
