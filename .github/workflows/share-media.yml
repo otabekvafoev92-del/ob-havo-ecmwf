@@ -1,0 +1,16 @@
+name: Share media
+# copies a few published files from the site to the "media" branch (to look at them outside the site)
+on:
+  workflow_dispatch:
+    inputs:
+      files: {description: 'paths on the site, space-separated', required: true}
+permissions: {contents: write}
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          mkdir m && cd m && git init -q && git checkout -q -b media
+          for f in ${{ inputs.files }}; do mkdir -p "$(dirname "$f")"; curl -sfL "https://otabekvafoev92-del.github.io/ob-havo-ecmwf/$f" -o "$f" && ls -la "$f"; done
+          git add -A && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm media
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" media
