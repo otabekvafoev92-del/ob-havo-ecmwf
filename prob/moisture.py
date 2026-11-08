@@ -413,12 +413,19 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
             if x0 + 1 < mx_ < x1 - 1 and y0v + (y1v - y0v) * 0.2 < my_ < y1v - (y1v - y0v) * 0.125:
                 ax.text(mx_, my_, nm_, fontsize=9, color='#7a5a36', style='italic', fontweight='bold', ha='center', va='center', zorder=4.3, path_effects=[wl], rotation=8)
     # the main cities of the country
-    pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region and x0 < p['lon'] < x1], key=lambda p: -p.get('pop', 0))[:8]
+    allp = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region and x0 < p['lon'] < x1], key=lambda p: -p.get('pop', 0))
+    pl = allp[:6]
+    if GA:  # and the biggest city of every region (oblast), so each region has its town on the map
+        from matplotlib.path import Path as MPath_
+        for a_ in GA['adm1']:
+            best_ = next((p for p in allp if any(MPath_(np.asarray(r)).contains_point((p['lon'], p['lat'])) for r in a_['r'])), None)
+            if best_ is not None and best_ not in pl: pl.append(best_)
+    pl = pl[:16]
     for p in pl: ax.plot(p['lon'], p['lat'], 'o', ms=4.5, mfc=NAVY, mec='#ffffff', mew=1, zorder=8)
     fig.canvas.draw(); rnd = fig.canvas.get_renderer(); taken = []
-    def place(x, y, txt, fs, cands, keep=True):
+    def place(x, y, txt, fs, cands, keep=True, ey=2.4):
         for dx, dy, ha, va in cands:
-            t_ = ax.text(x + dx, y + dy, txt, fontsize=fs, fontweight='bold', ha=ha, va=va); bb = t_.get_window_extent(rnd).expanded(1.08, 2.4); t_.remove()
+            t_ = ax.text(x + dx, y + dy, txt, fontsize=fs, fontweight='bold', ha=ha, va=va); bb = t_.get_window_extent(rnd).expanded(1.04, ey); t_.remove()
             if bb.y0 > 0.2 * fig.bbox.height and bb.y1 < 0.86 * fig.bbox.height and 4 < bb.x0 and bb.x1 < fig.bbox.width - 4 and not any(bb.overlaps(o) for o in taken):
                 if keep: taken.append(bb)
                 return (x + dx, y + dy, ha, va)
@@ -429,6 +436,14 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         if tagpos[j_] is None:
             tagpos[j_] = place(p['lon'], p['lat'], '☂ ' + Rn.city_name(p, lang) + '', 7.5, [(0, -0.18, 'center', 'top'), (0, 0.18, 'center', 'bottom'), (0.2, 0, 'left', 'center'), (-0.2, 0, 'right', 'center')]); tagfs[j_] = 7.5
     halo = [matplotlib.patheffects.withStroke(linewidth=2.6, foreground='#ffffff')]
+    if GA:  # the names of the regions (oblasts), quiet grey, where they fit between the towns
+        for a_ in GA['adm1']:
+            nm_ = (a_['name'].get(lang) or a_['name']['ru']).replace(' обл.', '').replace(' viloyati', '')
+            if not (x0 < a_['c'][0] < x1) or a_['name']['ru'] in ('Ташкент', 'Алматы', 'Астана', 'Бишкек', 'Ош'): continue  # a city that is a region: its town tag says it
+            cands_ = [(dx_, dy_, 'center', 'center') for dy_ in (0, -0.3, 0.3, -0.6, 0.6) for dx_ in (0, 0.5, -0.5)]
+            pos_ = place(a_['c'][0], a_['c'][1], nm_, 7.5, cands_, ey=1.1)
+            if pos_: ax.text(pos_[0], pos_[1], nm_, fontsize=7.5, color='#5f6b78', fontweight='bold', ha='center', va='center', zorder=4.35, alpha=0.9,
+                             path_effects=[matplotlib.patheffects.withStroke(linewidth=2.4, foreground='#ffffffcc')])
     matplotlib.rcParams['hatch.color'] = '#d9a400'; matplotlib.rcParams['hatch.linewidth'] = 0.8
     # the title band, the clock, the legends (drawn once)
     band = dict(boxstyle='round,pad=0.5,rounding_size=0.6', fc='#1d2a3acc', ec='none')
@@ -559,7 +574,8 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         mx, mn = maximum_filter(M, size=25) == M, minimum_filter(M, size=25) == M
         for mask, lab, col in ((mx, X['hi'], '#2f6fd0'), (mn, X['lo'], '#d6402b')):
             for (yy, xx) in zip(*np.nonzero(mask)):
-                if 3 < yy < M.shape[0] - 3 and 3 < xx < M.shape[1] - 3 and abs(M[yy, xx] - np.median(M)) > 3:
+                if 3 < yy < M.shape[0] - 3 and 3 < xx < M.shape[1] - 3 and abs(M[yy, xx] - np.median(M)) > 3 and \
+                        y0v + (y1v - y0v) * 0.24 < LAT[yy, xx] < y1v - (y1v - y0v) * 0.2 and x0 + (x1 - x0) * 0.04 < LON[yy, xx] < x1 - (x1 - x0) * 0.06:  # not under the panels
                     dyn.append(ax.text(LON[yy, xx], LAT[yy, xx], lab, fontsize=20, fontweight='bold', color=col, ha='center', va='center', zorder=7,
                                        path_effects=[matplotlib.patheffects.withStroke(linewidth=3, foreground='#ffffff')]))
                     dyn.append(ax.text(LON[yy, xx], LAT[yy, xx] - 1.0, X['hiw'] if lab == X['hi'] else X['low'], fontsize=9.5, fontweight='bold', color='#ffffff', ha='center', va='center', zorder=7,
