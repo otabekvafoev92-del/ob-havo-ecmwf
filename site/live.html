@@ -266,7 +266,7 @@ function draw() {
   cx.save(); cx.clip(co); both(1); cx.restore();                     // the country: full colour
   lines(h);
   if (M.a1) {  // the districts when the map is close enough, the regions always
-    if (Z >= 1.6) { cx.strokeStyle = '#d3dbe4'; cx.lineWidth = 0.5; cx.stroke(P2('a2')); }
+    cx.strokeStyle = Z >= 1.6 ? '#b7c3d0' : '#c9d3de'; cx.lineWidth = Z >= 1.6 ? 0.7 : 0.45; cx.stroke(P2('a2'));  // the districts, always
     cx.strokeStyle = '#9fb0c2'; cx.lineWidth = 0.9; cx.stroke(P2('a1'));
   } else if (M.admin) { cx.strokeStyle = '#c9d3de'; cx.lineWidth = 0.7; cx.stroke(P2('admin')); }
   const nameBoxes = [];

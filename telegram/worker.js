@@ -353,9 +353,9 @@ async function sendOutlookPart(env, chat, lang, key) {
 /* ---------- the weather by regions and districts (Uzbekistan, Kazakhstan, Kyrgyzstan; prob/admin_wx.py) ---------- */
 const ADM = new Set(['UZ', 'KZ', 'KG']);
 const RGX = {
-  ru: { btn: '🗺 Погода по регионам и районам', title: 'Погода по регионам', pick: 'Нажмите регион — покажу погоду по его районам:', today: 'сегодня', tomorrow: 'завтра', none: 'Погода по регионам ещё готовится, попробуйте чуть позже.', back: '⬅️ Все регионы', dists: 'по районам', foot: 'Температура: ночь…день. ☂ — вероятность дождя, ❄ — снега, ☀ — без осадков.' },
-  uz: { btn: '🗺 Viloyat va tumanlar bo‘yicha', title: 'Viloyatlar bo‘yicha ob-havo', pick: 'Viloyatni bosing — tumanlari bo‘yicha ob-havoni ko‘rsataman:', today: 'bugun', tomorrow: 'ertaga', none: 'Viloyatlar bo‘yicha ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.', back: '⬅️ Barcha viloyatlar', dists: 'tumanlar bo‘yicha', foot: 'Harorat: tun…kun. ☂ — yomg‘ir ehtimoli, ❄ — qor, ☀ — yog‘insiz.' },
-  tr: { btn: '🗺 Bölge ve ilçelere göre', title: 'Bölgelere göre hava', pick: 'Bölgeye dokunun — ilçelerine göre havayı göstereyim:', today: 'bugün', tomorrow: 'yarın', none: 'Bölge verileri hazırlanıyor, biraz sonra deneyin.', back: '⬅️ Tüm bölgeler', dists: 'ilçelere göre', foot: 'Sıcaklık: gece…gündüz. ☂ — yağmur olasılığı, ❄ — kar, ☀ — yağışsız.' } };
+  ru: { btn: '🗺 Погода по регионам и районам', detail: 'Нажмите район — пришлю подробный прогноз: по часам и на 15 дней.', title: 'Погода по регионам', pick: 'Нажмите регион — покажу погоду по его районам:', today: 'сегодня', tomorrow: 'завтра', none: 'Погода по регионам ещё готовится, попробуйте чуть позже.', back: '⬅️ Все регионы', dists: 'по районам', foot: 'Температура: ночь…день. ☂ — вероятность дождя, ❄ — снега, ☀ — без осадков.' },
+  uz: { btn: '🗺 Viloyat va tumanlar bo‘yicha', detail: 'Tumanni bosing — batafsil prognoz yuboraman: soatma-soat va 15 kunga.', title: 'Viloyatlar bo‘yicha ob-havo', pick: 'Viloyatni bosing — tumanlari bo‘yicha ob-havoni ko‘rsataman:', today: 'bugun', tomorrow: 'ertaga', none: 'Viloyatlar bo‘yicha ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.', back: '⬅️ Barcha viloyatlar', dists: 'tumanlar bo‘yicha', foot: 'Harorat: tun…kun. ☂ — yomg‘ir ehtimoli, ❄ — qor, ☀ — yog‘insiz.' },
+  tr: { btn: '🗺 Bölge ve ilçelere göre', detail: 'İlçeye dokunun — ayrıntılı tahmin göndereyim: saat saat ve 15 gün.', title: 'Bölgelere göre hava', pick: 'Bölgeye dokunun — ilçelerine göre havayı göstereyim:', today: 'bugün', tomorrow: 'yarın', none: 'Bölge verileri hazırlanıyor, biraz sonra deneyin.', back: '⬅️ Tüm bölgeler', dists: 'ilçelere göre', foot: 'Sıcaklık: gece…gündüz. ☂ — yağmur olasılığı, ❄ — kar, ☀ — yağışsız.' } };
 const t0 = v => v == null ? '—' : `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace('+0°', '0°').replace('-0°', '0°');
 const admLine = v => !v ? '—' : `${t0(v[0])}…${t0(v[1])} ${v[2] >= 20 ? `${v[3] ? '❄' : '☂'}${v[2]}%` : '☀'}`;
 const admName = (a, lang) => (a.name[lang] || a.name.ru);
@@ -384,10 +384,13 @@ async function sendDistricts(env, chat, lang, rid, id, msgId) {
   const X = RGX[lang] || RGX.ru, A = await adminData(env, rid);
   if (!A) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   const r = A.adm1.find(a => a.id === id); if (!r) return sendRegions(env, chat, lang, rid);
-  const ds = A.adm2.filter(d => d.p === id).sort((x, y) => admName(x, lang).localeCompare(admName(y, lang)));
-  const text = [`🗺 <b>${esc(admName(r, lang))}</b> — ${X.dists}`, `${X.today} ${admLine(r.v[0])} · ${X.tomorrow} ${admLine(r.v[1])}`, '',
+  const ds = A.adm2.map((d, i) => ({ ...d, i })).filter(d => d.p === id).sort((x, y) => admName(x, lang).localeCompare(admName(y, lang)));
+  const text = [`🗺 <b>${esc(admName(r, lang))}</b> — ${X.dists}`, `${X.today} ${admLine(r.v[0])} · ${X.tomorrow} ${admLine(r.v[1])}`, `<i>${X.detail}</i>`, '',
     ...ds.map(d => `• ${esc(admName(d, lang))}: ${admLine(d.v[0])} · ${X.tomorrow} ${admLine(d.v[1])}`), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000);
-  const kb = regionsKb(A, lang, rid, id); kb.inline_keyboard.push([{ text: X.back, callback_data: `RB:${lang}:${rid}` }]);
+  // a button per district: its detailed forecast (by hours, 15 days) at the district's centre
+  const btn = ds.map(d => ({ text: admName(d, lang).replace(/ р-н$| tumani$/, ''), callback_data: `RX:${lang}:${rid}:${d.i}` })), rows = [];
+  for (let i = 0; i < btn.length; i += 3) rows.push(btn.slice(i, i + 3));
+  const kb = { inline_keyboard: [...rows, [{ text: X.back, callback_data: `RB:${lang}:${rid}` }]] };
   const body = { chat_id: chat, text, parse_mode: 'HTML', reply_markup: kb };
   if (msgId) { const e = await tg(env, 'editMessageText', { ...body, message_id: msgId }); if (e.ok || /not modified/.test(e.description || '')) return e; }
   return tg(env, 'sendMessage', body);
@@ -1189,6 +1192,10 @@ async function handle(up, env) {
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
   if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
+  if (kind === 'RX' && ADM.has(id)) {  // one district: the full forecast at its centre, named "district, region"
+    const A = await adminData(env, id), d = A && A.adm2[+cb.data.split(':')[3]];
+    if (d) { const r = A.adm1.find(a => a.id === d.p), nm = l => `${d.name[l] || d.name.ru}${r ? ', ' + (r.name[l] || r.name.ru) : ''}`;
+      return pointForecast(env, chat.id, lang, d.c[1], d.c[0], [nm('ru'), nm('uz'), d.name.en || nm('ru'), nm('tr'), id, d.c[1], d.c[0], 0, 0]); } }
   if (kind === 'RB' && ADM.has(id)) { const A = await adminData(env, id); if (A) return tg(env, 'editMessageText', { ...regionsList(A, lang, id, chat.id), message_id: cb.message.message_id }); }
   if (kind === 'RD' && ADM.has(id)) return sendDistricts(env, chat.id, lang, id, +cb.data.split(':')[3], cb.message.message_id);
   if (chat.type !== 'private' && ['NS', 'NT', 'NO', 'MS', 'WS', 'WA', 'WX'].includes(kind) && !(await isAdmin(env, chat, cb.from)))

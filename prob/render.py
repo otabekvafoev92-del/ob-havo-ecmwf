@@ -349,8 +349,12 @@ class Region:
             else: c = (f0 + f1) / 2; h = (e1 - e0) / asp; f0, f1 = c - h / 2, c + h / 2
             self.ext = (e0, e1, f0, f1)
         self.relief = relief(self.proj, self.ext)
-        self.a1 = []
-        if iso and iso in geo.admin1:
+        self.a1, self.a2 = [], []
+        ga = _geo_admin().get(iso) if iso else None
+        if ga:  # Uzbekistan, Kazakhstan, Kyrgyzstan: the regions and every district (prob/geo_admin.json)
+            pj = lambda r: np.c_[self.proj(np.asarray(r)[:, 0], np.asarray(r)[:, 1])]
+            self.a1 = [pj(r) for a in ga['adm1'] for r in a['r']]; self.a2 = [pj(r) for a in ga['adm2'] for r in a['r']]
+        elif iso and iso in geo.admin1:
             for r in geo.admin1[iso]:
                 a = np.array(r); x, y = self.proj(a[:, 0], a[:, 1]); self.a1.append(np.c_[x, y])
         self.cxy = [self.proj(p['lon'], p['lat']) for p in self.cities]
@@ -588,11 +592,21 @@ def _basemap(fig, R, box=None):
     return ax
 
 
+_GA = None
+def _geo_admin():
+    global _GA
+    if _GA is None:
+        try: _GA = json.load(open(pathlib.Path(__file__).resolve().parent / 'geo_admin.json'))
+        except Exception: _GA = {}
+    return _GA
+
+
 def _borders(ax, R):
     x0, x1, y0, y1 = getattr(R, 'view', None) or R.ext
     if R.iso:  # neighbours dimmed, provinces of the country drawn faintly
         ax.add_collection(PolyCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], facecolor=DIM_NEIGH, edgecolor='none', zorder=4))
-        ax.add_collection(LineCollection(R.a1, colors=A1_COL, linewidths=0.4, zorder=5))
+        if getattr(R, 'a2', None): ax.add_collection(LineCollection(R.a2, colors=A1_COL, linewidths=0.25, alpha=0.7, zorder=5))  # districts
+        ax.add_collection(LineCollection(R.a1, colors=A1_COL, linewidths=0.55 if getattr(R, 'a2', None) else 0.4, zorder=5))
     ax.add_collection(LineCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], colors=BORDER, linewidths=0.55, zorder=5))
     focus = [] if R.cont else [R.iso] if R.iso else [c for c in CIS if c in R.cpoly]
     rings = [r for c in focus for r in R.cpoly.get(c, [])]

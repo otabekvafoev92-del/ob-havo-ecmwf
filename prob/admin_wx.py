@@ -110,7 +110,7 @@ def picture(R, G, res, region, lang, k, loc, path):
     for a in G['adm1']:
         v = by1[a['id']]['v'][k]
         ax.add_collection(PC([P_(r) for r in a['r']], facecolor=col(v), edgecolor='none', zorder=2))
-    ax.add_collection(LC([P_(r) for a in G['adm2'] for r in a['r']], colors='#d5dde6', linewidths=0.45, zorder=3))  # districts
+    ax.add_collection(LC([P_(r) for a in G['adm2'] for r in a['r']], colors='#a3b3c4', linewidths=0.55, alpha=0.85, zorder=3))  # districts, clearly visible
     ax.add_collection(LC([P_(r) for a in G['adm1'] for r in a['r']], colors='#8a9bb0', linewidths=1.0, zorder=3.5))  # regions
     ax.add_collection(LC(rings, colors=NAVY, linewidths=1.8, zorder=4))
     # a label per region: the name, the temperatures, the chance — moved apart where they would overlap
