@@ -185,6 +185,7 @@ export default {
     // each job on its own, so one failure (or Cloudflare's limit of requests per run) cannot stop the others;
     // the check of the site builds goes first: it is small and it matters most
     const run = (name, f) => f().catch(e => console.log(name, e && e.stack));
+    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil(run('watch', () => watchTick(env)));  // its own runs: the weather at people's places
     ctx.waitUntil((async () => {
       await run('stale', () => staleTick(env));
       const r = await broadcast(env).catch(e => { console.log('broadcast', e && e.stack); return null; });
@@ -413,6 +414,70 @@ async function sendTraj(env, chat, lang, rid) {
   const seen = new Set(), lines = [...J.items].sort((a, b) => a.k - b.k || b.p - a.p).filter(it => !seen.has(it.city.ru + it.day) && seen.add(it.city.ru + it.day)).slice(0, 10)
     .map(it => `<b>${esc(it.city[lang] || it.city.ru)} · ${dayLabel(it.day, lang)} · ${it.snow ? '❄' : '☂'} ${it.p}%</b>\n🧭 ${esc(it.text[lang] || it.text.ru)}`);
   return tg(env, 'sendMessage', { chat_id: chat, text: [`🧭 <b>${X.title}</b>`, '', lines.join('\n\n'), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000), parse_mode: 'HTML' });
+}
+
+/* ---------- the weather at the person's place: a word only when it matters ----------
+   At each entry (/start, or the first message of the day) the bot asks where the person is; the place they send is
+   watched until the next time: rain or snow starting (or within the hour), a thunderstorm, great heat, hard frost,
+   strong wind. Normal weather: silence. Night (23:00–07:00): silence. Open-Meteo, checked every 20 minutes. */
+const WATCH_CRON = '10,30,50 * * * *';
+const WX = {
+  ru: { ask: '📍 <b>Где вы сейчас?</b>\nОтправьте своё место — я сообщу, если начнётся дождь или снег, будет гроза, сильная жара, мороз или ветер. В обычную погоду писать не буду.', send: '📍 Отправить моё место', sameP: '✅ Я там же: ', off: '🔕 Не предупреждать',
+    onOk: '🔔 Слежу за погодой: <b>{p}</b>\nСообщу, если начнётся дождь или снег, будет гроза, сильная жара, мороз или сильный ветер. В обычную погоду — тишина, ночью тоже.', offOk: '🔕 Хорошо, предупреждать не буду. Включить снова — отправьте 📍 своё место.', here: 'ваше место',
+    rainSoon: '🌧 <b>{p}</b>: примерно через {m} мин начнётся дождь', snowSoon: '🌨 <b>{p}</b>: примерно через {m} мин начнётся снег', rainNow: '🌧 <b>{p}</b>: у вас начался дождь', snowNow: '🌨 <b>{p}</b>: у вас пошёл снег',
+    storm: '⛈ <b>{p}</b>: гроза в ближайший час — лучше быть в помещении', heat: '🥵 <b>{p}</b>: очень жарко — {t}, ощущается как {f}. Пейте воду, в полдень лучше в тень', cold: '🥶 <b>{p}</b>: сильный мороз — {t}, ощущается как {f}. Одевайтесь теплее', wind: '💨 <b>{p}</b>: сильный ветер, порывы до {w} м/с' },
+  uz: { ask: '📍 <b>Hozir qayerdasiz?</b>\nJoyingizni yuboring — yomg‘ir yoki qor boshlansa, momaqaldiroq, kuchli issiq, sovuq yoki shamol bo‘lsa xabar beraman. Oddiy ob-havoda yozmayman.', send: '📍 Joyimni yuborish', sameP: '✅ O‘sha joydaman: ', off: '🔕 Ogohlantirmaslik',
+    onOk: '🔔 Ob-havoni kuzataman: <b>{p}</b>\nYomg‘ir yoki qor boshlansa, momaqaldiroq, kuchli issiq, sovuq yoki kuchli shamol bo‘lsa xabar beraman. Oddiy ob-havoda va kechasi — jimlik.', offOk: '🔕 Yaxshi, ogohlantirmayman. Qayta yoqish — 📍 joyingizni yuboring.', here: 'joyingiz',
+    rainSoon: '🌧 <b>{p}</b>: taxminan {m} daqiqadan keyin yomg‘ir boshlanadi', snowSoon: '🌨 <b>{p}</b>: taxminan {m} daqiqadan keyin qor boshlanadi', rainNow: '🌧 <b>{p}</b>: yomg‘ir boshlandi', snowNow: '🌨 <b>{p}</b>: qor yog‘a boshladi',
+    storm: '⛈ <b>{p}</b>: yaqin bir soatda momaqaldiroq — xonada bo‘lgan ma’qul', heat: '🥵 <b>{p}</b>: juda issiq — {t}, {f} kabi seziladi. Suv iching, tushda soyada bo‘ling', cold: '🥶 <b>{p}</b>: qattiq sovuq — {t}, {f} kabi seziladi. Issiq kiyining', wind: '💨 <b>{p}</b>: kuchli shamol, {w} m/s gacha' },
+  tr: { ask: '📍 <b>Şu an neredesiniz?</b>\nKonumunuzu gönderin — yağmur veya kar başlarsa, fırtına, aşırı sıcak, don veya rüzgâr olursa haber veririm. Normal havada yazmam.', send: '📍 Konumumu gönder', sameP: '✅ Aynı yerdeyim: ', off: '🔕 Uyarma',
+    onOk: '🔔 Havayı izliyorum: <b>{p}</b>\nYağmur veya kar başlarsa, fırtına, aşırı sıcak, don veya kuvvetli rüzgâr olursa haber veririm. Normal havada ve gece — sessizlik.', offOk: '🔕 Tamam, uyarmayacağım. Tekrar açmak için 📍 konumunuzu gönderin.', here: 'konumunuz',
+    rainSoon: '🌧 <b>{p}</b>: yaklaşık {m} dk sonra yağmur başlayacak', snowSoon: '🌨 <b>{p}</b>: yaklaşık {m} dk sonra kar başlayacak', rainNow: '🌧 <b>{p}</b>: yağmur başladı', snowNow: '🌨 <b>{p}</b>: kar yağmaya başladı',
+    storm: '⛈ <b>{p}</b>: bir saat içinde gök gürültülü fırtına — içeride olun', heat: '🥵 <b>{p}</b>: çok sıcak — {t}, hissedilen {f}. Su için, öğlen gölgede kalın', cold: '🥶 <b>{p}</b>: sert ayaz — {t}, hissedilen {f}. Sıkı giyinin', wind: '💨 <b>{p}</b>: kuvvetli rüzgâr, {w} m/s’ye kadar' } };
+async function watchGet(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM watch WHERE chat_id = ?1').bind(chat).first(); }
+async function watchSet(env, chat, f) {
+  if (!env.DB) return; await db(env);
+  const w = (await watchGet(env, chat)) || {}, n = { ...w, ...f };
+  await env.DB.prepare('INSERT OR REPLACE INTO watch (chat_id, lat, lon, name, lang, on_, asked, st, checked) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)')
+    .bind(chat, n.lat ?? null, n.lon ?? null, n.name ?? null, n.lang ?? null, n.on_ ?? 0, n.asked ?? null, n.st ?? '{}', n.checked ?? null).run();
+}
+// "where are you now?" — once a day at most; not after the person said no
+async function watchAsk(env, chat, lang) {
+  const W = WX[lang] || WX.ru, w = await watchGet(env, chat);
+  if (w && (w.asked === todayTZ() || (w.on_ === 0 && w.asked))) return;
+  await watchSet(env, chat, { asked: todayTZ(), lang });
+  const kb = [[{ text: W.send, request_location: true }], ...(w && w.lat != null ? [[{ text: W.sameP + (w.name || '📍') }]] : []), [{ text: W.off }]];
+  return tg(env, 'sendMessage', { chat_id: chat, text: W.ask, parse_mode: 'HTML', reply_markup: { keyboard: kb, resize_keyboard: true, one_time_keyboard: true } });
+}
+async function watchTick(env) {
+  if (!env.DB) return; await db(env);
+  const rows = (await env.DB.prepare("SELECT * FROM watch WHERE on_ = 1 AND lat IS NOT NULL ORDER BY COALESCE(checked, '') LIMIT 22").all()).results;
+  for (const w of rows) {
+    const now = Date.now(); await env.DB.prepare('UPDATE watch SET checked = ?2 WHERE chat_id = ?1').bind(w.chat_id, new Date(now).toISOString()).run();
+    const j = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+w.lat).toFixed(3)}&longitude=${(+w.lon).toFixed(3)}&current=temperature_2m,apparent_temperature,precipitation,rain,snowfall,weather_code,wind_gusts_10m&minutely_15=precipitation,snowfall,weather_code&forecast_minutely_15=6&wind_speed_unit=ms&timezone=auto`).then(r => r.ok ? r.json() : null).catch(() => null);
+    if (!j || !j.current) continue;
+    const hourL = new Date(now + (j.utc_offset_seconds || 0) * 1000).getUTCHours();
+    if (hourL >= 23 || hourL < 7) continue;  // night: silence
+    const st = JSON.parse(w.st || '{}'), c = j.current, m = j.minutely_15 || {}, lang = WX[w.lang] ? w.lang : 'ru', X = WX[lang], p = esc(w.name || X.here), day = todayTZ();
+    const ago = k => now - (st[k] || 0), out = [];
+    const snowy = (c.snowfall || 0) > 0 || (c.temperature_2m ?? 9) <= 0.5;
+    const wetNow = (c.precipitation || 0) >= 0.1, soonI = (m.precipitation || []).slice(1, 5).findIndex(v => v >= 0.15);  // 15-min steps: within the hour
+    if ((wetNow || soonI >= 0) && ago('rain') > 3 * 3600e3 && !st.wet) {
+      out.push(wetNow ? (snowy ? X.snowNow : X.rainNow).replace('{p}', p) : (snowy ? X.snowSoon : X.rainSoon).replace('{p}', p).replace('{m}', String((soonI + 1) * 15)));
+      st.rain = now;
+    }
+    st.wet = wetNow || soonI >= 0 ? 1 : (st.wet && ago('rain') < 2 * 3600e3 ? 1 : 0);  // dry again for a while: the next rain is news again
+    const code = Math.max(c.weather_code || 0, ...(m.weather_code || []).slice(0, 4));
+    if (code >= 95 && ago('storm') > 3 * 3600e3) { out.push(X.storm.replace('{p}', p)); st.storm = now; }
+    const t = c.temperature_2m, f = c.apparent_temperature, ft = v => `${v > 0 ? '+' : ''}${Math.round(v)}°`;
+    if ((t >= 38 || f >= 40) && st.heat !== day) { out.push(X.heat.replace('{p}', p).replace('{t}', ft(t)).replace('{f}', ft(f))); st.heat = day; }
+    if ((t <= -15 || f <= -20) && st.cold !== day) { out.push(X.cold.replace('{p}', p).replace('{t}', ft(t)).replace('{f}', ft(f))); st.cold = day; }
+    if ((c.wind_gusts_10m || 0) >= 15 && ago('wind') > 6 * 3600e3) { out.push(X.wind.replace('{p}', p).replace('{w}', String(Math.round(c.wind_gusts_10m)))); st.wind = now; }
+    await env.DB.prepare('UPDATE watch SET st = ?2 WHERE chat_id = ?1').bind(w.chat_id, JSON.stringify(st)).run();
+    if (!out.length) continue;  // normal weather: nothing
+    const r = await tg(env, 'sendMessage', { chat_id: w.chat_id, text: out.join('\n\n'), parse_mode: 'HTML' });
+    if (!r.ok && /blocked|deactivated|chat not found/i.test(r.description || '')) await env.DB.prepare('UPDATE watch SET on_ = 0 WHERE chat_id = ?1').bind(w.chat_id).run();
+  }
 }
 
 /* ---------- automatic sending of one section at the hour the person picked (⏰) ---------- */
@@ -1303,6 +1368,13 @@ async function privateMsg(msg, env) {
     }
   }
   if (cmd === 'cancel') { await saveUser(env, chat.id, { mode: '' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].cancel }); }
+  // the weather watch at the person's place: the answers to "where are you now?", then the question itself at each entry
+  { const W = WX[lang] || WX.ru, wt = text.trim();
+    if (wt === W.off) { await watchSet(env, chat.id, { on_: 0, asked: todayTZ() }); return tg(env, 'sendMessage', { chat_id: chat.id, text: W.offOk, reply_markup: replyKb(env, lang, (u && NAMES[u.region] && u.region) || 'UZ') }); }
+    if (wt.startsWith(W.sameP)) { const w = await watchGet(env, chat.id); await watchSet(env, chat.id, { on_: 1, asked: todayTZ() });
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: W.onOk.replace('{p}', (w && w.name) || '📍'), parse_mode: 'HTML', reply_markup: replyKb(env, lang, (u && NAMES[u.region] && u.region) || 'UZ') }); }
+    if (u && u.lang && !msg.location && !['now', 'loc'].includes(rkAct(wt)) && (cmd === 'start' || (u.seen && new Date(Date.parse(u.seen) + TZ * 3600e3).toISOString().slice(0, 10) < todayTZ()))) await watchAsk(env, chat.id, lang);
+  }
   if (cmd === 'yt' && admin === String(chat.id)) {  // the YouTube / channel briefing, ready to publish
     const I = await (await fetch(`${base(env)}/prob/yt/index.json?t=${Date.now()}`)).json().catch(() => null);
     const want = (text.split(/\s+/)[1] || lang).toLowerCase(), b = I && (I.items.find(i => i.lang === want) || I.items[0]);
@@ -1364,7 +1436,11 @@ async function privateMsg(msg, env) {
   if (msg.location) {  // weather right here
     const { latitude: la, longitude: lo } = msg.location;
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'typing' });
-    return pointForecast(env, chat.id, lang, la, lo, await nearestPlace(env, la, lo));
+    const np = await nearestPlace(env, la, lo), r = await pointForecast(env, chat.id, lang, la, lo, np);
+    // from now on: a message when it starts to rain or snow here, a storm, great heat or frost, strong wind — not in normal weather
+    await watchSet(env, chat.id, { lat: la, lon: lo, name: np ? pname(np, lang) : `${la.toFixed(2)}, ${lo.toFixed(2)}`, lang, on_: 1, asked: todayTZ() });
+    await tg(env, 'sendMessage', { chat_id: chat.id, text: (WX[lang] || WX.ru).onOk.replace('{p}', esc(np ? pname(np, lang) : (WX[lang] || WX.ru).here)), parse_mode: 'HTML', reply_markup: replyKb(env, lang, (u && NAMES[u.region] && u.region) || 'UZ') });
+    return r;
   }
   if (!text) return;
   // the ☰ menu (and the buttons of the old keyboard that some chats still show): one action each, no duplicates
@@ -1529,6 +1605,7 @@ async function db(env) {
   // who used the bot on which day (Tashkent date) and a daily snapshot of the auto-send subscriptions: for the admin's 📈 Динамика
   await env.DB.exec('CREATE TABLE IF NOT EXISTS daily (day TEXT, chat_id INTEGER, PRIMARY KEY (day, chat_id))');
   await env.DB.exec('CREATE TABLE IF NOT EXISTS dstat (day TEXT PRIMARY KEY, prv INTEGER, grp INTEGER, mtn INTEGER, users INTEGER)');
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS watch (chat_id INTEGER PRIMARY KEY, lat REAL, lon REAL, name TEXT, lang TEXT, on_ INTEGER, asked TEXT, st TEXT, checked TEXT)');
   await env.DB.exec('CREATE TABLE IF NOT EXISTS notif (chat_id INTEGER, sec TEXT, hour INTEGER, lang TEXT, region TEXT, last_day TEXT, added TEXT, PRIMARY KEY (chat_id, sec))');
 }
 async function sub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM subs WHERE chat_id = ?1').bind(chat).first(); }
