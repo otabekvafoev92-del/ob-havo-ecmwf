@@ -19,9 +19,15 @@ from trajectory import ECM, get  # the same mirror and downloader
 STEPS = list(range(0, 73, 3))
 STEPS15 = [(st, 'hres') for st in list(range(0, 144, 3)) + list(range(144, 241, 6))] + [(st, 'ens') for st in range(246, 361, 6)]
 FPS = 3  # 0.5× of the first version (6 frames a second)
+# the names of the big waters on the map (lon, lat), and the size of the letters
+_WN = [((50.6, 42.6), ('Каспийское\nморе', 'Kaspiy\ndengizi', 'Hazar\nDenizi'), 10), ((59.6, 45.4), ('Аральское\nморе', 'Orol\ndengizi', 'Aral\nGölü'), 8.5),
+       ((74.6, 46.2), ('Балхаш', 'Balxash', 'Balkaş'), 8.5), ((77.3, 42.4), ('Иссык-Куль', 'Issiqko‘l', 'Issık Göl'), 8), ((51.5, 27.3), ('Персидский\nзалив', 'Fors\nko‘rfazi', 'Basra\nKörfezi'), 9),
+       ((62.0, 21.0), ('Аравийское море', 'Arab dengizi', 'Umman Denizi'), 10), ((34.5, 43.2), ('Чёрное море', 'Qora dengiz', 'Karadeniz'), 10),
+       ((62.4, 39.9), ('Амударья', 'Amudaryo', 'Amu Derya'), 7.5), ((66.6, 44.3), ('Сырдарья', 'Sirdaryo', 'Siri Derya'), 7.5), ((88.0, 52.0), ('Обь', 'Ob', 'Obi'), 7.5)]
+WATER_NAMES = {l: [(p_, n_[i], f_) for p_, n_, f_ in _WN] for i, l in enumerate(('ru', 'uz', 'tr'))}
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
 VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5)}
-TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
+TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер (темнее — сильнее)', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
                  hi='В', lo='Н', hiw='антициклон: ясно, сухо', low='циклон: тучи, дождь, ветер', tz='по Ташкенту', src='влага: {s}', leg='путь влаги к городу',
                  c_intro='Серое — тучи, синее — дождь, фиолетовое — снег. Линии показывают, куда дует ветер.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
                  c_dry='Над страной сухо — дождя нет', c_wet='Влажный воздух над страной — возможны осадки', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
@@ -334,6 +340,16 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     own = [np.asarray(r) for r in G.get(region, {}).get('rings', [])]
     if GA: ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#8e9aa6', linewidths=0.45, alpha=0.55, zorder=4))
     ax.add_collection(LC(own, colors='#1d2a3a', linewidths=1.7, zorder=4.5))
+    WAT = json.load(open(HERE / 'geo_water.json')); WFILL, WEDGE, WTXT = '#cfe3ef', '#4d8fb8', '#2f6f99'
+    seas = [np.asarray(r) for r in WAT['ocean'] if near(r)] + [np.asarray(l['r']) for l in WAT['lakes'] if near(l['r'])]
+    ax.add_collection(PCOL(seas, facecolors=WFILL, edgecolors='none', zorder=0.6))  # the water under the clouds and the rain
+    ax.add_collection(LC(seas, colors=WEDGE, linewidths=0.9, alpha=0.9, zorder=4.15))  # its shore always clear on top
+    riv = [(np.asarray(r['c']), r['w']) for r in WAT['rivers'] if near(r['c'])]
+    ax.add_collection(LC([c for c, w in riv], colors=WEDGE, linewidths=[0.5 + 0.55 * w for c, w in riv], alpha=0.95, zorder=4.2, capstyle='round'))
+    wl = matplotlib.patheffects.withStroke(linewidth=2.6, foreground='#ffffffcc')
+    for (wx, wy), nm_, fs_ in WATER_NAMES.get(lang, WATER_NAMES['ru']):
+        if x0 + 1 < wx < x1 - 1 and y0v + (y1v - y0v) * 0.2 < wy < y1v - (y1v - y0v) * 0.125:
+            ax.text(wx, wy, nm_, fontsize=fs_, color=WTXT, style='italic', fontweight='bold', ha='center', va='center', zorder=4.3, path_effects=[wl], linespacing=0.9)
     # the main cities of the country
     pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region and x0 < p['lon'] < x1], key=lambda p: -p.get('pop', 0))[:8]
     for p in pl: ax.plot(p['lon'], p['lat'], 'o', ms=4.5, mfc=NAVY, mec='#ffffff', mew=1, zorder=8)
@@ -392,7 +408,11 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     rng = np.random.default_rng(3); N = 650; TAIL = 10
     def seed(n): return np.c_[rng.uniform(x0, x1, n), rng.uniform(y0v, y1v, n)]
     pts = seed(N); age = rng.integers(0, 60, N); hist = np.repeat(pts[None], TAIL, 0)
-    lines = [LC([], colors='#2c3e55', linewidths=0.7, alpha=a, zorder=6) for a in np.linspace(0.03, 0.4, TAIL - 1) ** 1.3]
+    TAIL = 14; hist = np.repeat(pts[None], TAIL, 0)
+    FLOW = LinearSegmentedColormap.from_list('flow', ['#9fb6cc', '#5c87b3', '#2c5a91', '#1b3a73', '#3a1f7a'])
+    fades = np.linspace(0.04, 0.75, TAIL - 1) ** 1.6
+    lines = [LC([], linewidths=0.7, zorder=6, capstyle='round') for a in fades]
+    heads = ax.scatter([], [], s=[], c=[], zorder=6.05, linewidths=0)
     for l in lines: ax.add_collection(l)
     img = ax.imshow(np.zeros(LON.shape + (4,)), extent=(lon[ci[0]] - RES / 2, lon[ci[-1]] + RES / 2, lat[ri[0]] - RES / 2, lat[ri[-1]] + RES / 2), origin='lower',
                     interpolation='bilinear', zorder=1.8, aspect='auto')  # the clouds: grey, the thicker the darker
@@ -490,7 +510,10 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         spd = np.hypot(u, v)
         for i, l in enumerate(lines):
             seg = np.stack([hist[i], hist[i + 1]], 1); ok = ~dead & (np.hypot(*(seg[:, 1] - seg[:, 0]).T) < 3)
-            l.set_segments(seg[ok]); l.set_linewidths(0.4 + 1.0 * np.clip(spd[ok] / 25, 0, 1))
+            sp_ = np.clip(spd[ok] / 25, 0, 1); col = FLOW(sp_); col[:, 3] = fades[i] * (0.55 + 0.45 * sp_)
+            l.set_segments(seg[ok]); l.set_linewidths((0.35 + 1.6 * sp_) * (0.5 + 0.5 * i / (TAIL - 2))); l.set_color(col)
+        sp_ = np.clip(spd / 25, 0, 1); hc = FLOW(sp_); hc[:, 3] = np.where(dead, 0, 0.55 + 0.4 * sp_)
+        heads.set_offsets(pts); heads.set_sizes(1.5 + 7 * sp_); heads.set_color(hc)
         # the cities: their tags (☂ in blue while it rains there), a widening ring when the rain starts
         wet_c = []; snow_c = []
         for j_, (p, gx_, gy_) in enumerate(zip(pl, cgx, cgy)):
