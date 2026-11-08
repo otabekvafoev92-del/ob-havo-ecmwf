@@ -1,0 +1,26 @@
+name: Moisture sample
+# draws one moisture video on the latest forecast and puts it on the "media" branch (a quick look before a full build)
+on:
+  workflow_dispatch:
+    inputs:
+      regions: {description: 'regions', default: 'UZ'}
+      langs: {description: 'languages', default: 'ru'}
+      days: {description: '3 or 15', default: '3'}
+permissions: {contents: write, actions: read}
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          id=$(gh run list -R ${{ github.repository }} -w update.yml -s success -L 1 --json databaseId -q '.[0].databaseId')
+          gh run download $id -R ${{ github.repository }} -n npz
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install -q numpy scipy matplotlib pyproj pillow requests eccodes metpy
+          python prob/moisture.py prob.npz out --regions ${{ inputs.regions }} --langs ${{ inputs.langs }} --days ${{ inputs.days }}
+          mkdir m && cd m && git init -q && git checkout -q -b media && mkdir -p sample && cp ../out/hr/*.mp4 sample/ && ls -la sample
+          git add -A && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm sample
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" media

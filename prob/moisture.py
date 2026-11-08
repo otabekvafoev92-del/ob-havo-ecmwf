@@ -24,20 +24,23 @@ _WN = [((50.6, 42.6), ('Каспийское\nморе', 'Kaspiy\ndengizi', 'Haz
        ((74.6, 46.2), ('Балхаш', 'Balxash', 'Balkaş'), 8.5), ((77.3, 42.4), ('Иссык-Куль', 'Issiqko‘l', 'Issık Göl'), 8), ((51.5, 27.3), ('Персидский\nзалив', 'Fors\nko‘rfazi', 'Basra\nKörfezi'), 9),
        ((62.0, 21.0), ('Аравийское море', 'Arab dengizi', 'Umman Denizi'), 10), ((34.5, 43.2), ('Чёрное море', 'Qora dengiz', 'Karadeniz'), 10),
        ((62.4, 39.9), ('Амударья', 'Amudaryo', 'Amu Derya'), 7.5), ((66.6, 44.3), ('Сырдарья', 'Sirdaryo', 'Siri Derya'), 7.5), ((88.0, 52.0), ('Обь', 'Ob', 'Obi'), 7.5)]
+MOUNT_NAMES = {l: [(p_, n_[i]) for p_, n_ in [((80.0, 42.9), ('Т я н ь - Ш а н ь', 'T y a n - S h a n', 'T i y e n - Ş a n')), ((73.4, 38.4), ('П а м и р', 'P o m i r', 'P a m i r')),
+                                              ((57.5, 38.4), ('Копетдаг', 'Kopetdog‘', 'Kopet Dağ')), ((69.0, 34.6), ('Гиндукуш', 'Hindukush', 'Hindukuş')), ((84.0, 36.2), ('Куньлунь', 'Kunlun', 'Kunlun'))]]
+               for i, l in enumerate(('ru', 'uz', 'tr'))}
 WATER_NAMES = {l: [(p_, n_[i], f_) for p_, n_, f_ in _WN] for i, l in enumerate(('ru', 'uz', 'tr'))}
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
 VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5), 'KG': (62.0, 86.0, 36.0, 46.0)}
 TZ = {'UZ': (5, {'ru': 'по Ташкенту', 'uz': 'Toshkent vaqti', 'tr': 'Taşkent saati'}), 'KZ': (5, {'ru': 'по Астане', 'uz': 'Ostona vaqti', 'tr': 'Astana saati'}),
       'KG': (6, {'ru': 'по Бишкеку', 'uz': 'Bishkek vaqti', 'tr': 'Bişkek saati'})}
-TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое с чёрным пунктиром — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер (темнее — сильнее)', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
+TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое с чёрным пунктиром — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер (темнее — сильнее)', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', fronts='▲▲ холодный фронт   ●● тёплый фронт', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
                  hi='В', lo='Н', hiw='антициклон: ясно, сухо', low='циклон: тучи, дождь, ветер', tz='по Ташкенту', src='влага: {s}', leg='путь влаги к городу',
                  c_intro='Серое — тучи, синее — дождь, фиолетовое — снег. Линии показывают, куда дует ветер.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
                  c_dry='Над страной сухо — дождя нет', c_wet='Влажный воздух над страной — возможны осадки', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
-      'uz': dict(rainbar='ko‘k ustunlar — mamlakatda yomg‘ir', title='Yomg‘ir qayerdan keladi', sub='kulrang, qora punktir — bulut · ko‘k — yomg‘ir · binafsha — qor · qizil — siklon · chiziqlar — shamol', tcwv='Havo namligi', cl='Bulut', rn='Yomg‘ir', sn='Qor', snh='kuchli', wd_t='Shamol zarbasi', ms='m/s', wsub=' · sariq — kuchli shamol', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
+      'uz': dict(rainbar='ko‘k ustunlar — mamlakatda yomg‘ir', title='Yomg‘ir qayerdan keladi', sub='kulrang, qora punktir — bulut · ko‘k — yomg‘ir · binafsha — qor · qizil — siklon · chiziqlar — shamol', tcwv='Havo namligi', cl='Bulut', rn='Yomg‘ir', sn='Qor', snh='kuchli', fronts='▲▲ sovuq front   ●● iliq front', wd_t='Shamol zarbasi', ms='m/s', wsub=' · sariq — kuchli shamol', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
                  hi='Y', lo='P', hiw='antisiklon: ochiq, quruq', low='siklon: bulut, yomg‘ir, shamol', tz='Toshkent vaqti', src='namlik: {s}', leg='namlikning shaharga yo‘li',
                  c_intro='Kulrang — bulut, ko‘k — yomg‘ir, binafsha — qor. Chiziqlar shamol yo‘nalishini ko‘rsatadi.', c_go='Nam havo ({s}) {c} shahriga kelmoqda', c_rain='Hozir yomg‘ir: {c}', c_snow='Hozir qor: {c}',
                  c_dry='Mamlakat ustida quruq — yomg‘ir yo‘q', c_wet='Mamlakat ustida nam havo — yog‘in bo‘lishi mumkin', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']),
-      'tr': dict(rainbar='mavi sütunlar — ülkede yağmur', title='Yağmur nereden geliyor', sub='gri, siyah kesikli — bulut · mavi — yağmur · mor — kar · kırmızı — siklon · çizgiler — rüzgâr', tcwv='Havanın nemi', cl='Bulut', rn='Yağmur', sn='Kar', snh='yoğun', wd_t='Rüzgâr hamlesi', ms='m/s', wsub=' · sarı — kuvvetli rüzgâr', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
+      'tr': dict(rainbar='mavi sütunlar — ülkede yağmur', title='Yağmur nereden geliyor', sub='gri, siyah kesikli — bulut · mavi — yağmur · mor — kar · kırmızı — siklon · çizgiler — rüzgâr', tcwv='Havanın nemi', cl='Bulut', rn='Yağmur', sn='Kar', snh='yoğun', fronts='▲▲ soğuk cephe   ●● sıcak cephe', wd_t='Rüzgâr hamlesi', ms='m/s', wsub=' · sarı — kuvvetli rüzgâr', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
                  hi='Y', lo='A', hiw='antisiklon: açık, kuru', low='siklon: bulut, yağmur, rüzgâr', tz='TSİ', src='nem: {s}', leg='nemin şehre yolu',
                  c_intro='Gri bulut, mavi yağmur, mor kar. Çizgiler rüzgârın yönünü gösterir.', c_go='Nemli hava ({s}) {c} şehrine geliyor', c_rain='Şu an yağmur: {c}', c_snow='Şu an kar: {c}',
                  c_dry='Ülke üzerinde hava kuru — yağmur yok', c_wet='Ülke üzerinde nemli hava — yağış olabilir', wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'])}
@@ -70,7 +73,9 @@ def fetch(run, steps=None):
         for line in idx.decode().strip().split('\n'):
             x = json.loads(line); p = x.get('param')
             if kind == 'ens' and x.get('type') != 'cf': continue
-            key = p if x.get('levtype') == 'sfc' and p in ('tcwv', 'msl', 'tp', 'tcc', '2t', '10u', '10v', '10fg', 'fg10', 'i10fg') else p if x.get('levtype') == 'pl' and x.get('levelist') == '700' and p in ('u', 'v') else None
+            lt, lv = x.get('levtype'), x.get('levelist')
+            key = (p if lt == 'sfc' and p in ('tcwv', 'msl', 'tp', 'tcc', '2t', '10u', '10v', '10fg', 'fg10', 'i10fg', 'sp') else p if lt == 'pl' and lv == '700' and p in ('u', 'v')
+                   else p + '850' if lt == 'pl' and lv == '850' and p in ('t', 'r') else None)
             if key: jobs.append((st, key, base + '.grib2', (x['_offset'], x['_offset'] + x['_length'] - 1)))
     F = {}
     import eccodes
@@ -93,7 +98,44 @@ def fetch(run, steps=None):
             g_ = next((f[k] for k in ('10fg', 'fg10', 'i10fg') if k in f), None)
             if g_ is not None: out[st]['gust'] = g_
             elif 'ws' in out[st]: out[st]['gust'] = out[st]['ws'] * 1.6  # no gusts in the data: the usual gust factor
+            for k_ in ('t850', 'r850', 'sp'):  # the fronts (850 hPa) and the height of the ground (surface pressure)
+                if k_ in f: out[st][k_] = f[k_] / 100.0 if k_ == 'sp' else f[k_]
     print('moist: fields at', len(out), 'steps, last', max(out) if out else None, 'h', flush=True)
+    return out
+
+
+def ground_height(F):
+    """The height of the ground (m) from the surface and sea-level pressure of the first step (hypsometric formula)."""
+    f = F[min(F)]
+    if 'sp' not in f: return None
+    T = f['t2'] + 273.15 + 0.0065 * 500  # the air between the ground and sea level, roughly
+    return np.clip(29.27 * T * np.log(np.maximum(f['msl'], 1) / np.maximum(f['sp'], 1)), -50, 7500)
+
+
+def fronts(T850, R850, U, V, lon, lat, smooth=3.0):
+    """Cold and warm fronts at 850 hPa (MetPy): where the gradient of the equivalent potential temperature θe
+    changes fastest (the zero of the thermal front parameter) and is strong. A front is cold where the wind blows
+    from the cold side, warm where it blows from the warm side. Returns [(xy array, 'cold'|'warm'), ...]."""
+    import metpy.calc as mc
+    from metpy.units import units
+    from scipy.ndimage import gaussian_filter
+    from contourpy import contour_generator
+    Tk = T850 * units.kelvin if T850.mean() > 100 else (T850 + 273.15) * units.kelvin
+    td = mc.dewpoint_from_relative_humidity(Tk, np.clip(R850, 1, 100) * units.percent)
+    th = gaussian_filter(np.asarray(mc.equivalent_potential_temperature(850 * units.hPa, Tk, td).m), smooth)
+    dy = 111.0 * (lat[1] - lat[0]); dx = 111.0 * (lon[1] - lon[0]) * np.cos(np.radians(lat))[:, None]  # km between the grid points
+    gy, gx = np.gradient(th, axis=0) / dy, np.gradient(th, axis=1) / dx
+    mag = np.hypot(gx, gy) + 1e-9
+    my, mx = np.gradient(mag, axis=0) / dy, np.gradient(mag, axis=1) / dx
+    tfp = -(mx * gx + my * gy) / mag
+    strong = gaussian_filter(mag, 1) > 0.03  # K per km: a real front (≥ 3 K over 100 km)
+    adv = -(U * gx + V * gy)  # > 0: warm air coming
+    out = []
+    for line in contour_generator(lon, lat, np.where(strong, tfp, np.nan)).lines(0.0):
+        if len(line) < 6: continue
+        j = np.clip(((line[:, 1] - lat[0]) / (lat[1] - lat[0])).astype(int), 0, len(lat) - 1); i = np.clip(((line[:, 0] - lon[0]) / (lon[1] - lon[0])).astype(int), 0, len(lon) - 1)
+        if np.hypot(*np.diff(line, axis=0).T).sum() < 4: continue  # shorter than ~400 km: noise
+        out.append((line, 'warm' if np.median(adv[j, i]) > 0 else 'cold'))
     return out
 
 
@@ -101,7 +143,7 @@ def interp(F, h):
     """The fields at hour h (linear between the 3-hourly steps); precipitation as mm in the 3 h around h."""
     ks = sorted(F); j = int(np.clip(np.searchsorted(ks, h), 1, len(ks) - 1)); a = float(np.clip((h - ks[j - 1]) / (ks[j] - ks[j - 1]), 0, 1))
     A, B = F[ks[j - 1]], F[ks[j]]
-    out = {k: A[k] * (1 - a) + B[k] * a for k in ('tcwv', 'msl', 'u', 'v', 'tcc', 't2', 'ws', 'gust', 'u10', 'v10') if k in A and k in B}
+    out = {k: A[k] * (1 - a) + B[k] * a for k in ('tcwv', 'msl', 'u', 'v', 'tcc', 't2', 'ws', 'gust', 'u10', 'v10', 't850', 'r850') if k in A and k in B}
     rate = lambda i: np.clip(F[ks[i]]['tp'] - F[ks[i - 1]]['tp'], 0, None) * 3 / (ks[i] - ks[i - 1]) if i >= 1 else np.zeros_like(A['tp'])  # mm per 3 h before step i
     out['pr'] = rate(j) * (1 - abs(a - 0.5)) + (rate(j - 1) if a < 0.5 else rate(min(j + 1, len(ks) - 1))) * abs(a - 0.5)
     return out
@@ -322,6 +364,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     from scipy.ndimage import gaussian_filter, maximum_filter, minimum_filter
     from regions import NAMES
     from hourly import NAVY
+    from metpy.plots import ColdFront, WarmFront
     X = TX.get(lang, TX['ru']); off = TZ.get(region, (off,))[0]
     x0, x1, y0, y1 = VIEW[region]
     lon = LON0 + np.arange(next(iter(F.values()))['tcwv'].shape[1]) * RES; lat = LAT0 + np.arange(next(iter(F.values()))['tcwv'].shape[0]) * RES
@@ -352,6 +395,23 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     for (wx, wy), nm_, fs_ in WATER_NAMES.get(lang, WATER_NAMES['ru']):
         if x0 + 1 < wx < x1 - 1 and y0v + (y1v - y0v) * 0.2 < wy < y1v - (y1v - y0v) * 0.125:
             ax.text(wx, wy, nm_, fontsize=fs_, color=WTXT, style='italic', fontweight='bold', ha='center', va='center', zorder=4.3, path_effects=[wl], linespacing=0.9)
+    # the mountains: hill shading from the height of the ground (lit from the north-west), a light brown tint up high
+    E = ground_height(F)
+    if E is not None:
+        from scipy.ndimage import zoom
+        from matplotlib.colors import LightSource
+        Er = zoom(gaussian_filter(np.clip(E[np.ix_(ri, ci)], 0, None), 0.6), 4, order=3)
+        hs = np.flipud(LightSource(azdeg=315, altdeg=35).hillshade(np.flipud(Er), vert_exag=6, dx=RES / 4 * 111e3 * k, dy=RES / 4 * 111e3))
+        hi_ = np.clip((Er - 300) / 900, 0, 1)
+        rel = np.zeros(Er.shape + (4,)); rel[..., :3] = np.where((hs < 0.6)[..., None], (0.22, 0.18, 0.14), (1.0, 1.0, 1.0))
+        rel[..., 3] = np.clip(np.where(hs < 0.62, (0.62 - hs) * 1.3, (hs - 0.62) * 0.9), 0, 0.6) * hi_
+        tint = np.zeros(Er.shape + (4,)); tint[..., :3] = (0.62, 0.52, 0.40); tint[..., 3] = np.clip((Er - 1200) / 2800, 0, 1) * 0.38
+        ext = (lon[ci[0]] - RES / 2, lon[ci[-1]] + RES / 2, lat[ri[0]] - RES / 2, lat[ri[-1]] + RES / 2)
+        ax.imshow(tint, extent=ext, origin='lower', zorder=0.7, aspect='auto', interpolation='bilinear')
+        ax.imshow(rel, extent=ext, origin='lower', zorder=0.75, aspect='auto', interpolation='bilinear')
+        for (mx_, my_), nm_ in MOUNT_NAMES.get(lang, MOUNT_NAMES['ru']):
+            if x0 + 1 < mx_ < x1 - 1 and y0v + (y1v - y0v) * 0.2 < my_ < y1v - (y1v - y0v) * 0.125:
+                ax.text(mx_, my_, nm_, fontsize=9, color='#7a5a36', style='italic', fontweight='bold', ha='center', va='center', zorder=4.3, path_effects=[wl], rotation=8)
     # the main cities of the country
     pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region and x0 < p['lon'] < x1], key=lambda p: -p.get('pop', 0))[:8]
     for p in pl: ax.plot(p['lon'], p['lat'], 'o', ms=4.5, mfc=NAVY, mec='#ffffff', mew=1, zorder=8)
@@ -444,6 +504,10 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         if H > 72:
             for c_ in pa_art[-1]: c_.set_visible(False)
             placed.pop() if placed and inside else None  # labels of paths at other times may share a place
+    if any('t850' in f_ for f_ in F.values()):  # the fronts: one line each, in their colours
+        for yy_, txt_, col_ in ((0.852, X['fronts'].split('   ')[0], '#8fb8ff'), (0.814, X['fronts'].split('   ')[1], '#ff9a8a')):
+            fig.text(0.982, yy_, txt_, fontsize=9.5, fontweight='bold', color=col_, ha='right', va='center', zorder=21,
+                     bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
     if paths:
         fig.text(0.982, 0.893, '- - ▶  ' + X['leg'], fontsize=9.5, fontweight='bold', color=SRC, ha='right', va='center', zorder=21,
                  bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
@@ -466,6 +530,14 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         Q = interp(F, h); T = Q['tcwv'][np.ix_(ri, ci)]; P = gaussian_filter(Q['pr'][np.ix_(ri, ci)], 0.8); M = gaussian_filter(Q['msl'][np.ix_(ri, ci)], 2.0)
         C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.33, 0.37, 0.42); cl[..., 3] = np.clip((C - 0.3) / 0.65, 0, 1) ** 1.1 * 0.58
         img.set_data(cl); ax.set_aspect(1 / k)
+        if 't850' in Q and 'r850' in Q:  # the atmospheric fronts at 850 hPa: cold ▲ (blue), warm ● (red)
+            try:
+                for xy, kind in fronts(Q['t850'][np.ix_(ri, ci)], Q['r850'][np.ix_(ri, ci)], Q['u'][np.ix_(ri, ci)], Q['v'][np.ix_(ri, ci)], lon[ci], lat[ri]):
+                    col_ = '#1f5fd1' if kind == 'cold' else '#d6402b'
+                    pe = (ColdFront if kind == 'cold' else WarmFront)(size=5, spacing=1.6, color=col_)
+                    dyn += ax.plot(xy[:, 0], xy[:, 1], color=col_, lw=2.2, zorder=4.6, path_effects=[pe])
+            except Exception as e:
+                if f == 0: print('fronts failed', e, flush=True)
         if C.max() > 0.55:  # the edge of the cloud masses: a black dashed line, so their movement is easy to follow
             dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.55], colors='#111111', linewidths=1.3, linestyles=[(0, (4, 3))], alpha=0.75, zorder=3.3))
             if C.max() > 0.9: dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.9], colors='#111111', linewidths=0.8, linestyles=[(0, (2, 3))], alpha=0.5, zorder=3.3))
