@@ -19,15 +19,15 @@ from trajectory import ECM, get  # the same mirror and downloader
 STEPS = list(range(0, 73, 3))
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
 VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5)}
-TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
+TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
                  hi='В', lo='Н', hiw='антициклон: ясно, сухо', low='циклон: тучи, дождь, ветер', tz='по Ташкенту', src='влага: {s}', leg='путь влаги к городу',
                  c_intro='Серое — тучи, синее — дождь, фиолетовое — снег. Линии показывают, куда дует ветер.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
                  c_dry='Над страной сухо — дождя нет', c_wet='Влажный воздух над страной — возможны осадки', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
-      'uz': dict(rainbar='ko‘k ustunlar — mamlakatda yomg‘ir', title='Yomg‘ir qayerdan keladi', sub='kulrang — bulut · ko‘k — yomg‘ir · binafsha — qor · qizil — siklon · chiziqlar — shamol', tcwv='Havo namligi', cl='Bulut', rn='Yomg‘ir', sn='Qor', snh='kuchli', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
+      'uz': dict(rainbar='ko‘k ustunlar — mamlakatda yomg‘ir', title='Yomg‘ir qayerdan keladi', sub='kulrang — bulut · ko‘k — yomg‘ir · binafsha — qor · qizil — siklon · chiziqlar — shamol', tcwv='Havo namligi', cl='Bulut', rn='Yomg‘ir', sn='Qor', snh='kuchli', wd_t='Shamol zarbasi', ms='m/s', wsub=' · sariq — kuchli shamol', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
                  hi='Y', lo='P', hiw='antisiklon: ochiq, quruq', low='siklon: bulut, yomg‘ir, shamol', tz='Toshkent vaqti', src='namlik: {s}', leg='namlikning shaharga yo‘li',
                  c_intro='Kulrang — bulut, ko‘k — yomg‘ir, binafsha — qor. Chiziqlar shamol yo‘nalishini ko‘rsatadi.', c_go='Nam havo ({s}) {c} shahriga kelmoqda', c_rain='Hozir yomg‘ir: {c}', c_snow='Hozir qor: {c}',
                  c_dry='Mamlakat ustida quruq — yomg‘ir yo‘q', c_wet='Mamlakat ustida nam havo — yog‘in bo‘lishi mumkin', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']),
-      'tr': dict(rainbar='mavi sütunlar — ülkede yağmur', title='Yağmur nereden geliyor', sub='gri — bulut · mavi — yağmur · mor — kar · kırmızı — siklon · çizgiler — rüzgâr', tcwv='Havanın nemi', cl='Bulut', rn='Yağmur', sn='Kar', snh='yoğun', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
+      'tr': dict(rainbar='mavi sütunlar — ülkede yağmur', title='Yağmur nereden geliyor', sub='gri — bulut · mavi — yağmur · mor — kar · kırmızı — siklon · çizgiler — rüzgâr', tcwv='Havanın nemi', cl='Bulut', rn='Yağmur', sn='Kar', snh='yoğun', wd_t='Rüzgâr hamlesi', ms='m/s', wsub=' · sarı — kuvvetli rüzgâr', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
                  hi='Y', lo='A', hiw='antisiklon: açık, kuru', low='siklon: bulut, yağmur, rüzgâr', tz='TSİ', src='nem: {s}', leg='nemin şehre yolu',
                  c_intro='Gri bulut, mavi yağmur, mor kar. Çizgiler rüzgârın yönünü gösterir.', c_go='Nemli hava ({s}) {c} şehrine geliyor', c_rain='Şu an yağmur: {c}', c_snow='Şu an kar: {c}',
                  c_dry='Ülke üzerinde hava kuru — yağmur yok', c_wet='Ülke üzerinde nemli hava — yağış olabilir', wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'])}
@@ -37,6 +37,8 @@ TCWV_STOPS = [(0, '#ffffff'), (8, '#fbfcfb'), (14, '#eef6f1'), (20, '#d8eee2'), 
 PR_LV = [0.3, 1, 2, 4, 7, 12, 20, 40]
 PR_COL = ['#8fd0ff', '#4aa8f5', '#2b6fe0', '#f2d94e', '#f29c38', '#e0503a', '#c23aa0']  # (the TV version)
 RAIN_COL = ['#a9dbff', '#6cbcf7', '#3d95ec', '#2272d8', '#1756b5', '#0f3f8c', '#0a2b66']  # light rain → downpour, all blue
+WIND_COL = ['#fff27a', '#ffd93a', '#f5b700']  # gusts 15–20, 20–25, 25+ m/s: yellow
+WIND_LV = [15, 20, 25, 80]
 SNOW_COL = ['#eadcff', '#d3bcfa', '#b897f0', '#9b72e2', '#8052cc', '#6639ae', '#4c2788']  # light snow → heavy snow, all violet  # blue (light rain) → yellow → red → magenta: apart from the green-teal moisture
 
 
@@ -53,7 +55,7 @@ def fetch(run):
         if not idx: print('moist: missing step', st, flush=True); continue
         for line in idx.decode().strip().split('\n'):
             x = json.loads(line); p = x.get('param')
-            key = p if x.get('levtype') == 'sfc' and p in ('tcwv', 'msl', 'tp', 'tcc', '2t') else p if x.get('levtype') == 'pl' and x.get('levelist') == '700' and p in ('u', 'v') else None
+            key = p if x.get('levtype') == 'sfc' and p in ('tcwv', 'msl', 'tp', 'tcc', '2t', '10u', '10v', '10fg', 'fg10', 'i10fg') else p if x.get('levtype') == 'pl' and x.get('levelist') == '700' and p in ('u', 'v') else None
             if key: jobs.append((st, key, base + '.grib2', (x['_offset'], x['_offset'] + x['_length'] - 1)))
     F = {}
     import eccodes
@@ -71,6 +73,10 @@ def fetch(run):
         if all(k in f for k in ('tcwv', 'msl', 'u', 'v')):
             out[st] = {'tcwv': f['tcwv'], 'msl': f['msl'] / 100.0, 'tp': f.get('tp', np.zeros_like(f['tcwv'])) * 1000.0, 'u': f['u'], 'v': f['v'],
                        'tcc': f.get('tcc', np.clip((f['tcwv'] - 10) / 25, 0, 1)), 't2': f['2t'] - 273.15 if '2t' in f else np.full_like(f['tcwv'], 10.0)}
+            if '10u' in f and '10v' in f: out[st]['ws'] = np.hypot(f['10u'], f['10v']); out[st]['u10'] = f['10u']; out[st]['v10'] = f['10v']
+            g_ = next((f[k] for k in ('10fg', 'fg10', 'i10fg') if k in f), None)
+            if g_ is not None: out[st]['gust'] = g_
+            elif 'ws' in out[st]: out[st]['gust'] = out[st]['ws'] * 1.6  # no gusts in the data: the usual gust factor
     print('moist: fields at', len(out), 'steps', flush=True)
     return out
 
@@ -79,7 +85,7 @@ def interp(F, h):
     """The fields at hour h (linear between the 3-hourly steps); precipitation as mm in the 3 h around h."""
     ks = sorted(F); j = int(np.clip(np.searchsorted(ks, h), 1, len(ks) - 1)); a = float(np.clip((h - ks[j - 1]) / (ks[j] - ks[j - 1]), 0, 1))
     A, B = F[ks[j - 1]], F[ks[j]]
-    out = {k: A[k] * (1 - a) + B[k] * a for k in ('tcwv', 'msl', 'u', 'v', 'tcc', 't2') if k in A and k in B}
+    out = {k: A[k] * (1 - a) + B[k] * a for k in ('tcwv', 'msl', 'u', 'v', 'tcc', 't2', 'ws', 'gust', 'u10', 'v10') if k in A and k in B}
     rate = lambda i: np.clip(F[ks[i]]['tp'] - F[ks[i - 1]]['tp'], 0, None) if i >= 1 else np.zeros_like(A['tp'])  # mm in the 3 h before step i
     out['pr'] = rate(j) * (1 - abs(a - 0.5)) + (rate(j - 1) if a < 0.5 else rate(min(j + 1, len(ks) - 1))) * abs(a - 0.5)
     return out
@@ -326,21 +332,22 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
     fig.canvas.draw(); rnd = fig.canvas.get_renderer(); taken = []
     def place(x, y, txt, fs, cands, keep=True):
         for dx, dy, ha, va in cands:
-            t_ = ax.text(x + dx, y + dy, txt, fontsize=fs, fontweight='bold', ha=ha, va=va); bb = t_.get_window_extent(rnd).expanded(1.08, 1.2); t_.remove()
+            t_ = ax.text(x + dx, y + dy, txt, fontsize=fs, fontweight='bold', ha=ha, va=va); bb = t_.get_window_extent(rnd).expanded(1.08, 2.4); t_.remove()
             if bb.y0 > 0.2 * fig.bbox.height and bb.y1 < 0.86 * fig.bbox.height and 4 < bb.x0 and bb.x1 < fig.bbox.width - 4 and not any(bb.overlaps(o) for o in taken):
                 if keep: taken.append(bb)
                 return (x + dx, y + dy, ha, va)
         return None
-    tagpos = [place(p['lon'], p['lat'], '☂ ' + Rn.city_name(p, lang), 9, [(0.22, 0.12, 'left', 'bottom'), (0.22, -0.12, 'left', 'top'), (-0.22, 0.12, 'right', 'bottom'), (-0.22, -0.12, 'right', 'top')]) for p in pl]
+    tagpos = [place(p['lon'], p['lat'], '☂ ' + Rn.city_name(p, lang) + '', 9, [(0.22, 0.12, 'left', 'bottom'), (0.22, -0.12, 'left', 'top'), (-0.22, 0.12, 'right', 'bottom'), (-0.22, -0.12, 'right', 'top')]) for p in pl]
     tagfs = [9] * len(pl)
     for j_, p in enumerate(pl):  # a city that did not fit: a smaller tag below or above
         if tagpos[j_] is None:
-            tagpos[j_] = place(p['lon'], p['lat'], '☂ ' + Rn.city_name(p, lang), 7.5, [(0, -0.18, 'center', 'top'), (0, 0.18, 'center', 'bottom'), (0.2, 0, 'left', 'center'), (-0.2, 0, 'right', 'center')]); tagfs[j_] = 7.5
+            tagpos[j_] = place(p['lon'], p['lat'], '☂ ' + Rn.city_name(p, lang) + '', 7.5, [(0, -0.18, 'center', 'top'), (0, 0.18, 'center', 'bottom'), (0.2, 0, 'left', 'center'), (-0.2, 0, 'right', 'center')]); tagfs[j_] = 7.5
     halo = [matplotlib.patheffects.withStroke(linewidth=2.6, foreground='#ffffff')]
+    matplotlib.rcParams['hatch.color'] = '#d9a400'; matplotlib.rcParams['hatch.linewidth'] = 0.8
     # the title band, the clock, the legends (drawn once)
     band = dict(boxstyle='round,pad=0.5,rounding_size=0.6', fc='#1d2a3acc', ec='none')
     fig.text(0.018, 0.955, f"{NAMES[region][lang]} · {X['title']}", fontsize=17, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center', bbox=band, zorder=20)
-    fig.text(0.018, 0.893, X['sub'], fontsize=9.5, color='#e3ebf3', va='center', zorder=20, bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
+    fig.text(0.018, 0.893, X['sub'] + X['wsub'], fontsize=9.5, color='#e3ebf3', va='center', zorder=20, bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
     fig.patches.append(matplotlib.patches.FancyBboxPatch((0.008, 0.012), 0.53, 0.115, boxstyle='round,pad=0,rounding_size=0.008', transform=fig.transFigure, facecolor='#1d2a3acc', edgecolor='none', zorder=19))
     clock = fig.text(0.982, 0.955, '', fontsize=17, fontfamily=Rn.DISPLAY, fontweight='bold', color='#f0b88a', ha='right', va='center', bbox=band, zorder=20)
     def swatch(x, w, cols, title, lo=None, hi=None):
@@ -349,9 +356,10 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
             fig.patches.append(matplotlib.patches.Rectangle((x + w * i_ / len(cols), 0.045), w / len(cols), 0.022, transform=fig.transFigure, facecolor=c_, edgecolor='none', zorder=20.5))
         if lo: fig.text(x, 0.028, lo, fontsize=8.5, color='#c9d6e5', zorder=21, va='center')
         if hi: fig.text(x + w, 0.028, hi, fontsize=8.5, color='#c9d6e5', ha='right', zorder=21, va='center')
-    swatch(0.02, 0.1, ['#c4c9cf', '#9aa2ab', '#7a838e'], '☁ ' + X['cl'])
-    swatch(0.145, 0.175, RAIN_COL, X['rn'], X['prl'], X['prh'])
-    swatch(0.345, 0.175, SNOW_COL, '❄ ' + X['sn'], X['prl'], X['snh'])
+    swatch(0.02, 0.075, ['#c4c9cf', '#9aa2ab', '#7a838e'], '☁ ' + X['cl'])
+    swatch(0.115, 0.125, RAIN_COL, X['rn'], X['prl'], X['prh'])
+    swatch(0.26, 0.125, SNOW_COL, '❄ ' + X['sn'], X['prl'], X['snh'])
+    swatch(0.405, 0.12, WIND_COL, X['wd_t'], '15', '25+ ' + X['ms'])
     fig.text(0.982, 0.012, 'ECMWF IFS · osmon', fontsize=7, color='#9fb0c2', ha='right', va='bottom', zorder=21)
     from matplotlib.path import Path as MPath
     pts0 = np.c_[LON.ravel(), LAT.ravel()]; land = np.zeros(len(pts0), bool)
@@ -420,6 +428,11 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
         C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.40, 0.45, 0.51); cl[..., 3] = np.clip((C - 0.2) / 0.7, 0, 1) ** 1.1 * 0.6
         img.set_data(cl); ax.set_aspect(1 / k)
         T2 = gaussian_filter(Q['t2'][np.ix_(ri, ci)], 1.0); SN = T2 <= 0.5
+        GU = gaussian_filter(Q['gust'][np.ix_(ri, ci)], 1.0) if 'gust' in Q else gaussian_filter(np.hypot(Q['u'], Q['v'])[np.ix_(ri, ci)], 1.0) * 0.9
+        if GU.max() >= WIND_LV[0]:
+            dyn.append(ax.contourf(LON, LAT, GU, levels=WIND_LV, colors=WIND_COL, alpha=0.5, zorder=1.9, antialiased=True))
+            dyn.append(ax.contourf(LON, LAT, GU, levels=[WIND_LV[0], 99], colors='none', hatches=['////'], zorder=1.95))
+            dyn.append(ax.contour(LON, LAT, GU, levels=[WIND_LV[0]], colors='#c99400', linewidths=1.0, zorder=1.96))
         if P.max() >= PR_LV[0]:
             if (~SN).any(): dyn.append(ax.contourf(LON, LAT, np.where(SN, 0, P), levels=PR_LV, colors=RAIN_COL, alpha=0.88, zorder=2, antialiased=True))
             if SN.any() and P[SN].max() >= PR_LV[0]: dyn.append(ax.contourf(LON, LAT, np.where(SN, P, 0), levels=PR_LV, colors=SNOW_COL, alpha=0.92, zorder=2.05, antialiased=True))
@@ -470,7 +483,13 @@ def video(F, region, lang, mp4, run, off=5, paths=()):
                 kk = (f - rings[nm]) / 10; dyn += ax.plot(p['lon'], p['lat'], 'o', ms=8 + 40 * kk, mfc='none', mec='#1f6fd1', mew=3 * (1 - kk), alpha=1 - kk, zorder=8.2)
             tp = tagpos[j_]
             if tp:
-                dyn.append(ax.text(tp[0], tp[1], ('❄ ' if snowy else '☂ ' if wet else '') + nm, fontsize=tagfs[j_], fontweight='bold', color='#6639ae' if snowy else '#1f6fd1' if wet else NAVY, ha=tp[2], va=tp[3], zorder=8.5, path_effects=halo))
+                yy_, xx_ = np.clip(gy_, 0, GU.shape[0] - 1), np.clip(gx_, 0, GU.shape[1] - 1); g_ = int(round(float(GU[yy_, xx_])))
+                uu_, vv_ = (Q['u10'], Q['v10']) if 'u10' in Q else (Q['u'], Q['v'])
+                ang = np.degrees(np.arctan2(vv_[ri[yy_], ci[xx_]], uu_[ri[yy_], ci[xx_]]))  # where the wind blows to
+                arw = '→↗↑↖←↙↓↘'[int(((ang + 22.5) % 360) // 45)]
+                dyn.append(ax.annotate(('❄ ' if snowy else '☂ ' if wet else '') + nm, (tp[0], tp[1]), fontsize=tagfs[j_], fontweight='bold', color='#6639ae' if snowy else '#1f6fd1' if wet else NAVY, ha=tp[2], va=tp[3], zorder=8.5, path_effects=halo))
+                dyn.append(ax.annotate(f'{arw} {g_} ' + X['ms'], (0.12, 0) if tp[2] != 'right' else (0.88, 0), xycoords=dyn[-1], va='top', ha='left' if tp[2] != 'right' else 'right', fontsize=tagfs[j_] - 0.5,
+                                       fontweight='bold', color='#b07800' if g_ >= 15 else '#5b6b7c', zorder=8.5, path_effects=halo))
         wet_prev = set(wet_c)
         tnow = run + dt.timedelta(hours=float(h))
         el = sun_elev(tnow); nd = np.zeros(LON.shape + (4,)); nd[..., 0] = 0.12; nd[..., 1] = 0.18; nd[..., 2] = 0.32; nd[..., 3] = np.clip((2 - el) / 10, 0, 1) * 0.16
