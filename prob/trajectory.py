@@ -122,6 +122,29 @@ def follow(W, lon, lat, t_end):
     return path
 
 
+def load_polys():
+    """The countries near the area: {iso: [(Path, bbox), ...]} for 'which country is this point in'."""
+    from matplotlib.path import Path
+    G = json.load(open(HERE / 'geo_world.json'))['countries']; polys = {}
+    for iso, c in G.items():
+        rr = []
+        for r in c['rings']:
+            ar = np.asarray(r)
+            if ar[:, 0].max() < LON0 - 10 or ar[:, 0].min() > LON1 + 10 or ar[:, 1].max() < LAT0 - 10: continue
+            rr.append((Path(ar), (ar[:, 0].min(), ar[:, 0].max(), ar[:, 1].min(), ar[:, 1].max())))
+        if rr: polys[iso] = rr
+    return G, polys
+
+
+def cname(iso, lang, G=None):
+    G = G or json.load(open(HERE / 'geo_world.json'))['countries']
+    return UZN.get(iso, G.get(iso, {}).get('name', iso)) if lang == 'uz' else G.get(iso, {}).get(lang) or G.get(iso, {}).get('name', iso)
+
+
+SEA_NOM = {'Каспийского моря': 'Каспийское море', 'Аральского моря': 'Аральское море', 'Чёрного моря': 'Чёрное море', 'Средиземного моря': 'Средиземное море', 'Персидского залива': 'Персидский залив',
+           'Аравийского моря': 'Аравийское море', 'Красного моря': 'Красное море', 'озера Балхаш': 'оз. Балхаш'}
+
+
 def country_at(lon, lat, polys):
     from matplotlib.path import Path
     for iso, rings in polys.items():
@@ -155,17 +178,7 @@ def main():
     run = dt.datetime.fromisoformat(D['run'].replace('Z', '+00:00')).replace(tzinfo=None)
     W = dict(np.load(a.winds, allow_pickle=True)['W'].item()) if a.winds else fetch_winds(run)
     if len(W) < 6: print('traj: not enough wind', flush=True); return
-    from matplotlib.path import Path
-    G = json.load(open(HERE / 'geo_world.json'))['countries']
-    polys = {}
-    for iso, c in G.items():
-        rr = []
-        for r in c['rings']:
-            ar = np.asarray(r)
-            if ar[:, 0].max() < LON0 - 10 or ar[:, 0].min() > LON1 + 10 or ar[:, 1].max() < LAT0 - 10: continue
-            rr.append((Path(ar), (ar[:, 0].min(), ar[:, 0].max(), ar[:, 1].min(), ar[:, 1].max())))
-        if rr: polys[iso] = rr
-    cname = lambda iso, lang: (UZN.get(iso, G.get(iso, {}).get('name', iso)) if lang == 'uz' else G.get(iso, {}).get(lang) or G.get(iso, {}).get('name', iso))
+    G, polys = load_polys()
     out = pathlib.Path(a.out) / 'hr'; out.mkdir(parents=True, exist_ok=True)
     st = np.array([int(x) for x in D['steps']], float); wn = np.array([int(x) for x in D['win']], float); mid = st - wn / 2
     for region in a.regions.split(','):
@@ -188,7 +201,7 @@ def main():
                 text = {}
                 for lang in ('ru', 'uz', 'tr'):
                     X = TX[lang]; parts = [X['come'].format(w=(X['snow'] if snow else X['rain']).capitalize(), d=DIR[lang][di])]
-                    if via: parts.append(X['via'].format(c=' → '.join(cname(c, lang) for c in reversed(via))))
+                    if via: parts.append(X['via'].format(c=' → '.join(cname(c, lang, G) for c in reversed(via))))
                     if src: parts.append(X['src'].format(s=src[0][lang], h=X['d2'] if src[1] >= 42 else X['d1'] if 20 <= src[1] <= 30 else X['h'].format(n=src[1])))
                     text[lang] = ', '.join(parts)
                 items.append({'city': {l: Rn.city_name(p, l) for l in ('ru', 'uz', 'tr')}, 'lat': p['lat'], 'lon': p['lon'], 'day': d.isoformat(), 'k': k,

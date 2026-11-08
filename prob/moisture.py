@@ -13,17 +13,18 @@ import numpy as np
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import trajectory as TJ
 from trajectory import ECM, get  # the same mirror and downloader
 
 STEPS = list(range(0, 73, 3))
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
-VIEW = {'UZ': (44.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5)}
+VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5)}
 TX = {'ru': dict(title='Поступление влаги', sub='водяной пар в атмосфере · ветер на высоте ~3 км · осадки · давление', tcwv='Водяной пар, кг/м²', pr='Осадки, мм за 3 ч',
-                 hi='В', lo='Н', tz='по Ташкенту', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
+                 hi='В', lo='Н', tz='по Ташкенту', src='влага: {s}', leg='путь влаги к городу', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
       'uz': dict(title='Namlik kelishi', sub='atmosferadagi suv bug‘i · ~3 km balandlikdagi shamol · yog‘in · bosim', tcwv='Suv bug‘i, kg/m²', pr='Yog‘in, 3 soatda mm',
-                 hi='Y', lo='P', tz='Toshkent vaqti', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']),
+                 hi='Y', lo='P', tz='Toshkent vaqti', src='namlik: {s}', leg='namlikning shaharga yo‘li', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']),
       'tr': dict(title='Nem girişi', sub='atmosferdeki su buharı · ~3 km rüzgâr · yağış · basınç', tcwv='Su buharı, kg/m²', pr='Yağış, 3 saatte mm',
-                 hi='Y', lo='A', tz='TSİ', wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'])}
+                 hi='Y', lo='A', tz='TSİ', src='nem: {s}', leg='nemin şehre yolu', wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'])}
 # water vapour on a dark map: the dry air dark slate, the moist air glowing teal-green (the moisture stands out like on satellite water-vapour images)
 TCWV_STOPS = [(0, '#1f2530'), (6, '#2a3340'), (12, '#2f4450'), (18, '#2e5a60'), (25, '#2d7470'), (32, '#3a927f'), (40, '#5fb08f'), (50, '#9ccf9f'), (70, '#e3f2c0')]  # dark dry air → glowing moist air
 # precipitation, radar-like colours
@@ -75,7 +76,7 @@ def interp(F, h):
     return out
 
 
-def video(F, region, lang, mp4, run, off=5):
+def video(F, region, lang, mp4, run, off=5, paths=()):
     import render as Rn
     from render import plt, matplotlib
     from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm, ListedColormap
@@ -129,6 +130,30 @@ def video(F, region, lang, mp4, run, off=5):
     for l in lines: ax.add_collection(l)
     img = ax.imshow(np.zeros((len(ri), len(ci))), extent=(lon[ci[0]] - RES / 2, lon[ci[-1]] + RES / 2, lat[ri[0]] - RES / 2, lat[ri[-1]] + RES / 2), origin='lower', cmap=cmap, vmin=0, vmax=70,
                     interpolation='bilinear', zorder=1, aspect='auto')
+    # where the moisture comes from: for the big cities that will get rain, the air's path 2 days back
+    # (prob/trajectory.py), drawn dashed with its source; a bright drop travels along it in time with the video
+    SRC = '#ffb15c'
+    placed = []
+    for pa in paths:
+        q = np.array(pa['path'])
+        ax.plot(q[:, 0], q[:, 1], color=SRC, lw=1.8, ls=(0, (5, 3)), alpha=0.9, zorder=6.5, path_effects=[matplotlib.patheffects.withStroke(linewidth=3.5, foreground='#1d2a3a88')])
+        for m in (len(q) // 3, 2 * len(q) // 3):
+            if 1 <= m < len(q): ax.annotate('', xy=q[m - 1, :2], xytext=q[m, :2], arrowprops=dict(arrowstyle='-|>', color=SRC, lw=1.8, mutation_scale=15), zorder=6.6)
+        # the source: at the start of the path, or (when it is off the map) where the path comes into the picture
+        mx, my = (x1 - x0) * 0.06, (y1v - y0v) * 0.08
+        inside = [i for i in range(len(q)) if x0 + mx < q[i, 0] < x1 - mx and y0v + (y1v - y0v) * 0.2 < q[i, 1] < y1v - my * 1.6]  # above the legend panel
+        if inside:
+            i = max(inside); sx, sy = q[i, 0], q[i, 1]; off_map = i < len(q) - 1
+            ax.plot(sx, sy, 'o', ms=7, mfc=SRC, mec='#ffffff', mew=1.5, zorder=7)
+            ly = sy + (y1v - y0v) * 0.03
+            while any(abs(ly - p_[1]) < (y1v - y0v) * 0.045 and abs(sx - p_[0]) < (x1 - x0) * 0.2 for p_ in placed): ly += (y1v - y0v) * 0.05  # not over another label
+            placed.append((sx, ly))
+            ax.text(sx, ly, (lambda t: t[:1].upper() + t[1:])(X['src'].format(s=pa['src'][lang])) + (' ↙' if off_map and q[-1, 0] < sx else ' ↘' if off_map else ''), fontsize=9.5, fontweight='bold',
+                    color='#1d2a3a', ha='center', va='bottom', zorder=9, bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.5', fc=SRC, ec='none'))
+    if paths:
+        ax.plot([], [], color=SRC, lw=1.8, ls=(0, (5, 3)), label=X['leg'])
+        fig.text(0.545, 0.06, '- - ▶  ' + X['leg'], fontsize=9, fontweight='bold', color=SRC, va='center', zorder=21,
+                 bbox=dict(boxstyle='round,pad=0.4,rounding_size=0.5', fc='#1d2a3acc', ec='none'))
     dyn = []
     fdir = pathlib.Path(tempfile.mkdtemp()); hours = list(np.arange(0, 72.01, 0.5)); levels = []
     land = None
@@ -149,7 +174,15 @@ def video(F, region, lang, mp4, run, off=5):
                     dyn.append(ax.text(LON[yy, xx], LAT[yy, xx], lab, fontsize=20, fontweight='bold', color=col, ha='center', va='center', zorder=7,
                                        path_effects=[matplotlib.patheffects.withStroke(linewidth=2.5, foreground='#1d2a3a')]))
                     dyn.append(ax.text(LON[yy, xx], LAT[yy, xx] - 0.9, f'{M[yy, xx]:.0f}', fontsize=7.5, color='#ffffff', ha='center', va='center', zorder=7))
-        # move the streaks (sped up so the motion is visible: ~1.6 h of travel per frame)
+        for pa in paths:  # the drop of moisture on its way: where the air is now (hours before it reaches the city)
+            q = np.array(pa['path']); back = pa['h'] - h
+            if 0 <= back <= q[-1, 2]:
+                px, py = np.interp(back, q[:, 2], q[:, 0]), np.interp(back, q[:, 2], q[:, 1])
+                dyn += ax.plot(px, py, 'o', ms=16, mfc=SRC, mec='none', alpha=0.28, zorder=7.4)
+                dyn += ax.plot(px, py, 'o', ms=8, mfc=SRC, mec='#ffffff', mew=1.6, zorder=7.5)
+            elif -6 <= back < 0:  # it arrived: a ring at the city
+                kk = (-back) / 6; dyn += ax.plot(pa['lon'], pa['lat'], 'o', ms=10 + 26 * kk, mfc='none', mec=SRC, mew=2.4 * (1 - kk), alpha=1 - kk, zorder=7.5)
+        # move the streaks (sped up so the motion is visible: ~1.1 h of travel per frame)
         U, V = Q['u'][np.ix_(ri, ci)], Q['v'][np.ix_(ri, ci)]
         gx = np.clip(((pts[:, 0] - lon[ci[0]]) / RES).astype(int), 0, len(ci) - 1); gy = np.clip(((pts[:, 1] - lat[ri[0]]) / RES).astype(int), 0, len(ri) - 1)
         u, v = U[gy, gx], V[gy, gx]; sec = 1.1 * 3600
@@ -184,18 +217,48 @@ def video(F, region, lang, mp4, run, off=5):
     shutil.rmtree(fdir)
 
 
+def moisture_paths(F, W, region, n=3):
+    """For the biggest cities with rain in the next 72 h: the hour of their heaviest rain, the air's path 48 h back
+    and its moisture source (the last sea it crossed, else the country it came from)."""
+    G, polys = TJ.load_polys()
+    pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region], key=lambda p: -p.get('pop', 0))[:8]
+    out = []
+    for p in pl:
+        gx, gy = int(round((p['lon'] - LON0) / RES)), int(round((p['lat'] - LAT0) / RES))
+        best = max(((interp(F, h)['pr'][gy, gx], h) for h in range(3, 73, 3)), default=(0, 0))
+        if best[0] < 1.0: continue
+        path = TJ.follow(W, p['lon'], p['lat'], float(best[1]))
+        if len(path) < 8: continue
+        d = TJ.describe(path, region, polys, G)
+        if not d: continue
+        di, via, src = d
+        if src: name = {'ru': TJ.SEA_NOM.get(src[0]['ru'], src[0]['ru']), 'uz': src[0]['uz'], 'tr': src[0]['tr']}
+        elif via: name = {l: TJ.cname(via[-1], l, G) for l in ('ru', 'uz', 'tr')}
+        else: continue
+        if any(abs(o['path'][-1][0] - path[-1][0]) < 2.5 and abs(o['path'][-1][1] - path[-1][1]) < 2 for o in out): continue  # the same stream twice: once
+        out.append({'city': p.get('ru', p.get('en')), 'lon': p['lon'], 'lat': p['lat'], 'h': float(best[1]), 'path': path, 'src': name})
+        if len(out) >= n: break
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('npz'); ap.add_argument('out'); ap.add_argument('--regions', default='UZ,KZ'); ap.add_argument('--langs', default='ru,uz')
-    ap.add_argument('--fields', help='saved fields (tests)')
+    ap.add_argument('--fields', help='saved fields (tests)'); ap.add_argument('--winds', help='saved steering winds (tests)')
     a = ap.parse_args()
     import render as Rn
     D = Rn.load(a.npz); run = dt.datetime.fromisoformat(D['run'].replace('Z', '+00:00')).replace(tzinfo=None)
     F = dict(np.load(a.fields, allow_pickle=True)['F'].item()) if a.fields else fetch(run)
     if len(F) < 6: print('moist: not enough fields', flush=True); return
     out = pathlib.Path(a.out) / 'hr'; out.mkdir(parents=True, exist_ok=True)
+    try: W = dict(np.load(a.winds, allow_pickle=True)['W'].item()) if a.winds else TJ.fetch_winds(run)
+    except Exception as e: print('moist: no winds for the paths', e, flush=True); W = {}
     for region in a.regions.split(','):
+        paths = []
+        try: paths = moisture_paths(F, W, region) if len(W) >= 6 else []
+        except Exception as e: print('moist paths failed', region, e, flush=True)
+        print('moist paths', region, [(p['city'], p['h'], p['src']['ru']) for p in paths], flush=True)
         for lang in a.langs.split(','):
-            try: video(F, region, lang, out / f'{region}_moist_{lang}.mp4', run); print('moist', region, lang, 'ok', flush=True)
+            try: video(F, region, lang, out / f'{region}_moist_{lang}.mp4', run, paths=paths); print('moist', region, lang, 'ok', flush=True)
             except Exception as e:
                 import traceback; traceback.print_exc(); print('moist failed', region, lang, e, flush=True)
 
