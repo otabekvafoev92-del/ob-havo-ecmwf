@@ -1687,7 +1687,9 @@ async function siteFresh(env) {
   const B = await fetch(`${base(env)}/build.json?t=${Date.now()}`).then(r => r.ok ? r.json() : null).catch(() => null);
   if (!B || !B.built) return { fresh: true, age: 0 };  // no stamp yet: do not hold anything
   const age = (Date.now() - Date.parse(B.built)) / 3600e3;
-  return { fresh: age < FRESH_H, age, built: B.built };
+  // a build made after midnight (Tashkent) is today's forecast: the morning sends (from 06:00) go out on time with it
+  const sameDay = new Date(Date.parse(B.built) + TZ * 3600e3).toISOString().slice(0, 10) === new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10);
+  return { fresh: age < FRESH_H || sameDay, age, built: B.built };
 }
 // one invitation for the people who use the bot without the daily forecast: today's forecast for their country and a
 // button to get it every morning. Each person gets it once at most (table invited), in small batches per call
