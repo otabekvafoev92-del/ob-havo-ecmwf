@@ -57,7 +57,7 @@ SNOW_COL = ['#eadcff', '#d3bcfa', '#b897f0', '#9b72e2', '#8052cc', '#6639ae', '#
 
 def fetch(run, steps=None):
     """{step: dict(tcwv, msl hPa, tp mm (accumulated from 0), u, v, …)} on the area grid (rows south → north).
-    steps: [(hour, 'hres'|'ens')]; 'ens' takes the control member of the ensemble (it reaches 15 days)."""
+    steps: [(hour, 'hres'|'ens')]; 'ens' takes one member of the ensemble (it reaches 15 days)."""
     d, hh = run.strftime('%Y%m%d'), run.strftime('%H')
     jobs = []
     for st, kind in (steps or [(s_, 'hres') for s_ in STEPS]):
@@ -72,7 +72,7 @@ def fetch(run, steps=None):
         if not idx: print('moist: missing step', st, flush=True); continue
         for line in idx.decode().strip().split('\n'):
             x = json.loads(line); p = x.get('param')
-            if kind == 'ens' and x.get('type') != 'cf': continue
+            if kind == 'ens' and not (x.get('type') == 'cf' or x.get('number') == '1'): continue  # the open ensemble files carry the members (no control): member 1
             lt, lv = x.get('levtype'), x.get('levelist')
             key = (p if lt == 'sfc' and p in ('tcwv', 'msl', 'tp', 'tcc', '2t', '10u', '10v', '10fg', 'fg10', 'i10fg', 'sp') else p if lt == 'pl' and lv == '700' and p in ('u', 'v')
                    else p + '850' if lt == 'pl' and lv == '850' and p in ('t', 'r') else None)
