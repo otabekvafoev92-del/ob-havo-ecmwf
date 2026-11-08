@@ -270,12 +270,14 @@ function draw() {
     cx.strokeStyle = '#9fb0c2'; cx.lineWidth = 0.9; cx.stroke(P2('a1'));
   } else if (M.admin) { cx.strokeStyle = '#c9d3de'; cx.lineWidth = 0.7; cx.stroke(P2('admin')); }
   const nameBoxes = [];
-  if (GEO && Z >= 1.35) {  // the region names (and the district names very close), faint, under the city pills
-    const L = Z >= 3.2 ? GEO.adm2 : GEO.adm1; cx.font = `${Z >= 3.2 ? 500 : 600} ${Z >= 3.2 ? 10 : 11}px 'Golos Text',sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillStyle = 'rgba(80,98,120,.62)';
-    for (const a of L) { const [px, py] = proj(a.c[0], a.c[1]); if (px < 20 || py < 20 || px > W - 20 || py > Hc - 20) continue;
-      const tx = (a.name[LANG] || a.name.ru).replace(/ обл\.$| viloyati$/, ''), w = cx.measureText(tx).width, b = [px - w / 2 - 3, py - 8, w + 6, 16];
-      if (nameBoxes.some(q => b[0] < q[0] + q[2] && q[0] < b[0] + b[2] && b[1] < q[1] + q[3] && q[1] < b[1] + b[3])) continue;
-      nameBoxes.push(b); cx.fillText(tx, px, py); }
+  if (GEO && Z >= 1.3) {  // zoomed in: the region names, and closer the district names too (under the city pills)
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    const put = (a, font, color, pad) => { const [px, py] = proj(a.c[0], a.c[1]); if (px < 16 || py < 12 || px > W - 16 || py > Hc - 12) return;
+      cx.font = font; const tx = (a.name[LANG] || a.name.ru).replace(/ обл\.$| viloyati$/, ''), w = cx.measureText(tx).width, b = [px - w / 2 - pad, py - 8, w + pad * 2, 16];
+      if (nameBoxes.some(q => b[0] < q[0] + q[2] && q[0] < b[0] + b[2] && b[1] < q[1] + q[3] && q[1] < b[1] + b[3])) return;
+      nameBoxes.push(b); cx.lineWidth = 3; cx.strokeStyle = 'rgba(255,255,255,.85)'; cx.strokeText(tx, px, py); cx.fillStyle = color; cx.fillText(tx, px, py); };
+    for (const a of GEO.adm1) put(a, `700 ${Z >= 2 ? 12.5 : 11.5}px 'Golos Text',sans-serif`, 'rgba(58,76,98,.78)', 4);       // regions first: they win the space
+    if (Z >= 2) for (const a of GEO.adm2) put(a, `500 ${Z >= 3.5 ? 11 : 10}px 'Golos Text',sans-serif`, 'rgba(90,108,130,.72)', 2);  // then the districts
     cx.textAlign = 'left';
   }
   cx.strokeStyle = '#2b3a4e'; cx.lineWidth = 1.8; cx.stroke(co);
