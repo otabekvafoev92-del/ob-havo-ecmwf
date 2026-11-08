@@ -399,9 +399,10 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     # where the moisture comes from: for the big cities that will get rain, the air's path 2 days back
     # (prob/trajectory.py), drawn dashed with its source; a bright drop travels along it in time with the video
     SRC = '#f08a24'
-    placed = []
+    placed = []; pa_art = []
     for pa in paths:
         q = np.array(pa['path'])
+        _before = set(map(id, ax.get_children()))
         ax.plot(q[:, 0], q[:, 1], color=SRC, lw=1.8, ls=(0, (5, 3)), alpha=0.9, zorder=6.5, path_effects=[matplotlib.patheffects.withStroke(linewidth=3.5, foreground='#ffffffaa')])
         for m in (len(q) // 3, 2 * len(q) // 3):
             if 1 <= m < len(q): ax.annotate('', xy=q[m - 1, :2], xytext=q[m, :2], arrowprops=dict(arrowstyle='-|>', color=SRC, lw=1.8, mutation_scale=15), zorder=6.6)
@@ -416,6 +417,10 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
             placed.append((sx, ly))
             ax.text(sx, ly, (lambda t: t[:1].upper() + t[1:])(X['src'].format(s=pa['src'][lang])) + (' ↙' if off_map and q[-1, 0] < sx else ' ↘' if off_map else ''), fontsize=9.5, fontweight='bold',
                     color='#1d2a3a', ha='center', va='bottom', zorder=9, bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.5', fc=SRC, ec='none'))
+        pa_art.append([c_ for c_ in ax.get_children() if id(c_) not in _before])
+        if H > 72:
+            for c_ in pa_art[-1]: c_.set_visible(False)
+            placed.pop() if placed and inside else None  # labels of paths at other times may share a place
     if paths:
         fig.text(0.982, 0.893, '- - ▶  ' + X['leg'], fontsize=9.5, fontweight='bold', color=SRC, ha='right', va='center', zorder=21,
                  bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
@@ -462,6 +467,10 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
                                        path_effects=[matplotlib.patheffects.withStroke(linewidth=3, foreground='#ffffff')]))
                     dyn.append(ax.text(LON[yy, xx], LAT[yy, xx] - 1.0, X['hiw'] if lab == X['hi'] else X['low'], fontsize=9.5, fontweight='bold', color='#ffffff', ha='center', va='center', zorder=7,
                                        bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.5', fc=col, ec='none')))
+        if H > 72:
+            for pa, arts in zip(paths, pa_art):
+                on = -9 <= pa['h'] - h <= 60
+                for c_ in arts: c_.set_visible(on)
         for pa in paths:  # the drop of moisture on its way: where the air is now (hours before it reaches the city)
             q = np.array(pa['path']); back = pa['h'] - h
             if 0 <= back <= q[-1, 2]:
@@ -533,15 +542,34 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
     shutil.rmtree(fdir)
 
 
-def moisture_paths(F, W, region, n=3):
-    """For the biggest cities with rain in the next 72 h: the hour of their heaviest rain, the air's path 48 h back
-    and its moisture source (the last sea it crossed, else the country it came from)."""
+def extend_winds(W, F):
+    """The steering winds past the trajectory data (+96 h): the 700 hPa wind of the moisture fields, put on the paths' grid
+    (outside our area the last known wind stays)."""
+    if not W: return W
+    W = dict(W); last = max(W); U0, V0 = W[last]
+    r0, c0 = int(round((LAT0 - TJ.LAT0) / TJ.RES)), int(round((LON0 - TJ.LON0) / TJ.RES)); stp = int(round(TJ.RES / RES))
+    for st in sorted(F):
+        if st <= last: continue
+        U, V = U0.copy(), V0.copy(); u, v = F[st]['u'][::stp, ::stp], F[st]['v'][::stp, ::stp]
+        h_, w_ = min(u.shape[0], U.shape[0] - r0), min(u.shape[1], U.shape[1] - c0)
+        U[r0:r0 + h_, c0:c0 + w_] = u[:h_, :w_]; V[r0:r0 + h_, c0:c0 + w_] = v[:h_, :w_]; W[st] = (U, V)
+    return W
+
+
+def moisture_paths(F, W, region, n=3, H=72):
+    """For the biggest cities with rain: the hour of their heaviest rain, the air's path 48 h back
+    and its moisture source (the last sea it crossed, else the country it came from).
+    Over 3 days: one path a city (at most n). Over 15 days: the rain events of every 3-day block (up to 2 a block)."""
     G, polys = TJ.load_polys()
     pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region], key=lambda p: -p.get('pop', 0))[:8]
+    blocks = [(3, 73)] if H <= 72 else [(b, min(b + 72, H + 1)) for b in range(3, H, 72)]
+    per = n if H <= 72 else 2
     out = []
-    for p in pl:
+    for b0, b1 in blocks:
+      got = []
+      for p in pl:
         gx, gy = int(round((p['lon'] - LON0) / RES)), int(round((p['lat'] - LAT0) / RES))
-        best = max(((interp(F, h)['pr'][gy, gx], h) for h in range(3, 73, 3)), default=(0, 0))
+        best = max(((interp(F, h)['pr'][gy, gx], h) for h in range(b0, b1, 3)), default=(0, 0))
         if best[0] < 1.0: continue
         path = TJ.follow(W, p['lon'], p['lat'], float(best[1]))
         if len(path) < 8: continue
@@ -551,10 +579,11 @@ def moisture_paths(F, W, region, n=3):
         if src: name = {'ru': TJ.SEA_NOM.get(src[0]['ru'], src[0]['ru']), 'uz': src[0]['uz'], 'tr': src[0]['tr']}
         elif via: name = {l: TJ.cname(via[-1], l, G) for l in ('ru', 'uz', 'tr')}
         else: continue
-        if any(abs(o['path'][-1][0] - path[-1][0]) < 2.5 and abs(o['path'][-1][1] - path[-1][1]) < 2 for o in out): continue  # the same stream twice: once
+        if any(abs(o['path'][-1][0] - path[-1][0]) < 2.5 and abs(o['path'][-1][1] - path[-1][1]) < 2 for o in got) or any(o['src']['ru'] == name['ru'] for o in got): continue  # the same stream (or source) twice: once
         t2 = interp(F, best[1]).get('t2'); snow = bool(t2 is not None and t2[gy, gx] <= 0.5)
-        out.append({'city': p.get('ru', p.get('en')), 'lon': p['lon'], 'lat': p['lat'], 'h': float(best[1]), 'path': path, 'src': name, 'snow': snow})
-        if len(out) >= n: break
+        got.append({'city': p.get('ru', p.get('en')), 'lon': p['lon'], 'lat': p['lat'], 'h': float(best[1]), 'path': path, 'src': name, 'snow': snow})
+        if len(got) >= per: break
+      out += got
     return out
 
 
@@ -572,7 +601,7 @@ def main():
     except Exception as e: print('moist: no winds for the paths', e, flush=True); W = {}
     for region in a.regions.split(','):
         paths = []
-        try: paths = moisture_paths(F, W, region) if len(W) >= 6 else []
+        try: paths = moisture_paths(F, extend_winds(W, F) if a.days > 3 else W, region, H=72 if a.days <= 3 else min(a.days * 24, max(F))) if len(W) >= 6 else []
         except Exception as e: print('moist paths failed', region, e, flush=True)
         print('moist paths', region, [(p['city'], p['h'], p['src']['ru']) for p in paths], flush=True)
         for lang in a.langs.split(','):
