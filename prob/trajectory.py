@@ -198,9 +198,7 @@ def main():
         for lang in a.langs.split(','):
             try: picture(R, region, items, lang, out / f'{region}_traj_{lang}.png', run, polys)
             except Exception as e: print('traj picture failed', region, lang, e, flush=True)
-            if items:
-                try: picture(R, region, items, lang, None, run, polys, anim=out / f'{region}_traj_{lang}.mp4')
-                except Exception as e: print('traj animation failed', region, lang, e, flush=True)
+            # (the moving picture of the moisture is prob/moisture.py now)
         print('traj', region, len(items), 'paths', flush=True)
 
 

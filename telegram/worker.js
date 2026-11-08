@@ -398,18 +398,18 @@ async function sendDistricts(env, chat, lang, rid, id, msgId) {
 
 /* ---------- where the rain and snow come from (prob/trajectory.py: the air's path 2 days back) ---------- */
 const TRJ = new Set(['UZ', 'KZ']);
-const TJX = { ru: { btn: '🧭 Откуда придут осадки', title: 'Откуда придут осадки', none: 'В ближайшие 3 дня осадков в крупных городах не ожидается — показывать нечего. ☀️', foot: 'Линия — путь воздуха (на высоте ~3 км), который принесёт осадки, за 2 суток до их начала. Модель ECMWF.' },
-              uz: { btn: '🧭 Yog‘in qayerdan keladi', title: 'Yog‘in qayerdan keladi', none: 'Yaqin 3 kunda yirik shaharlarda yog‘in kutilmaydi — ko‘rsatadigan narsa yo‘q. ☀️', foot: 'Chiziq — yog‘in olib keladigan havoning (~3 km balandlikda) boshlanishidan 2 kun oldingi yo‘li. ECMWF modeli.' },
-              tr: { btn: '🧭 Yağış nereden gelecek', title: 'Yağış nereden gelecek', none: 'Önümüzdeki 3 günde büyük şehirlerde yağış beklenmiyor. ☀️', foot: 'Çizgi — yağışı getirecek havanın (~3 km yükseklikte) başlamadan önceki 2 günlük yolu. ECMWF modeli.' } };
+const TJX = { ru: { btn: '🧭 Откуда придут осадки', moist: 'Поступление влаги на 3 дня: водяной пар (бирюзовый), ветер на высоте ~3 км (линии), осадки (синий → красный), давление (В — антициклон, Н — циклон)', title: 'Откуда придут осадки', none: 'В ближайшие 3 дня осадков в крупных городах не ожидается — показывать нечего. ☀️', foot: 'Линия — путь воздуха (на высоте ~3 км), который принесёт осадки, за 2 суток до их начала. Модель ECMWF.' },
+              uz: { btn: '🧭 Yog‘in qayerdan keladi', moist: 'Namlik kelishi, 3 kun: suv bug‘i (moviy-yashil), ~3 km balandlikda shamol (chiziqlar), yog‘in (ko‘k → qizil), bosim (Y — antisiklon, P — siklon)', title: 'Yog‘in qayerdan keladi', none: 'Yaqin 3 kunda yirik shaharlarda yog‘in kutilmaydi — ko‘rsatadigan narsa yo‘q. ☀️', foot: 'Chiziq — yog‘in olib keladigan havoning (~3 km balandlikda) boshlanishidan 2 kun oldingi yo‘li. ECMWF modeli.' },
+              tr: { btn: '🧭 Yağış nereden gelecek', moist: 'Nem girişi, 3 gün: su buharı (turkuaz), ~3 km rüzgâr (çizgiler), yağış (mavi → kırmızı), basınç (Y — antisiklon, A — siklon)', title: 'Yağış nereden gelecek', none: 'Önümüzdeki 3 günde büyük şehirlerde yağış beklenmiyor. ☀️', foot: 'Çizgi — yağışı getirecek havanın (~3 km yükseklikte) başlamadan önceki 2 günlük yolu. ECMWF modeli.' } };
 async function trajData(env, rid) { return fetch(`${base(env)}/prob/hr/${rid}_traj.json?v=${fresh()}`).then(r => r.ok ? r.json() : null).catch(() => null); }
 async function sendTraj(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, J = await trajData(env, rid);
   if (!J || !J.items.length) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
-  // the animation (the air moving to the cities, with sound); the still map if the video is not there
+  // first the moving picture of the moisture coming in (prob/moisture.py), then the map of the air's paths
   const L = lang === 'tr' ? 'ru' : lang, v = encodeURIComponent(J.run), cap = `🧭 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.title}`;
-  const r = await tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_traj_${L}.mp4?v=${v}`, caption: cap, supports_streaming: true });
-  if (!r.ok) await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/hr/${rid}_traj_${L}.png?v=${v}`, caption: cap });
+  await tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `💧 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true });
+  await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/hr/${rid}_traj_${L}.png?v=${v}`, caption: cap });
   const seen = new Set(), lines = [...J.items].sort((a, b) => a.k - b.k || b.p - a.p).filter(it => !seen.has(it.city.ru + it.day) && seen.add(it.city.ru + it.day)).slice(0, 10)
     .map(it => `<b>${esc(it.city[lang] || it.city.ru)} · ${dayLabel(it.day, lang)} · ${it.snow ? '❄' : '☂'} ${it.p}%</b>\n🧭 ${esc(it.text[lang] || it.text.ru)}`);
   return tg(env, 'sendMessage', { chat_id: chat, text: [`🧭 <b>${X.title}</b>`, '', lines.join('\n\n'), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000), parse_mode: 'HTML' });
