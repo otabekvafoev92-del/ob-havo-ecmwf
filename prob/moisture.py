@@ -18,7 +18,7 @@ from trajectory import ECM, get  # the same mirror and downloader
 
 STEPS = list(range(0, 73, 3))
 STEPS15 = [(st, 'hres') for st in list(range(0, 144, 3)) + list(range(144, 241, 6))] + [(st, 'ens') for st in range(246, 361, 6)]
-FPS = 3  # 0.5× of the first version (6 frames a second)
+FPS = 2  # a third of the first speed (6 frames a second): calm enough to follow
 # the names of the big waters on the map (lon, lat), and the size of the letters
 _WN = [((50.6, 42.6), ('Каспийское\nморе', 'Kaspiy\ndengizi', 'Hazar\nDenizi'), 10), ((59.6, 45.4), ('Аральское\nморе', 'Orol\ndengizi', 'Aral\nGölü'), 8.5),
        ((74.6, 46.2), ('Балхаш', 'Balxash', 'Balkaş'), 8.5), ((77.3, 42.4), ('Иссык-Куль', 'Issiqko‘l', 'Issık Göl'), 8), ((51.5, 27.3), ('Персидский\nзалив', 'Fors\nko‘rfazi', 'Basra\nKörfezi'), 9),
