@@ -422,12 +422,12 @@ async function sendTrajLite(env, chat, lang, rid) {  // the morning 🧭: only t
 async function sendTraj(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, J = await trajData(env, rid);
   if (!J || !J.items.length) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
-  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   // first the moving picture of the moisture coming in (prob/moisture.py), then the map of the air's paths
-  const L = lang === 'tr' ? 'ru' : lang, v = encodeURIComponent(J.run), cap = `🧭 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.title}`;
-  await tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `💧 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true,
-    reply_markup: { inline_keyboard: [[{ text: X.m15, callback_data: `MV:${lang}:${rid}` }]] } });
-  await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/hr/${rid}_traj_${L}.png?v=${v}`, caption: cap });
+  const L = lang === 'tr' ? 'ru' : lang, v = encodeURIComponent(J.run);
+  // the 3-day video, then the 15-day one (the old map of the paths is gone: the videos show them)
+  await tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `💧 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true });
+  await sendMoist15(env, chat, lang, rid);
   const seen = new Set(), lines = [...J.items].sort((a, b) => a.k - b.k || b.p - a.p).filter(it => !seen.has(it.city.ru + it.day) && seen.add(it.city.ru + it.day)).slice(0, 10)
     .map(it => `<b>${esc(it.city[lang] || it.city.ru)} · ${dayLabel(it.day, lang)} · ${it.snow ? '❄' : '☂'} ${it.p}%</b>\n🧭 ${esc(it.text[lang] || it.text.ru)}`);
   return tg(env, 'sendMessage', { chat_id: chat, text: [`🧭 <b>${X.title}</b>`, '', lines.join('\n\n'), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000), parse_mode: 'HTML' });
