@@ -570,7 +570,7 @@ async function notifTick(env, small = false) {
   if (due.some(n => n.sec !== 'air')) { const F = await siteFresh(env); if (!F.fresh) due = due.filter(n => n.sec === 'air' || hour - n.hour >= HOLD_MAX_H); }
   // a light section (one video each: 🧭) lets more people through in one run; the others stay at 6
   let heavy = 0, done = 0;
-  due = due.filter(n => (n.sec === 'traj' ? done++ < (small ? 8 : 20) : heavy++ < (small ? 2 : 6)));
+  due = due.filter(n => (n.sec === 'traj' ? done++ < (small ? 5 : 12) : heavy++ < (small ? 2 : 6)));  // each send costs 2–3 of the 50 requests a run may make
   for (const n of due) {
     await env.DB.prepare('UPDATE notif SET last_day = ?3 WHERE chat_id = ?1 AND sec = ?2').bind(n.chat_id, n.sec, day).run();
     if (NWEEKLY[n.sec] && !monday) continue;
@@ -582,7 +582,13 @@ async function notifTick(env, small = false) {
       else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
       else if (n.sec === 'air') r = await sendAir(env, n.chat_id, lang, rid);
       else if (n.sec === 'traj') r = await sendTrajLite(env, n.chat_id, lang, TRJ.has(rid) ? rid : 'UZ');
-    } catch (e) { console.log('notif', n.sec, e && e.stack); }
+    } catch (e) {
+      console.log('notif', n.sec, e && e.stack);
+      if (/subrequests/i.test(String(e && e.message))) {  // out of this run's budget: not sent, so the next run tries again
+        await env.DB.prepare('UPDATE notif SET last_day = NULL WHERE chat_id = ?1 AND sec = ?2').bind(n.chat_id, n.sec).run().catch(() => {});
+        break;
+      }
+    }
     if (r && !r.ok && /blocked|deactivated|chat not found|kicked|not a member|was deleted|not enough rights/i.test(r.description || '')) await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1').bind(n.chat_id).run();
   }
 }
