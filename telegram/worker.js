@@ -190,6 +190,7 @@ export default {
       await run('stale', () => staleTick(env));
       const r = await broadcast(env).catch(e => { console.log('broadcast', e && e.stack); return null; });
       if (!r || !r.due) for (const [n, f] of [['alert', alertTick], ['mtn', mtnTick], ['notif', notifTick], ['stats', statsTick], ['backup', backupTick]]) await run(n, () => f(env));
+      else await run('notif', () => notifTick(env, true));  // the morning auto-send is going: the notifications still go, fewer a run
     })());
   },
 };
@@ -562,14 +563,14 @@ async function groupAll(env, chat, lang, on) {  // every section at the group's 
 }
 
 // each cron run: the sections that are due now (a few per run: videos and pictures take time)
-async function notifTick(env) {
+async function notifTick(env, small = false) {
   if (!env.DB) return; await db(env);
   const now = new Date(Date.now() + TZ * 3600e3), day = todayTZ(), hour = now.getUTCHours(), monday = now.getUTCDay() === 1;
   let due = (await env.DB.prepare("SELECT * FROM notif WHERE hour <= ?1 AND COALESCE(last_day, '') <> ?2 ORDER BY hour LIMIT 30").bind(hour, day).all()).results;
   if (due.some(n => n.sec !== 'air')) { const F = await siteFresh(env); if (!F.fresh) due = due.filter(n => n.sec === 'air' || hour - n.hour >= HOLD_MAX_H); }
   // a light section (one video each: 🧭) lets more people through in one run; the others stay at 6
   let heavy = 0, done = 0;
-  due = due.filter(n => (n.sec === 'traj' ? done++ < 20 : heavy++ < 6));
+  due = due.filter(n => (n.sec === 'traj' ? done++ < (small ? 8 : 20) : heavy++ < (small ? 2 : 6)));
   for (const n of due) {
     await env.DB.prepare('UPDATE notif SET last_day = ?3 WHERE chat_id = ?1 AND sec = ?2').bind(n.chat_id, n.sec, day).run();
     if (NWEEKLY[n.sec] && !monday) continue;
