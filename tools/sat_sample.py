@@ -24,9 +24,14 @@ def get1(layer, t, fmt, w, h):
 end, endp = latest('msg_iodc:ir108'), latest('msg_iodc:h63'); print('latest', end, endp, 'now', dt.datetime.utcnow())
 G = json.load(open(HERE / 'geo_world.json'))['countries']; GA = json.load(open(HERE / 'geo_admin.json')).get(reg, {})
 fd = pathlib.Path(tempfile.mkdtemp()); n = 0
-for k in range(12, -1, -1):
-    t = end - dt.timedelta(minutes=15 * k); ir = get('msg_iodc:ir108', t, 'image/jpeg'); pr = get('msg_iodc:h63', min(t, endp), 'image/png')
+last_pr = None
+from PIL import ImageFilter, ImageEnhance
+for k in range(24, -1, -1):  # 6 hours
+    t = end - dt.timedelta(minutes=15 * k); ir = get('msg_iodc:ir108', t, 'image/jpeg'); pr = get('msg_iodc:h63', min(t, endp), 'image/png', 427, 240)
     if ir is None: continue
+    ir = ImageEnhance.Contrast(ir.convert('RGB')).enhance(1.35).convert('RGBA')  # clouds stand out from the ground
+    if pr is None: pr = last_pr  # a missing rain picture: the last one, no flicker
+    else: pr = pr.resize((1280, 720), Image.BICUBIC).filter(ImageFilter.GaussianBlur(3)); last_pr = pr  # the 3–5 km blocks smoothed
     fig = plt.figure(figsize=(16, 9), dpi=120); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
     ax.imshow(ir, extent=(V[0], V[1], V[2], V[3]), aspect='auto')
     if pr is not None: ax.imshow(pr, extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.9)
@@ -37,10 +42,10 @@ for k in range(12, -1, -1):
     for p in json.load(open(HERE / 'geo_prob.json'))['places']:
         if p.get('iso') == reg and p.get('pop', 0) > 150000:
             ax.plot(p['lon'], p['lat'], 'o', ms=4, color='#ffd27a'); ax.text(p['lon'] + 0.12, p['lat'] + 0.08, p.get('ru', ''), color='#ffffff', fontsize=11, fontweight='bold')
-    loc = t + dt.timedelta(hours=5); ago = int((dt.datetime.now(dt.timezone.utc) - t).total_seconds() // 60)
-    fig.text(0.015, 0.95, f'🛰 Онлайн · Meteosat (EUMETSAT) · {loc:%H:%M} по Ташкенту · {ago} мин назад', fontsize=18, fontweight='bold', color='#ffffff',
+    loc = t + dt.timedelta(hours=5)
+    fig.text(0.015, 0.95, f'Спутник Meteosat · снимок {loc:%H:%M} по Ташкенту', fontsize=18, fontweight='bold', color='#ffffff',
              bbox=dict(boxstyle='round,pad=0.4', fc='#1d2a3acc', ec='none'))
     fig.text(0.015, 0.03, 'белое — тучи (чем белее, тем выше) · цветное — осадки по оценке со спутника (H SAF)', fontsize=12, color='#ffffff', bbox=dict(boxstyle='round,pad=0.3', fc='#1d2a3aaa', ec='none'))
     fig.savefig(fd / f'{n:03d}.png'); plt.close(fig); n += 1
 print('frames', n)
-subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '2', '-i', str(fd / '%03d.png'), '-vf', 'framerate=fps=12:interp_start=0:interp_end=255:scene=100,format=yuv420p', '-c:v', 'libx264', '-crf', '22', out], check=True)
+subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '3', '-i', str(fd / '%03d.png'), '-vf', 'tpad=stop_mode=clone:stop_duration=3,framerate=fps=24:interp_start=0:interp_end=255:scene=100,format=yuv420p', '-c:v', 'libx264', '-crf', '20', out], check=True)

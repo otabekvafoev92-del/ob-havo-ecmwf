@@ -201,7 +201,7 @@ async function loadSat(again) {
     const tt = new Date(end - k * 900e3).toISOString().slice(0, 19) + 'Z', fr = { t: Date.parse(tt), ir: new Image(), pr: new Image() };
     const tp = new Date(Math.min(Date.parse(tt), latP || Date.parse(tt))).toISOString().slice(0, 19) + 'Z';
     fr.ir.onload = () => { ok++; if (++done === 13) satReady(ok); draw(); }; fr.ir.onerror = () => { fr.bad = true; if (++done === 13) satReady(ok); };
-    fr.ir.src = satUrl('msg_iodc:ir108', tt, 'image/jpeg'); fr.pr.src = satUrl('msg_iodc:h63', tp, 'image/png');
+    fr.ir.src = satUrl('msg_iodc:ir108', tt, 'image/jpeg'); fr.pr.src = satUrl('msg_iodc:h63', tp, 'image/png').replace(/width=(\d+)&height=(\d+)/, (m, w, h) => `width=${Math.round(w / 3)}&height=${Math.round(h / 3)}`);  // small: the canvas smooths the 3–5 km blocks
     SAT.frames.push(fr);
   }
 }
