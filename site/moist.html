@@ -200,13 +200,13 @@ async function loadSat(again) {
   for (let k = 12; k >= 0; k--) {
     const tt = new Date(end - k * 900e3).toISOString().slice(0, 19) + 'Z', fr = { t: Date.parse(tt), ir: new Image(), pr: new Image() };
     const tp = new Date(Math.min(Date.parse(tt), latP || Date.parse(tt))).toISOString().slice(0, 19) + 'Z';
-    fr.ir.onload = () => { ok++; if (++done === 13) satReady(ok); draw(); }; fr.ir.onerror = () => { fr.bad = true; if (++done === 13) satReady(ok); };
+    fr.ir.onload = () => { ok++; if (++done === 13) satReady(ok); requestAnimationFrame(draw); }; fr.pr.onload = () => requestAnimationFrame(draw); fr.ir.onerror = () => { fr.bad = true; if (++done === 13) satReady(ok); };
     fr.ir.src = satUrl('msg_iodc:ir108', tt, 'image/jpeg'); fr.pr.src = satUrl('msg_iodc:h63', tp, 'image/png').replace(/width=(\d+)&height=(\d+)/, (m, w, h) => `width=${Math.round(w / 3)}&height=${Math.round(h / 3)}`);  // small: the canvas smooths the 3–5 km blocks
     SAT.frames.push(fr);
   }
 }
 setInterval(() => { if (mode === 'S') loadSat(true); }, 5 * 60e3);  // a new picture every 15 min: looked for every 5
-function satReady(ok) { SAT.frames = SAT.frames.filter(f => !f.bad); msg.textContent = ok ? '' : TX.satErr; slider.max = Math.max(0, SAT.frames.length - 1); slider.step = 0.02; t = SAT.frames.length - 1; slider.value = t; draw(); }
+function satReady(ok) { setTimeout(draw, 300); setTimeout(draw, 1500); SAT.frames = SAT.frames.filter(f => !f.bad); msg.textContent = ok ? '' : TX.satErr; slider.max = Math.max(0, SAT.frames.length - 1); slider.step = 0.02; t = SAT.frames.length - 1; slider.value = t; draw(); }
 function drawS() {
   base(true); const n = SAT.frames.length; if (!n) { lines(true); return; }
   const i = Math.max(0, Math.min(n - 1, Math.floor(t))), f = t - i, a = SAT.frames[i], b = SAT.frames[Math.min(n - 1, i + 1)];
