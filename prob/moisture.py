@@ -675,7 +675,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
 def inset_video(fdir, box, out, wav, W=640, Hh=440):
     """The whole map with the region framed, and the region enlarged in a window on the other side (from the 2× frames)."""
     bx0, by0, bx1, by1, name = box
-    cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2; w = max(bx1 - bx0, 60) * 1.25; h = max(by1 - by0, 60) * 1.25
+    cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2; w = max((bx1 - bx0) * 1.25, W / 2.1); h = max((by1 - by0) * 1.25, Hh / 2.1)  # at most ~2× bigger: labels stay readable
     if w / h > W / Hh: h = w * Hh / W
     else: w = h * W / Hh
     w, h = min(w, 1900), min(h, 1060)
