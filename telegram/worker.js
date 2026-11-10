@@ -1126,6 +1126,19 @@ async function ghApi(env, path, init = {}) {
   return fetch(`https://api.github.com/repos/${REPO}/${path}`, { ...init, headers: { 'user-agent': 'osmon-bot', accept: 'application/vnd.github+json',
     ...(env.GH_TOKEN ? { authorization: `Bearer ${env.GH_TOKEN}` } : {}), ...(init.headers || {}) } });
 }
+// a newer complete forecast run (00/12 UTC: ECMWF ENS, AIFS ENS and GEFS all to 15 days) than the one on the site
+async function newRunReady(env, model) {
+  const now = Date.now(), H = 3600e3;
+  let r = Math.floor(now / (12 * H)) * 12 * H; if (now - r < 7.4 * H) r -= 12 * H;  // they are complete ~7.5 h after the run
+  if (model && Date.parse(model) >= r) return false;
+  const k = new Date(r).toISOString(), d = k.slice(0, 10).replace(/-/g, ''), h = k.slice(11, 13);
+  if ((await kv(env, 'run_seen')) === k) return true;
+  const urls = [`https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com/${d}/${h}z/ifs/0p25/enfo/${d}${h}0000-360h-enfo-ef.index`,
+    `https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com/${d}/${h}z/aifs-ens/0p25/enfo/${d}${h}0000-360h-enfo-pf.index`,
+    `https://noaa-gefs-pds.s3.amazonaws.com/gefs.${d}/${h}/atmos/pgrb2ap5/gep30.t${h}z.pgrb2a.0p50.f360.idx`];
+  for (const u of urls) if (!(await fetch(u, { method: 'HEAD' }).then(x => x.ok).catch(() => false))) return false;
+  await setKv(env, 'run_seen', k); return true;
+}
 async function staleTick(env) {
   const admin = await kv(env, 'admin');
   const B = await fetch(`${base(env)}/build.json?t=${Date.now()}`).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -1135,10 +1148,10 @@ async function staleTick(env) {
   // a build we started has reached the site: good news, once
   if (kicked && built > kicked) {
     await setKv(env, 'kick_at', '');
-    if (admin) await tg(env, 'sendMessage', { chat_id: admin, text: `✅ Данные обновлены после перезапуска: сайт собран ${tkt(B.built)} по Ташкенту.` });
+    if (admin && (await kv(env, 'kick_why')) === 'stale') await tg(env, 'sendMessage', { chat_id: admin, text: `✅ Данные обновлены после перезапуска: сайт собран ${tkt(B.built)} по Ташкенту.` });
     return;
   }
-  if (age < 3.5) return;
+  if (age < 3.5 && !(await newRunReady(env, B.model))) return;  // old site, or a newer forecast is out: build
   if (kicked && Date.now() - kicked < 100 * 60e3) return;  // a build we started is still on its way (they take 40–80 min)
   const runs = await ghApi(env, 'actions/workflows/update.yml/runs?per_page=5').then(r => r.ok ? r.json() : null).catch(() => null);
   const busy = runs && (runs.workflow_runs || []).find(r => r.status === 'in_progress' || r.status === 'queued' || r.status === 'pending' || r.status === 'waiting');
@@ -1153,8 +1166,8 @@ async function staleTick(env) {
   const last = runs && (runs.workflow_runs || [])[0], why = last && last.conclusion && last.conclusion !== 'success' ? ` Последняя сборка: ${last.conclusion}.` : '';
   if (env.GH_TOKEN) {
     const r = await ghApi(env, 'actions/workflows/update.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main' }), headers: { 'content-type': 'application/json' } });
-    await setKv(env, 'kick_at', String(Date.now()));
-    if (admin) await tg(env, 'sendMessage', { chat_id: admin, text: r.status === 204
+    await setKv(env, 'kick_at', String(Date.now())); await setKv(env, 'kick_why', age >= 3.5 ? 'stale' : 'run');
+    if (admin && (age >= 3.5 || r.status !== 204)) await tg(env, 'sendMessage', { chat_id: admin, text: r.status === 204  // a routine new-run build: no message
       ? `🔄 Обновление было пропущено: данным на сайте ${Math.round(age)} ч.${why} Запустил новую сборку сам — данные будут примерно через 45 мин, я напишу.`
       : `⚠️ Данным ${Math.round(age)} ч, но запустить сборку не удалось (GitHub ответил ${r.status}). Проверьте токен GH_TOKEN в Cloudflare.` });
     return;

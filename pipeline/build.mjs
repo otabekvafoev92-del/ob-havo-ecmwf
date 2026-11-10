@@ -147,10 +147,12 @@ async function main() {
     for (let h = L.from; h <= MAX_STEP; h += L.every) {
       steps.push(h); times.push(isoStep(run, h));
       const pg = await product(L.product, { base_time: run, step: h, ...L.params }, 'opencharts_global');
-      framesG.push(pg ? rle(decodeGlobal(readPng(await getBuffer(pg.href)), key, L.product)) : null);
+      const bg = pg ? await getBuffer(pg.href).catch(e => { log(e.message); return null; }) : null;  // one bad image: a gap, not a failed build
+      framesG.push(bg ? rle(decodeGlobal(readPng(bg), key, L.product)) : null);
       const p = await product(L.product, { base_time: run, step: h, ...L.params });
       if (!p) { frames.push(null); continue; }
-      const buf = await getBuffer(p.href);
+      const buf = await getBuffer(p.href).catch(e => { log(e.message); return null; });
+      if (!buf) { frames.push(null); continue; }
       const grid = decodeLayer(readPng(buf), key, L.product);
       frames.push(rle(grid));
       if (GALLERY && galleryKeep[L.product] && galleryHours.has(h)) {
@@ -181,7 +183,9 @@ async function main() {
       for (const h of galleryHours) {
         const p = await product(name, { base_time: run, step: h });
         if (!p) continue;
-        const src = await saveGallery(await getBuffer(p.href), `maps/${name}/${runTag}_${String(h).padStart(3, '0')}.png`);
+        const gb = await getBuffer(p.href).catch(e => { log(e.message); return null; });
+        if (!gb) continue;
+        const src = await saveGallery(gb, `maps/${name}/${runTag}_${String(h).padStart(3, '0')}.png`);
         frames.push({ step: h, valid: isoStep(run, h), src });
         log('gallery', name, '+' + h + 'h');
       }

@@ -233,7 +233,7 @@ jobs:
           pip install requests
           python prob/telegram_send.py site/prob
       - name: Note which code built the site and when (the gate job reads it)
-        run: python3 -c "import json,datetime;json.dump({'sha':'${{ github.sha }}','built':datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),'run':'${{ github.run_id }}'},open('site/build.json','w'))"
+        run: python3 -c "import json,datetime,os;m=json.load(open('site/prob/alerts.json')).get('run','') if os.path.exists('site/prob/alerts.json') else '';json.dump({'sha':'${{ github.sha }}','built':datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),'run':'${{ github.run_id }}','model':m},open('site/build.json','w'))"
       - name: Point the site at the bot worker (visit counter, Telegram)
         if: vars.BOT_URL != ''
         run: sed -i 's|<meta name="osmon-api" content="">|<meta name="osmon-api" content="${{ vars.BOT_URL }}">|' site/index.html
