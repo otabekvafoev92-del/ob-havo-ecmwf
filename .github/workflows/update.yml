@@ -113,13 +113,6 @@ jobs:
           - { part: outlook, args: '' }
           - { part: hr-a, args: '--regions UZ,KZ,KG,TJ,TM,AZ' }
           - { part: hr-b, args: '--regions AM,BY,MD,RU,TR --langs uz,ru,tr' }
-          - { part: hr-moist, args: '' }  # the moisture coming in: a broadcast-style video (Uzbekistan, Kazakhstan)
-          - { part: hr-moist2-uz, args: 'UZ' }  # 2 days, a version with a window on every region (the bot's ⏱ button)
-          - { part: hr-moist2-kz, args: 'KZ' }
-          - { part: hr-moist2-kg, args: 'KG' }
-          - { part: hr-moist15-uz, args: 'UZ' }  # the same over 15 days, one country a job (they are long)
-          - { part: hr-moist15-kz, args: 'KZ' }
-          - { part: hr-moist15-kg, args: 'KG' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -154,12 +147,6 @@ jobs:
               echo reused the live outlook
             fi
             python prob/mountains.py out || echo 'mountains failed'  # snow and trip days in the mountains, every run
-          elif [[ "${{ matrix.part }}" == hr-moist2-* ]]; then
-            pip install eccodes metpy >/dev/null && timeout 45m python prob/moisture.py prob.npz out --regions ${{ matrix.args }} --langs ru,uz --days 2 || echo 'moisture 2-day video failed'
-          elif [[ "${{ matrix.part }}" == hr-moist15-* ]]; then
-            pip install eccodes metpy >/dev/null && timeout 35m python prob/moisture.py prob.npz out --regions ${{ matrix.args }} --langs ru,uz --days 15 || echo 'moisture 15-day video failed'  # never holds the build up
-          elif [ "${{ matrix.part }}" = hr-moist ]; then
-            pip install eccodes metpy >/dev/null && timeout 35m python prob/moisture.py prob.npz out --regions UZ,KZ,KG --langs ru,uz || echo 'moisture video failed'
           elif [ "${{ matrix.part }}" = hr-a ] || [ "${{ matrix.part }}" = hr-b ]; then
             python prob/hourly.py prob.npz wx.npz out ${{ matrix.args }}
             if [ "${{ matrix.part }}" = hr-a ]; then  # where the rain and snow come from (Uzbekistan, Kazakhstan)
@@ -190,8 +177,66 @@ jobs:
           path: out
           retention-days: 1
 
+  moistfetch:  # the fields of the moisture videos (ECMWF HRES 10 days + ENS to 15, 850/700 hPa, winds), downloaded once for all of them
+    needs: fetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npz
+      - run: |
+          pip install numpy scipy matplotlib pyproj pillow requests eccodes metpy >/dev/null
+          python prob/moisture.py prob.npz out --save moistf.npz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moistf
+          path: moistf.npz
+          retention-days: 1
+
+  moist:
+    needs: moistfetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { part: hr-moist, args: '--regions UZ,KZ,KG --days 3' }  # 3 days + how much falls + the interactive map's data
+          - { part: hr-moist2-uz, args: '--regions UZ --days 2' }  # 2 days with a window on every region (the bot's ⏱ button)
+          - { part: hr-moist2-kz, args: '--regions KZ --days 2' }
+          - { part: hr-moist2-kg, args: '--regions KG --days 2' }
+          - { part: hr-moist15-uz, args: '--regions UZ --days 15' }
+          - { part: hr-moist15-kz, args: '--regions KZ --days 15' }
+          - { part: hr-moist15-kg, args: '--regions KG --days 15' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npz
+      - uses: actions/download-artifact@v4
+        with:
+          name: moistf
+      - name: Moisture video ${{ matrix.part }}
+        run: |
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install numpy scipy matplotlib pyproj pillow requests eccodes metpy >/dev/null
+          timeout 60m python prob/moisture.py prob.npz out --langs ru,uz --fields moistf.npz --winds moistf.npz ${{ matrix.args }} || echo 'moisture video failed'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prob-${{ matrix.part }}
+          path: out
+          retention-days: 1
+
   assemble:
-    needs: [charts, render]
+    needs: [charts, render, moist]
     if: always() && needs.charts.result == 'success' && needs.render.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 30

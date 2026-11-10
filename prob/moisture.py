@@ -753,11 +753,18 @@ def moisture_paths(F, W, region, n=3, H=72):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('npz'); ap.add_argument('out'); ap.add_argument('--regions', default='UZ,KZ'); ap.add_argument('--langs', default='ru,uz')
     ap.add_argument('--days', type=int, default=3); ap.add_argument('--fields', help='saved fields (tests)'); ap.add_argument('--winds', help='saved steering winds (tests)')
+    ap.add_argument('--save', help='only download the fields (15 days) and the winds into this file, for the video jobs')
     a = ap.parse_args()
     import render as Rn
     D = Rn.load(a.npz); run = dt.datetime.fromisoformat(D['run'].replace('Z', '+00:00')).replace(tzinfo=None)
-    if a.days > 3: run = run.replace(hour=0 if run.hour < 12 else 12)  # only the 00 and 12 UTC runs go 15 days ahead
-    F = dict(np.load(a.fields, allow_pickle=True)['F'].item()) if a.fields else fetch(run, STEPS15 if a.days > 3 else None)
+    if a.days > 3 or a.save: run = run.replace(hour=0 if run.hour < 12 else 12)  # only the 00 and 12 UTC runs go 15 days ahead
+    if a.save:  # one download for all the moisture videos (float16: a third of the size, plenty for maps)
+        F = fetch(run, STEPS15)
+        try: W = TJ.fetch_winds(run)
+        except Exception as e: print('moist: no winds', e, flush=True); W = {}
+        np.savez_compressed(a.save, F=np.array({k: {q: v.astype(np.float16) for q, v in f.items()} for k, f in F.items()}, dtype=object), W=np.array(W, dtype=object))
+        print('moist: saved', len(F), 'steps', len(W), 'wind steps', pathlib.Path(a.save).stat().st_size // 1e6, 'MB', flush=True); return
+    F = {k: {q: np.asarray(v, np.float32) for q, v in f.items()} for k, f in np.load(a.fields, allow_pickle=True)['F'].item().items()} if a.fields else fetch(run, STEPS15 if a.days > 3 else None)
     if len(F) < 6: print('moist: not enough fields', flush=True); return
     out = pathlib.Path(a.out) / 'hr'; out.mkdir(parents=True, exist_ok=True)
     try: W = dict(np.load(a.winds, allow_pickle=True)['W'].item()) if a.winds else TJ.fetch_winds(run)
@@ -966,7 +973,7 @@ def export_live(F, region, out, run, paths=(), H=72):
     meta = {'run': run.strftime('%Y-%m-%dT%H:00Z'), 'bounds': bounds, 'view': list(VIEW[region]), 'times': times, 'frames': fr,
             'wind_grid': [len(range(0, len(ri), 4)), len(range(0, len(ci), 4)), float(lat[ri[0]]), float(lon[ci[0]]), RES * 4],
             'relief': E is not None, 'tz': TZ.get(region, (5, {}))[0],
-            'paths': [{'city': p_['city'], 'h': p_['h'], 'src': p_['src'], 'snow': p_['snow'], 'p': [[round(a, 2), round(b, 2)] for a, b in p_['path'][::2]]} for p_ in paths],
+            'paths': [{'city': p_['city'], 'h': p_['h'], 'src': p_['src'], 'snow': p_['snow'], 'p': [[round(float(q[0]), 2), round(float(q[1]), 2)] for q in p_['path'][::2]]} for p_ in paths],
             'water': {'sea': [r for r in W['ocean'] + [l['r'] for l in W['lakes']] if inb(r)], 'rivers': [[r['w'], r['c']] for r in W['rivers'] if inb(r['c'])]},
             'countries': [r for c in (G if isinstance(G, list) else G.values()) for r in (rings(c) if isinstance(c, dict) else []) if inb(r)],
             'cities': [{'n': {'ru': p_.get('ru'), 'uz': p_.get('uz')}, 'lon': p_['lon'], 'lat': p_['lat']} for p_ in json.load(open(HERE / 'geo_prob.json'))['places']
