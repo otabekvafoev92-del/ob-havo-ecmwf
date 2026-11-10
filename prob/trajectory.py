@@ -11,8 +11,9 @@ import numpy as np
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-ECM = 'https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com'
-ECM_ALT = 'https://data.ecmwf.int/forecasts'  # the same files at ECMWF (slower, used when the mirror fails)
+ECM = 'https://storage.googleapis.com/ecmwf-open-data'  # Google's copy of ECMWF open data: fast, no "slow down"
+ECM_AWS = 'https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com'  # Amazon's copy (asks to slow down under load)
+ECM_ALT = 'https://data.ecmwf.int/forecasts'  # ECMWF's own server (slowest, the last resort)
 LON0, LON1, LAT0, LAT1, RES = 0.0, 120.0, 15.0, 70.0, 0.5   # the area the paths may cross
 BACK = 48                                                   # hours back
 SEAS = [  # name ru/uz/tr, lon0, lon1, lat0, lat1 (checked only where no country is)
@@ -42,17 +43,20 @@ S = None
 
 def get(url, rng=None):
     import requests
+    import threading
     global S
-    S = S or requests.Session()
-    for a in range(6):
+    S = S or threading.local()
+    if not hasattr(S, 's'): S.s = requests.Session()  # one connection set a thread
+    missing = False
+    for a in range(4 if url.startswith(ECM) else 6):
         try:
-            r = S.get(url, headers={'Range': f'bytes={rng[0]}-{rng[1]}'} if rng else {}, timeout=60)
+            r = S.s.get(url, headers={'Range': f'bytes={rng[0]}-{rng[1]}'} if rng else {}, timeout=60)
             if r.status_code in (200, 206): return r.content
-            if r.status_code in (403, 404): break
+            if r.status_code in (403, 404): missing = True; break
         except Exception: pass
-        time.sleep(2 * (a + 1) + (5 if a > 2 else 0))  # also when the mirror asks to slow down (503 SlowDown)
-    if url.startswith(ECM):  # the mirror failed: ECMWF's own server
-        return get(ECM_ALT + url[len(ECM):], rng)
+        time.sleep(1.5 * (a + 1) + (4 if a > 2 else 0))  # also when a mirror asks to slow down (503 SlowDown)
+    if url.startswith(ECM): return get(ECM_AWS + url[len(ECM):], rng)  # Google lacks it (it copies a little later) or fails: Amazon
+    if url.startswith(ECM_AWS) and not missing: return get(ECM_ALT + url[len(ECM_AWS):], rng)  # Amazon fails: ECMWF itself
     return None
 
 
@@ -85,7 +89,7 @@ def fetch_winds(run):
             if x.get('levtype') == 'pl' and x.get('levelist') in ('850', '500') and x.get('param') in ('u', 'v'):
                 jobs.append((hr, x['levelist'], x['param'], base + '.grib2', (x['_offset'], x['_offset'] + x['_length'] - 1)))
     F = {}
-    with cf.ThreadPoolExecutor(12) as pool:
+    with cf.ThreadPoolExecutor(24) as pool:
         for (hr, lev, par, url, rng), buf in zip(jobs, pool.map(lambda j: get(j[3], j[4]), jobs)):
             if buf: F[(hr, lev, par)] = crop(buf)
     W = {}

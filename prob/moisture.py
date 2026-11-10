@@ -85,7 +85,7 @@ def fetch(run, steps=None):
         lat = 90 - np.arange(v.shape[0]) * 0.25; lon = -180 + np.arange(v.shape[1]) * 0.25
         r = np.flatnonzero((lat <= LAT1 + 1e-6) & (lat >= LAT0 - 1e-6)); c = np.flatnonzero((lon >= LON0 - 1e-6) & (lon <= LON1 + 1e-6))
         return v[np.ix_(r, c)][::-1].astype(np.float32)
-    with cf.ThreadPoolExecutor(12) as pool:
+    with cf.ThreadPoolExecutor(24) as pool:
         for (st, key, url, rng), buf in zip(jobs, pool.map(lambda j: get(j[2], j[3]), jobs)):
             if buf: F.setdefault(st, {})[key] = crop(buf)
     out = {}
