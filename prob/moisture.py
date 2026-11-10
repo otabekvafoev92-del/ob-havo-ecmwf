@@ -8,7 +8,7 @@ Every frame (30 minutes apart, smoothly interpolated from ECMWF's 3-hourly forec
   out/hr/<region>_moist_<lang>.mp4  (Full HD, about 14 s)
 Data: ECMWF IFS open data (AWS mirror), the current run, steps 0…72 h.
 Usage: python3 prob/moisture.py prob.npz out [--regions UZ,KZ] [--langs ru,uz] [--fields saved.npz]"""
-import argparse, concurrent.futures as cf, datetime as dt, json, pathlib, shutil, subprocess, sys, tempfile
+import argparse, concurrent.futures as cf, datetime as dt, json, os, pathlib, shutil, subprocess, sys, tempfile
 import numpy as np
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -357,7 +357,7 @@ def flow_arrows(U, V, Wv, LON, LAT, box, n=5):
     return out
 
 
-def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
+def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
     import render as Rn
     from render import plt, matplotlib
     from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm, ListedColormap
@@ -407,8 +407,8 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         rel[..., 3] = np.clip(np.where(hs < 0.62, (0.62 - hs) * 1.3, (hs - 0.62) * 0.9), 0, 0.6) * hi_
         tint = np.zeros(Er.shape + (4,)); tint[..., :3] = (0.62, 0.52, 0.40); tint[..., 3] = np.clip((Er - 1200) / 2800, 0, 1) * 0.38
         ext = (lon[ci[0]] - RES / 2, lon[ci[-1]] + RES / 2, lat[ri[0]] - RES / 2, lat[ri[-1]] + RES / 2)
-        ax.imshow(tint, extent=ext, origin='lower', zorder=0.7, aspect='auto', interpolation='bilinear')
-        ax.imshow(rel, extent=ext, origin='lower', zorder=0.75, aspect='auto', interpolation='bilinear')
+        ax.imshow(tint, extent=ext, origin='lower', zorder=1.84, aspect='auto', interpolation='bilinear')
+        ax.imshow(rel, extent=ext, origin='lower', zorder=1.85, aspect='auto', interpolation='bilinear')  # above the clouds: the mountains always show
         for (mx_, my_), nm_ in MOUNT_NAMES.get(lang, MOUNT_NAMES['ru']):
             if x0 + 1 < mx_ < x1 - 1 and y0v + (y1v - y0v) * 0.2 < my_ < y1v - (y1v - y0v) * 0.125:
                 ax.text(mx_, my_, nm_, fontsize=9, color='#7a5a36', style='italic', fontweight='bold', ha='center', va='center', zorder=4.3, path_effects=[wl], rotation=8)
@@ -543,7 +543,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         for a in dyn: a.remove()
         dyn = []
         Q = interp(F, h); T = Q['tcwv'][np.ix_(ri, ci)]; P = gaussian_filter(Q['pr'][np.ix_(ri, ci)], 0.8); M = gaussian_filter(Q['msl'][np.ix_(ri, ci)], 2.0)
-        C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.33, 0.37, 0.42); cl[..., 3] = np.clip((C - 0.3) / 0.65, 0, 1) ** 1.1 * 0.58
+        C = gaussian_filter(Q['tcc'][np.ix_(ri, ci)], 1.2); cl = np.zeros(LON.shape + (4,)); cl[..., :3] = (0.52, 0.56, 0.61); cl[..., 3] = np.clip((C - 0.4) / 0.6, 0, 1) ** 1.3 * 0.36  # light: the map stays white
         img.set_data(cl); ax.set_aspect(1 / k)
         if 't850' in Q and 'r850' in Q:  # the atmospheric fronts at 850 hPa: cold ▲ (blue), warm ● (red)
             try:
@@ -642,20 +642,63 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72):
         cap.set_text(msg)
         t = run + dt.timedelta(hours=float(h) + off)
         clock.set_text(f"{X['wd'][t.weekday()]} {t:%d.%m} · {t:%H}:{t:%M} · {TZ.get(region, (5, {}))[1].get(lang, X['tz'])}")
-        fig.savefig(fdir / f'{f:03d}.png', dpi=150, facecolor=fig.get_facecolor())
+        fig.savefig(fdir / f'{f:03d}.png', dpi=300 if insets else 150, facecolor=fig.get_facecolor())
         # the sound: the wind of the region, the rain when it falls on the country
         wet = float(np.mean(P[land] >= 1)) if land.any() else 0.0
         levels.append({'rain': min(1.0, wet * 2.5), 'snow': bool(land.any() and (P[land & SN] >= 1).sum() > (P[land & ~SN] >= 1).sum()), 'wind': float(np.clip(np.mean(spd) / 22, 0.15, 0.9)), 'storm': 0.0})
+    if insets and GA:  # where each region (oblast) is on the picture (pixels of the 1920×1080 frame, from the top)
+        fig.canvas.draw(); boxes = {}
+        for a_ in GA['adm1']:
+            pts_ = np.vstack([np.asarray(r) for r in a_['r']])
+            if not (x0 < pts_[:, 0].mean() < x1): continue
+            xy_ = ax.transData.transform(pts_) * (150 / fig.dpi)
+            boxes[a_['id']] = (xy_[:, 0].min(), 1080 - xy_[:, 1].max(), xy_[:, 0].max(), 1080 - xy_[:, 1].min(), a_['name'].get(lang) or a_['name']['ru'])
     plt.close(fig)
     for e in range(4 * FPS): shutil.copy(fdir / f'{len(hours) - 1:03d}.png', fdir / f'{len(hours) + e:03d}.png'); levels.append(levels[-1])  # hold the last frame
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS), '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=12:interp_start=0:interp_end=255:scene=100,scale=1920:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '19', '-tune', 'animation',
                     '-preset', 'slow', '-movflags', '+faststart', str(mp4)], check=True)
+    wav = None
     try:
         import sound as S_
-        S_.mux(mp4, S_.track(levels, 1 / FPS, str(mp4) + '.wav', mode='all'))
+        wav = S_.track(levels, 1 / FPS, str(mp4) + '.w.wav', mode='all')
+        shutil.copy(wav, str(mp4) + '.wav'); S_.mux(mp4, str(mp4) + '.wav')
     except Exception as e: print('moist sound failed', e, flush=True)
     Rn.fit_size(mp4, 19e6)  # Telegram takes a video by link up to 20 MB
+    if insets and GA:
+        for k_, b_ in boxes.items():
+            try: inset_video(fdir, b_, pathlib.Path(str(mp4)[:-4] + f'_{k_}.mp4'), wav)
+            except Exception as e: print('inset failed', k_, e, flush=True)
+    if wav and os.path.exists(wav): os.remove(wav)
     shutil.rmtree(fdir)
+
+
+def inset_video(fdir, box, out, wav, W=640, Hh=440):
+    """The whole map with the region framed, and the region enlarged in a window on the other side (from the 2× frames)."""
+    bx0, by0, bx1, by1, name = box
+    cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2; w = max(bx1 - bx0, 60) * 1.25; h = max(by1 - by0, 60) * 1.25
+    if w / h > W / Hh: h = w * Hh / W
+    else: w = h * W / Hh
+    w, h = min(w, 1900), min(h, 1060)
+    x0 = int(np.clip(cx - w / 2, 0, 1920 - w)); y0 = int(np.clip(cy - h / 2, 0, 1080 - h))
+    left = cx > 960  # the window goes where the region is not
+    ix, iy = (24, 150) if left else (1920 - W - 24, 215)
+    import matplotlib.pyplot as plt
+    import render as Rn
+    lab = out.with_suffix('.lab.png')
+    f_ = plt.figure(figsize=(W / 100, 0.42), dpi=100); f_.patch.set_alpha(0)
+    f_.text(0.012, 0.5, name, fontsize=14, fontweight='bold', color='#ffffff', va='center',
+            bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3a', ec='none'))
+    f_.savefig(lab, transparent=True); plt.close(f_)
+    fc = (f"[0:v]split=2[a][b];[a]scale=1920:1080:flags=lanczos,drawbox=x={x0}:y={y0}:w={int(w)}:h={int(h)}:color=0xF08A24:t=4[m];"
+          f"[b]crop={int(w * 2)}:{int(h * 2)}:{x0 * 2}:{y0 * 2},scale={W}:{Hh}:flags=lanczos,drawbox=x=0:y=0:w={W}:h={Hh}:color=0xF08A24:t=5[i];"
+          f"[m][i]overlay={ix}:{iy}[n];[n][1:v]overlay={ix + 8}:{iy + 8},framerate=fps=12:interp_start=0:interp_end=255:scene=100,format=yuv420p[v]")
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS), '-i', str(fdir / '%03d.png'), '-i', str(lab), '-filter_complex', fc, '-map', '[v]',
+                    '-c:v', 'libx264', '-crf', '21', '-tune', 'animation', '-preset', 'medium', '-movflags', '+faststart', str(out)], check=True)
+    os.remove(lab)
+    if wav:
+        import sound as S_
+        shutil.copy(wav, str(out) + '.wav'); S_.mux(out, str(out) + '.wav')
+    Rn.fit_size(out, 19e6)
 
 
 def extend_winds(W, F):
@@ -720,12 +763,212 @@ def main():
         try: paths = moisture_paths(F, extend_winds(W, F) if a.days > 3 else W, region, H=72 if a.days <= 3 else min(a.days * 24, max(F))) if len(W) >= 6 else []
         except Exception as e: print('moist paths failed', region, e, flush=True)
         print('moist paths', region, [(p['city'], p['h'], p['src']['ru']) for p in paths], flush=True)
+        if a.days == 3:  # how much falls (a video a language)
+            for lang in a.langs.split(','):
+                try: accum_video(F, region, lang, out / f'{region}_accum_{lang}.mp4', run); print('accum', region, lang, 'ok', flush=True)
+                except Exception as e: import traceback; traceback.print_exc(); print('accum failed', region, lang, e, flush=True)
+        if a.days == 3:  # the interactive map's data (once a country)
+            try: export_live(F, region, out, run, paths)
+            except Exception as e: import traceback; traceback.print_exc(); print('live failed', region, e, flush=True)
         for lang in a.langs.split(','):
-            H = min(a.days * 24, max(F)) if a.days > 3 else 72
-            name = f'{region}_moist_{lang}.mp4' if a.days <= 3 else f'{region}_moist15_{lang}.mp4'
-            try: video(F, region, lang, out / name, run, paths=paths, H=int(H)); print('moist', region, lang, a.days, 'days ok', flush=True)
+            H = min(a.days * 24, max(F)) if a.days > 3 else 48 if a.days == 2 else 72
+            name = f'{region}_moist2_{lang}.mp4' if a.days == 2 else f'{region}_moist_{lang}.mp4' if a.days <= 3 else f'{region}_moist15_{lang}.mp4'
+            try: video(F, region, lang, out / name, run, paths=paths, H=int(H), insets=a.days == 2); print('moist', region, lang, a.days, 'days ok', flush=True)
             except Exception as e:
                 import traceback; traceback.print_exc(); print('moist failed', region, lang, e, flush=True)
+
+
+AC_TX = {'ru': dict(title='Сколько выпадет осадков', sub='синее — дождь, мм · фиолетовое — снег, см · сумма с начала прогноза', rain='Дождь, мм', snow='Снег, см',
+                    total='всего', tz='по Ташкенту', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], none='Пока сухо'),
+         'uz': dict(title='Qancha yog‘in tushadi', sub='ko‘k — yomg‘ir, mm · binafsha — qor, sm · prognoz boshidan jami', rain='Yomg‘ir, mm', snow='Qor, sm',
+                    total='jami', tz='Toshkent vaqti', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], none='Hozircha quruq'),
+         'tr': dict(title='Ne kadar yağış düşecek', sub='mavi — yağmur, mm · mor — kar, cm · tahmin başından toplam', rain='Yağmur, mm', snow='Kar, cm',
+                    total='toplam', tz='Taşkent saati', wd=['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'], none='Şimdilik kuru')}
+AC_LV = [1, 3, 5, 10, 20, 35, 50, 80]
+AC_RAIN = ['#d6ecfb', '#a9d6f7', '#78baf0', '#4f9ae4', '#2f78d0', '#1d58b0', '#123d88', '#0a2a63']
+AC_SNOW = ['#efe6ff', '#dcc9fb', '#c4a6f4', '#a97fe8', '#8d5bd8', '#7240c0', '#5a2da0', '#421f7c']
+
+
+def accum_video(F, region, lang, mp4, run, H=72):
+    """How much falls: the rain (mm) and the snow (cm, about 1 cm a mm of water) adding up from the start of the forecast,
+    hour by hour, with the total at every town."""
+    import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt, matplotlib.patheffects as pe
+    from matplotlib.collections import LineCollection as LC, PolyCollection as PCOL
+    from scipy.ndimage import gaussian_filter
+    from hourly import NAVY
+    from regions import NAMES
+    import render as Rn
+    X = AC_TX.get(lang, AC_TX['ru']); off, tzn = TZ.get(region, (5, {}))[0], TZ.get(region, (5, {}))[1].get(lang, X['tz'])
+    x0, x1, y0, y1 = VIEW[region]; k = 1 / np.cos(np.radians((y0 + y1) / 2))
+    ym = (y0 + y1) / 2; hh_ = (x1 - x0) / k * 9 / 16 / 2; y0v, y1v = ym - hh_ * 1.08, ym + hh_ * 0.92
+    any_ = F[min(F)]['msl']; lon = LON0 + np.arange(any_.shape[1]) * RES; lat = LAT0 + np.arange(any_.shape[0]) * RES
+    ci = np.flatnonzero((lon >= x0 - 1) & (lon <= x1 + 1)); ri = np.flatnonzero((lat >= y0v - 1) & (lat <= y1v + 1)); ix = np.ix_(ri, ci)
+    LON, LAT = np.meshgrid(lon[ci], lat[ri]); ext = (lon[ci[0]] - RES / 2, lon[ci[-1]] + RES / 2, lat[ri[0]] - RES / 2, lat[ri[-1]] + RES / 2)
+    # rain and snow, added up hour by hour
+    rain = np.zeros(LON.shape); snow = np.zeros(LON.shape); acc = []
+    for h in range(0, H + 1):
+        if h:
+            Q = interp(F, h - 0.5); r_ = Q['pr'][ix] / 3.0; cold = Q['t2'][ix] <= 0.5 if 't2' in Q else np.zeros_like(r_, bool)
+            rain += np.where(cold, 0, r_); snow += np.where(cold, r_, 0)
+        acc.append((gaussian_filter(rain, 0.7), gaussian_filter(snow, 0.7) * 1.0))
+    G = json.load(open(HERE / 'geo_world.json'))['countries']; GA = json.load(open(HERE / 'geo_admin.json')).get(region, {}); WAT = json.load(open(HERE / 'geo_water.json'))
+    near = lambda r: np.asarray(r)[:, 0].max() > x0 - 3 and np.asarray(r)[:, 0].min() < x1 + 3 and np.asarray(r)[:, 1].max() > y0v - 3 and np.asarray(r)[:, 1].min() < y1v + 3
+    fig = plt.figure(figsize=(12.8, 7.2), dpi=150); fig.patch.set_facecolor('#ffffff')
+    ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(x0, x1); ax.set_ylim(y0v, y1v); ax.set_aspect(k); ax.axis('off')
+    seas = [np.asarray(r) for r in WAT['ocean'] if near(r)] + [np.asarray(l['r']) for l in WAT['lakes'] if near(l['r'])]
+    ax.add_collection(PCOL(seas, facecolors='#cfe3ef', edgecolors='#4d8fb8', linewidths=0.8, zorder=0.6))
+    E = ground_height(F)
+    if E is not None:
+        from scipy.ndimage import zoom
+        from matplotlib.colors import LightSource
+        Er = zoom(gaussian_filter(np.clip(E[ix], 0, None), 0.6), 4, order=3)
+        hs = np.flipud(LightSource(azdeg=315, altdeg=35).hillshade(np.flipud(Er), vert_exag=6, dx=RES / 4 * 111e3 / k, dy=RES / 4 * 111e3))
+        rel = np.zeros(Er.shape + (4,)); rel[..., :3] = np.where((hs < 0.6)[..., None], (0.22, 0.18, 0.14), (1.0, 1.0, 1.0))
+        rel[..., 3] = np.clip(np.where(hs < 0.62, (0.62 - hs) * 1.3, (hs - 0.62) * 0.9), 0, 0.55) * np.clip((Er - 300) / 900, 0, 1)
+        ax.imshow(rel, extent=ext, origin='lower', zorder=2.5, aspect='auto', interpolation='bilinear')
+    ax.add_collection(LC([np.asarray(r['c']) for r in WAT['rivers'] if near(r['c'])], colors='#4d8fb8', linewidths=0.8, alpha=0.9, zorder=4.2))
+    own = [np.asarray(r) for c, v in G.items() if c == region for r in v['rings']]
+    ax.add_collection(LC([np.asarray(r) for c, v in G.items() if c != region for r in v['rings'] if near(r)], colors='#7d8b99', linewidths=0.7, zorder=4))
+    if GA:  # the republic's regions and districts
+        ax.add_collection(LC([np.asarray(r) for a_ in GA.get('adm2', []) for r in a_['r']], colors='#a3adb8', linewidths=0.35, alpha=0.8, zorder=4))
+        ax.add_collection(LC([np.asarray(r) for a_ in GA['adm1'] for r in a_['r']], colors='#5f6b78', linewidths=0.8, alpha=0.9, zorder=4.05))
+    ax.add_collection(LC(own, colors='#1d2a3a', linewidths=1.7, zorder=4.5))
+    pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region and x0 < p['lon'] < x1], key=lambda p: -p.get('pop', 0))[:12]
+    for p in pl: ax.plot(p['lon'], p['lat'], 'o', ms=4.5, mfc=NAVY, mec='#ffffff', mew=1, zorder=8)
+    halo = [pe.withStroke(linewidth=2.6, foreground='#ffffff')]
+    cg = [(int(round((p['lat'] - lat[ri[0]]) / RES)), int(round((p['lon'] - lon[ci[0]]) / RES))) for p in pl]
+    fig.patches.append(matplotlib.patches.FancyBboxPatch((0.012, 0.915), 0.5, 0.07, boxstyle='round,pad=0,rounding_size=0.012', transform=fig.transFigure, facecolor='#1d2a3aee', edgecolor='none', zorder=20))
+    fig.text(0.024, 0.95, f"{NAMES[region][lang] if region in NAMES else region} · {X['title']}", fontsize=17, fontweight='bold', color='#ffffff', va='center', zorder=21)
+    fig.text(0.018, 0.893, X['sub'], fontsize=9.5, color='#ffffff', va='center', zorder=21, bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
+    clock = fig.text(0.982, 0.95, '', fontsize=16, fontweight='bold', color='#f0b88a', ha='right', va='center', zorder=21,
+                     bbox=dict(boxstyle='round,pad=0.5,rounding_size=0.5', fc='#1d2a3aee', ec='none'))
+    fig.patches.append(matplotlib.patches.FancyBboxPatch((0.012, 0.012), 0.52, 0.11, boxstyle='round,pad=0,rounding_size=0.008', transform=fig.transFigure, facecolor='#1d2a3acc', edgecolor='none', zorder=19))
+    for x_, cols, ttl in ((0.025, AC_RAIN, X['rain']), (0.28, AC_SNOW, X['snow'])):
+        fig.text(x_, 0.098, ttl, fontsize=11, fontweight='bold', color='#ffffff', zorder=21, va='center')
+        for i_, c_ in enumerate(cols):
+            fig.patches.append(matplotlib.patches.Rectangle((x_ + 0.028 * i_, 0.05), 0.028, 0.022, transform=fig.transFigure, facecolor=c_, edgecolor='none', zorder=20.5))
+            fig.text(x_ + 0.028 * i_, 0.032, str(AC_LV[i_]), fontsize=7.5, color='#c9d6e5', zorder=21, va='center')
+    tot = fig.text(0.982, 0.06, '', fontsize=12, fontweight='bold', color='#ffffff', ha='right', va='center', zorder=21,
+                   bbox=dict(boxstyle='round,pad=0.5,rounding_size=0.5', fc='#1d2a3aee', ec='none'))
+    # the districts of the republic: each coloured by the rain (or snow) that falls on it on average
+    from matplotlib.path import Path as MPath_
+    dist = []
+    for d_ in (GA.get('adm2', []) if GA else []):
+        m_ = np.zeros(LON.shape, bool)
+        for r in d_['r']: m_ |= MPath_(np.asarray(r)).contains_points(np.c_[LON.ravel(), LAT.ravel()]).reshape(LON.shape)
+        if not m_.any():
+            gy_, gx_ = int(round((d_['c'][1] - lat[ri[0]]) / RES)), int(round((d_['c'][0] - lon[ci[0]]) / RES))
+            if 0 <= gy_ < m_.shape[0] and 0 <= gx_ < m_.shape[1]: m_[gy_, gx_] = True
+        if m_.any(): dist.append((m_, [np.asarray(r) for r in d_['r']]))
+    dpoly = PCOL([r for m_, rs in dist for r in rs], facecolors='none', edgecolors='none', zorder=2.2) if dist else None
+    if dpoly: ax.add_collection(dpoly)
+    dcount = [len(rs) for m_, rs in dist]
+    land_ = np.zeros(LON.shape, bool)
+    for m_, rs in dist: land_ |= m_
+    def lvl_col(v, cols):
+        i_ = int(np.searchsorted(AC_LV, v, side='right')) - 1
+        return cols[min(i_, len(cols) - 1)] if i_ >= 0 else (1, 1, 1, 0)
+    fdir = pathlib.Path(tempfile.mkdtemp()); dyn = []
+    for f, (Rr, Ss) in enumerate(acc):
+        for a in dyn: a.remove()
+        dyn = []
+        Ro, So = np.where(land_, 0, Rr), np.where(land_, 0, Ss)  # outside the republic: the smooth field, lighter
+        if Ro.max() >= AC_LV[0]: dyn.append(ax.contourf(LON, LAT, Ro, levels=AC_LV + [1e4], colors=AC_RAIN, alpha=0.45, zorder=2))
+        if So.max() >= AC_LV[0]: dyn.append(ax.contourf(LON, LAT, So, levels=AC_LV + [1e4], colors=AC_SNOW, alpha=0.5, zorder=2.1))
+        if dpoly:
+            fc_ = []
+            for (m_, rs), n_ in zip(dist, dcount):
+                rv, sv = float(Rr[m_].mean()), float(Ss[m_].mean())
+                c_ = lvl_col(sv, AC_SNOW) if sv > rv else lvl_col(rv, AC_RAIN)
+                fc_ += [matplotlib.colors.to_rgba(c_, 0.9) if not isinstance(c_, tuple) else c_] * n_
+            dpoly.set_facecolor(fc_); dpoly.set_edgecolor('#ffffff'); dpoly.set_linewidth(0.4)
+        best = (0, '')
+        if f == 0: fig.canvas.draw(); rnd = fig.canvas.get_renderer()
+        taken = []  # the towns' labels never on top of each other (the biggest towns first)
+        for p, (gy, gx) in zip(pl, cg):
+            r_, s_ = (float(Rr[gy, gx]), float(Ss[gy, gx])) if 0 <= gy < Rr.shape[0] and 0 <= gx < Rr.shape[1] else (0, 0)
+            t_ = Rn.city_name(p, lang) + (f'  ☂ {r_:.0f} мм' if r_ >= 0.5 else '') + (f'  ❄ {s_:.0f} см' if s_ >= 0.5 else '')
+            if lang != 'ru': t_ = t_.replace('мм', 'mm').replace('см', 'sm' if lang == 'uz' else 'cm')
+            for dx_, dy_, ha_, va_ in ((0.2, 0.1, 'left', 'bottom'), (0.2, -0.1, 'left', 'top'), (-0.2, 0.1, 'right', 'bottom'), (-0.2, -0.1, 'right', 'top')):
+                tx_ = ax.text(p['lon'] + dx_, p['lat'] + dy_, t_, fontsize=9, fontweight='bold', ha=ha_, va=va_, color='#6639ae' if s_ > r_ else '#1756b5' if r_ >= 0.5 else NAVY, zorder=8.5, path_effects=halo)
+                bb_ = tx_.get_window_extent(rnd).expanded(1.04, 1.15)
+                if not any(bb_.overlaps(o) for o in taken): taken.append(bb_); dyn.append(tx_); break
+                tx_.remove()
+            if r_ + s_ > best[0]: best = (r_ + s_, Rn.city_name(p, lang))
+        tl = run + dt.timedelta(hours=f + off)
+        clock.set_text(f"{X['wd'][tl.weekday()]} {tl:%d.%m} · {tl:%H}:00 · {tzn}")
+        tot.set_text(f"{X['total']}: {best[1]} {best[0]:.0f} {'мм' if lang == 'ru' else 'mm'}" if best[0] >= 1 else X['none'])
+        fig.savefig(fdir / f'{f:03d}.png', dpi=150, facecolor='#ffffff')
+    plt.close(fig)
+    n = len(acc)
+    for e in range(4 * FPS): shutil.copy(fdir / f'{n - 1:03d}.png', fdir / f'{n + e:03d}.png')
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS * 2), '-i', str(fdir / '%03d.png'), '-vf', 'framerate=fps=12:interp_start=0:interp_end=255:scene=100,format=yuv420p',
+                    '-c:v', 'libx264', '-crf', '20', '-tune', 'animation', '-preset', 'slow', '-movflags', '+faststart', str(mp4)], check=True)
+    Rn.fit_size(mp4, 19e6); shutil.rmtree(fdir)
+
+
+def export_live(F, region, out, run, paths=(), H=72):
+    """The data of the interactive map (site/moist.html): an overlay picture per hour (clouds grey, rain blue, snow violet)
+    on the 0.25° grid, the relief, and per hour the fronts, the pressure centres and the paths of moisture → out/live/{region}/."""
+    from scipy.ndimage import gaussian_filter, maximum_filter, minimum_filter, zoom
+    from matplotlib.colors import LightSource
+    import matplotlib.pyplot as plt
+    x0, x1, y0, y1 = VIEW[region]; x0, x1, y0, y1 = x0 - 2, x1 + 2, y0 - 1.5, y1 + 1.5
+    any_ = F[min(F)]['msl']; lon = LON0 + np.arange(any_.shape[1]) * RES; lat = LAT0 + np.arange(any_.shape[0]) * RES
+    ci = np.flatnonzero((lon >= x0) & (lon <= x1)); ri = np.flatnonzero((lat >= y0) & (lat <= y1)); ix = np.ix_(ri, ci)
+    LON, LAT = np.meshgrid(lon[ci], lat[ri])
+    d = out / 'live' / region; d.mkdir(parents=True, exist_ok=True)
+    for f_ in d.glob('f*.png'): f_.unlink()
+    bounds = [float(lon[ci[0]] - RES / 2), float(lon[ci[-1]] + RES / 2), float(lat[ri[0]] - RES / 2), float(lat[ri[-1]] + RES / 2)]
+    E = ground_height(F)
+    if E is not None:  # the relief: shading, 4× the grid
+        Er = zoom(gaussian_filter(np.clip(E[ix], 0, None), 0.6), 4, order=3)
+        hs = LightSource(azdeg=315, altdeg=35).hillshade(np.flipud(Er), vert_exag=6, dx=RES / 4 * 111e3 * np.cos(np.radians((y0 + y1) / 2)), dy=RES / 4 * 111e3)
+        hi_ = np.flipud(np.clip((Er - 300) / 900, 0, 1)); rel = np.zeros(hs.shape + (4,))
+        rel[..., :3] = np.where((hs < 0.6)[..., None], (0.25, 0.2, 0.15), (1, 1, 1)); rel[..., 3] = np.clip(np.where(hs < 0.62, (0.62 - hs) * 1.3, (hs - 0.62) * 0.9), 0, 0.6) * hi_
+        tint = np.clip((np.flipud(Er) - 1200) / 2800, 0, 1)[..., None] * 0.38
+        rel[..., :3] = rel[..., :3] * (1 - tint) + np.array([0.62, 0.52, 0.40]) * tint; rel[..., 3] = np.maximum(rel[..., 3], tint[..., 0])
+        plt.imsave(d / 'relief.png', np.clip(rel, 0, 1))
+    hours = list(range(0, H + 1)); fr, hl, times = [], [], []
+    rain_c = np.array([[169, 219, 255], [108, 188, 247], [61, 149, 236], [34, 114, 216], [23, 86, 181], [15, 63, 140]]) / 255
+    snow_c = np.array([[234, 220, 255], [211, 188, 250], [184, 151, 240], [155, 114, 226], [128, 82, 204], [102, 57, 174]]) / 255
+    lv = np.array([0.1, 0.5, 1.5, 3, 6, 12])
+    for h in hours:
+        Q = interp(F, float(h)); P = gaussian_filter(Q['pr'][ix], 0.6); C = gaussian_filter(Q['tcc'][ix], 1.0) if 'tcc' in Q else np.zeros_like(P)
+        SN = gaussian_filter(Q['t2'][ix], 1.0) <= 0.5 if 't2' in Q else np.zeros_like(P, bool)
+        img = np.zeros(P.shape + (4,)); img[..., :3] = (0.52, 0.56, 0.61); img[..., 3] = np.clip((C - 0.4) / 0.6, 0, 1) ** 1.3 * 0.45
+        k = np.clip(np.searchsorted(lv, P) - 1, -1, 5)
+        for j in range(6):
+            m = k == j
+            img[m & ~SN, :3] = rain_c[j]; img[m & SN, :3] = snow_c[j]; img[m, 3] = 0.88
+        plt.imsave(d / f'f{h:03d}.png', np.flipud(img))
+        fl = []
+        if 't850' in Q and 'r850' in Q:
+            try:
+                for xy, kind in fronts(Q['t850'][ix], Q['r850'][ix], Q['u'][ix], Q['v'][ix], lon[ci], lat[ri]):
+                    fl.append({'k': kind, 'p': [[round(float(a), 2), round(float(b), 2)] for a, b in xy[::2]]})
+            except Exception: pass
+        M = gaussian_filter(Q['msl'][ix], 2.0); cs = []
+        for mask, lab in ((maximum_filter(M, size=25) == M, 'H'), (minimum_filter(M, size=25) == M, 'L')):
+            for yy, xx in zip(*np.nonzero(mask)):
+                if 3 < yy < M.shape[0] - 3 and 3 < xx < M.shape[1] - 3 and abs(M[yy, xx] - np.median(M)) > 3:
+                    cs.append([round(float(LON[yy, xx]), 2), round(float(LAT[yy, xx]), 2), lab, int(round(M[yy, xx]))])
+        U, V = Q['u'][ix][::4, ::4], Q['v'][ix][::4, ::4]
+        fr.append({'f': fl, 'c': cs, 'w': [[round(float(u), 1), round(float(v), 1)] for u, v in zip(U.ravel(), V.ravel())]})
+        times.append((run + dt.timedelta(hours=h)).strftime('%Y-%m-%dT%H:00Z'))
+    W = json.load(open(HERE / 'geo_water.json')); G = json.load(open(HERE / 'geo_world.json'))['countries']
+    inb = lambda r: (lambda a: a[:, 0].max() > x0 and a[:, 0].min() < x1 and a[:, 1].max() > y0 and a[:, 1].min() < y1)(np.asarray(r))
+    rings = lambda c: c.get('rings') or c.get('r') or []
+    meta = {'run': run.strftime('%Y-%m-%dT%H:00Z'), 'bounds': bounds, 'view': list(VIEW[region]), 'times': times, 'frames': fr,
+            'wind_grid': [len(range(0, len(ri), 4)), len(range(0, len(ci), 4)), float(lat[ri[0]]), float(lon[ci[0]]), RES * 4],
+            'relief': E is not None, 'tz': TZ.get(region, (5, {}))[0],
+            'paths': [{'city': p_['city'], 'h': p_['h'], 'src': p_['src'], 'snow': p_['snow'], 'p': [[round(a, 2), round(b, 2)] for a, b in p_['path'][::2]]} for p_ in paths],
+            'water': {'sea': [r for r in W['ocean'] + [l['r'] for l in W['lakes']] if inb(r)], 'rivers': [[r['w'], r['c']] for r in W['rivers'] if inb(r['c'])]},
+            'countries': [r for c in (G if isinstance(G, list) else G.values()) for r in (rings(c) if isinstance(c, dict) else []) if inb(r)],
+            'cities': [{'n': {'ru': p_.get('ru'), 'uz': p_.get('uz')}, 'lon': p_['lon'], 'lat': p_['lat']} for p_ in json.load(open(HERE / 'geo_prob.json'))['places']
+                       if x0 < p_['lon'] < x1 and y0 < p_['lat'] < y1 and p_.get('pop', 0) >= 80000]}
+    json.dump(meta, open(d / 'meta.json', 'w'), ensure_ascii=False, separators=(',', ':'))
+    print('live', region, len(hours), 'hours', sum(f_.stat().st_size for f_ in d.iterdir()) // 1024, 'KB', flush=True)
 
 
 if __name__ == '__main__':

@@ -386,6 +386,7 @@ async function sendDistricts(env, chat, lang, rid, id, msgId) {
   const X = RGX[lang] || RGX.ru, A = await adminData(env, rid);
   if (!A) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   const r = A.adm1.find(a => a.id === id); if (!r) return sendRegions(env, chat, lang, rid);
+  if (!msgId) { const mv = await moist2Url(env, lang, rid, 0, id); if (mv) await tg(env, 'sendVideo', { chat_id: chat, video: mv, caption: `💧 ${esc(admName(r, lang))} · ${(TJX[lang] || TJX.ru).moist2}`, parse_mode: 'HTML', supports_streaming: true }); }
   const ds = A.adm2.map((d, i) => ({ ...d, i })).filter(d => d.p === id).sort((x, y) => admName(x, lang).localeCompare(admName(y, lang)));
   const text = [`🗺 <b>${esc(admName(r, lang))}</b> — ${X.dists}`, `${X.today} ${admLine(r.v[0])} · ${X.tomorrow} ${admLine(r.v[1])}`, `<i>${X.detail}</i>`, '',
     ...ds.map(d => `• ${esc(admName(d, lang))}: ${admLine(d.v[0])} · ${X.tomorrow} ${admLine(d.v[1])}`), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000);
@@ -400,9 +401,9 @@ async function sendDistricts(env, chat, lang, rid, id, msgId) {
 
 /* ---------- where the rain and snow come from (prob/trajectory.py: the air's path 2 days back) ---------- */
 const TRJ = new Set(['UZ', 'KZ', 'KG']);
-const TJX = { ru: { btn: '🧭 Откуда придут осадки', moist: 'Откуда идёт дождь, 3 дня: серое — тучи, синее — дождь, фиолетовое — снег, красное — циклон, жёлтое — сильный ветер, оранжевый пунктир — путь влаги к городу (ECMWF)', m15: '📅 Видео на 15 дней', moist15: 'Дождь, снег и ветер на 15 дней (ECMWF; после 10-го дня — один из сценариев ансамбля, это ориентир)', m15none: 'Видео на 15 дней ещё готовится — загляните чуть позже.', title: 'Откуда придут осадки', none: 'В ближайшие 3 дня осадков в крупных городах не ожидается — показывать нечего. ☀️', foot: 'Линия — путь воздуха (на высоте ~3 км), который принесёт осадки, за 2 суток до их начала. Модель ECMWF.' },
-              uz: { btn: '🧭 Yog‘in qayerdan keladi', moist: 'Yomg‘ir qayerdan keladi, 3 kun: kulrang — bulut, ko‘k — yomg‘ir, binafsha — qor, qizil — siklon, sariq — kuchli shamol, to‘q sariq punktir — namlikning shaharga yo‘li (ECMWF)', m15: '📅 15 kunlik video', moist15: 'Yomg‘ir, qor va shamol 15 kunga (ECMWF; 10-kundan keyin — ansamblning bir ssenariysi, taxminiy)', m15none: '15 kunlik video hali tayyorlanmoqda — birozdan keyin qarang.', title: 'Yog‘in qayerdan keladi', none: 'Yaqin 3 kunda yirik shaharlarda yog‘in kutilmaydi — ko‘rsatadigan narsa yo‘q. ☀️', foot: 'Chiziq — yog‘in olib keladigan havoning (~3 km balandlikda) boshlanishidan 2 kun oldingi yo‘li. ECMWF modeli.' },
-              tr: { btn: '🧭 Yağış nereden gelecek', moist: 'Yağmur nereden geliyor, 3 gün: gri — bulut, mavi — yağmur, mor — kar, kırmızı — siklon, sarı — kuvvetli rüzgâr, turuncu kesikli — nemin şehre yolu (ECMWF)', m15: '📅 15 günlük video', moist15: 'Yağmur, kar ve rüzgâr 15 gün (ECMWF; 10. günden sonra ensemble senaryolarından biri, yaklaşık)', m15none: '15 günlük video henüz hazırlanıyor — biraz sonra bakın.', title: 'Yağış nereden gelecek', none: 'Önümüzdeki 3 günde büyük şehirlerde yağış beklenmiyor. ☀️', foot: 'Çizgi — yağışı getirecek havanın (~3 km yükseklikte) başlamadan önceki 2 günlük yolu. ECMWF modeli.' } };
+const TJX = { ru: { btn: '🧭 Откуда придут осадки', moist: 'Откуда идёт дождь, 3 дня: серое — тучи, синее — дождь, фиолетовое — снег, красное — циклон, жёлтое — сильный ветер, оранжевый пунктир — путь влаги к городу (ECMWF)', m15: '📅 Видео на 15 дней', acc: '💧 Сколько выпадет дождя и снега', accCap: 'Сколько выпадет: дождь (мм) и снег (см) нарастают с начала прогноза; у городов — сумма (ECMWF, 3 дня)', moist2: 'дождь, снег и ветер на 2 дня (область — в окне)', moist15: 'Дождь, снег и ветер на 15 дней (ECMWF; после 10-го дня — один из сценариев ансамбля, это ориентир)', m15none: 'Видео на 15 дней ещё готовится — загляните чуть позже.', title: 'Откуда придут осадки', none: 'В ближайшие 3 дня осадков в крупных городах не ожидается — показывать нечего. ☀️', foot: 'Линия — путь воздуха (на высоте ~3 км), который принесёт осадки, за 2 суток до их начала. Модель ECMWF.' },
+              uz: { btn: '🧭 Yog‘in qayerdan keladi', moist: 'Yomg‘ir qayerdan keladi, 3 kun: kulrang — bulut, ko‘k — yomg‘ir, binafsha — qor, qizil — siklon, sariq — kuchli shamol, to‘q sariq punktir — namlikning shaharga yo‘li (ECMWF)', m15: '📅 15 kunlik video', acc: '💧 Qancha yomg‘ir va qor yog‘adi', accCap: 'Qancha yog‘adi: yomg‘ir (mm) va qor (sm) prognoz boshidan yig‘iladi; shaharlarda — jami (ECMWF, 3 kun)', moist2: 'yomg‘ir, qor va shamol 2 kunga (viloyat — oynada)', moist15: 'Yomg‘ir, qor va shamol 15 kunga (ECMWF; 10-kundan keyin — ansamblning bir ssenariysi, taxminiy)', m15none: '15 kunlik video hali tayyorlanmoqda — birozdan keyin qarang.', title: 'Yog‘in qayerdan keladi', none: 'Yaqin 3 kunda yirik shaharlarda yog‘in kutilmaydi — ko‘rsatadigan narsa yo‘q. ☀️', foot: 'Chiziq — yog‘in olib keladigan havoning (~3 km balandlikda) boshlanishidan 2 kun oldingi yo‘li. ECMWF modeli.' },
+              tr: { btn: '🧭 Yağış nereden gelecek', moist: 'Yağmur nereden geliyor, 3 gün: gri — bulut, mavi — yağmur, mor — kar, kırmızı — siklon, sarı — kuvvetli rüzgâr, turuncu kesikli — nemin şehre yolu (ECMWF)', m15: '📅 15 günlük video', acc: '💧 Ne kadar yağmur ve kar yağacak', accCap: 'Ne kadar yağacak: yağmur (mm) ve kar (cm) tahmin başından birikir; şehirlerde toplam (ECMWF, 3 gün)', moist2: '2 günlük yağmur, kar ve rüzgâr (bölge pencerede)', moist15: 'Yağmur, kar ve rüzgâr 15 gün (ECMWF; 10. günden sonra ensemble senaryolarından biri, yaklaşık)', m15none: '15 günlük video henüz hazırlanıyor — biraz sonra bakın.', title: 'Yağış nereden gelecek', none: 'Önümüzdeki 3 günde büyük şehirlerde yağış beklenmiyor. ☀️', foot: 'Çizgi — yağışı getirecek havanın (~3 km yükseklikte) başlamadan önceki 2 günlük yolu. ECMWF modeli.' } };
 async function trajData(env, rid) { return fetch(`${base(env)}/prob/hr/${rid}_traj.json?v=${fresh()}`).then(r => r.ok ? r.json() : null).catch(() => null); }
 async function sendMoist15(env, chat, lang, rid) {  // the long video: 15 days of rain, snow and wind (prob/moisture.py --days 15)
   const X = TJX[lang] || TJX.ru, L = lang === 'tr' ? 'ru' : lang, url = `${base(env)}/prob/hr/${rid}_moist15_${L}.mp4`;
@@ -418,7 +419,7 @@ async function sendTrajLite(env, chat, lang, rid) {  // the morning 🧭: only t
   if (!(rid in TJ_CACHE.J)) TJ_CACHE.J[rid] = await trajData(env, rid);
   const J = TJ_CACHE.J[rid], v = encodeURIComponent(J ? J.run : fresh());
   return tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `🧭 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true,
-    reply_markup: { inline_keyboard: [[{ text: X.btn, callback_data: `TJ:${lang}:${rid}` }], [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }]] } });
+    reply_markup: { inline_keyboard: [[{ text: X.btn, callback_data: `TJ:${lang}:${rid}` }], [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }], ...moistBtns(env, lang, rid, chat)] } });
 }
 async function sendTraj(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, J = await trajData(env, rid);
@@ -427,7 +428,8 @@ async function sendTraj(env, chat, lang, rid) {
   // first the moving picture of the moisture coming in (prob/moisture.py), then the map of the air's paths
   const L = lang === 'tr' ? 'ru' : lang, v = encodeURIComponent(J.run);
   // the 3-day video, then the 15-day one (the old map of the paths is gone: the videos show them)
-  await tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `💧 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true });
+  await tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `💧 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true,
+    reply_markup: { inline_keyboard: [[{ text: X.acc, callback_data: `AV:${lang}:${rid}` }], ...moistBtns(env, lang, rid, chat)] } });
   await sendMoist15(env, chat, lang, rid);
   const seen = new Set(), lines = [...J.items].sort((a, b) => a.k - b.k || b.p - a.p).filter(it => !seen.has(it.city.ru + it.day) && seen.add(it.city.ru + it.day)).slice(0, 10)
     .map(it => `<b>${esc(it.city[lang] || it.city.ru)} · ${dayLabel(it.day, lang)} · ${it.snow ? '❄' : '☂'} ${it.p}%</b>\n🧭 ${esc(it.text[lang] || it.text.ru)}`);
@@ -811,6 +813,10 @@ const LIVE = { ru: '🗺 Интерактивная карта по часам',
 const LIVE15 = { ru: '🗺 Интерактивная карта на 15 дней', uz: '🗺 15 kunlik interaktiv xarita', tr: '🗺 15 günlük etkileşimli harita' };
 const liveBtn = (env, lang, id, chat, d15) => { const u = `${base(env)}/live.html?r=${id}&l=${lang}${d15 ? '&m=15' : ''}`;
   return { text: (d15 ? LIVE15 : LIVE)[lang] || (d15 ? LIVE15 : LIVE).ru, ...(chat > 0 ? { web_app: { url: u } } : { url: u }) }; };
+// the interactive «where the rain comes from» map and the satellite now (site/moist.html; Uzbekistan, Kazakhstan, Kyrgyzstan)
+const MBTN = { ru: ['🗺 Интерактивная карта осадков', '🛰 Онлайн: тучи со спутника'], uz: ['🗺 Interaktiv yog‘in xaritasi', '🛰 Onlayn: sun’iy yo‘ldoshdan bulutlar'], tr: ['🗺 Etkileşimli yağış haritası', '🛰 Canlı: uydudan bulutlar'] };
+const moistBtns = (env, lang, id, chat) => !TRJ.has(id) ? [] : [0, 1].map(k => { const u = `${base(env)}/moist.html?r=${id}&l=${lang === 'uz' ? 'uz' : 'ru'}${k ? '&m=sat' : ''}`;
+  return [{ text: (MBTN[lang] || MBTN.ru)[k], ...(chat > 0 ? { web_app: { url: u } } : { url: u }) }]; });
 const postKb = (env, lang, id, bot, chat) => ({ inline_keyboard: [...(chat ? [[liveBtn(env, lang, id, chat)], [liveBtn(env, lang, id, chat, true)]] : []), [{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
 
 /* ---------- forecast text ---------- */
@@ -927,6 +933,27 @@ const FILLER = new Set('погода погоду погоды прогноз в
 // today and tomorrow hour by hour: the country's video with the main city's timing and clothing advice (prob/hourly.py)
 // Telegram caches a file by its URL, so every media link carries the hour: a new build is always fetched again
 const fresh = () => Math.floor(Date.now() / 3600e3);
+// the short line: "🌧 99% ehtimoli bor · ertaga harorat kunduzi +12…+15° kechasi +3…+8° kutilyapti"
+function reaction(d, lang, which) {
+  if (!d) return '';
+  const p = d.p || 0, emo = d.snow && p >= 30 ? '🌨' : d.storm ? '🌧⛈️' : p >= 30 ? '🌧' : p >= 10 ? '🌦' : '☀️';
+  const sg = v => (v > 0 ? '+' : '') + v, rng = a => a ? (a[0] === a[1] ? `${sg(a[0])}°` : `${sg(a[0])}…${sg(a[1])}°`) : '';
+  const W = { uz: { today: 'bugun', tomorrow: 'ertaga', p: x => x >= 10 ? `${x}% yog‘in ehtimoli bor` : 'yog‘ingarchilik kutilmayapti', t: (w, dd, nn) => `${w} harorat kunduzi ${dd}${nn ? ` kechasi ${nn}` : ''} kutilyapti` },
+    ru: { today: 'сегодня', tomorrow: 'завтра', p: x => x >= 10 ? `вероятность осадков ${x}%` : 'осадков не ожидается', t: (w, dd, nn) => `${w} днём ${dd}${nn ? `, ночью ${nn}` : ''}` },
+    tr: { today: 'bugün', tomorrow: 'yarın', p: x => x >= 10 ? `yağış olasılığı %${x}` : 'yağış beklenmiyor', t: (w, dd, nn) => `${w} gündüz ${dd}${nn ? `, gece ${nn}` : ''}` } }[lang] || null;
+  if (!W) return '';
+  return `${emo} ${W.p(p)} · ${W.t(W[which], rng(d.day) || d.range, rng(d.night))}`;
+}
+// the 2-day video «where the rain comes from», with a window on the person's region when we know it (prob/moisture.py --days 2)
+async function moist2Url(env, lang, id, chat, k = null) {
+  const L = lang === 'tr' ? 'ru' : lang, head = u => fetch(u, { method: 'HEAD' }).then(r => r.ok).catch(() => false);
+  if (k == null && chat > 0) {
+    const u = await getUser(env, chat), pl = u && u.place ? JSON.parse(u.place) : null;
+    if (pl) { const A = await adminData(env, id); if (A) { let best = null, bd = 9e9; for (const a of A.adm1) { const d = (a.c[1] - pl[0]) ** 2 + ((a.c[0] - pl[1]) * Math.cos(pl[0] / 57.3)) ** 2; if (d < bd) { bd = d; best = a.id; } } if (bd < 9) k = best; } }
+  }
+  for (const u of [...(k != null ? [`${base(env)}/prob/hr/${id}_moist2_${L}_${k}.mp4`] : []), `${base(env)}/prob/hr/${id}_moist2_${L}.mp4`]) if (await head(u)) return `${u}?v=${fresh()}`;
+  return null;
+}
 async function sendHourly(env, chat, lang, id) {
   let H = null;
   for (const l of [lang, 'ru', 'uz']) { const r = await fetch(`${base(env)}/prob/hr/${id}_${l}.json`, { cf: { cacheTtl: 600 } }); if (r.ok) { H = await r.json(); break; } }
@@ -935,14 +962,15 @@ async function sendHourly(env, chat, lang, id) {
   const part = (lbl, d) => d ? `<b>${lbl}</b> ${d.range}\n☂️ ${d.rain}\n🧥 ${K.wear}: ${d.wear}` : '';
   // where the coming rain or snow of the main city comes from (Uzbekistan, Kazakhstan; prob/trajectory.py)
   const TJ = TRJ.has(id) ? await trajData(env, id) : null, ti = TJ && TJ.items.filter(it => it.city[lang] === H.city || it.city.ru === H.city).sort((a, b) => a.k - b.k)[0];
-  const cap = [`${FLAG[id] || ''} <b>${esc(NAMES[id][lang])}</b> · ${esc(H.city)} — ${X[0].toLowerCase()} / ${X[1].toLowerCase()} ${X[2]}`, '', part(X[0], H.info.today), '', part(X[1], H.info.tomorrow),
+  const rx = [reaction(H.info.today, lang, 'today'), reaction(H.info.tomorrow, lang, 'tomorrow')].filter(Boolean);
+  const cap = [`${FLAG[id] || ''} <b>${esc(NAMES[id][lang])}</b> · ${esc(H.city)} — ${X[0].toLowerCase()} / ${X[1].toLowerCase()} ${X[2]}`, ...(rx.length ? ['', ...rx.map(esc)] : []), '', part(X[0], H.info.today), '', part(X[1], H.info.tomorrow),
     ...(ti ? ['', `🧭 ${esc(ti.text[lang] || ti.text.ru)}`] : [])].join('\n').slice(0, 1024);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
-  const url = `${base(env)}/prob/${H.video}?v=${fresh()}`;
+  const url = (await moist2Url(env, lang, id, chat)) || `${base(env)}/prob/${H.video}?v=${fresh()}`;  // the 2-day rain video, else the old one
   // the interactive map (a Telegram mini app): touch the map, drag the hours, hear the weather — private chats only
   // (the keyboard under the input field stays as it is; this message carries the mini-app button)
   // groups and channels: only a link to the interactive map (keyboards under the input field and mini-app buttons work in private chats only)
-  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], ...(ADM.has(id) ? [[{ text: (RGX[lang] || RGX.ru).btn, callback_data: `RG:${lang}:${id}` }]] : []), ...(TRJ.has(id) ? [[{ text: (TJX[lang] || TJX.ru).btn, callback_data: `TJ:${lang}:${id}` }]] : []), [notifBtn(lang, 'hourly')]] } : { inline_keyboard: [[liveBtn(env, lang, id, chat)]] };
+  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], ...moistBtns(env, lang, id, chat), ...(ADM.has(id) ? [[{ text: (RGX[lang] || RGX.ru).btn, callback_data: `RG:${lang}:${id}` }]] : []), ...(TRJ.has(id) ? [[{ text: (TJX[lang] || TJX.ru).btn, callback_data: `TJ:${lang}:${id}` }]] : []), [notifBtn(lang, 'hourly')]] } : { inline_keyboard: [[liveBtn(env, lang, id, chat)]] };
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
   if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
@@ -1299,6 +1327,12 @@ async function handle(up, env) {
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
   if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
   if (kind === 'MV' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);
+  if (kind === 'AV' && TRJ.has(id)) {  // how much rain and snow falls (prob/moisture.py accum_video)
+    const X = TJX[lang] || TJX.ru, url = `${base(env)}/prob/hr/${id}_accum_${lang === 'tr' ? 'ru' : lang}.mp4`;
+    if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: X.m15none });
+    await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
+    return tg(env, 'sendVideo', { chat_id: chat.id, video: `${url}?v=${fresh()}`, caption: `💧 ${FLAG[id]} ${NAMES[id][lang]} · ${X.accCap}`, supports_streaming: true });
+  }
   if (kind === 'RX' && ADM.has(id)) {  // one district: the full forecast at its centre, named "district, region"
     const A = await adminData(env, id), d = A && A.adm2[+cb.data.split(':')[3]];
     if (d) { const r = A.adm1.find(a => a.id === d.p), nm = l => `${d.name[l] || d.name.ru}${r ? ', ' + (r.name[l] || r.name.ru) : ''}`;

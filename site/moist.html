@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Osmon · откуда осадки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700&family=Unbounded:wght@600;700&display=swap">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--navy:#2b3a4e;--line:#dde3ea;--ink:#2b3a4e;--muted:#6b7a8c;--accent:#f08a24;--paper:#f3f5f7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#fff;color:var(--ink);font-family:'Golos Text',system-ui,sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;user-select:none;-webkit-user-select:none}
+header{background:var(--navy);color:#fff;padding:calc(8px + var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)) 12px 8px;display:flex;align-items:center;gap:8px}
+header .c{font-family:Unbounded,sans-serif;font-weight:700;font-size:15px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:15px;color:#f0b88a;text-align:right;white-space:nowrap}
+#tabs{display:flex;gap:6px;padding:6px 8px;background:var(--paper);border-bottom:1px solid var(--line);overflow-x:auto}
+#tabs button,.chip{flex:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:6px 12px;font:600 13px 'Golos Text',sans-serif;cursor:pointer}
+#tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip.on{background:#fff4e8;border-color:var(--accent);color:#a1520c}
+#wrap{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;background:#fff}
+canvas{display:block;width:100%;height:100%}
+#legend{position:absolute;left:8px;top:8px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:11px;line-height:1.5;max-width:62%}
+#legend i{display:inline-block;width:18px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+#tip{position:absolute;display:none;background:var(--navy);color:#fff;border-radius:10px;padding:7px 10px;font-size:13px;pointer-events:none;max-width:70%;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+#zoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
+#zoom button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.95);font:700 20px 'Golos Text',sans-serif;color:var(--ink)}
+#layers{display:flex;gap:6px;padding:6px 8px;overflow-x:auto;background:#fff;border-top:1px solid var(--line)}
+#dock{display:flex;align-items:center;gap:8px;padding:6px 10px calc(8px + var(--tg-safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line)}
+.rb{flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--navy);color:#fff;font:600 16px 'Golos Text',sans-serif;cursor:pointer}
+.rb.alt{background:#fff;color:var(--ink);border:1px solid var(--line);font-size:13px}
+#time{flex:1;accent-color:var(--accent)}
+#msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;text-align:center;padding:20px;pointer-events:none}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<header><div class="c" id="title">Откуда придут осадки</div><div class="t" id="clock">—</div></header>
+<div id="tabs"><button id="tabF" class="on"></button><button id="tabS"></button></div>
+<div id="wrap"><canvas id="cv"></canvas><div id="legend"></div><div id="tip"></div><div id="msg"></div>
+  <div id="zoom"><button id="zin" aria-label="+">+</button><button id="zout" aria-label="−">−</button></div></div>
+<div id="layers"></div>
+<div id="dock"><button class="rb" id="play" aria-label="play">▶</button><input type="range" id="time" min="0" max="72" step="0.05" value="0"><button class="rb alt" id="spd">1×</button></div>
+<script>
+// Osmon · «откуда придут осадки» interactive (prob/moisture.py export_live) and the satellite now (EUMETSAT Meteosat IODC)
+const Q = new URLSearchParams(location.search), tg = window.Telegram && Telegram.WebApp;
+const REG = (Q.get('r') || 'UZ').toUpperCase(), LANG = Q.get('l') === 'uz' ? 'uz' : 'ru';
+if (tg) { try { tg.ready(); tg.expand(); } catch (e) {} }
+const TX = {
+  ru: { title: 'Откуда придут осадки', tabF: '🧭 Прогноз', tabS: '🛰 Онлайн: спутник', L: { cl: 'Тучи и осадки', fr: 'Фронты', pa: 'Пути влаги', wi: 'Ветер' },
+    leg: '<i style="background:#9aa3ad"></i>тучи <i style="background:#3d95ec"></i>дождь <i style="background:#9b72e2"></i>снег<br><b style="color:#1f5fd1">▲</b> холодный фронт <b style="color:#d6402b">●</b> тёплый<br><b style="color:#f08a24">- - ▶</b> путь влаги к городу',
+    legS: 'Спутник Meteosat (EUMETSAT), инфракрасный: <b>белое — тучи</b>, чем белее — тем выше и холоднее.<br><i style="background:#3d95ec"></i>оценка осадков со спутника (H SAF)',
+    rain: 'дождь', snow: 'снег', cloud: 'облачно', clear: 'ясно', mm: 'мм/3 ч', from: 'Влага', load: 'Загружаю…', none: 'Данных пока нет — загляните чуть позже.', satErr: 'Снимки спутника сейчас недоступны.', ago: 'назад', tz: { UZ: 'по Ташкенту', KZ: 'по Астане', KG: 'по Бишкеку' },
+    wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'] },
+  uz: { title: 'Yog‘in qayerdan keladi', tabF: '🧭 Prognoz', tabS: '🛰 Onlayn: sun’iy yo‘ldosh', L: { cl: 'Bulut va yog‘in', fr: 'Frontlar', pa: 'Namlik yo‘li', wi: 'Shamol' },
+    leg: '<i style="background:#9aa3ad"></i>bulut <i style="background:#3d95ec"></i>yomg‘ir <i style="background:#9b72e2"></i>qor<br><b style="color:#1f5fd1">▲</b> sovuq front <b style="color:#d6402b">●</b> iliq<br><b style="color:#f08a24">- - ▶</b> namlikning shaharga yo‘li',
+    legS: 'Meteosat (EUMETSAT) infraqizil: <b>oq — bulut</b>, qancha oq bo‘lsa — shuncha baland.<br><i style="background:#3d95ec"></i>sun’iy yo‘ldosh bo‘yicha yog‘in (H SAF)',
+    rain: 'yomg‘ir', snow: 'qor', cloud: 'bulutli', clear: 'ochiq', mm: 'mm/3 soat', from: 'Namlik', load: 'Yuklanmoqda…', none: 'Ma’lumot hali yo‘q — birozdan keyin qarang.', satErr: 'Sun’iy yo‘ldosh suratlari hozir yo‘q.', ago: 'oldin', tz: { UZ: 'Toshkent vaqti', KZ: 'Ostona vaqti', KG: 'Bishkek vaqti' },
+    wd: ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'] } }[LANG];
+document.getElementById('title').textContent = TX.title; document.getElementById('tabF').textContent = TX.tabF; document.getElementById('tabS').textContent = TX.tabS;
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d'), wrap = document.getElementById('wrap'), tip = document.getElementById('tip'), msg = document.getElementById('msg');
+const slider = document.getElementById('time'), playB = document.getElementById('play'), spdB = document.getElementById('spd'), clock = document.getElementById('clock');
+let mode = 'F', M = null, frames = [], relief = null, playing = false, speed = 1, t = 0, last = 0, layers = { cl: true, fr: true, pa: true, wi: true };
+let view = { s: 1, x: 0, y: 0 }, DPR = Math.min(2, window.devicePixelRatio || 1), W = 0, H = 0, k0 = 1, lat0 = 40, bb = null;
+const BASE = `prob/hr/live/${REG}/`;
+// --- the projection: lon/lat → screen (plate carrée with the longitudes shrunk at the middle latitude)
+function fit() {
+  W = wrap.clientWidth; H = wrap.clientHeight; cv.width = W * DPR; cv.height = H * DPR;
+  const v = M ? M.view : [42, 80, 30, 49]; lat0 = (v[2] + v[3]) / 2; const kx = Math.cos(lat0 * Math.PI / 180);
+  k0 = Math.min(W / ((v[1] - v[0]) * kx), H / (v[3] - v[2])); bb = v; draw();
+}
+const P = (lon, lat) => { const kx = Math.cos(lat0 * Math.PI / 180), cx = (bb[0] + bb[1]) / 2, cy = (bb[2] + bb[3]) / 2;
+  return [W / 2 + ((lon - cx) * kx * k0) * view.s + view.x, H / 2 - ((lat - cy) * k0) * view.s + view.y]; };
+const Pinv = (x, y) => { const kx = Math.cos(lat0 * Math.PI / 180), cx = (bb[0] + bb[1]) / 2, cy = (bb[2] + bb[3]) / 2;
+  return [cx + (x - W / 2 - view.x) / (view.s * k0 * kx), cy - (y - H / 2 - view.y) / (view.s * k0)]; };
+function poly(r, close) { ctx.beginPath(); r.forEach((p, i) => { const [x, y] = P(p[0], p[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); if (close) ctx.closePath(); }
+function imgAt(img, b, alpha = 1) { if (!img || !img.complete || !img.naturalWidth) return; const [x0, y1] = P(b[0], b[2]), [x1, y0] = P(b[1], b[3]); ctx.globalAlpha = alpha; ctx.drawImage(img, x0, y0, x1 - x0, y1 - y0); ctx.globalAlpha = 1; }
+// --- the base map: water, relief, borders, rivers, cities
+function base(dark) {
+  ctx.fillStyle = dark ? '#0d1520' : '#fff'; ctx.fillRect(0, 0, W, H);
+  if (!M) return;
+  if (!dark) { ctx.fillStyle = '#cfe3ef'; for (const r of M.water.sea) { poly(r, true); ctx.fill(); } if (relief) imgAt(relief, M.bounds, 1); }
+}
+function lines(dark) {
+  if (!M) return;
+  ctx.lineJoin = 'round'; ctx.strokeStyle = dark ? 'rgba(160,210,255,.55)' : '#4d8fb8';
+  for (const [w, c] of M.water.rivers) { ctx.lineWidth = (0.5 + 0.5 * w) * Math.min(2, Math.sqrt(view.s)); poly(c); ctx.stroke(); }
+  if (!dark) { ctx.lineWidth = 0.9; for (const r of M.water.sea) { poly(r, true); ctx.stroke(); } }
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,.8)' : '#5b6b7a'; ctx.lineWidth = 1.1; for (const r of M.countries) { poly(r, true); ctx.stroke(); }
+  if (GEO) {  // districts (thin) and regions of the republic
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,.22)' : 'rgba(80,95,110,.28)'; ctx.lineWidth = 0.4; for (const a of GEO.adm2 || []) for (const r of a.r || []) { poly(r, true); ctx.stroke(); }
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,.5)' : 'rgba(60,75,90,.6)'; ctx.lineWidth = 0.9; for (const a of GEO.adm1 || []) for (const r of a.r || []) { poly(r, true); ctx.stroke(); }
+    if (view.s >= 1.8) {  // zoomed in: the districts' names
+      ctx.font = `500 ${9 + Math.min(3, view.s / 2)}px 'Golos Text',sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = dark ? 'rgba(255,255,255,.75)' : 'rgba(70,80,95,.8)';
+      for (const d of GEO.adm2 || []) { const [x, y] = P(d.c[0], d.c[1]); if (x > 0 && y > 0 && x < W && y < H) ctx.fillText((d.name[LANG] || d.name.ru).replace(/ р-н$| tumani$/, ''), x, y); }
+      ctx.textAlign = 'left';
+    }
+  }
+  ctx.font = `600 ${11 + Math.min(4, view.s)}px 'Golos Text',sans-serif`; ctx.textBaseline = 'middle'; const boxes = [];
+  for (const c of M.cities) {
+    const [x, y] = P(c.lon, c.lat); if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+    const name = c.n[LANG] || c.n.ru; if (!name) continue; const w = ctx.measureText(name).width;
+    const b = [x + 5, y - 8, x + 9 + w, y + 8]; if (boxes.some(o => !(b[2] < o[0] || b[0] > o[2] || b[3] < o[1] || b[1] > o[3]))) continue; boxes.push(b);
+    ctx.fillStyle = dark ? '#fff' : '#2b3a4e'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = dark ? 'rgba(0,0,0,.7)' : 'rgba(255,255,255,.9)'; ctx.strokeText(name, x + 6, y); ctx.fillText(name, x + 6, y);
+  }
+}
+// --- fronts with their marks (▲ cold, ● warm), drawn along the line
+function front(p, kind) {
+  const col = kind === 'cold' ? '#1f5fd1' : '#d6402b'; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 2.4; poly(p); ctx.stroke();
+  const pts = p.map(q => P(q[0], q[1])); let acc = 0, next = 14;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay] = pts[i - 1], [bx, by] = pts[i], seg = Math.hypot(bx - ax, by - ay); if (!seg) continue;
+    while (acc + seg >= next) {
+      const f = (next - acc) / seg, x = ax + (bx - ax) * f, y = ay + (by - ay) * f, ux = (bx - ax) / seg, uy = (by - ay) / seg, nx = -uy, ny = ux, s = 6;
+      ctx.beginPath();
+      if (kind === 'cold') { ctx.moveTo(x - ux * s, y - uy * s); ctx.lineTo(x + ux * s, y + uy * s); ctx.lineTo(x + nx * s * 1.3, y + ny * s * 1.3); }
+      else ctx.arc(x, y, s, Math.atan2(uy, ux), Math.atan2(uy, ux) + Math.PI, true);
+      ctx.fill(); next += 30;
+    }
+    acc += seg;
+  }
+}
+// --- the wind: particles that drift with the 700 hPa wind of the hour
+const parts = Array.from({ length: 700 }, () => ({ x: Math.random(), y: Math.random(), a: Math.random() * 60 }));
+function windAt(fr, lon, lat) {
+  const [ny, nx, la0, lo0, st] = M.wind_grid, gy = (lat - la0) / st, gx = (lon - lo0) / st;
+  if (gx < 0 || gy < 0 || gx > nx - 1 || gy > ny - 1) return null;
+  const i = Math.floor(gy), j = Math.floor(gx), fy = gy - i, fx = gx - j, g = (a, b) => fr.w[Math.min(ny - 1, a) * nx + Math.min(nx - 1, b)];
+  const q = [g(i, j), g(i, j + 1), g(i + 1, j), g(i + 1, j + 1)];
+  return [0, 1].map(c => (q[0][c] * (1 - fx) + q[1][c] * fx) * (1 - fy) + (q[2][c] * (1 - fx) + q[3][c] * fx) * fy);
+}
+function wind(fr) {
+  ctx.lineCap = 'round';
+  for (const p of parts) {
+    const lon = bb[0] + p.x * (bb[1] - bb[0]), lat = bb[2] + p.y * (bb[3] - bb[2]), w = windAt(fr, lon, lat);
+    if (!w || p.a > 80) { p.x = Math.random(); p.y = Math.random(); p.a = 0; continue; }
+    const sp = Math.hypot(w[0], w[1]), [x0, y0] = P(lon, lat), dl = 0.004 * (1 + sp / 6);
+    const nlon = lon + w[0] / sp * dl * (bb[1] - bb[0]) || lon, nlat = lat + w[1] / sp * dl * (bb[3] - bb[2]) || lat, [x1, y1] = P(nlon, nlat);
+    const c = Math.min(1, sp / 25); ctx.strokeStyle = `rgba(${Math.round(160 - 120 * c)},${Math.round(180 - 120 * c)},${Math.round(205 - 90 * c)},${0.25 + 0.55 * Math.sin(Math.PI * p.a / 80)})`;
+    ctx.lineWidth = 0.7 + 1.4 * c; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + (x1 - x0) * 6, y0 + (y1 - y0) * 6); ctx.stroke();
+    p.x = (nlon - bb[0]) / (bb[1] - bb[0]); p.y = (nlat - bb[2]) / (bb[3] - bb[2]); p.a += 1;
+  }
+}
+// --- the forecast frame at time t (hours from the run): cross-fade between the hours
+function drawF() {
+  base(false);
+  if (!M) return;
+  const i = Math.min(frames.length - 1, Math.floor(t)), f = t - i, fr = M.frames[i];
+  if (layers.cl) { imgAt(frames[i], M.bounds, 1); if (f > 0 && frames[i + 1]) imgAt(frames[i + 1], M.bounds, f); }
+  lines(false);
+  if (layers.wi && fr) wind(fr);
+  if (layers.fr && fr) for (const fl of fr.f) front(fl.p, fl.k);
+  if (fr) for (const [lon, lat, lab, hpa] of fr.c) {
+    const [x, y] = P(lon, lat); ctx.font = `700 ${22}px Unbounded,sans-serif`; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = '#fff';
+    const col = lab === 'L' ? '#d6402b' : '#2f6fd0', txt = lab === 'L' ? (LANG === 'uz' ? 'P' : 'Н') : (LANG === 'uz' ? 'Y' : 'В');
+    ctx.strokeText(txt, x, y); ctx.fillStyle = col; ctx.fillText(txt, x, y); ctx.font = `600 10px 'Golos Text',sans-serif`; ctx.fillText(hpa, x, y + 16); ctx.textAlign = 'left';
+  }
+  if (layers.pa) for (const pa of M.paths) {
+    const dh = pa.h - t; if (dh < -9 || dh > 60) continue;
+    ctx.setLineDash([8, 6]); ctx.strokeStyle = '#f08a24'; ctx.lineWidth = 2.4; poly(pa.p); ctx.stroke(); ctx.setLineDash([]);
+    const k = Math.max(0, Math.min(1, 1 - dh / 48)), q = pa.p[Math.round((pa.p.length - 1) * (1 - k))] || pa.p[0], [x, y] = P(q[0], q[1]);
+    ctx.fillStyle = '#f08a24'; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    const s = pa.p[pa.p.length - 1], [sx, sy] = P(s[0], s[1]); const lab = `${TX.from}: ${pa.src[LANG] || pa.src.ru}`;
+    ctx.font = `700 12px 'Golos Text',sans-serif`; const w = ctx.measureText(lab).width; ctx.fillStyle = '#f08a24'; ctx.fillRect(sx - w / 2 - 6, sy - 26, w + 12, 20); ctx.fillStyle = '#1d2a3a'; ctx.textAlign = 'center'; ctx.fillText(lab, sx, sy - 16); ctx.textAlign = 'left';
+  }
+  const tt = new Date(Date.parse(M.run) + t * 3600e3 + (M.tz || 5) * 3600e3);
+  clock.textContent = `${TX.wd[tt.getUTCDay()]} ${String(tt.getUTCDate()).padStart(2, '0')}.${String(tt.getUTCMonth() + 1).padStart(2, '0')} ${String(tt.getUTCHours()).padStart(2, '0')}:00`;
+}
+// --- the satellite now: Meteosat IODC (45.5° E) infrared and the H SAF rain estimate, the last 3 hours every 15 min
+const SAT = { frames: [], i: 0, t0: 0 };
+function satUrl(layer, time, fmt) {
+  const b = bb, w = Math.round(Math.min(1400, W * DPR)), h = Math.round(w * (b[3] - b[2]) / ((b[1] - b[0]) * Math.cos(lat0 * Math.PI / 180)));
+  return `https://view.eumetsat.int/geoserver/wms?service=WMS&version=1.3.0&request=GetMap&layers=${layer}&styles=&crs=EPSG:4326&bbox=${b[2]},${b[0]},${b[3]},${b[1]}&width=${w}&height=${h}&format=${fmt}&transparent=true&time=${time}`;
+}
+function loadSat() {
+  if (SAT.frames.length) return; msg.textContent = TX.load;
+  const now = Date.now() - 40 * 60e3, end = Math.floor(now / 900e3) * 900e3; let ok = 0, done = 0;
+  for (let k = 12; k >= 0; k--) {
+    const tt = new Date(end - k * 900e3).toISOString().slice(0, 19) + 'Z', fr = { t: Date.parse(tt), ir: new Image(), pr: new Image() };
+    fr.ir.onload = () => { ok++; if (++done === 13) satReady(ok); draw(); }; fr.ir.onerror = () => { fr.bad = true; if (++done === 13) satReady(ok); };
+    fr.ir.src = satUrl('msg_iodc:ir108', tt, 'image/jpeg'); fr.pr.src = satUrl('msg_iodc:h63', new Date(Math.floor((Date.parse(tt)) / 900e3) * 900e3).toISOString().slice(0, 19) + 'Z', 'image/png');
+    SAT.frames.push(fr);
+  }
+}
+function satReady(ok) { SAT.frames = SAT.frames.filter(f => !f.bad); msg.textContent = ok ? '' : TX.satErr; slider.max = Math.max(0, SAT.frames.length - 1); slider.step = 0.02; t = SAT.frames.length - 1; slider.value = t; draw(); }
+function drawS() {
+  base(true); const n = SAT.frames.length; if (!n) { lines(true); return; }
+  const i = Math.max(0, Math.min(n - 1, Math.floor(t))), f = t - i, a = SAT.frames[i], b = SAT.frames[Math.min(n - 1, i + 1)];
+  const sb = [bb[0], bb[1], bb[2], bb[3]];
+  imgAt(a.ir, sb, 1); if (f > 0 && b) imgAt(b.ir, sb, f);
+  imgAt(a.pr, sb, 0.9);
+  lines(true);
+  const tt = new Date(a.t + (TZH[REG] || 5) * 3600e3), ago = Math.round((Date.now() - a.t) / 60e3);
+  clock.textContent = `${String(tt.getUTCHours()).padStart(2, '0')}:${String(tt.getUTCMinutes()).padStart(2, '0')} · ${ago} мин ${TX.ago}`.replace('мин', LANG === 'uz' ? 'daq' : 'мин');
+}
+const TZH = { UZ: 5, KZ: 5, KG: 6 };
+function draw() { if (!W) return; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); mode === 'F' ? drawF() : drawS(); }
+// --- the player
+function tick(ts) {
+  if (playing) {
+    const dt = Math.min(0.1, (ts - last) / 1000); t += dt * speed * (mode === 'F' ? 1.2 : 1.6);
+    const max = +slider.max; if (t > max) t = mode === 'F' ? 0 : 0; slider.value = t;
+  }
+  last = ts; if (playing || (mode === 'F' && layers.wi)) draw(); requestAnimationFrame(tick);
+}
+playB.onclick = () => { playing = !playing; playB.textContent = playing ? '❚❚' : '▶'; };
+spdB.onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; spdB.textContent = (speed === 0.5 ? '0,5' : speed) + '×'; };
+slider.oninput = () => { t = +slider.value; draw(); };
+// --- layers and tabs
+function chips() {
+  const el = document.getElementById('layers'); el.innerHTML = ''; el.style.display = mode === 'F' ? 'flex' : 'none';
+  for (const k of ['cl', 'fr', 'pa', 'wi']) { const b = document.createElement('button'); b.className = 'chip' + (layers[k] ? ' on' : ''); b.textContent = TX.L[k]; b.onclick = () => { layers[k] = !layers[k]; chips(); draw(); }; el.appendChild(b); }
+  document.getElementById('legend').innerHTML = mode === 'F' ? TX.leg : TX.legS;
+}
+function setMode(m) {
+  mode = m; document.getElementById('tabF').classList.toggle('on', m === 'F'); document.getElementById('tabS').classList.toggle('on', m === 'S'); tip.style.display = 'none';
+  if (m === 'F') { slider.max = M ? M.times.length - 1 : 72; slider.step = 0.05; t = Math.min(t, +slider.max); msg.textContent = M ? '' : msg.textContent; }
+  else loadSat();
+  chips(); draw();
+}
+document.getElementById('tabF').onclick = () => setMode('F'); document.getElementById('tabS').onclick = () => setMode('S');
+// --- pan, pinch, wheel, tap
+const pts = new Map(); let pinch = null, moved = false;
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.offsetX, e.offsetY]); moved = false; if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), s: view.s, x: view.x, y: view.y, c: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; } });
+cv.addEventListener('pointermove', e => {
+  if (!pts.has(e.pointerId)) return; const p0 = pts.get(e.pointerId); pts.set(e.pointerId, [e.offsetX, e.offsetY]);
+  if (pts.size === 1) { const dx = e.offsetX - p0[0], dy = e.offsetY - p0[1]; if (Math.abs(dx) + Math.abs(dy) > 1) moved = true; view.x += dx; view.y += dy; draw(); }
+  else if (pinch) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomAt(pinch.c[0], pinch.c[1], pinch.s * d / pinch.d, pinch); moved = true; }
+});
+const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!moved && e.type === 'pointerup') tap(e.offsetX, e.offsetY); };
+cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.offsetX, e.offsetY, view.s * (e.deltaY < 0 ? 1.2 : 1 / 1.2)); }, { passive: false });
+function zoomAt(cx, cy, s, from) { const f0 = from || view; s = Math.max(1, Math.min(10, s)); const k = s / f0.s; view.x = cx - W / 2 - (cx - W / 2 - f0.x) * k; view.y = cy - H / 2 - (cy - H / 2 - f0.y) * k; view.s = s; draw(); }
+document.getElementById('zin').onclick = () => zoomAt(W / 2, H / 2, view.s * 1.5); document.getElementById('zout').onclick = () => zoomAt(W / 2, H / 2, view.s / 1.5);
+// a tap: the weather of that place at this hour (read from the overlay picture), its nearest town
+const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+function tap(x, y) {
+  if (mode !== 'F' || !M) return; const [lon, lat] = Pinv(x, y), img = frames[Math.round(t)];
+  let near = null, nd = 1e9; for (const c of M.cities) { const d = (c.lon - lon) ** 2 + (c.lat - lat) ** 2; if (d < nd) { nd = d; near = c; } }
+  let what = TX.clear;
+  if (img && img.naturalWidth) {
+    probe.canvas.width = img.naturalWidth; probe.canvas.height = img.naturalHeight; probe.drawImage(img, 0, 0);
+    const b = M.bounds, px = Math.floor((lon - b[0]) / (b[1] - b[0]) * img.naturalWidth), py = Math.floor((b[3] - lat) / (b[3] - b[2]) * img.naturalHeight);
+    if (px >= 0 && py >= 0 && px < img.naturalWidth && py < img.naturalHeight) {
+      const [r, g, bl, a] = probe.getImageData(px, py, 1, 1).data;
+      if (a > 200) what = (r > 120 && bl > 200 && r > g) ? '❄ ' + TX.snow : '🌧 ' + TX.rain; else if (a > 30) what = '☁ ' + TX.cloud; else what = '☀ ' + TX.clear;
+    }
+  }
+  const wh = where(lon, lat), town = near && nd < 0.15 ? (near.n[LANG] || near.n.ru) : '';
+  tip.innerHTML = `<b>${[town, wh].filter(Boolean).join(' · ') || lat.toFixed(1) + '°, ' + lon.toFixed(1) + '°'}</b><br>${what} · ${clock.textContent}`;
+  tip.style.display = 'block'; tip.style.left = Math.min(W - 180, x + 10) + 'px'; tip.style.top = Math.max(4, y - 50) + 'px';
+  clearTimeout(tap.h); tap.h = setTimeout(() => tip.style.display = 'none', 3500);
+}
+// --- load
+let GEO = null;
+function inRing(x, y, r) { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
+function where(lon, lat) {  // "district · region" of a point
+  if (!GEO) return ''; const hit = L => (L || []).find(a => a.r.some(r => inRing(lon, lat, r)));
+  const d = hit(GEO.adm2), a = d ? (GEO.adm1 || []).find(x => x.id === d.p) : hit(GEO.adm1), nm = o => o ? (o.name[LANG] || o.name.ru) : '';
+  return [nm(d), nm(a)].filter(Boolean).join(' · ');
+}
+async function load() {
+  msg.textContent = TX.load; chips();
+  try {
+    M = await fetch(BASE + 'meta.json?v=' + Date.now()).then(r => { if (!r.ok) throw 0; return r.json(); });
+  } catch (e) { msg.textContent = TX.none; fit(); return; }
+  fetch(`prob/hr/${REG}_geo.json`).then(r => r.ok ? r.json() : null).then(g => { GEO = g; draw(); }).catch(() => {});
+  const v = encodeURIComponent(M.run);
+  if (M.relief) { relief = new Image(); relief.onload = draw; relief.src = BASE + 'relief.png?v=' + v; }
+  frames = M.times.map((_, i) => { const im = new Image(); im.onload = () => { if (Math.abs(i - t) < 2) draw(); }; im.src = `${BASE}f${String(i).padStart(3, '0')}.png?v=${v}`; return im; });
+  slider.max = M.times.length - 1; msg.textContent = '';
+  // start at the hour now
+  t = Math.max(0, Math.min(M.times.length - 1, (Date.now() - Date.parse(M.run)) / 3600e3)); slider.value = t;
+  fit();
+}
+new ResizeObserver(fit).observe(wrap);
+if (Q.get('m') === 'sat') setTimeout(() => setMode('S'), 50);
+load(); requestAnimationFrame(tick);
+</script>
+</body>
+</html>

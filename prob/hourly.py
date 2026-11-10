@@ -325,7 +325,7 @@ def main():
             for lang in langs_g:
                 city = R.mains[lang]
                 if city is None: continue
-                Pc, Tc = np.clip(R.series(city), 0, 100), R.tseries(city); Wc = R.wseries(city) if getattr(R, 'Wd', None) is not None else np.zeros(HOURS)
+                Pc, Tc = np.clip(R.series(city), 0, 100), R.tseries(city); Kc = R.kseries(city); Wc = R.wseries(city) if getattr(R, 'Wd', None) is not None else np.zeros(HOURS)
                 info = {}
                 for key, dd in (('today', loc[0].date()), ('tomorrow', loc[0].date() + dt.timedelta(days=1))):
                     idx = [i for i, h in enumerate(loc) if h.date() == dd]
@@ -335,7 +335,11 @@ def main():
                     pmax = float(np.nanmax(pw[lang][wd_])) if lang in pw and wd_ else float(Pc[idx].max())
                     snow = bool(np.nanmean(Tc[[i for i in idx if Pc[i] >= 30] or idx]) <= 0.5)
                     info[key] = {'range': f"{Rn.fmt_t(tmin)}…{Rn.fmt_t(tmax)}", 'rain': rain_spans(Pc, loc, lang, dd, pmax), 'wear': wear(lang, tmin, tmax, pmax, snow, float(np.nanmax(Wc[idx]))),
-                                 'p': int(round(pmax)), 'snow': snow}
+                                 'p': int(round(pmax)), 'snow': snow,
+                                 'storm': bool(Kc is not None and len(Kc) == len(Pc) and any(Pc[i] >= 30 and np.nan_to_num(Kc[i]) >= 400 and Tc[i] > 2 for i in idx)),  # thunder possible (GEFS CAPE)
+                                 # day (9–18 h) and night (21 h to 6 h of the next morning) temperatures, for the short line in the bot
+                                 'day': [round(float(np.nanmin(Tc[j]))), round(float(np.nanmax(Tc[j])))] if (j := [i for i in idx if 9 <= loc[i].hour <= 18]) else None,
+                                 'night': [round(float(np.nanmin(Tc[j]))), round(float(np.nanmax(Tc[j])))] if (j := [i for i, h in enumerate(loc) if (h.date() == dd and h.hour >= 21) or (h.date() == dd + dt.timedelta(days=1) and h.hour <= 6)]) else None}
                 REG[(region, lang)] = (R, loc, info, city)
                 fdir = out / f'frames_{region}_{lang}'; fdir.mkdir(exist_ok=True)
                 jobs = [(region, lang, k, fdir / f'{k:03d}.png') for k in range(HOURS)]
