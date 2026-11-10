@@ -12,9 +12,14 @@ W = 'https://view.eumetsat.int/geoserver'
 def latest(layer):
     t = requests.get(f"{W}/{layer.replace(':', '/')}/wms", params=dict(service='WMS', request='GetCapabilities', version='1.3.0'), timeout=60).text
     return dt.datetime.fromisoformat(re.search(r'<Dimension[^>]*name="time"[^>]*default="([^"]+)"', t).group(1).replace('Z', '+00:00'))
-def get(layer, t, fmt, w=1600, h=900):
+def get(layer, t, fmt, w=1280, h=720):
+    for _ in range(3):
+        try: return get1(layer, t, fmt, w, h)
+        except Exception as e: print('retry', layer, t, e, flush=True)
+    return None
+def get1(layer, t, fmt, w, h):
     r = requests.get(f'{W}/wms', params=dict(service='WMS', version='1.3.0', request='GetMap', layers=layer, styles='', crs='EPSG:4326', bbox=f'{V[2]},{V[0]},{V[3]},{V[1]}',
-                                             width=w, height=h, format=fmt, transparent='true', time=t.strftime('%Y-%m-%dT%H:%M:%SZ')), timeout=60)
+                                             width=w, height=h, format=fmt, transparent='true', time=t.strftime('%Y-%m-%dT%H:%M:%SZ')), timeout=150)
     return Image.open(io.BytesIO(r.content)).convert('RGBA') if r.ok and r.headers.get('content-type', '').startswith('image') else None
 end, endp = latest('msg_iodc:ir108'), latest('msg_iodc:h63'); print('latest', end, endp, 'now', dt.datetime.utcnow())
 G = json.load(open(HERE / 'geo_world.json'))['countries']; GA = json.load(open(HERE / 'geo_admin.json')).get(reg, {})
