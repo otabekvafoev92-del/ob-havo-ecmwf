@@ -1,0 +1,20 @@
+name: Satellite sample
+# a short video of the last 3 hours from the satellite (what the «🛰 Online» tab shows), put on the "media" branch
+on:
+  workflow_dispatch:
+    inputs:
+      region: {description: 'UZ, KZ or KG', default: 'UZ'}
+permissions: {contents: write}
+jobs:
+  s:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          sudo apt-get install -y -qq ffmpeg >/dev/null; pip install -q numpy matplotlib pillow requests
+          python tools/sat_sample.py ${{ inputs.region }} sat_${{ inputs.region }}.mp4
+          mkdir m && cd m && git init -q && git checkout -q -b media && mkdir -p sample && cp ../sat_*.mp4 sample/
+          git add -A && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm sat
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" media
