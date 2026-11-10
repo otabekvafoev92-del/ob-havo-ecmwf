@@ -61,7 +61,7 @@ const TX = {
 document.getElementById('title').textContent = TX.title; document.getElementById('tabF').textContent = TX.tabF; document.getElementById('tabS').textContent = TX.tabS;
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d'), wrap = document.getElementById('wrap'), tip = document.getElementById('tip'), msg = document.getElementById('msg');
 const slider = document.getElementById('time'), playB = document.getElementById('play'), spdB = document.getElementById('spd'), clock = document.getElementById('clock');
-let mode = 'F', M = null, frames = [], relief = null, playing = false, speed = 1, t = 0, last = 0, layers = { cl: true, fr: true, pa: true, wi: true };
+let SEL = null, mode = 'F', M = null, frames = [], relief = null, playing = false, speed = 1, t = 0, last = 0, layers = { cl: true, fr: true, pa: true, wi: true };
 let view = { s: 1, x: 0, y: 0 }, DPR = Math.min(2, window.devicePixelRatio || 1), W = 0, H = 0, k0 = 1, lat0 = 40, bb = null;
 const BASE = `prob/hr/live/${REG}/`;
 // --- the projection: lon/lat → screen (plate carrée with the longitudes shrunk at the middle latitude)
@@ -91,11 +91,13 @@ function lines(dark) {
   if (GEO) {  // districts (thin) and regions of the republic
     ctx.strokeStyle = dark ? 'rgba(255,255,255,.22)' : 'rgba(80,95,110,.28)'; ctx.lineWidth = 0.4; for (const a of GEO.adm2 || []) for (const r of a.r || []) { poly(r, true); ctx.stroke(); }
     ctx.strokeStyle = dark ? 'rgba(255,255,255,.5)' : 'rgba(60,75,90,.6)'; ctx.lineWidth = 0.9; for (const a of GEO.adm1 || []) for (const r of a.r || []) { poly(r, true); ctx.stroke(); }
-    if (view.s >= 1.8) {  // zoomed in: the districts' names
-      ctx.font = `500 ${9 + Math.min(3, view.s / 2)}px 'Golos Text',sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = dark ? 'rgba(255,255,255,.75)' : 'rgba(70,80,95,.8)';
-      for (const d of GEO.adm2 || []) { const [x, y] = P(d.c[0], d.c[1]); if (x > 0 && y > 0 && x < W && y < H) ctx.fillText((d.name[LANG] || d.name.ru).replace(/ р-н$| tumani$/, ''), x, y); }
-      ctx.textAlign = 'left';
-    }
+  }
+  if (GEO && SEL) {  // the tapped place: its region (dashed) and district (thick, lightly filled)
+    const hit = L => (L || []).find(a => a.r.some(r => inRing(SEL[0], SEL[1], r)));
+    const d = hit(GEO.adm2), a = d ? (GEO.adm1 || []).find(x => x.id === d.p) : hit(GEO.adm1);
+    const path = rs => { ctx.beginPath(); for (const r of rs) r.forEach((q, i) => { const [x, y] = P(q[0], q[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); };
+    if (a) { path(a.r); ctx.strokeStyle = '#f08a24'; ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]); }
+    if (d) { path(d.r); ctx.fillStyle = 'rgba(240,138,36,.16)'; ctx.fill(); ctx.strokeStyle = '#f08a24'; ctx.lineWidth = 2.8; ctx.stroke(); }
   }
   ctx.font = `600 ${11 + Math.min(4, view.s)}px 'Golos Text',sans-serif`; ctx.textBaseline = 'middle'; const boxes = [];
   for (const c of M.cities) {
@@ -104,6 +106,16 @@ function lines(dark) {
     const b = [x + 5, y - 8, x + 9 + w, y + 8]; if (boxes.some(o => !(b[2] < o[0] || b[0] > o[2] || b[3] < o[1] || b[1] > o[3]))) continue; boxes.push(b);
     ctx.fillStyle = dark ? '#fff' : '#2b3a4e'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill();
     ctx.lineWidth = 3; ctx.strokeStyle = dark ? 'rgba(0,0,0,.7)' : 'rgba(255,255,255,.9)'; ctx.strokeText(name, x + 6, y); ctx.fillText(name, x + 6, y);
+  }
+  if (GEO && view.s >= 2) {  // zoomed in: the districts' names where they fit between the towns
+    ctx.font = `500 ${10 + Math.min(2, view.s / 3)}px 'Golos Text',sans-serif`; ctx.textAlign = 'center';
+    for (const d of GEO.adm2 || []) {
+      const [x, y] = P(d.c[0], d.c[1]); if (x < 0 || y < 0 || x > W || y > H) continue;
+      const nm = (d.name[LANG] || d.name.ru).replace(/ р-н$| tumani$/, ''), w = ctx.measureText(nm).width, b = [x - w / 2 - 2, y - 7, x + w / 2 + 2, y + 7];
+      if (boxes.some(o => !(b[2] < o[0] || b[0] > o[2] || b[3] < o[1] || b[1] > o[3]))) continue; boxes.push(b);
+      ctx.lineWidth = 2.5; ctx.strokeStyle = dark ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,.85)'; ctx.strokeText(nm, x, y); ctx.fillStyle = dark ? 'rgba(255,255,255,.8)' : '#6a7685'; ctx.fillText(nm, x, y);
+    }
+    ctx.textAlign = 'left';
   }
 }
 // --- fronts with their marks (▲ cold, ● warm), drawn along the line
@@ -237,7 +249,8 @@ document.getElementById('zin').onclick = () => zoomAt(W / 2, H / 2, view.s * 1.5
 // a tap: the weather of that place at this hour (read from the overlay picture), its nearest town
 const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
 function tap(x, y) {
-  if (mode !== 'F' || !M) return; const [lon, lat] = Pinv(x, y), img = frames[Math.round(t)];
+  if (!M) return; const [lon, lat] = Pinv(x, y), img = frames[Math.round(t)]; SEL = [lon, lat]; draw();
+  if (mode !== 'F') return;
   let near = null, nd = 1e9; for (const c of M.cities) { const d = (c.lon - lon) ** 2 + (c.lat - lat) ** 2; if (d < nd) { nd = d; near = c; } }
   let what = TX.clear;
   if (img && img.naturalWidth) {

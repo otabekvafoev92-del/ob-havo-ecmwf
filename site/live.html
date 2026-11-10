@@ -74,6 +74,8 @@ async function load() {
   hour = M.times ? Math.max(0, M.times.findIndex((t, i) => i === H - 1 || new Date(M.times[i + 1] + ':00Z') > now)) : Math.max(0, Math.min(H - 1, Math.floor((now - st) / 3600e3)));
   const mc = M.cities.find(c => c.ru === (M.main[LANG] || M.main.ru)) || M.cities[0];
   sel = { lat: mc.lat, lon: mc.lon, name: mc[LANG] || mc.ru, city: true };
+  if (isFinite(+Q.get('lat')) && isFinite(+Q.get('lon')) && Q.get('lat')) {  // opened for a place (a district, a town): it is chosen and outlined
+    const la = +Q.get('lat'), lo = +Q.get('lon'), c = nearCity(la, lo); sel = { lat: la, lon: lo, name: Q.get('n') || (c ? (c[LANG] || c.ru) : TX.here), city: false }; }
   $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = '▶'; $('play').setAttribute('aria-label', TX.play); $('snd').textContent = '🔈'; $('snd').setAttribute('aria-label', TX.son);
   $('load').remove(); setup(); draw();
   // make the other hours' pictures and lines in the quiet moments, from the current hour on, so playing is smooth
@@ -247,6 +249,14 @@ function lines(h) {
 let GEO = null;
 function inRing(x, y, r) { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
 const WHERE = {};
+// the outline of the chosen place's region (thin) and district (thick, lightly filled): you see which piece of the map it is
+function hiliteSel() {
+  if (!GEO || !sel) return; const hit = L => (L || []).find(a => a.r.some(r => inRing(sel.lon, sel.lat, r)));
+  const d = hit(GEO.adm2), a = d ? (GEO.adm1 || []).find(x => x.id === d.p) : hit(GEO.adm1);
+  const path = rings => { cx.beginPath(); for (const r of rings) r.forEach((q, i) => { const [x, y] = proj(q[0], q[1]); i ? cx.lineTo(x, y) : cx.moveTo(x, y); }); cx.closePath(); };
+  if (a) { path(a.r); cx.strokeStyle = 'rgba(224,137,90,.85)'; cx.lineWidth = 1.6; cx.setLineDash([6, 4]); cx.stroke(); cx.setLineDash([]); }
+  if (d) { path(d.r); cx.fillStyle = 'rgba(224,137,90,.16)'; cx.fill(); cx.strokeStyle = '#e0895a'; cx.lineWidth = 2.6; cx.stroke(); }
+}
 function where(lon, lat) {  // "Kibray district · Tashkent region" for a point (kept per point)
   if (!GEO) return ''; const k = lon.toFixed(3) + ',' + lat.toFixed(3); if (k in WHERE) return WHERE[k];
   const hit = L => L.find(a => a.r.some(r => inRing(lon, lat, r)));
@@ -304,6 +314,7 @@ function draw() {
     cx.lineWidth = main ? 2 : 1; cx.strokeStyle = main ? '#e0895a' : '#cfd7e0'; cx.stroke();
     cx.fillStyle = '#2b3a4e'; cx.fillText(txt, placed[0] + 7, placed[1] + hh / 2 + 0.5);
   }
+  hiliteSel();  // the chosen place's district and region outlined
   if (!sel.city) { const [px, py] = proj(sel.lon, sel.lat); cx.beginPath(); cx.arc(px, py, 7, 0, 7); cx.fillStyle = '#e0895a'; cx.fill(); cx.lineWidth = 2.5; cx.strokeStyle = '#fff'; cx.stroke(); }
   card(h); timeline(h); header(h); if (sound) sound.set(h);
 }

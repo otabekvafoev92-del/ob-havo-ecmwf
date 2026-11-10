@@ -605,8 +605,8 @@ def _borders(ax, R):
     x0, x1, y0, y1 = getattr(R, 'view', None) or R.ext
     if R.iso:  # neighbours dimmed, provinces of the country drawn faintly
         ax.add_collection(PolyCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], facecolor=DIM_NEIGH, edgecolor='none', zorder=4))
-        if getattr(R, 'a2', None): ax.add_collection(LineCollection(R.a2, colors=A1_COL, linewidths=0.25, alpha=0.7, zorder=5))  # districts
-        ax.add_collection(LineCollection(R.a1, colors=A1_COL, linewidths=0.55 if getattr(R, 'a2', None) else 0.4, zorder=5))
+        if getattr(R, 'a2', None): ax.add_collection(LineCollection(R.a2, colors='#8f9cab', linewidths=0.4, alpha=0.85, zorder=5))  # districts: clearly drawn
+        ax.add_collection(LineCollection(R.a1, colors='#55657a' if getattr(R, 'a2', None) else A1_COL, linewidths=1.0 if getattr(R, 'a2', None) else 0.4, zorder=5.1))  # regions
     ax.add_collection(LineCollection([r for c, rings in R.cpoly.items() if c != R.iso for r in rings], colors=BORDER, linewidths=0.55, zorder=5))
     focus = [] if R.cont else [R.iso] if R.iso else [c for c in CIS if c in R.cpoly]
     rings = [r for c in focus for r in R.cpoly.get(c, [])]

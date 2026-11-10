@@ -202,7 +202,9 @@ def video_tv(F, region, lang, mp4, run, off=5, paths=()):
     near = lambda r: np.asarray(r)[:, 0].max() > x0 - 3 and np.asarray(r)[:, 0].min() < x1 + 3 and np.asarray(r)[:, 1].max() > y0v - 3 and np.asarray(r)[:, 1].min() < y1v + 3
     ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings'] if near(r)], colors='#6f7d8c', linewidths=0.7, alpha=0.7, zorder=4))
     own = [np.asarray(r) for r in G.get(region, {}).get('rings', [])]
-    if GA: ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#7f8c99', linewidths=0.4, alpha=0.5, zorder=4))
+    if GA:  # the republic's districts and regions, clearly
+        ax.add_collection(LC([np.asarray(r) for a in GA.get('adm2', []) for r in a['r']], colors='#97a3b0', linewidths=0.4, alpha=0.85, zorder=4))
+        ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#55657a', linewidths=0.95, alpha=0.95, zorder=4.05))
     ax.add_collection(LC(own, colors='#ffffff', linewidths=4.5, alpha=0.8, zorder=4.4)); ax.add_collection(LC(own, colors=NAVY, linewidths=1.8, zorder=4.5))
     pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region and x0 + 0.8 < p['lon'] < x1 - 0.8], key=lambda p: -p.get('pop', 0))[:7]
     # the frame: a title badge, the clock, and a TV "lower third" bar with the sentence and a small key
@@ -383,7 +385,9 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
     borders = [np.asarray(r) for c in G.values() for r in c['rings'] if near(r)]
     ax.add_collection(LC(borders, colors='#7d8b99', linewidths=0.7, alpha=0.8, zorder=4))
     own = [np.asarray(r) for r in G.get(region, {}).get('rings', [])]
-    if GA: ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#8e9aa6', linewidths=0.45, alpha=0.55, zorder=4))
+    if GA:  # the republic's districts and regions, clearly
+        ax.add_collection(LC([np.asarray(r) for a in GA.get('adm2', []) for r in a['r']], colors='#97a3b0', linewidths=0.4, alpha=0.85, zorder=4))
+        ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#55657a', linewidths=0.95, alpha=0.95, zorder=4.05))
     ax.add_collection(LC(own, colors='#1d2a3a', linewidths=1.7, zorder=4.5))
     WAT = json.load(open(HERE / 'geo_water.json')); WFILL, WEDGE, WTXT = '#cfe3ef', '#4d8fb8', '#2f6f99'
     seas = [np.asarray(r) for r in WAT['ocean'] if near(r)] + [np.asarray(l['r']) for l in WAT['lakes'] if near(l['r'])]

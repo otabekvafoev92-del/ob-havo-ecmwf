@@ -161,8 +161,8 @@ def frame(R, k, lang, path, loc, info, city):
             for t_ in lab:
                 t_.set_color('#c8784a'); t_.set_fontweight('bold')
                 if not matplotlib.path.Path(verts, codes).contains_point(t_.get_position()): t_.set_visible(False)
-    if getattr(R, 'a2', None): ax.add_collection(LC(R.a2, colors='#b8c4d1', linewidths=0.35, alpha=0.8, zorder=3))  # the districts
-    ax.add_collection(LC(R.a1, colors='#93a5b9' if getattr(R, 'a2', None) else '#c9d3de', linewidths=0.8 if getattr(R, 'a2', None) else 0.7, zorder=3))
+    if getattr(R, 'a2', None): ax.add_collection(LC(R.a2, colors='#9aa8b7', linewidths=0.45, alpha=0.9, zorder=3))  # the districts
+    ax.add_collection(LC(R.a1, colors='#5d6e83' if getattr(R, 'a2', None) else '#c9d3de', linewidths=1.1 if getattr(R, 'a2', None) else 0.7, zorder=3.1))
     ax.add_collection(LC(rings, colors=NAVY, linewidths=6, alpha=0.06, zorder=3.5))
     ax.add_collection(LC(rings, colors=NAVY, linewidths=1.8, zorder=4))
     # the cities: a white pill with the temperature, the name under it, an icon at the left

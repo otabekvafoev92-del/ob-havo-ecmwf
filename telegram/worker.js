@@ -1018,6 +1018,7 @@ function nowLine(c, lang) {
   const w = (WMO[lang] || WMO.ru)[c.weather_code] || '';
   return `${wmoIcon(c.weather_code, c.is_day)} <b>${X.now}: ${f(c.temperature_2m)}</b>${w ? `, ${w}` : ''}\n      ${X.feels} ${f(c.apparent_temperature)} · ${X.hum} ${Math.round(c.relative_humidity_2m)}% · ${X.wind} ${Math.round(c.wind_speed_10m)} ${X.ms}${c.wind_gusts_10m >= 10 ? ` (${X.gust} ${Math.round(c.wind_gusts_10m)})` : ''}`;
 }
+const MAPB = { ru: '🗺 Показать на карте (район выделен)', uz: '🗺 Xaritada ko‘rsatish (tuman ajratilgan)', tr: '🗺 Haritada göster (ilçe işaretli)' };
 async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
   const L = PT[lang];
   await saveUser(env, chat, { place: JSON.stringify([lat, lon]) });
@@ -1109,6 +1110,13 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
     `<i>${K.note}</i>`].join('\n');
   let kb = kbOver && kbOver.keyboard ? kbOver : null;
   if (!kb) { const uu = await getUser(env, chat); kb = replyKb(env, lang, place && NAMES[place[4]] ? place[4] : (uu && NAMES[uu.region] ? uu.region : 'UZ')); }
+  // the place on the interactive map: its district and region outlined (Uzbekistan, Kazakhstan, Kyrgyzstan)
+  const rid_ = ['UZ', 'KZ', 'KG'].find(c => { const A = { UZ: [55.9, 73.2, 37.1, 45.6], KZ: [46.4, 87.4, 40.5, 55.5], KG: [69.2, 80.3, 39.1, 43.3] }[c]; return lon >= A[0] && lon <= A[1] && lat >= A[2] && lat <= A[3]; });
+  if (rid_ && chat > 0 && !(kbOver && kbOver.keyboard)) {
+    const u = `${base(env)}/live.html?r=${rid_}&l=${lang}&lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}&n=${encodeURIComponent(String(nm).replace(/<[^>]+>/g, '').slice(0, 40))}`;
+    // (the menu keyboard under the input field is persistent: it stays while this message carries the map button)
+    return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }]] } });
+  }
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
 }
 // the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
