@@ -190,7 +190,8 @@ export default {
       await run('stale', () => staleTick(env));
       const r = await broadcast(env).catch(e => { console.log('broadcast', e && e.stack); return null; });
       if (!r || !r.due) for (const [n, f] of [['alert', alertTick], ['mtn', mtnTick], ['notif', notifTick], ['stats', statsTick], ['backup', backupTick]]) await run(n, () => f(env));
-      else await run('notif', () => notifTick(env, true));  // the morning auto-send is going: the notifications still go, fewer a run
+      else await run('notif', () => notifTick(env, true));
+      await run('sat', () => satTick(env));  // the morning auto-send is going: the notifications still go, fewer a run
     })());
   },
 };
@@ -750,8 +751,36 @@ const RAINM = { ru: { t: '🌧 <b>Осадки и тучи</b> — выбери�
 function rainMenu(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, M = RAINM[lang] || RAINM.ru, R = RKL[lang] || RKL.ru;
   const rows = [[{ text: R.traj, callback_data: `TJ:${lang}:${rid}` }], [{ text: M.now, callback_data: `MA:${lang}:hourly` }],
-    [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }], [{ text: X.acc, callback_data: `AV:${lang}:${rid}` }], [{ text: M.pr, callback_data: `V:${lang}:${rid}` }], ...moistBtns(env, lang, rid, chat)];
+    [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }], [{ text: X.acc, callback_data: `AV:${lang}:${rid}` }], [{ text: M.pr, callback_data: `V:${lang}:${rid}` }],
+    [{ text: (SATX[lang] || SATX.ru).cl, callback_data: `SV:${lang}:${rid}:clouds` }], [{ text: (SATX[lang] || SATX.ru).rn, callback_data: `SV:${lang}:${rid}:rain` }], ...moistBtns(env, lang, rid, chat)];
   return tg(env, 'sendMessage', { chat_id: chat, text: M.t, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
+}
+// the satellite videos (tools/sat_videos.py, the workflow sat.yml every ~30 min, kept on the repository's "sat" branch)
+const SATX = { ru: { cl: '🛰 Видео со спутника: тучи', rn: '🌧 Видео со спутника: где идут осадки', capc: 'Спутник Meteosat (EUMETSAT): тучи и осадки за 6 часов', capr: 'Где идут осадки: оценка со спутника (H SAF) за 6 часов',
+    last: 'последний снимок', none: 'Видео со спутника готовится — загляните через несколько минут.' },
+  uz: { cl: '🛰 Sun’iy yo‘ldosh videosi: bulutlar', rn: '🌧 Sun’iy yo‘ldosh videosi: yog‘in qayerda', capc: 'Meteosat (EUMETSAT): 6 soatlik bulut va yog‘in', capr: 'Yog‘in qayerda: sun’iy yo‘ldosh bahosi (H SAF), 6 soat',
+    last: 'oxirgi surat', none: 'Sun’iy yo‘ldosh videosi tayyorlanmoqda — bir necha daqiqadan keyin qarang.' } };
+const satRaw = f => `https://raw.githubusercontent.com/${REPO}/sat/${f}`;
+async function sendSat(env, chat, lang, rid, kind) {
+  const X = SATX[lang] || SATX.ru, L = lang === 'uz' ? 'uz' : 'ru';
+  const meta = await fetch(satRaw(`meta.json?t=${Date.now()}`)).then(r => r.ok ? r.json() : null).catch(() => null);
+  const v = meta && await fetch(satRaw(`${rid}_${kind}_${L}.mp4?t=${encodeURIComponent(meta.made)}`)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+  if (!v) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  const t = new Date(Date.parse(kind === 'rain' ? meta.rain : meta.last) + (rid === 'KG' ? 6 : 5) * 3600e3).toISOString().slice(11, 16);
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+  const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('supports_streaming', 'true');
+  fd.append('caption', `${FLAG[rid]} ${NAMES[rid][lang]} · ${kind === 'rain' ? X.capr : X.capc} · ${X.last} ${t}`);
+  fd.append('video', new Blob([v], { type: 'video/mp4' }), `${rid}_${kind}.mp4`);
+  return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
+}
+// keep the satellite videos fresh: GitHub's schedule is unreliable, so the bot asks for a new one when the last is over 35 min old
+async function satTick(env) {
+  if (!env.GH_TOKEN) return;
+  const meta = await fetch(satRaw(`meta.json?t=${Date.now()}`)).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (meta && Date.now() - Date.parse(meta.made) < 35 * 60e3) return;
+  if (Date.now() - +(await kv(env, 'sat_kick') || 0) < 25 * 60e3) return;
+  await setKv(env, 'sat_kick', String(Date.now()));
+  await ghApi(env, 'actions/workflows/sat.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main' }), headers: { 'content-type': 'application/json' } });
 }
 const MOREM = { ru: '⚙️ <b>Ещё</b>', uz: '⚙️ <b>Yana</b>', tr: '⚙️ <b>Daha fazla</b>' };
 function moreMenu(env, chat, lang, rid) {
@@ -1349,6 +1378,7 @@ async function handle(up, env) {
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
   if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
   if (kind === 'MV' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);
+  if (kind === 'SV' && TRJ.has(id)) return sendSat(env, chat.id, lang, id, cb.data.split(':')[3] === 'rain' ? 'rain' : 'clouds');
   if (kind === 'AV' && TRJ.has(id)) {  // how much rain and snow falls (prob/moisture.py accum_video)
     const X = TJX[lang] || TJX.ru, url = `${base(env)}/prob/hr/${id}_accum_${lang === 'tr' ? 'ru' : lang}.mp4`;
     if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: X.m15none });

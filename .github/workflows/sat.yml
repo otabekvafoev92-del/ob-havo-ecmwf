@@ -1,0 +1,22 @@
+name: Satellite videos
+# the bot's satellite videos (tools/sat_videos.py), remade about every 30 minutes; kept on the "sat" branch (one commit)
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: sat, cancel-in-progress: false}
+jobs:
+  s:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          sudo apt-get install -y -qq ffmpeg >/dev/null; pip install -q numpy matplotlib pillow requests
+          python tools/sat_videos.py sat
+          cd sat && git init -q && git checkout -q -b sat && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "satellite $(date -u +%H:%M)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" sat
