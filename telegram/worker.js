@@ -760,11 +760,13 @@ const SATX = { ru: { cl: '🛰 Видео со спутника: тучи', rn: 
     last: 'последний снимок', none: 'Видео со спутника готовится — загляните через несколько минут.' },
   uz: { cl: '🛰 Sun’iy yo‘ldosh videosi: bulutlar', rn: '🌧 Sun’iy yo‘ldosh videosi: yog‘in qayerda', capc: 'Meteosat (EUMETSAT): 6 soatlik bulut va yog‘in', capr: 'Yog‘in qayerda: sun’iy yo‘ldosh bahosi (H SAF), 6 soat',
     last: 'oxirgi surat', none: 'Sun’iy yo‘ldosh videosi tayyorlanmoqda — bir necha daqiqadan keyin qarang.' } };
-const satRaw = f => `https://raw.githubusercontent.com/${REPO}/sat/${f}`;
+const satRaw = (f, ref = 'sat') => `https://raw.githubusercontent.com/${REPO}/${ref}/${f}`;
+// the newest commit of the "sat" branch: its files by commit are never served stale by GitHub's cache (the branch name is, up to 5 min)
+async function satRef(env) { const r = await ghApi(env, 'commits/sat').then(x => x.ok ? x.json() : null).catch(() => null); return r && r.sha ? r.sha : 'sat'; }
 async function sendSat(env, chat, lang, rid, kind) {
   const X = SATX[lang] || SATX.ru, L = lang === 'uz' ? 'uz' : 'ru';
-  const meta = await fetch(satRaw(`meta.json?t=${Date.now()}`)).then(r => r.ok ? r.json() : null).catch(() => null);
-  const v = meta && await fetch(satRaw(`${rid}_${kind}_${L}.mp4?t=${encodeURIComponent(meta.made)}`)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+  const ref = await satRef(env), meta = await fetch(satRaw('meta.json', ref)).then(r => r.ok ? r.json() : null).catch(() => null);
+  const v = meta && await fetch(satRaw(`${rid}_${kind}_${L}.mp4`, ref)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
   if (!v) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   const t = new Date(Date.parse(kind === 'rain' ? meta.rain : meta.last) + (rid === 'KG' ? 6 : 5) * 3600e3).toISOString().slice(11, 16);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
@@ -776,7 +778,7 @@ async function sendSat(env, chat, lang, rid, kind) {
 // keep the satellite videos fresh: GitHub's schedule is unreliable, so the bot asks for a new one when the last is over 35 min old
 async function satTick(env) {  // every 10 minutes: a new snapshot at EUMETSAT → new videos at once (they take ~3 min)
   if (!env.GH_TOKEN) return;
-  const meta = await fetch(satRaw(`meta.json?t=${Date.now()}`)).then(r => r.ok ? r.json() : null).catch(() => null);
+  const meta = await fetch(satRaw('meta.json', await satRef(env))).then(r => r.ok ? r.json() : null).catch(() => null);
   const cap = await fetch('https://view.eumetsat.int/geoserver/msg_iodc/ir108/wms?service=WMS&request=GetCapabilities&version=1.3.0').then(r => r.ok ? r.text() : '').catch(() => '');
   const m = cap.match(/<Dimension[^>]*name="time"[^>]*default="([^"]+)"/), newest = m ? Date.parse(m[1]) : 0;
   const have = meta ? Date.parse(meta.last) : 0;
