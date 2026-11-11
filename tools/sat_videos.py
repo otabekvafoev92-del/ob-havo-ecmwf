@@ -54,16 +54,29 @@ def clouds_only(ir):
     return Image.fromarray((np.dstack([c, c, c * 1.03, edge * (0.45 + 0.5 * a)]) * 255).astype(np.uint8), 'RGBA').filter(ImageFilter.GaussianBlur(0.8))
 
 
-def clouds_mask(ir, cm):
+def mask_of(cm, size):
+    """The EUMETSAT cloud mask as 0..1: white = cloud; green land, blue sea = clear (soft edges)."""
+    m = np.asarray(cm.resize(size, Image.BILINEAR).filter(ImageFilter.GaussianBlur(1.5)), float) / 255
+    return np.clip((np.minimum(np.minimum(m[..., 0], m[..., 1]), m[..., 2]) * m[..., 3] - 0.55) / 0.35, 0, 1)
+
+
+def smooth_masks(ms):
+    """Every 15-minute slot gets a mask: a missing one from the nearest slot (before or after — never a different method, which made
+    the clouds jump), then each blended with its neighbours (¼ ½ ¼) so small clouds fade in and out instead of popping."""
+    have = [i for i, m in enumerate(ms) if m is not None]
+    if not have: return ms
+    full = [ms[min(have, key=lambda j: (abs(j - i), j))] for i in range(len(ms))]
+    return [0.25 * full[max(i - 1, 0)] + 0.5 * full[i] + 0.25 * full[min(i + 1, len(full) - 1)] for i in range(len(full))]
+
+
+def clouds_mask(ir, m, g):
     """Clouds from the EUMETSAT cloud mask (day and night, it also finds the low clouds and fog that look like the ground in infrared):
-    where it says cloud — grey; the infrared only sets the shade: warm low cloud light grey, cold high thick cloud dark grey."""
-    m = np.asarray(cm.resize(ir.size, Image.BILINEAR).filter(ImageFilter.GaussianBlur(1.2)), float) / 255
-    m = np.clip((np.minimum(np.minimum(m[..., 0], m[..., 1]), m[..., 2]) * m[..., 3] - 0.55) / 0.35, 0, 1)  # white = cloud; green land, blue sea = clear
+    where it says cloud — grey; the infrared only sets the shade: warm low cloud light and faint grey, cold high thick cloud dark grey.
+    g — the clear ground's brightness, one value for the whole video (so the shade does not jump between frames)."""
     b = np.asarray(ir.convert('L'), float) / 255
-    g = np.median(b[m < 0.2]) if (m < 0.2).sum() > 500 else np.percentile(b, 35)  # the clear ground's brightness
     a = np.clip((b - g) / 0.35, 0, 1)
     c = 0.80 - 0.48 * a
-    return Image.fromarray((np.dstack([c, c, c * 1.03, m * (0.55 + 0.4 * a)]) * 255).astype(np.uint8), 'RGBA')
+    return Image.fromarray((np.dstack([c, c, c * 1.03, m * (0.42 + 0.53 * a)]) * 255).astype(np.uint8), 'RGBA')
 
 
 def rain_only(pr):
@@ -89,10 +102,9 @@ def main():
             irs = list(pool.map(lambda t: cached(f"{R}_ir_{t:%Y%m%d%H%M}.png", lambda: get('msg_iodc:ir108', t, 'image/jpeg', V, w, h)), times))
             cms = list(pool.map(lambda t: cached(f"{R}_cm_{t:%Y%m%d%H%M}.png", lambda: get('msg_iodc:clm', t, 'image/png', V, w // 2, h // 2)), times))
             prs = list(pool.map(lambda t: cached(f"{R}_pr_{min(t, endp):%Y%m%d%H%M}.png", lambda: get('msg_iodc:h63', min(t, endp), 'image/png', V, w // 3, h // 3)), times))
-        lastm = None; M = []
-        for c_ in cms:  # a missing cloud-mask picture: the one before it (some 15-minute slots are missing)
-            if c_ is not None: lastm = c_
-            M.append(lastm)
+        M = smooth_masks([mask_of(c_, (w, h)) if c_ is not None else None for c_ in cms])
+        gs = [np.median(np.asarray(ir.convert('L'), float)[m_ < 0.1]) / 255 for ir, m_ in zip(irs, M) if ir is not None and m_ is not None and (m_ < 0.1).sum() > 500]
+        G0 = float(np.median(gs)) if gs else 0.4
         last = None; P = []
         for p in prs:  # a missing rain picture: the last one (no flicker); the 3–5 km blocks smoothed
             if p is not None: last = p.resize((w, h), Image.BICUBIC).filter(ImageFilter.GaussianBlur(3))
@@ -103,12 +115,12 @@ def main():
                 fd = pathlib.Path(tempfile.mkdtemp()); n = 0
                 for t, ir, pr, cm in zip(times, irs, P, M):
                     if ir is None and kind == 'clouds': continue
-                    fr_ = CACHE / f"v5_{R}_{kind}_{lang}_{t:%Y%m%d%H%M}_{'p' if pr is not None else 'n'}{'m' if cm is not None else ''}.png"  # a frame drawn before: reused
-                    if fr_.exists(): shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue
+                    fr_ = CACHE / f"v6_{R}_{kind}_{lang}_{t:%Y%m%d%H%M}_{'p' if pr is not None else 'n'}{'m' if cm is not None else ''}.png"  # a frame drawn before: reused
+                    if fr_.exists() and kind != 'clouds': shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue  # clouds: drawn again each time (each mask is blended with its neighbours)
                     fig = plt.figure(figsize=(w / 100, h / 100), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
                     dark = False  # a white map: clear sky white, clouds grey → dark grey (the infrared ground looked like clouds)
                     fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
-                    if kind == 'clouds': ax.imshow(clouds_mask(ir, cm) if cm is not None else clouds_only(ir), extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
+                    if kind == 'clouds': ax.imshow(clouds_mask(ir, cm, G0) if cm is not None else clouds_only(ir), extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
                     if pr is not None: ax.imshow(rain_only(pr), extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.7 if kind == 'clouds' else 0.9, zorder=0.8)
                     lc = '#ffffff' if dark else '#2b3a4e'
                     ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors=lc, linewidths=1.1, alpha=0.85))
