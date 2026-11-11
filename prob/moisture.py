@@ -29,18 +29,18 @@ MOUNT_NAMES = {l: [(p_, n_[i]) for p_, n_ in [((80.0, 42.9), ('Т я н ь - Ш 
                for i, l in enumerate(('ru', 'uz', 'tr'))}
 WATER_NAMES = {l: [(p_, n_[i], f_) for p_, n_, f_ in _WN] for i, l in enumerate(('ru', 'uz', 'tr'))}
 LON0, LON1, LAT0, LAT1, RES = 20.0, 100.0, 20.0, 60.0, 0.25
-VIEW = {'UZ': (42.0, 80.0, 30.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5), 'KG': (62.0, 86.0, 36.0, 46.0)}
+VIEW = {'UZ': (51.5, 80.0, 33.0, 49.0), 'KZ': (40.0, 92.0, 33.0, 57.5), 'KG': (62.0, 86.0, 36.0, 46.0)}
 TZ = {'UZ': (5, {'ru': 'по Ташкенту', 'uz': 'Toshkent vaqti', 'tr': 'Taşkent saati'}), 'KZ': (5, {'ru': 'по Астане', 'uz': 'Ostona vaqti', 'tr': 'Astana saati'}),
       'KG': (6, {'ru': 'по Бишкеку', 'uz': 'Bishkek vaqti', 'tr': 'Bişkek saati'})}
-TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое с чёрным пунктиром — тучи · синее — дождь · фиолетовое — снег · красное — циклон · линии — ветер (темнее — сильнее)', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', fronts='▲▲ холодный фронт   ●● тёплый фронт', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
+TX = {'ru': dict(rainbar='синие столбики — где в стране дождь', title='Откуда идёт дождь', sub='серое с пунктиром — тучи · синее — дождь · фиолетовое — снег · красное — циклон', tcwv='Влажность воздуха', cl='Тучи', rn='Дождь', sn='Снег', snh='сильный', fronts='▲▲ холодный фронт   ●● тёплый фронт', airs='━ тёплый воздух   ━ холодный воздух', wd_t='Порывы ветра', ms='м/с', wsub=' · жёлтое — сильный ветер', dry='сухо', wet='очень влажно', pr='Дождь / снег', prl='слабый', prh='ливень',
                  hi='В', lo='Н', hiw='антициклон: ясно, сухо', low='циклон: тучи, дождь, ветер', tz='по Ташкенту', src='влага: {s}', leg='путь влаги к городу',
-                 c_intro='Серое — тучи, синее — дождь, фиолетовое — снег. Линии показывают, куда дует ветер.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
+                 c_intro='Линии — ветер: красные несут тёплый воздух, синие — холодный. Синее пятно — дождь, фиолетовое — снег.', c_go='Влажный воздух от: {s} идёт к городу {c}', c_rain='Сейчас дождь: {c}', c_snow='Сейчас снег: {c}',
                  c_dry='Над страной сухо — дождя нет', c_wet='Влажный воздух над страной — возможны осадки', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
-      'uz': dict(rainbar='ko‘k ustunlar — mamlakatda yomg‘ir', title='Yomg‘ir qayerdan keladi', sub='kulrang, qora punktir — bulut · ko‘k — yomg‘ir · binafsha — qor · qizil — siklon · chiziqlar — shamol', tcwv='Havo namligi', cl='Bulut', rn='Yomg‘ir', sn='Qor', snh='kuchli', fronts='▲▲ sovuq front   ●● iliq front', wd_t='Shamol zarbasi', ms='m/s', wsub=' · sariq — kuchli shamol', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
+      'uz': dict(rainbar='ko‘k ustunlar — mamlakatda yomg‘ir', title='Yomg‘ir qayerdan keladi', sub='kulrang, punktir — bulut · ko‘k — yomg‘ir · binafsha — qor · qizil — siklon', tcwv='Havo namligi', cl='Bulut', rn='Yomg‘ir', sn='Qor', snh='kuchli', fronts='▲▲ sovuq front   ●● iliq front', airs='━ iliq havo   ━ sovuq havo', wd_t='Shamol zarbasi', ms='m/s', wsub=' · sariq — kuchli shamol', dry='quruq', wet='juda nam', pr='Yomg‘ir / qor', prl='kuchsiz', prh='jala',
                  hi='Y', lo='P', hiw='antisiklon: ochiq, quruq', low='siklon: bulut, yomg‘ir, shamol', tz='Toshkent vaqti', src='namlik: {s}', leg='namlikning shaharga yo‘li',
                  c_intro='Kulrang — bulut, ko‘k — yomg‘ir, binafsha — qor. Chiziqlar shamol yo‘nalishini ko‘rsatadi.', c_go='Nam havo ({s}) {c} shahriga kelmoqda', c_rain='Hozir yomg‘ir: {c}', c_snow='Hozir qor: {c}',
                  c_dry='Mamlakat ustida quruq — yomg‘ir yo‘q', c_wet='Mamlakat ustida nam havo — yog‘in bo‘lishi mumkin', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']),
-      'tr': dict(rainbar='mavi sütunlar — ülkede yağmur', title='Yağmur nereden geliyor', sub='gri, siyah kesikli — bulut · mavi — yağmur · mor — kar · kırmızı — siklon · çizgiler — rüzgâr', tcwv='Havanın nemi', cl='Bulut', rn='Yağmur', sn='Kar', snh='yoğun', fronts='▲▲ soğuk cephe   ●● sıcak cephe', wd_t='Rüzgâr hamlesi', ms='m/s', wsub=' · sarı — kuvvetli rüzgâr', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
+      'tr': dict(rainbar='mavi sütunlar — ülkede yağmur', title='Yağmur nereden geliyor', sub='gri, kesikli — bulut · mavi — yağmur · mor — kar · kırmızı — siklon', tcwv='Havanın nemi', cl='Bulut', rn='Yağmur', sn='Kar', snh='yoğun', fronts='▲▲ soğuk cephe   ●● sıcak cephe', airs='━ ılık hava   ━ soğuk hava', wd_t='Rüzgâr hamlesi', ms='m/s', wsub=' · sarı — kuvvetli rüzgâr', dry='kuru', wet='çok nemli', pr='Yağmur / kar', prl='hafif', prh='sağanak',
                  hi='Y', lo='A', hiw='antisiklon: açık, kuru', low='siklon: bulut, yağmur, rüzgâr', tz='TSİ', src='nem: {s}', leg='nemin şehre yolu',
                  c_intro='Gri bulut, mavi yağmur, mor kar. Çizgiler rüzgârın yönünü gösterir.', c_go='Nemli hava ({s}) {c} şehrine geliyor', c_rain='Şu an yağmur: {c}', c_snow='Şu an kar: {c}',
                  c_dry='Ülke üzerinde hava kuru — yağmur yok', c_wet='Ülke üzerinde nemli hava — yağış olabilir', wd=['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'])}
@@ -487,12 +487,13 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
     prog = tax.add_patch(matplotlib.patches.Rectangle((0, 0), 0.01, 1, color='#f0b88a', alpha=0.5, zorder=0.5)); head = tax.axvline(0, color='#f0b88a', lw=2.5, zorder=3)
     knob = tax.plot([0], [0.5], 'o', ms=9, mfc='#f0b88a', mec='#ffffff', mew=1.5, zorder=4, clip_on=False)[0]
     # flowing streaks: particles carried by the 700 hPa wind, each with a fading tail
-    rng = np.random.default_rng(3); N = 480; TAIL = 10
+    rng = np.random.default_rng(3); N = 420; TAIL = 10
     def seed(n): return np.c_[rng.uniform(x0, x1, n), rng.uniform(y0v, y1v, n)]
     pts = seed(N); age = rng.integers(0, 60, N); hist = np.repeat(pts[None], TAIL, 0)
     TAIL = 12; hist = np.repeat(pts[None], TAIL, 0)
     FLOW = LinearSegmentedColormap.from_list('flow', ['#a9bdd1', '#7095bb', '#40699b', '#2a4f80'])
-    fades = np.linspace(0.03, 0.6, TAIL - 1) ** 1.6
+    TEMP = LinearSegmentedColormap.from_list('temp', ['#2f6fd0', '#7fa8e0', '#b9c2cc', '#eda07a', '#e0643a'])  # cold blue → neutral grey → warm orange-red
+    fades = np.linspace(0.04, 0.8, TAIL - 1) ** 1.4
     lines = [LC([], linewidths=0.7, zorder=6, capstyle='round') for a in fades]
     heads = ax.scatter([], [], s=[], c=[], zorder=6.05, linewidths=0)
     for l in lines: ax.add_collection(l)
@@ -524,7 +525,8 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
             for c_ in pa_art[-1]: c_.set_visible(False)
             placed.pop() if placed and inside else None  # labels of paths at other times may share a place
     if any('t850' in f_ for f_ in F.values()):  # the fronts: one line each, in their colours
-        for yy_, txt_, col_ in ((0.852, X['fronts'].split('   ')[0], '#8fb8ff'), (0.814, X['fronts'].split('   ')[1], '#ff9a8a')):
+        for yy_, txt_, col_ in ((0.852, X['fronts'].split('   ')[0], '#8fb8ff'), (0.814, X['fronts'].split('   ')[1], '#ff9a8a'),
+                                (0.776, X['airs'].split('   ')[0], '#f3a27c'), (0.738, X['airs'].split('   ')[1], '#8fb8ff')):  # the warm and cold air streaks
             fig.text(0.982, yy_, txt_, fontsize=9.5, fontweight='bold', color=col_, ha='right', va='center', zorder=21,
                      bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
     if paths:
@@ -553,12 +555,12 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
             try:
                 for xy, kind in fronts(Q['t850'][np.ix_(ri, ci)], Q['r850'][np.ix_(ri, ci)], Q['u'][np.ix_(ri, ci)], Q['v'][np.ix_(ri, ci)], lon[ci], lat[ri]):
                     col_ = '#1f5fd1' if kind == 'cold' else '#d6402b'
-                    pe = (ColdFront if kind == 'cold' else WarmFront)(size=5, spacing=1.6, color=col_)
-                    dyn += ax.plot(xy[:, 0], xy[:, 1], color=col_, lw=2.2, zorder=4.6, path_effects=[pe])
+                    pe = (ColdFront if kind == 'cold' else WarmFront)(size=4, spacing=1.8, color=col_)
+                    dyn += ax.plot(xy[:, 0], xy[:, 1], color=col_, lw=1.8, alpha=0.9, zorder=4.6, path_effects=[pe])
             except Exception as e:
                 if f == 0: print('fronts failed', e, flush=True)
         if C.max() > 0.55:  # the edge of the cloud masses: a black dashed line, so their movement is easy to follow
-            dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.55], colors='#111111', linewidths=1.3, linestyles=[(0, (4, 3))], alpha=0.75, zorder=3.3))
+            dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.55], colors='#5b6570', linewidths=1.0, linestyles=[(0, (4, 3))], alpha=0.55, zorder=3.3))
             if C.max() > 0.9: dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.9], colors='#111111', linewidths=0.8, linestyles=[(0, (2, 3))], alpha=0.5, zorder=3.3))
         T2 = gaussian_filter(Q['t2'][np.ix_(ri, ci)], 1.0); SN = T2 <= 0.5
         GU = gaussian_filter(Q['gust'][np.ix_(ri, ci)], 1.0) if 'gust' in Q else gaussian_filter(np.hypot(Q['u'], Q['v'])[np.ix_(ri, ci)], 1.0) * 0.9
@@ -572,7 +574,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
         cs = ax.contour(LON, LAT, M, levels=lv, colors='#4b5d70', linewidths=0.6, alpha=0.35, zorder=3); dyn.append(cs)
         A = M - np.median(M)  # the cyclone (low pressure) in red, the anticyclone in blue: deeper = stronger colour
         lo_ = min(A.min() - 1, -10.5)  # the levels must rise even when the low is shallow
-        if A.min() < -3: dyn.append(ax.contourf(LON, LAT, A, levels=[lo_, -10, -6, -3], colors=['#ec7a68', '#f3a395', '#f9cdc5'], alpha=0.22, zorder=1.5))
+        if A.min() < -3: dyn.append(ax.contourf(LON, LAT, A, levels=[lo_, -10, -6, -3], colors=['#ec7a68', '#f3a395', '#f9cdc5'], alpha=0.15, zorder=1.5))
         if A.min() < -3: dyn.append(ax.contour(LON, LAT, A, levels=[-3], colors='#d6402b', linewidths=1.6, linestyles='--', alpha=0.8, zorder=3.2))
         if A.max() > 3: dyn.append(ax.contourf(LON, LAT, A, levels=[3, 6, 10, max(A.max() + 1, 10.5)], colors=['#bcd6f5', '#8fb8ec', '#5f97e0'], alpha=0.3, zorder=1.5))
         mx, mn = maximum_filter(M, size=25) == M, minimum_filter(M, size=25) == M
@@ -605,11 +607,15 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
         if dead.any(): pts[dead] = seed(dead.sum()); age[dead] = 0; hist[:, dead] = pts[dead]
         hist = np.roll(hist, -1, 0); hist[-1] = pts
         spd = np.hypot(u, v)
+        if 't850' in Q:  # warm or cold: the 850 hPa temperature against a straight fit on latitude (the usual north–south fall)
+            T8 = Q['t850'][np.ix_(ri, ci)]; cf_ = np.polyfit(LAT.ravel(), T8.ravel(), 1)
+            ta = (T8 - np.polyval(cf_, LAT))[gy, gx]; tk = np.clip(0.5 + ta / 12, 0, 1)
+        else: tk = None
         for i, l in enumerate(lines):
             seg = np.stack([hist[i], hist[i + 1]], 1); ok = ~dead & (np.hypot(*(seg[:, 1] - seg[:, 0]).T) < 3)
-            sp_ = np.clip(spd[ok] / 25, 0, 1); col = FLOW(sp_); col[:, 3] = fades[i] * (0.55 + 0.45 * sp_)
-            l.set_segments(seg[ok]); l.set_linewidths((0.35 + 0.9 * sp_) * (0.5 + 0.5 * i / (TAIL - 2))); l.set_color(col)
-        sp_ = np.clip(spd / 25, 0, 1); hc = FLOW(sp_); hc[:, 3] = np.where(dead, 0, 0.55 + 0.4 * sp_)
+            sp_ = np.clip(spd[ok] / 25, 0, 1); col = TEMP(tk[ok]) if tk is not None else FLOW(sp_); col[:, 3] = np.clip(fades[i] * (0.75 + 0.6 * sp_), 0, 1)
+            l.set_segments(seg[ok]); l.set_linewidths((0.5 + 1.2 * sp_) * (0.5 + 0.5 * i / (TAIL - 2))); l.set_color(col)
+        sp_ = np.clip(spd / 25, 0, 1); hc = TEMP(tk) if tk is not None else FLOW(sp_); hc[:, 3] = np.where(dead, 0, 0.5 + 0.4 * sp_)
         heads.set_offsets(pts); heads.set_sizes(1.2 + 4 * sp_); heads.set_color(hc)
         # the cities: their tags (☂ in blue while it rains there), a widening ring when the rain starts
         wet_c = []; snow_c = []
