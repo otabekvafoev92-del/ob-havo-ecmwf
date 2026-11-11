@@ -90,8 +90,8 @@ def clouds_real(ir, m, g):
             Image.fromarray((np.dstack([np.full(sh.shape + (3,), 0.25), sh]) * 255).astype(np.uint8), 'RGBA'))
 
 
-MOUNTS = {'ru': [((75.6, 42.0), 'Тянь-Шань'), ((72.6, 38.7), 'Памир'), ((68.3, 39.1), 'Гиссар'), ((57.6, 38.3), 'Копетдаг'), ((80.5, 45.3), 'Джунгарский Алатау'), ((86.5, 49.2), 'Алтай')],
-          'uz': [((75.6, 42.0), 'Tyan-Shan'), ((72.6, 38.7), 'Pomir'), ((68.3, 39.1), 'Hisor'), ((57.6, 38.3), 'Kopetdog‘'), ((80.5, 45.3), 'Jung‘or Olatovi'), ((86.5, 49.2), 'Oltoy')]}
+MOUNTS = {'ru': [((75.6, 42.0), 'Тянь-Шань'), ((72.6, 38.7), 'Памир'), ((69.7, 38.75), 'Гиссар'), ((57.6, 38.3), 'Копетдаг'), ((80.5, 45.3), 'Джунгарский Алатау'), ((86.5, 49.2), 'Алтай')],
+          'uz': [((75.6, 42.0), 'Tyan-Shan'), ((72.6, 38.7), 'Pomir'), ((69.7, 38.75), 'Hisor'), ((57.6, 38.3), 'Kopetdog‘'), ((80.5, 45.3), 'Jung‘or Olatovi'), ((86.5, 49.2), 'Oltoy')]}
 RAINC = [(0.62, 0.84, 1.0), (0.24, 0.56, 0.93), (0.36, 0.22, 0.75)]
 LAND = (0.667, 0.725, 0.549)  # #aab98c
 
@@ -108,8 +108,9 @@ def nowcast(ir, m, pr, ir0, m0, steps=12):
     a_ir = np.ascontiguousarray(np.asarray(ir.convert('RGB'))); a_pr = np.ascontiguousarray(np.asarray(pr)) if pr is not None else None; out = []
     for k in range(1, steps + 1):
         mx, my = (X - k * u).astype(np.float32), (Y - k * v).astype(np.float32)
-        rm = lambda a: cv2.remap(a, mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
-        out.append((Image.fromarray(rm(a_ir)), rm(m.astype(np.float32)), Image.fromarray(rm(a_pr), 'RGBA') if a_pr is not None else None))
+        rm = lambda a, b=cv2.BORDER_CONSTANT: cv2.remap(a, mx, my, cv2.INTER_LINEAR, borderMode=b, borderValue=0)
+        # what comes in from beyond the edge is not known: no cloud and no rain there (stretching the edge made streaks)
+        out.append((Image.fromarray(rm(a_ir, cv2.BORDER_REPLICATE)), rm(m.astype(np.float32)), Image.fromarray(rm(a_pr), 'RGBA') if a_pr is not None else None))
     return out
 
 
