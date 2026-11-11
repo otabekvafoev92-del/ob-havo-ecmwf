@@ -1497,7 +1497,9 @@ async function privateMsg(msg, env) {
       const L = T[to.lang] ? to.lang : 'ru';
       await tg(env, 'sendMessage', { chat_id: to.chat, text: T[L].admAns });
       const r = await tg(env, 'copyMessage', { chat_id: to.chat, from_chat_id: chat.id, message_id: msg.message_id });
-      return tg(env, 'sendMessage', { chat_id: chat.id, text: r.ok ? '✅' : `⚠️ ${r.description || ''}`, reply_to_message_id: msg.message_id });
+      const gone = !r.ok && /blocked|deactivated|chat not found|kicked/i.test(r.description || '');
+      if (gone) for (const q of ['DELETE FROM subs WHERE chat_id = ?1', 'DELETE FROM notif WHERE chat_id = ?1', 'DELETE FROM mtn WHERE chat_id = ?1', 'UPDATE watch SET on_ = 0 WHERE chat_id = ?1']) await env.DB.prepare(q).bind(to.chat).run().catch(() => {});
+      return tg(env, 'sendMessage', { chat_id: chat.id, text: r.ok ? '✅ Доставлено' : gone ? '🚫 Пользователь заблокировал бота или удалил аккаунт — ответ не доставлен. Рассылки ему отключены.' : `⚠️ Не доставлено: ${r.description || ''}`, reply_to_message_id: msg.message_id });
     }
   }
   if (cmd === 'cancel') { await saveUser(env, chat.id, { mode: '' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].cancel }); }
@@ -1548,7 +1550,12 @@ async function privateMsg(msg, env) {
     await saveUser(env, chat.id, { lang, mode: 'contact' });
     return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk });
   }
-  if (u && u.mode === 'contact' && !cmd) {  // pass the message on to the admin
+  let placeOnly = false;  // "Farg‘ona" typed after "write to the admin" by mistake: a town name alone is a weather question
+  if (u && u.mode === 'contact' && !cmd && text && text.trim().split(/\s+/).length <= 3 && !/[?!.,]/.test(text)) {
+    const q = norm(text); placeOnly = (await searchPlaces(env, text)).some(p => [p[0], p[1], p[2], p[3]].some(x => norm(x) === q));
+    if (placeOnly) await saveUser(env, chat.id, { mode: '' });
+  }
+  if (u && u.mode === 'contact' && !cmd && !placeOnly) {  // pass the message on to the admin
     await saveUser(env, chat.id, { mode: '' });
     if (!admin) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admOff });
     const f = msg.from || {}, who = `✉️ <b>${esc([f.first_name, f.last_name].filter(Boolean).join(' ') || '?')}</b>${f.username ? ' @' + esc(f.username) : ''} · <code>${chat.id}</code> · ${lang}`;
