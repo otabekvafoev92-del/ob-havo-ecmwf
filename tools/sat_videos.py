@@ -2,7 +2,7 @@
   clouds — the last 6 hours of Meteosat IODC infrared (EUMETSAT) with the H SAF rain estimate on top;
   rain   — only where it rains or snows now (H SAF), on a white map: where precipitation falls and how it moves.
 For Uzbekistan, Kazakhstan, Kyrgyzstan, in Russian and Uzbek → out/{R}_{kind}_{lang}.mp4 and out/meta.json."""
-import io, json, re, subprocess, sys, datetime as dt, pathlib, tempfile, concurrent.futures as cf
+import io, json, re, shutil, subprocess, sys, time, datetime as dt, pathlib, tempfile, concurrent.futures as cf
 import numpy as np, requests
 import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection as LC, PolyCollection as PCOL
@@ -18,6 +18,15 @@ TX = {'ru': dict(clouds='Спутник · тучи и осадки', rain='Сп
       'uz': dict(clouds='Sun’iy yo‘ldosh · bulut va yog‘in', rain='Sun’iy yo‘ldosh · yog‘in qayerda', at='surat {t}', tz={'UZ': 'Toshkent vaqti', 'KZ': 'Ostona vaqti', 'KG': 'Bishkek vaqti'},
                  lc='oq — bulut (qancha oq — shuncha baland) · rangli — yog‘in (H SAF)', lr='havorang — kuchsiz · ko‘k — o‘rtacha · binafsha — kuchli yog‘in (H SAF)')}
 S = requests.Session()
+CACHE = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else 'satcache'); CACHE.mkdir(parents=True, exist_ok=True)  # pictures and frames of earlier runs: only the new ones are made
+
+
+def cached(name, make):
+    f = CACHE / name
+    if f.exists(): return Image.open(f).convert('RGBA')
+    im = make()
+    if im is not None: im.save(f)
+    return im
 
 
 def latest(layer):
@@ -55,8 +64,8 @@ def main():
         GA = json.load(open(HERE / 'geo_admin.json')).get(R, {})
         w = 1280; h = int(round(w * (V[3] - V[2]) / ((V[1] - V[0]) * np.cos(np.radians((V[2] + V[3]) / 2)))))
         with cf.ThreadPoolExecutor(8) as pool:  # all the pictures of the country at once
-            irs = list(pool.map(lambda t: get('msg_iodc:ir108', t, 'image/jpeg', V, w, h), times))
-            prs = list(pool.map(lambda t: get('msg_iodc:h63', min(t, endp), 'image/png', V, w // 3, h // 3), times))
+            irs = list(pool.map(lambda t: cached(f"{R}_ir_{t:%Y%m%d%H%M}.png", lambda: get('msg_iodc:ir108', t, 'image/jpeg', V, w, h)), times))
+            prs = list(pool.map(lambda t: cached(f"{R}_pr_{min(t, endp):%Y%m%d%H%M}.png", lambda: get('msg_iodc:h63', min(t, endp), 'image/png', V, w // 3, h // 3)), times))
         last = None; P = []
         for p in prs:  # a missing rain picture: the last one (no flicker); the 3–5 km blocks smoothed
             if p is not None: last = p.resize((w, h), Image.BICUBIC).filter(ImageFilter.GaussianBlur(3))
@@ -67,6 +76,8 @@ def main():
                 fd = pathlib.Path(tempfile.mkdtemp()); n = 0
                 for t, ir, pr in zip(times, irs, P):
                     if ir is None and kind == 'clouds': continue
+                    fr_ = CACHE / f"{R}_{kind}_{lang}_{t:%Y%m%d%H%M}_{'p' if pr is not None else 'n'}.png"  # a frame drawn before: reused
+                    if fr_.exists(): shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue
                     fig = plt.figure(figsize=(w / 100, h / 100), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
                     dark = kind == 'clouds'
                     if dark: ax.imshow(ImageEnhance.Contrast(ir.convert('RGB')).enhance(1.35), extent=(V[0], V[1], V[2], V[3]), aspect='auto')
@@ -86,12 +97,15 @@ def main():
                     fig.text(0.012, 0.955, f"{X[kind]} · {X['at'].format(t=loc.strftime('%H:%M'))} {X['tz'][R]}", fontsize=16, fontweight='bold', color='#ffffff',
                              bbox=dict(boxstyle='round,pad=0.4', fc='#1d2a3acc', ec='none'))
                     fig.text(0.012, 0.025, X['lc' if dark else 'lr'], fontsize=11, color='#ffffff', bbox=dict(boxstyle='round,pad=0.3', fc='#1d2a3aaa', ec='none'))
-                    fig.savefig(fd / f'{n:03d}.png', facecolor=fig.get_facecolor()); plt.close(fig); n += 1
+                    fig.savefig(fd / f'{n:03d}.png', facecolor=fig.get_facecolor()); plt.close(fig); shutil.copy(fd / f'{n:03d}.png', fr_); n += 1
                 mp4 = OUT / f'{R}_{kind}_{lang}.mp4'
                 subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '3', '-i', str(fd / '%03d.png'), '-vf',
                                 'tpad=stop_mode=clone:stop_duration=3,framerate=fps=24:interp_start=0:interp_end=255:scene=100,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p',
                                 '-c:v', 'libx264', '-crf', '21', '-movflags', '+faststart', str(mp4)], check=True)
                 print(mp4.name, n, 'frames', mp4.stat().st_size // 1024, 'KB', flush=True)
+    old = time.time() - 8 * 3600  # the cache keeps 8 hours
+    for f in CACHE.iterdir():
+        if f.stat().st_mtime < old: f.unlink()
     json.dump({'made': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'last': end.strftime('%Y-%m-%dT%H:%M:%SZ'), 'rain': endp.strftime('%Y-%m-%dT%H:%M:%SZ')},
               open(OUT / 'meta.json', 'w'))
 

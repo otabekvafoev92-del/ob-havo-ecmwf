@@ -185,7 +185,7 @@ export default {
     // each job on its own, so one failure (or Cloudflare's limit of requests per run) cannot stop the others;
     // the check of the site builds goes first: it is small and it matters most
     const run = (name, f) => f().catch(e => console.log(name, e && e.stack));
-    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil(run('watch', () => watchTick(env)));  // its own runs: the weather at people's places
+    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil((async () => { await run('watch', () => watchTick(env)); await run('sat', () => satTick(env)); })());  // its own runs: the weather at people's places
     ctx.waitUntil((async () => {
       await run('stale', () => staleTick(env));
       const r = await broadcast(env).catch(e => { console.log('broadcast', e && e.stack); return null; });
@@ -774,11 +774,14 @@ async function sendSat(env, chat, lang, rid, kind) {
   return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
 }
 // keep the satellite videos fresh: GitHub's schedule is unreliable, so the bot asks for a new one when the last is over 35 min old
-async function satTick(env) {
+async function satTick(env) {  // every 10 minutes: a new snapshot at EUMETSAT → new videos at once (they take ~3 min)
   if (!env.GH_TOKEN) return;
   const meta = await fetch(satRaw(`meta.json?t=${Date.now()}`)).then(r => r.ok ? r.json() : null).catch(() => null);
-  if (meta && Date.now() - Date.parse(meta.made) < 35 * 60e3) return;
-  if (Date.now() - +(await kv(env, 'sat_kick') || 0) < 25 * 60e3) return;
+  const cap = await fetch('https://view.eumetsat.int/geoserver/msg_iodc/ir108/wms?service=WMS&request=GetCapabilities&version=1.3.0').then(r => r.ok ? r.text() : '').catch(() => '');
+  const m = cap.match(/<Dimension[^>]*name="time"[^>]*default="([^"]+)"/), newest = m ? Date.parse(m[1]) : 0;
+  const have = meta ? Date.parse(meta.last) : 0;
+  if (newest ? newest <= have : (meta && Date.now() - Date.parse(meta.made) < 35 * 60e3)) return;  // nothing newer yet
+  if (Date.now() - +(await kv(env, 'sat_kick') || 0) < 7 * 60e3) return;  // asked a moment ago: it is being made
   await setKv(env, 'sat_kick', String(Date.now()));
   await ghApi(env, 'actions/workflows/sat.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main' }), headers: { 'content-type': 'application/json' } });
 }
