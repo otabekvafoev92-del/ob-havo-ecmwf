@@ -49,9 +49,9 @@ def clouds_only(ir):
     Cloud tops are colder than the ground, so they are the brightest; a soft ramp from the clear ground's brightness up keeps thin clouds faint."""
     b = np.asarray(ir.convert('L'), float) / 255
     g = np.percentile(b, 35)  # most of the picture is clear ground: its brightness
-    lo = max(0.42, g + 0.10); a = np.clip((b - lo) / 0.28, 0, 1) ** 1.2
-    c = 0.74 - 0.44 * a  # light grey (thin) → dark grey (thick, high); the clear sky stays white
-    return Image.fromarray((np.dstack([c, c, c * 1.03, np.clip(a * 1.6, 0, 0.95)]) * 255).astype(np.uint8), 'RGBA').filter(ImageFilter.GaussianBlur(0.8))
+    lo = max(0.42, g + 0.08); a = np.clip((b - lo) / 0.22, 0, 1); edge = np.clip((b - lo) / 0.03, 0, 1)
+    c = 0.78 - 0.46 * a  # light grey (thin) → dark grey (thick, high); the clear sky stays white
+    return Image.fromarray((np.dstack([c, c, c * 1.03, edge * (0.45 + 0.5 * a)]) * 255).astype(np.uint8), 'RGBA').filter(ImageFilter.GaussianBlur(0.8))
 
 
 def rain_only(pr):
@@ -86,13 +86,13 @@ def main():
                 fd = pathlib.Path(tempfile.mkdtemp()); n = 0
                 for t, ir, pr in zip(times, irs, P):
                     if ir is None and kind == 'clouds': continue
-                    fr_ = CACHE / f"v3_{R}_{kind}_{lang}_{t:%Y%m%d%H%M}_{'p' if pr is not None else 'n'}.png"  # a frame drawn before: reused
+                    fr_ = CACHE / f"v4_{R}_{kind}_{lang}_{t:%Y%m%d%H%M}_{'p' if pr is not None else 'n'}.png"  # a frame drawn before: reused
                     if fr_.exists(): shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue
                     fig = plt.figure(figsize=(w / 100, h / 100), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
                     dark = False  # a white map: clear sky white, clouds grey → dark grey (the infrared ground looked like clouds)
                     fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
                     if kind == 'clouds': ax.imshow(clouds_only(ir), extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
-                    if pr is not None: ax.imshow(rain_only(pr), extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.9, zorder=0.8)
+                    if pr is not None: ax.imshow(rain_only(pr), extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.7 if kind == 'clouds' else 0.9, zorder=0.8)
                     lc = '#ffffff' if dark else '#2b3a4e'
                     ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors=lc, linewidths=1.1, alpha=0.85))
                     if GA:
