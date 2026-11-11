@@ -752,13 +752,13 @@ function rainMenu(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, M = RAINM[lang] || RAINM.ru, R = RKL[lang] || RKL.ru;
   const rows = [[{ text: R.traj, callback_data: `TJ:${lang}:${rid}` }], [{ text: M.now, callback_data: `MA:${lang}:hourly` }],
     [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }], [{ text: X.acc, callback_data: `AV:${lang}:${rid}` }], [{ text: M.pr, callback_data: `V:${lang}:${rid}` }],
-    [{ text: (SATX[lang] || SATX.ru).cl, callback_data: `SV:${lang}:${rid}:clouds` }], [{ text: (SATX[lang] || SATX.ru).rn, callback_data: `SV:${lang}:${rid}:rain` }], ...moistBtns(env, lang, rid, chat)];
+    [{ text: (SATX[lang] || SATX.ru).cl, callback_data: `SV:${lang}:${rid}:clouds` }], ...moistBtns(env, lang, rid, chat)];
   return tg(env, 'sendMessage', { chat_id: chat, text: M.t, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
 }
 // the satellite videos (tools/sat_videos.py, the workflow sat.yml every ~30 min, kept on the repository's "sat" branch)
-const SATX = { ru: { cl: '🛰 Видео со спутника: тучи', rn: '🌧 Видео со спутника: где идут осадки', capc: 'Спутник Meteosat (EUMETSAT): тучи и осадки за 6 часов', capr: 'Где идут осадки: оценка со спутника (H SAF) за 6 часов',
+const SATX = { ru: { cl: '🛰 Спутник онлайн: тучи и осадки', rn: '🌧 Видео со спутника: где идут осадки', capc: 'Спутник Meteosat (EUMETSAT) за 6 часов: белое — ясно, серое — тучи, синее — осадки', capr: 'Где идут осадки: оценка со спутника (H SAF) за 6 часов',
     last: 'последний снимок', none: 'Видео со спутника готовится — загляните через несколько минут.' },
-  uz: { cl: '🛰 Sun’iy yo‘ldosh videosi: bulutlar', rn: '🌧 Sun’iy yo‘ldosh videosi: yog‘in qayerda', capc: 'Meteosat (EUMETSAT): 6 soatlik bulut va yog‘in', capr: 'Yog‘in qayerda: sun’iy yo‘ldosh bahosi (H SAF), 6 soat',
+  uz: { cl: '🛰 Sun’iy yo‘ldosh onlayn: bulut va yog‘in', rn: '🌧 Sun’iy yo‘ldosh videosi: yog‘in qayerda', capc: 'Meteosat (EUMETSAT), 6 soat: oq — ochiq osmon, kulrang — bulut, ko‘k — yog‘in', capr: 'Yog‘in qayerda: sun’iy yo‘ldosh bahosi (H SAF), 6 soat',
     last: 'oxirgi surat', none: 'Sun’iy yo‘ldosh videosi tayyorlanmoqda — bir necha daqiqadan keyin qarang.' } };
 const satRaw = (f, ref = 'sat') => `https://raw.githubusercontent.com/${REPO}/${ref}/${f}`;
 // the newest commit of the "sat" branch: its files by commit are never served stale by GitHub's cache (the branch name is, up to 5 min)
@@ -1383,7 +1383,7 @@ async function handle(up, env) {
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
   if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
   if (kind === 'MV' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);
-  if (kind === 'SV' && TRJ.has(id)) return sendSat(env, chat.id, lang, id, cb.data.split(':')[3] === 'rain' ? 'rain' : 'clouds');
+  if (kind === 'SV' && TRJ.has(id)) return sendSat(env, chat.id, lang, id, 'clouds');  // one video: clouds and rain together (old "rain" buttons get it too)
   if (kind === 'AV' && TRJ.has(id)) {  // how much rain and snow falls (prob/moisture.py accum_video)
     const X = TJX[lang] || TJX.ru, url = `${base(env)}/prob/hr/${id}_accum_${lang === 'tr' ? 'ru' : lang}.mp4`;
     if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: X.m15none });

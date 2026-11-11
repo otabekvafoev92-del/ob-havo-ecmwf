@@ -81,7 +81,7 @@ def main():
             if p is not None: last = p.resize((w, h), Image.BICUBIC).filter(ImageFilter.GaussianBlur(3))
             P.append(last)
         sea = [np.asarray(r) for r in WAT['ocean']] + [np.asarray(l['r']) for l in WAT['lakes']]
-        for kind in ('clouds', 'rain'):
+        for kind in ('clouds',):  # one video: clouds (grey) and rain (blue) together
             for lang, X in TX.items():
                 fd = pathlib.Path(tempfile.mkdtemp()); n = 0
                 for t, ir, pr in zip(times, irs, P):
