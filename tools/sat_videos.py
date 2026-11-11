@@ -81,8 +81,8 @@ def clouds_real(ir, m, g):
     base = 0.90 + 0.10 * np.clip(a * 1.4, 0, 1)
     c = np.clip(base * (0.80 + 0.32 * hs), 0, 1)
     rgb = np.dstack([c * 0.985, c * 0.99, c])  # a touch of blue in the shade
-    al = np.clip(m * (0.38 + 0.62 * np.clip(a * 1.5, 0, 1) ** 0.7), 0, 0.97)
-    sh = gaussian_filter(shift(al, (5, 5), order=0, mode='nearest'), 4) * 0.22 * (1 - al)  # shadow, south-east of the cloud
+    al = np.clip(m * (0.52 + 0.48 * np.clip(a * 1.5, 0, 1) ** 0.7), 0, 0.97)
+    sh = gaussian_filter(shift(al, (6, 6), order=0, mode='nearest'), 4) * 0.30 * (1 - al)  # shadow, south-east of the cloud
     return (Image.fromarray((np.dstack([rgb, al]) * 255).astype(np.uint8), 'RGBA'),
             Image.fromarray((np.dstack([np.full(sh.shape + (3,), 0.25), sh]) * 255).astype(np.uint8), 'RGBA'))
 
@@ -151,15 +151,15 @@ def main():
                     if fr_.exists() and kind != 'clouds': shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue  # clouds: drawn again each time (each mask is blended with its neighbours)
                     fig = plt.figure(figsize=(w / 100, h / 100), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
                     dark = False  # a white map: clear sky white, clouds grey → dark grey (the infrared ground looked like clouds)
-                    fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
+                    fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#9fc2da' if kind == 'clouds' else '#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
                     if kind == 'clouds':  # a soft land colour and the mountains, so that the white clouds stand out like on a real photo from space
-                        ax.set_facecolor('#e3e8d6'); fig.patch.set_facecolor('#e3e8d6')
+                        ax.set_facecolor('#c6cfae'); fig.patch.set_facecolor('#c6cfae')
                         if REL: ax.imshow(REL[0], extent=tuple(REL[1]), aspect='auto', zorder=0.2, alpha=0.9)
                         if cm is not None:
                             cl_, sh_ = clouds_real(ir, cm, G0)
                             ax.imshow(sh_, extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.5); ax.imshow(cl_, extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
                         else: ax.imshow(clouds_only(ir), extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
-                    if pr is not None: ax.imshow(rain_only(pr), extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.7 if kind == 'clouds' else 0.9, zorder=0.8)
+                    if pr is not None: ax.imshow(rain_only(pr), extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.62 if kind == 'clouds' else 0.9, zorder=0.8)
                     lc = '#ffffff' if dark else '#2b3a4e'
                     ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors=lc, linewidths=1.1, alpha=0.85))
                     if GA:
