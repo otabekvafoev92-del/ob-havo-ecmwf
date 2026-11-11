@@ -14,9 +14,11 @@ VIEW = {'UZ': (55, 74, 36.5, 46), 'KZ': (46, 88, 40, 56), 'KG': (68, 81, 38.5, 4
 TZ = {'UZ': 5, 'KZ': 5, 'KG': 6}
 W = 'https://view.eumetsat.int/geoserver'
 TX = {'ru': dict(clouds='Спутник · тучи и осадки', rain='Спутник · где идут осадки', at='снимок {t}', tz={'UZ': 'по Ташкенту', 'KZ': 'по Астане', 'KG': 'по Бишкеку'},
-                 lc='белое — тучи (ярче и объёмнее — плотнее и выше) · синее/фиолетовое — осадки (H SAF)', lr='голубое — слабые · синее — умеренные · фиолетовое — сильные осадки (оценка со спутника H SAF)'),
+                 lc='белое — тучи (ярче и объёмнее — плотнее и выше) · синее/фиолетовое — осадки (H SAF)', lr='голубое — слабые · синее — умеренные · фиолетовое — сильные осадки (оценка со спутника H SAF)',
+                 fc='прогноз на {t}', fcn='по движению облаков', g=['тонкие облака', 'плотные облака', 'слабые осадки', 'умеренные', 'сильные']),
       'uz': dict(clouds='Sun’iy yo‘ldosh · bulut va yog‘in', rain='Sun’iy yo‘ldosh · yog‘in qayerda', at='surat {t}', tz={'UZ': 'Toshkent vaqti', 'KZ': 'Ostona vaqti', 'KG': 'Bishkek vaqti'},
-                 lc='oq — bulut (qancha yorqin — shuncha qalin) · ko‘k/binafsha — yog‘in (H SAF)', lr='havorang — kuchsiz · ko‘k — o‘rtacha · binafsha — kuchli yog‘in (H SAF)')}
+                 lc='oq — bulut (qancha yorqin — shuncha qalin) · ko‘k/binafsha — yog‘in (H SAF)', lr='havorang — kuchsiz · ko‘k — o‘rtacha · binafsha — kuchli yog‘in (H SAF)',
+                 fc='prognoz: {t}', fcn='bulut harakati bo‘yicha', g=['yupqa bulut', 'qalin bulut', 'kuchsiz yog‘in', 'o‘rtacha', 'kuchli'])}
 S = requests.Session()
 CACHE = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else 'satcache'); CACHE.mkdir(parents=True, exist_ok=True)  # pictures and frames of earlier runs: only the new ones are made
 
@@ -88,6 +90,40 @@ def clouds_real(ir, m, g):
             Image.fromarray((np.dstack([np.full(sh.shape + (3,), 0.25), sh]) * 255).astype(np.uint8), 'RGBA'))
 
 
+MOUNTS = {'ru': [((75.6, 42.0), 'Тянь-Шань'), ((72.6, 38.7), 'Памир'), ((68.3, 39.1), 'Гиссар'), ((57.6, 38.3), 'Копетдаг'), ((80.5, 45.3), 'Джунгарский Алатау'), ((86.5, 49.2), 'Алтай')],
+          'uz': [((75.6, 42.0), 'Tyan-Shan'), ((72.6, 38.7), 'Pomir'), ((68.3, 39.1), 'Hisor'), ((57.6, 38.3), 'Kopetdog‘'), ((80.5, 45.3), 'Jung‘or Olatovi'), ((86.5, 49.2), 'Oltoy')]}
+RAINC = [(0.62, 0.84, 1.0), (0.24, 0.56, 0.93), (0.36, 0.22, 0.75)]
+LAND = (0.667, 0.725, 0.549)  # #aab98c
+
+
+def nowcast(ir, m, pr, ir0, m0, steps=12):
+    """3 hours ahead by the motion of the clouds: the shift between the picture an hour ago and the last one (optical flow),
+    the last clouds and rain carried on along it, 15 minutes a step."""
+    import cv2
+    from scipy.ndimage import gaussian_filter
+    f = lambda i_, m_: (np.clip(np.asarray(i_.convert('L'), float) / 255 * 0.5 + m_ * 0.5, 0, 1) * 255).astype(np.uint8)
+    fl = cv2.calcOpticalFlowFarneback(f(ir0, m0), f(ir, m), None, 0.5, 4, 31, 4, 7, 1.5, 0)
+    u, v = (gaussian_filter(fl[..., k], 20) / 4 for k in (0, 1))  # per 15 minutes, smooth
+    hh, ww = m.shape; X, Y = np.meshgrid(np.arange(ww, dtype=np.float32), np.arange(hh, dtype=np.float32))
+    a_ir = np.ascontiguousarray(np.asarray(ir.convert('RGB'))); a_pr = np.ascontiguousarray(np.asarray(pr)) if pr is not None else None; out = []
+    for k in range(1, steps + 1):
+        mx, my = (X - k * u).astype(np.float32), (Y - k * v).astype(np.float32)
+        rm = lambda a: cv2.remap(a, mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        out.append((Image.fromarray(rm(a_ir)), rm(m.astype(np.float32)), Image.fromarray(rm(a_pr), 'RGBA') if a_pr is not None else None))
+    return out
+
+
+def legend(fig, X):
+    """The colours as small tiles: thin and thick clouds, weak / moderate / heavy rain."""
+    from matplotlib.patches import FancyBboxPatch
+    tiles = [tuple(np.array(LAND) * 0.28 + 0.72), (0.97, 0.975, 0.985)] + [tuple(np.array(LAND) * 0.38 + np.array(c) * 0.62) for c in RAINC]
+    x = 0.012; y = 0.022
+    for col, name in zip(tiles, X['g']):
+        fig.patches.append(FancyBboxPatch((x, y), 0.016, 0.026, boxstyle='round,pad=0.002,rounding_size=0.004', transform=fig.transFigure, fc=col, ec='#2b3a4e', lw=0.8))
+        fig.text(x + 0.021, y + 0.004, name, fontsize=11, color='#1d2a3a', fontweight='bold', bbox=dict(boxstyle='round,pad=0.2', fc='#ffffffcc', ec='none'))
+        x += 0.021 + 0.0075 * len(name) + 0.018
+
+
 def relief(R):
     """The light relief of the mountains (made by the forecast build for the site: prob/hr/live/{R}/relief.png and its bounds)."""
     try:
@@ -140,22 +176,30 @@ def main():
         for p in prs:  # a missing rain picture: the last one (no flicker); the 3–5 km blocks smoothed
             if p is not None: last = p.resize((w, h), Image.BICUBIC).filter(ImageFilter.GaussianBlur(3))
             P.append(last)
-        REL = relief(R)
+        REL = relief(R); LAB = []
+        for p in sorted([p for p in places if p.get('iso') == R and p.get('pop', 0) > (300000 if R == 'KZ' else 150000)], key=lambda p: -p.get('pop', 0)):
+            if all(abs(p['lon'] - q['lon']) > 0.9 or abs(p['lat'] - q['lat']) > 0.35 for q in LAB): LAB.append(p)  # a smaller town next to a bigger one: no label
+        FC = []  # 3 hours ahead by the motion of the clouds (the last picture and the one an hour before it)
+        ok = [i for i in range(len(times)) if irs[i] is not None and M[i] is not None]
+        if len(ok) > 5:
+            try: FC = nowcast(irs[ok[-1]], M[ok[-1]], P[-1], irs[ok[-5]], M[ok[-5]])
+            except Exception as e: print('nowcast', e, flush=True)
+        seq = [(t, ir, pr, cm, False) for t, ir, pr, cm in zip(times, irs, P, M)] + [(end + dt.timedelta(minutes=15 * (k + 1)), a, c, b, True) for k, (a, b, c) in enumerate(FC)]
         sea = [np.asarray(r) for r in WAT['ocean']] + [np.asarray(l['r']) for l in WAT['lakes']]
         for kind in ('clouds',):  # one video: clouds (grey) and rain (blue) together
             for lang, X in TX.items():
                 if only and lang != 'ru': continue
                 fd = pathlib.Path(tempfile.mkdtemp()); n = 0
-                for t, ir, pr, cm in zip(times, irs, P, M):
+                for t, ir, pr, cm, fut in seq:
                     if ir is None and kind == 'clouds': continue
                     fr_ = CACHE / f"v6_{R}_{kind}_{lang}_{t:%Y%m%d%H%M}_{'p' if pr is not None else 'n'}{'m' if cm is not None else ''}.png"  # a frame drawn before: reused
-                    if fr_.exists() and kind != 'clouds': shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue  # clouds: drawn again each time (each mask is blended with its neighbours)
+                    if fr_.exists() and kind != 'clouds' and not fut: shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue  # clouds: drawn again each time (each mask is blended with its neighbours)
                     fig = plt.figure(figsize=(w / 100, h / 100), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
                     dark = False  # a white map: clear sky white, clouds grey → dark grey (the infrared ground looked like clouds)
                     fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#7eaacb' if kind == 'clouds' else '#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
                     if kind == 'clouds':  # a soft land colour and the mountains, so that the white clouds stand out like on a real photo from space
                         ax.set_facecolor('#aab98c'); fig.patch.set_facecolor('#aab98c')
-                        if REL: ax.imshow(REL[0], extent=tuple(REL[1]), aspect='auto', zorder=0.2, alpha=0.9)
+                        if REL: ax.imshow(REL[0], extent=tuple(REL[1]), aspect='auto', zorder=0.2, alpha=1.0)
                         if cm is not None:
                             cl_, sh_ = clouds_real(ir, cm, G0)
                             ax.imshow(sh_, extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.5); ax.imshow(cl_, extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
@@ -164,16 +208,25 @@ def main():
                     lc = '#ffffff' if dark else '#2b3a4e'
                     ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors=lc, linewidths=1.1, alpha=0.85))
                     if GA:
-                        ax.add_collection(LC([np.asarray(r) for a in GA.get('adm2', []) for r in a['r']], colors=lc, linewidths=0.3, alpha=0.3))
-                        ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors=lc, linewidths=0.7, alpha=0.6))
-                    for p in places:
-                        if p.get('iso') == R and p.get('pop', 0) > (300000 if R == 'KZ' else 150000):
+                        ax.add_collection(LC([np.asarray(r) for a in GA.get('adm2', []) for r in a['r']], colors=lc, linewidths=0.4, alpha=0.35, zorder=1))
+                        ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#ffffff', linewidths=2.6, alpha=0.55, zorder=1))  # regions: a light halo …
+                        ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors=lc, linewidths=1.3, alpha=0.9, zorder=1.1))  # … and a clear line
+                    for p in LAB:
+                        if True:
                             ax.plot(p['lon'], p['lat'], 'o', ms=4, color='#ffd27a' if dark else '#2b3a4e')
                             ax.text(p['lon'] + 0.1, p['lat'] + 0.07, p.get(lang) or p.get('ru', ''), color=lc, fontsize=11, fontweight='bold')
+                    for (mx_, my_), nm in MOUNTS.get(lang, MOUNTS['ru']):
+                        if V[0] + 0.5 < mx_ < V[1] - 1 and V[2] + 0.4 < my_ < V[3] - 0.6:
+                            ax.text(mx_, my_, nm, fontsize=12, style='italic', color='#5b4632', ha='center', zorder=3, alpha=0.9)
                     loc = t + dt.timedelta(hours=TZ[R])
-                    fig.text(0.012, 0.955, f"{X[kind]} · {X['at'].format(t=loc.strftime('%H:%M'))} {X['tz'][R]}", fontsize=16, fontweight='bold', color='#ffffff',
-                             bbox=dict(boxstyle='round,pad=0.4', fc='#1d2a3acc', ec='none'))
-                    fig.text(0.012, 0.025, X['lc' if kind == 'clouds' else 'lr'], fontsize=11, color='#ffffff', bbox=dict(boxstyle='round,pad=0.3', fc='#1d2a3aaa', ec='none'))
+                    if fut:  # the forecast part: an orange label, so that it is not taken for a snapshot
+                        fig.text(0.012, 0.955, f"{X[kind].split(' · ')[0]} · {X['fc'].format(t=loc.strftime('%H:%M'))} {X['tz'][R]} · {X['fcn']}", fontsize=16, fontweight='bold', color='#ffffff',
+                                 bbox=dict(boxstyle='round,pad=0.4', fc='#c0562bdd', ec='none'))
+                    else:
+                        fig.text(0.012, 0.955, f"{X[kind]} · {X['at'].format(t=loc.strftime('%H:%M'))} {X['tz'][R]}", fontsize=16, fontweight='bold', color='#ffffff',
+                                 bbox=dict(boxstyle='round,pad=0.4', fc='#1d2a3acc', ec='none'))
+                    if kind == 'clouds': legend(fig, X)
+                    else: fig.text(0.012, 0.025, X['lr'], fontsize=11, color='#ffffff', bbox=dict(boxstyle='round,pad=0.3', fc='#1d2a3aaa', ec='none'))
                     fig.savefig(fd / f'{n:03d}.png', facecolor=fig.get_facecolor()); plt.close(fig); shutil.copy(fd / f'{n:03d}.png', fr_); n += 1
                 mp4 = OUT / f'{R}_{kind}_{lang}.mp4'
                 subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '3', '-i', str(fd / '%03d.png'), '-vf',
