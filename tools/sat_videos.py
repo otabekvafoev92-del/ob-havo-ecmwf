@@ -14,9 +14,9 @@ VIEW = {'UZ': (55, 74, 36.5, 46), 'KZ': (46, 88, 40, 56), 'KG': (68, 81, 38.5, 4
 TZ = {'UZ': 5, 'KZ': 5, 'KG': 6}
 W = 'https://view.eumetsat.int/geoserver'
 TX = {'ru': dict(clouds='Спутник · тучи и осадки', rain='Спутник · где идут осадки', at='снимок {t}', tz={'UZ': 'по Ташкенту', 'KZ': 'по Астане', 'KG': 'по Бишкеку'},
-                 lc='белое — тучи (чем белее, тем плотнее и выше) · тёмное — ясно · цветное — осадки (H SAF)', lr='голубое — слабые · синее — умеренные · фиолетовое — сильные осадки (оценка со спутника H SAF)'),
+                 lc='белое — ясно · серое — тучи (чем темнее, тем плотнее) · синее/фиолетовое — осадки (H SAF)', lr='голубое — слабые · синее — умеренные · фиолетовое — сильные осадки (оценка со спутника H SAF)'),
       'uz': dict(clouds='Sun’iy yo‘ldosh · bulut va yog‘in', rain='Sun’iy yo‘ldosh · yog‘in qayerda', at='surat {t}', tz={'UZ': 'Toshkent vaqti', 'KZ': 'Ostona vaqti', 'KG': 'Bishkek vaqti'},
-                 lc='oq — bulut (qancha oq — shuncha qalin) · to‘q — ochiq osmon · rangli — yog‘in (H SAF)', lr='havorang — kuchsiz · ko‘k — o‘rtacha · binafsha — kuchli yog‘in (H SAF)')}
+                 lc='oq — ochiq osmon · kulrang — bulut (qancha to‘q — shuncha qalin) · ko‘k/binafsha — yog‘in (H SAF)', lr='havorang — kuchsiz · ko‘k — o‘rtacha · binafsha — kuchli yog‘in (H SAF)')}
 S = requests.Session()
 CACHE = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else 'satcache'); CACHE.mkdir(parents=True, exist_ok=True)  # pictures and frames of earlier runs: only the new ones are made
 
@@ -50,8 +50,8 @@ def clouds_only(ir):
     b = np.asarray(ir.convert('L'), float) / 255
     g = np.percentile(b, 35)  # most of the picture is clear ground: its brightness
     lo = max(0.42, g + 0.10); a = np.clip((b - lo) / 0.28, 0, 1) ** 1.2
-    c = 0.80 + 0.20 * a  # light grey (thin) → white (thick, high)
-    return Image.fromarray((np.dstack([c, c, c, a * 0.95]) * 255).astype(np.uint8), 'RGBA').filter(ImageFilter.GaussianBlur(0.8))
+    c = 0.74 - 0.44 * a  # light grey (thin) → dark grey (thick, high); the clear sky stays white
+    return Image.fromarray((np.dstack([c, c, c * 1.03, np.clip(a * 1.6, 0, 0.95)]) * 255).astype(np.uint8), 'RGBA').filter(ImageFilter.GaussianBlur(0.8))
 
 
 def rain_only(pr):
@@ -86,16 +86,13 @@ def main():
                 fd = pathlib.Path(tempfile.mkdtemp()); n = 0
                 for t, ir, pr in zip(times, irs, P):
                     if ir is None and kind == 'clouds': continue
-                    fr_ = CACHE / f"v2_{R}_{kind}_{lang}_{t:%Y%m%d%H%M}_{'p' if pr is not None else 'n'}.png"  # a frame drawn before: reused
+                    fr_ = CACHE / f"v3_{R}_{kind}_{lang}_{t:%Y%m%d%H%M}_{'p' if pr is not None else 'n'}.png"  # a frame drawn before: reused
                     if fr_.exists(): shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue
                     fig = plt.figure(figsize=(w / 100, h / 100), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
-                    dark = kind == 'clouds'
-                    if dark:  # a calm dark map, and only the clouds on it in white (the ground of the infrared picture looked like clouds)
-                        fig.patch.set_facecolor('#3b4757'); ax.set_facecolor('#3b4757'); ax.add_collection(PCOL(sea, facecolors='#24384f', edgecolors='#5d7d99', linewidths=0.6, zorder=0.3))
-                        ax.imshow(clouds_only(ir), extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
-                    else:
-                        fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6))
-                    if pr is not None: ax.imshow(pr if dark else rain_only(pr), extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.9, zorder=0.8)
+                    dark = False  # a white map: clear sky white, clouds grey → dark grey (the infrared ground looked like clouds)
+                    fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
+                    if kind == 'clouds': ax.imshow(clouds_only(ir), extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
+                    if pr is not None: ax.imshow(rain_only(pr), extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.9, zorder=0.8)
                     lc = '#ffffff' if dark else '#2b3a4e'
                     ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors=lc, linewidths=1.1, alpha=0.85))
                     if GA:
@@ -108,7 +105,7 @@ def main():
                     loc = t + dt.timedelta(hours=TZ[R])
                     fig.text(0.012, 0.955, f"{X[kind]} · {X['at'].format(t=loc.strftime('%H:%M'))} {X['tz'][R]}", fontsize=16, fontweight='bold', color='#ffffff',
                              bbox=dict(boxstyle='round,pad=0.4', fc='#1d2a3acc', ec='none'))
-                    fig.text(0.012, 0.025, X['lc' if dark else 'lr'], fontsize=11, color='#ffffff', bbox=dict(boxstyle='round,pad=0.3', fc='#1d2a3aaa', ec='none'))
+                    fig.text(0.012, 0.025, X['lc' if kind == 'clouds' else 'lr'], fontsize=11, color='#ffffff', bbox=dict(boxstyle='round,pad=0.3', fc='#1d2a3aaa', ec='none'))
                     fig.savefig(fd / f'{n:03d}.png', facecolor=fig.get_facecolor()); plt.close(fig); shutil.copy(fd / f'{n:03d}.png', fr_); n += 1
                 mp4 = OUT / f'{R}_{kind}_{lang}.mp4'
                 subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '3', '-i', str(fd / '%03d.png'), '-vf',
