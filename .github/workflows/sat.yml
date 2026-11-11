@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '7,37 * * * *'
   workflow_dispatch:
+    inputs:
+      test: {description: 'only UZ ru, to the sattest branch', type: boolean, default: false}
 permissions: {contents: write}
 concurrency: {group: sat, cancel-in-progress: false}  # a newer request waits for the running one
 jobs:
@@ -20,8 +22,9 @@ jobs:
           key: sat-${{ github.run_id }}
           restore-keys: sat-
       - run: |
-          sudo apt-get install -y -qq ffmpeg >/dev/null; pip install -q numpy matplotlib pillow requests
+          sudo apt-get install -y -qq ffmpeg >/dev/null; pip install -q numpy scipy matplotlib pillow requests
+          B=sat; if [ "${{ inputs.test }}" = "true" ]; then export SAT_ONLY=UZ; B=sattest; fi
           python tools/sat_videos.py sat satcache
-          cd sat && git init -q && git checkout -q -b sat && git add -A
+          cd sat && git init -q && git checkout -q -b $B && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "satellite $(date -u +%H:%M)"
-          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" sat
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" $B

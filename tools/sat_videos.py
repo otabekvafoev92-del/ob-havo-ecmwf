@@ -14,9 +14,9 @@ VIEW = {'UZ': (55, 74, 36.5, 46), 'KZ': (46, 88, 40, 56), 'KG': (68, 81, 38.5, 4
 TZ = {'UZ': 5, 'KZ': 5, 'KG': 6}
 W = 'https://view.eumetsat.int/geoserver'
 TX = {'ru': dict(clouds='Спутник · тучи и осадки', rain='Спутник · где идут осадки', at='снимок {t}', tz={'UZ': 'по Ташкенту', 'KZ': 'по Астане', 'KG': 'по Бишкеку'},
-                 lc='белое — ясно · серое — тучи (чем темнее, тем плотнее) · синее/фиолетовое — осадки (H SAF)', lr='голубое — слабые · синее — умеренные · фиолетовое — сильные осадки (оценка со спутника H SAF)'),
+                 lc='белое — тучи (ярче и объёмнее — плотнее и выше) · синее/фиолетовое — осадки (H SAF)', lr='голубое — слабые · синее — умеренные · фиолетовое — сильные осадки (оценка со спутника H SAF)'),
       'uz': dict(clouds='Sun’iy yo‘ldosh · bulut va yog‘in', rain='Sun’iy yo‘ldosh · yog‘in qayerda', at='surat {t}', tz={'UZ': 'Toshkent vaqti', 'KZ': 'Ostona vaqti', 'KG': 'Bishkek vaqti'},
-                 lc='oq — ochiq osmon · kulrang — bulut (qancha to‘q — shuncha qalin) · ko‘k/binafsha — yog‘in (H SAF)', lr='havorang — kuchsiz · ko‘k — o‘rtacha · binafsha — kuchli yog‘in (H SAF)')}
+                 lc='oq — bulut (qancha yorqin — shuncha qalin) · ko‘k/binafsha — yog‘in (H SAF)', lr='havorang — kuchsiz · ko‘k — o‘rtacha · binafsha — kuchli yog‘in (H SAF)')}
 S = requests.Session()
 CACHE = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else 'satcache'); CACHE.mkdir(parents=True, exist_ok=True)  # pictures and frames of earlier runs: only the new ones are made
 
@@ -69,6 +69,33 @@ def smooth_masks(ms):
     return [0.25 * full[max(i - 1, 0)] + 0.5 * full[i] + 0.25 * full[min(i + 1, len(full) - 1)] for i in range(len(full))]
 
 
+def clouds_real(ir, m, g):
+    """Clouds that look like clouds: white, thin ones see-through, thick ones bright with soft relief (lit from the north-west, the texture
+    of the infrared picture) and a faint shadow on the ground. Where they are — the EUMETSAT cloud mask m; how thick/high — the infrared."""
+    from matplotlib.colors import LightSource
+    from scipy.ndimage import gaussian_filter, shift
+    b = np.asarray(ir.convert('L'), float) / 255
+    a = np.clip((b - g) / 0.35, 0, 1) * m  # 0 thin/low … 1 thick/high
+    Hc = gaussian_filter(a, 1.6)
+    hs = LightSource(azdeg=315, altdeg=40).hillshade(Hc * 60, vert_exag=1)
+    base = 0.90 + 0.10 * np.clip(a * 1.4, 0, 1)
+    c = np.clip(base * (0.80 + 0.32 * hs), 0, 1)
+    rgb = np.dstack([c * 0.985, c * 0.99, c])  # a touch of blue in the shade
+    al = np.clip(m * (0.38 + 0.62 * np.clip(a * 1.5, 0, 1) ** 0.7), 0, 0.97)
+    sh = gaussian_filter(shift(al, (5, 5), order=0, mode='nearest'), 4) * 0.22 * (1 - al)  # shadow, south-east of the cloud
+    return (Image.fromarray((np.dstack([rgb, al]) * 255).astype(np.uint8), 'RGBA'),
+            Image.fromarray((np.dstack([np.full(sh.shape + (3,), 0.25), sh]) * 255).astype(np.uint8), 'RGBA'))
+
+
+def relief(R):
+    """The light relief of the mountains (made by the forecast build for the site: prob/hr/live/{R}/relief.png and its bounds)."""
+    try:
+        site = 'https://otabekvafoev92-del.github.io/ob-havo-ecmwf/prob/hr/live/' + R
+        m = requests.get(site + '/meta.json', timeout=60).json(); r = requests.get(site + '/relief.png', timeout=60)
+        return (Image.open(io.BytesIO(r.content)).convert('RGBA'), m['bounds']) if r.ok and m.get('relief') else None
+    except Exception as e: print('relief', R, e, flush=True); return None
+
+
 def clouds_mask(ir, m, g):
     """Clouds from the EUMETSAT cloud mask (day and night, it also finds the low clouds and fog that look like the ground in infrared):
     where it says cloud — grey; the infrared only sets the shade: warm low cloud light and faint grey, cold high thick cloud dark grey.
@@ -95,7 +122,10 @@ def main():
     G = json.load(open(HERE / 'geo_world.json'))['countries']; WAT = json.load(open(HERE / 'geo_water.json'))
     places = json.load(open(HERE / 'geo_prob.json'))['places']
     times = [end - dt.timedelta(minutes=15 * k) for k in range(24, -1, -1)]  # 6 hours
+    import os
+    only = os.environ.get('SAT_ONLY')
     for R, V in VIEW.items():
+        if only and R != only: continue
         GA = json.load(open(HERE / 'geo_admin.json')).get(R, {})
         w = 1280; h = int(round(w * (V[3] - V[2]) / ((V[1] - V[0]) * np.cos(np.radians((V[2] + V[3]) / 2)))))
         with cf.ThreadPoolExecutor(8) as pool:  # all the pictures of the country at once
@@ -109,9 +139,11 @@ def main():
         for p in prs:  # a missing rain picture: the last one (no flicker); the 3–5 km blocks smoothed
             if p is not None: last = p.resize((w, h), Image.BICUBIC).filter(ImageFilter.GaussianBlur(3))
             P.append(last)
+        REL = relief(R)
         sea = [np.asarray(r) for r in WAT['ocean']] + [np.asarray(l['r']) for l in WAT['lakes']]
         for kind in ('clouds',):  # one video: clouds (grey) and rain (blue) together
             for lang, X in TX.items():
+                if only and lang != 'ru': continue
                 fd = pathlib.Path(tempfile.mkdtemp()); n = 0
                 for t, ir, pr, cm in zip(times, irs, P, M):
                     if ir is None and kind == 'clouds': continue
@@ -120,7 +152,13 @@ def main():
                     fig = plt.figure(figsize=(w / 100, h / 100), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
                     dark = False  # a white map: clear sky white, clouds grey → dark grey (the infrared ground looked like clouds)
                     fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
-                    if kind == 'clouds': ax.imshow(clouds_mask(ir, cm, G0) if cm is not None else clouds_only(ir), extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
+                    if kind == 'clouds':  # a soft land colour and the mountains, so that the white clouds stand out like on a real photo from space
+                        ax.set_facecolor('#e3e8d6'); fig.patch.set_facecolor('#e3e8d6')
+                        if REL: ax.imshow(REL[0], extent=tuple(REL[1]), aspect='auto', zorder=0.2, alpha=0.9)
+                        if cm is not None:
+                            cl_, sh_ = clouds_real(ir, cm, G0)
+                            ax.imshow(sh_, extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.5); ax.imshow(cl_, extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
+                        else: ax.imshow(clouds_only(ir), extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0.6)
                     if pr is not None: ax.imshow(rain_only(pr), extent=(V[0], V[1], V[2], V[3]), aspect='auto', alpha=0.7 if kind == 'clouds' else 0.9, zorder=0.8)
                     lc = '#ffffff' if dark else '#2b3a4e'
                     ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors=lc, linewidths=1.1, alpha=0.85))
