@@ -78,11 +78,12 @@ def clouds_real(ir, m, g):
     a = np.clip((b - g) / 0.35, 0, 1) * m  # 0 thin/low … 1 thick/high
     Hc = gaussian_filter(a, 1.6)
     hs = LightSource(azdeg=315, altdeg=40).hillshade(Hc * 60, vert_exag=1)
-    base = 0.90 + 0.10 * np.clip(a * 1.4, 0, 1)
+    base = 0.94 + 0.06 * np.clip(a * 1.4, 0, 1)
+    base = base * (1 - 0.16 * np.clip(1 - gaussian_filter(m, 2.5) / np.maximum(m, 0.05), 0, 1))  # a slightly darker rim: the edge of each cloud is seen
     c = np.clip(base * (0.80 + 0.32 * hs), 0, 1)
     rgb = np.dstack([c * 0.985, c * 0.99, c])  # a touch of blue in the shade
-    al = np.clip(m * (0.52 + 0.48 * np.clip(a * 1.5, 0, 1) ** 0.7), 0, 0.97)
-    sh = gaussian_filter(shift(al, (6, 6), order=0, mode='nearest'), 4) * 0.30 * (1 - al)  # shadow, south-east of the cloud
+    al = np.clip(m * (0.72 + 0.28 * np.clip(a * 1.5, 0, 1) ** 0.7), 0, 0.98)
+    sh = gaussian_filter(shift(al, (6, 6), order=0, mode='nearest'), 4) * 0.42 * (1 - al)  # shadow, south-east of the cloud
     return (Image.fromarray((np.dstack([rgb, al]) * 255).astype(np.uint8), 'RGBA'),
             Image.fromarray((np.dstack([np.full(sh.shape + (3,), 0.25), sh]) * 255).astype(np.uint8), 'RGBA'))
 
@@ -151,9 +152,9 @@ def main():
                     if fr_.exists() and kind != 'clouds': shutil.copy(fr_, fd / f'{n:03d}.png'); n += 1; continue  # clouds: drawn again each time (each mask is blended with its neighbours)
                     fig = plt.figure(figsize=(w / 100, h / 100), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
                     dark = False  # a white map: clear sky white, clouds grey → dark grey (the infrared ground looked like clouds)
-                    fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#9fc2da' if kind == 'clouds' else '#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
+                    fig.patch.set_facecolor('#ffffff'); ax.add_collection(PCOL(sea, facecolors='#7eaacb' if kind == 'clouds' else '#d6e8f2', edgecolors='#7fa9c6', linewidths=0.6, zorder=0.3))
                     if kind == 'clouds':  # a soft land colour and the mountains, so that the white clouds stand out like on a real photo from space
-                        ax.set_facecolor('#c6cfae'); fig.patch.set_facecolor('#c6cfae')
+                        ax.set_facecolor('#aab98c'); fig.patch.set_facecolor('#aab98c')
                         if REL: ax.imshow(REL[0], extent=tuple(REL[1]), aspect='auto', zorder=0.2, alpha=0.9)
                         if cm is not None:
                             cl_, sh_ = clouds_real(ir, cm, G0)
@@ -176,7 +177,7 @@ def main():
                     fig.savefig(fd / f'{n:03d}.png', facecolor=fig.get_facecolor()); plt.close(fig); shutil.copy(fd / f'{n:03d}.png', fr_); n += 1
                 mp4 = OUT / f'{R}_{kind}_{lang}.mp4'
                 subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '3', '-i', str(fd / '%03d.png'), '-vf',
-                                'tpad=stop_mode=clone:stop_duration=3,framerate=fps=24:interp_start=0:interp_end=255:scene=100,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p',
+                                'tpad=stop_mode=clone:stop_duration=1,framerate=fps=24:interp_start=0:interp_end=255:scene=100,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p',
                                 '-c:v', 'libx264', '-crf', '21', '-movflags', '+faststart', str(mp4)], check=True)
                 print(mp4.name, n, 'frames', mp4.stat().st_size // 1024, 'KB', flush=True)
     old = time.time() - 8 * 3600  # the cache keeps 8 hours
