@@ -18,6 +18,7 @@ from trajectory import ECM, get  # the same mirror and downloader
 
 STEPS = list(range(0, 73, 3))
 STEPS15 = [(st, 'hres') for st in list(range(0, 144, 3)) + list(range(144, 241, 6))] + [(st, 'ens') for st in range(246, 361, 6)]
+CLEAR = True  # the clear look: no wind-gust areas or wind numbers at the towns, fewer lines, bigger labels
 FPS = 2  # a third of the first speed (6 frames a second): calm enough to follow
 # the names of the big waters on the map (lon, lat), and the size of the letters
 _WN = [((50.6, 42.6), ('Каспийское\nморе', 'Kaspiy\ndengizi', 'Hazar\nDenizi'), 10), ((59.6, 45.4), ('Аральское\nморе', 'Orol\ndengizi', 'Aral\nGölü'), 8.5),
@@ -203,7 +204,7 @@ def video_tv(F, region, lang, mp4, run, off=5, paths=()):
     ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings'] if near(r)], colors='#6f7d8c', linewidths=0.7, alpha=0.7, zorder=4))
     own = [np.asarray(r) for r in G.get(region, {}).get('rings', [])]
     if GA:  # the republic's districts and regions, clearly
-        ax.add_collection(LC([np.asarray(r) for a in GA.get('adm2', []) for r in a['r']], colors='#97a3b0', linewidths=0.4, alpha=0.85, zorder=4))
+        ax.add_collection(LC([np.asarray(r) for a in GA.get('adm2', []) for r in a['r']], colors='#a9b3be', linewidths=0.35, alpha=0.6, zorder=4))
         ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#55657a', linewidths=0.95, alpha=0.95, zorder=4.05))
     ax.add_collection(LC(own, colors='#ffffff', linewidths=4.5, alpha=0.8, zorder=4.4)); ax.add_collection(LC(own, colors=NAVY, linewidths=1.8, zorder=4.5))
     pl = sorted([p for p in json.load(open(HERE / 'geo_prob.json'))['places'] if p.get('iso') == region and x0 + 0.8 < p['lon'] < x1 - 0.8], key=lambda p: -p.get('pop', 0))[:7]
@@ -386,7 +387,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
     ax.add_collection(LC(borders, colors='#7d8b99', linewidths=0.7, alpha=0.8, zorder=4))
     own = [np.asarray(r) for r in G.get(region, {}).get('rings', [])]
     if GA:  # the republic's districts and regions, clearly
-        ax.add_collection(LC([np.asarray(r) for a in GA.get('adm2', []) for r in a['r']], colors='#97a3b0', linewidths=0.4, alpha=0.85, zorder=4))
+        ax.add_collection(LC([np.asarray(r) for a in GA.get('adm2', []) for r in a['r']], colors='#a9b3be', linewidths=0.35, alpha=0.6, zorder=4))
         ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#55657a', linewidths=0.95, alpha=0.95, zorder=4.05))
     ax.add_collection(LC(own, colors='#1d2a3a', linewidths=1.7, zorder=4.5))
     WAT = json.load(open(HERE / 'geo_water.json')); WFILL, WEDGE, WTXT = '#cfe3ef', '#4d8fb8', '#2f6f99'
@@ -429,13 +430,13 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
     fig.canvas.draw(); rnd = fig.canvas.get_renderer(); taken = []
     def place(x, y, txt, fs, cands, keep=True, ey=2.4):
         for dx, dy, ha, va in cands:
-            t_ = ax.text(x + dx, y + dy, txt, fontsize=fs, fontweight='bold', ha=ha, va=va); bb = t_.get_window_extent(rnd).expanded(1.04, ey); t_.remove()
+            t_ = ax.text(x + dx, y + dy, txt, fontsize=fs, fontweight='bold', ha=ha, va=va); bb = t_.get_window_extent(rnd).expanded(1.04, ey if not CLEAR or ey < 2 else 1.25); t_.remove()
             if bb.y0 > 0.2 * fig.bbox.height and bb.y1 < 0.86 * fig.bbox.height and 4 < bb.x0 and bb.x1 < fig.bbox.width - 4 and not any(bb.overlaps(o) for o in taken):
                 if keep: taken.append(bb)
                 return (x + dx, y + dy, ha, va)
         return None
-    tagpos = [place(p['lon'], p['lat'], '☂ ' + Rn.city_name(p, lang) + '', 9, [(0.22, 0.12, 'left', 'bottom'), (0.22, -0.12, 'left', 'top'), (-0.22, 0.12, 'right', 'bottom'), (-0.22, -0.12, 'right', 'top')]) for p in pl]
-    tagfs = [9] * len(pl)
+    tagpos = [place(p['lon'], p['lat'], '☂ ' + Rn.city_name(p, lang) + '', 10.5, [(0.22, 0.12, 'left', 'bottom'), (0.22, -0.12, 'left', 'top'), (-0.22, 0.12, 'right', 'bottom'), (-0.22, -0.12, 'right', 'top')]) for p in pl]
+    tagfs = [10.5] * len(pl)
     for j_, p in enumerate(pl):  # a city that did not fit: a smaller tag below or above
         if tagpos[j_] is None:
             tagpos[j_] = place(p['lon'], p['lat'], '☂ ' + Rn.city_name(p, lang) + '', 7.5, [(0, -0.18, 'center', 'top'), (0, 0.18, 'center', 'bottom'), (0.2, 0, 'left', 'center'), (-0.2, 0, 'right', 'center')]); tagfs[j_] = 7.5
@@ -452,7 +453,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
     # the title band, the clock, the legends (drawn once)
     band = dict(boxstyle='round,pad=0.5,rounding_size=0.6', fc='#1d2a3acc', ec='none')
     fig.text(0.018, 0.955, f"{NAMES[region][lang]} · {X['title']}", fontsize=17, fontfamily=Rn.DISPLAY, fontweight='bold', color='#ffffff', va='center', bbox=band, zorder=20)
-    fig.text(0.018, 0.893, X['sub'] + X['wsub'], fontsize=9.5, color='#e3ebf3', va='center', zorder=20, bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
+    fig.text(0.018, 0.893, X['sub'] + ('' if CLEAR else X['wsub']), fontsize=9.5, color='#e3ebf3', va='center', zorder=20, bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.4', fc='#1d2a3aaa', ec='none'))
     fig.patches.append(matplotlib.patches.FancyBboxPatch((0.008, 0.012), 0.53, 0.115, boxstyle='round,pad=0,rounding_size=0.008', transform=fig.transFigure, facecolor='#1d2a3acc', edgecolor='none', zorder=19))
     clock = fig.text(0.982, 0.955, '', fontsize=17, fontfamily=Rn.DISPLAY, fontweight='bold', color='#f0b88a', ha='right', va='center', bbox=band, zorder=20)
     def swatch(x, w, cols, title, lo=None, hi=None):
@@ -465,7 +466,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
     fig.lines.append(matplotlib.lines.Line2D([0.022, 0.093], [0.056, 0.056], transform=fig.transFigure, color='#111111', lw=1.6, ls=(0, (4, 3)), zorder=21))
     swatch(0.115, 0.125, RAIN_COL, X['rn'], X['prl'], X['prh'])
     swatch(0.26, 0.125, SNOW_COL, '❄ ' + X['sn'], X['prl'], X['snh'])
-    swatch(0.405, 0.12, WIND_COL, X['wd_t'], '15', '25+ ' + X['ms'])
+    if not CLEAR: swatch(0.405, 0.12, WIND_COL, X['wd_t'], '15', '25+ ' + X['ms'])
     fig.text(0.982, 0.012, 'ECMWF IFS · osmon', fontsize=7, color='#9fb0c2', ha='right', va='bottom', zorder=21)
     from matplotlib.path import Path as MPath
     pts0 = np.c_[LON.ravel(), LAT.ravel()]; land = np.zeros(len(pts0), bool)
@@ -487,7 +488,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
     prog = tax.add_patch(matplotlib.patches.Rectangle((0, 0), 0.01, 1, color='#f0b88a', alpha=0.5, zorder=0.5)); head = tax.axvline(0, color='#f0b88a', lw=2.5, zorder=3)
     knob = tax.plot([0], [0.5], 'o', ms=9, mfc='#f0b88a', mec='#ffffff', mew=1.5, zorder=4, clip_on=False)[0]
     # flowing streaks: particles carried by the 700 hPa wind, each with a fading tail
-    rng = np.random.default_rng(3); N = 420; TAIL = 10
+    rng = np.random.default_rng(3); N = 300; TAIL = 10
     def seed(n): return np.c_[rng.uniform(x0, x1, n), rng.uniform(y0v, y1v, n)]
     pts = seed(N); age = rng.integers(0, 60, N); hist = np.repeat(pts[None], TAIL, 0)
     TAIL = 12; hist = np.repeat(pts[None], TAIL, 0)
@@ -564,7 +565,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
             if C.max() > 0.9: dyn.append(ax.contour(LON, LAT, gaussian_filter(C, 1.5), levels=[0.9], colors='#111111', linewidths=0.8, linestyles=[(0, (2, 3))], alpha=0.5, zorder=3.3))
         T2 = gaussian_filter(Q['t2'][np.ix_(ri, ci)], 1.0); SN = T2 <= 0.5
         GU = gaussian_filter(Q['gust'][np.ix_(ri, ci)], 1.0) if 'gust' in Q else gaussian_filter(np.hypot(Q['u'], Q['v'])[np.ix_(ri, ci)], 1.0) * 0.9
-        if GU.max() >= WIND_LV[0]:
+        if GU.max() >= WIND_LV[0] and not CLEAR:
             dyn.append(ax.contourf(LON, LAT, GU, levels=WIND_LV, colors=WIND_COL, alpha=0.32, zorder=1.9, antialiased=True))
             dyn.append(ax.contour(LON, LAT, GU, levels=[WIND_LV[0]], colors='#c99400', linewidths=1.0, zorder=1.96))
         if P.max() >= PR_LV[0]:
@@ -635,7 +636,7 @@ def video(F, region, lang, mp4, run, off=5, paths=(), H=72, insets=False):
                 ang = np.degrees(np.arctan2(vv_[ri[yy_], ci[xx_]], uu_[ri[yy_], ci[xx_]]))  # where the wind blows to
                 arw = '→↗↑↖←↙↓↘'[int(((ang + 22.5) % 360) // 45)]
                 dyn.append(ax.annotate(('❄ ' if snowy else '☂ ' if wet else '') + nm, (tp[0], tp[1]), fontsize=tagfs[j_], fontweight='bold', color='#6639ae' if snowy else '#1f6fd1' if wet else NAVY, ha=tp[2], va=tp[3], zorder=8.5, path_effects=halo))
-                dyn.append(ax.annotate(f'{arw} {g_} ' + X['ms'], (0.12, 0) if tp[2] != 'right' else (0.88, 0), xycoords=dyn[-1], va='top', ha='left' if tp[2] != 'right' else 'right', fontsize=tagfs[j_] - 0.5,
+                if not CLEAR: dyn.append(ax.annotate(f'{arw} {g_} ' + X['ms'], (0.12, 0) if tp[2] != 'right' else (0.88, 0), xycoords=dyn[-1], va='top', ha='left' if tp[2] != 'right' else 'right', fontsize=tagfs[j_] - 0.5,
                                        fontweight='bold', color='#b07800' if g_ >= 15 else '#5b6b7c', zorder=8.5, path_effects=halo))
         wet_prev = set(wet_c)
         tnow = run + dt.timedelta(hours=float(h))
