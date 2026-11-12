@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Osmon · погода против прошлого года</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700&family=Unbounded:wght@600;700&display=swap">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--navy:#2b3a4e;--line:#dde3ea;--ink:#2b3a4e;--muted:#6b7a8c;--accent:#f08a24;--paper:#f3f5f7;--warm:#e0643a;--cold:#2f6fd0;--rain:#3b82d6;--ly:#9aa6b4}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:'Golos Text',system-ui,sans-serif}
+header{background:var(--navy);color:#fff;padding:calc(10px + var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)) 14px 10px}
+header h1{margin:0;font:700 16px Unbounded,sans-serif}
+header p{margin:3px 0 0;font-size:12px;color:#c9d3df}
+.bar{display:flex;gap:6px;padding:8px 10px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);scrollbar-width:none}
+.bar::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:7px 12px;font:600 13px 'Golos Text',sans-serif;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip.mode.on{background:#fff4e8;color:#a1520c;border-color:var(--accent)}
+select{flex:none;border:1px solid var(--line);border-radius:999px;padding:7px 10px;font:600 13px 'Golos Text',sans-serif;color:var(--ink);background:#fff;max-width:60vw}
+main{padding:10px;max-width:980px;margin:0 auto}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:720px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font:700 20px Unbounded,sans-serif;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.d{font-weight:700}.d.up{color:var(--warm)}.d.dn{color:var(--cold)}.d.wet{color:var(--rain)}.d.dry{color:#b7791f}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px}
+.card h2{margin:0 0 6px;font:700 14px Unbounded,sans-serif}
+.card .sub{font-size:12px;color:var(--muted);margin:-2px 0 8px}
+.ch{position:relative;height:280px}
+@media(min-width:720px){.ch{height:340px}}
+#comment p{margin:0 0 8px;line-height:1.45;font-size:14px}
+#comment p:last-child{margin:0}
+table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+td small{display:block;color:var(--muted);font-size:10.5px;font-weight:400}
+th,td{padding:6px 3px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;position:sticky;top:0;background:#fff}
+.tw{max-height:420px;overflow:auto}
+tr.fc td{background:#fff8f0}
+tr.we td:first-child{font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:16px;height:4px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.legend i.dash{background:repeating-linear-gradient(90deg,currentColor 0 4px,transparent 4px 7px)!important;height:3px}
+#msg{padding:30px 10px;text-align:center;color:var(--muted)}
+.note{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.4}
+button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<header><h1 id="h1">Погода против прошлого года</h1><p id="hsub"></p></header>
+<div class="bar" id="bar1"><select id="place" aria-label="Город"></select><button class="chip mode on" data-m="lfl" id="mLfl"></button><button class="chip mode" data-m="date" id="mDate"></button></div>
+<div class="bar" id="bar2"></div>
+<div class="bar" id="bar3"></div>
+<main>
+<div id="msg">Загрузка…</div>
+<div id="app" hidden>
+  <div class="kpis" id="kpis"></div>
+  <div class="card"><h2 id="cT">Сравнение</h2><div id="comment"></div></div>
+  <div class="card"><h2 id="tT"></h2><div class="sub" id="tS"></div><div class="legend" id="tL"></div><div class="ch"><canvas id="cTemp"></canvas></div></div>
+  <div class="card"><h2 id="pT"></h2><div class="sub" id="pS"></div><div class="legend" id="pL"></div><div class="ch"><canvas id="cPr"></canvas></div></div>
+  <div class="card"><h2 id="wT"></h2><div class="sub" id="wS"></div><div class="tw"><table id="wTab"></table></div></div>
+  <div class="card"><h2 id="dT"></h2><div class="sub" id="dS"></div><div class="tw"><table id="dTab"></table></div></div>
+  <p class="note" id="note"></p>
+</div>
+</main>
+<script>
+const tg = window.Telegram && Telegram.WebApp; try { tg && (tg.ready(), tg.expand()); } catch (e) {}
+const Q = new URLSearchParams(location.search), LANG = Q.get('lang') === 'uz' ? 'uz' : 'ru';
+const DATA = 'https://raw.githubusercontent.com/otabekvafoev92-del/ob-havo-ecmwf/lfl/lfl.json';
+const T = {
+  ru: { h1: 'Погода против прошлого года', lfl: 'LFL: день недели', date: 'Дата к дате', ytd: 'С начала года', mtd: 'Этот месяц', d30: '30 дней', d7: '7 дней', fc: 'Прогноз 15 дней',
+    tm: 'Средняя', tx: 'Максимум', tn: 'Минимум', kT: 'Средняя t°', kP: 'Осадки', kR: 'Дней с осадками', kW: 'Дней теплее', ly: 'прошлый год', cT: 'Что изменилось',
+    tT: 'Температура по дням', pT: 'Осадки по дням и накопленные', wT: 'Неделя к неделе', dT: 'День ко дню', this: 'в этом году', fcl: 'прогноз', diff: 'разница', cum: 'накоплено',
+    tS: m => `${m} температура: этот год против прошлого`, pS: 'столбики — мм за день, линии — накопленная сумма', wS: m => m === 'lfl' ? 'недели Пн–Вс против тех же дней недели год назад (−364 дня)' : 'недели Пн–Вс против тех же дат год назад',
+    dS: m => m === 'lfl' ? 'каждый день против того же дня недели год назад (−364 дня)' : 'каждый день против той же даты год назад', week: 'Неделя', day: 'День', t: 't°', ty: 'этот', lyS: 'прошл.', d: 'Δ', mm: 'мм', of: 'из',
+    wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], mon: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+    note: 'Факт: ERA5 (Copernicus) и анализ ECMWF за последние дни; прогноз: ECMWF. Данные Open-Meteo, обновление 3 раза в день. LFL — сравнение с тем же днём недели год назад (364 дня назад), чтобы выходные сравнивались с выходными.',
+    hsub: (p, a, b) => `${p} · ${a} — ${b}`, warmer: 'теплее', colder: 'холоднее', same: 'так же, как', load: 'Не удалось загрузить данные. Попробуйте позже.' },
+  uz: { h1: 'Ob-havo o‘tgan yilga nisbatan', lfl: 'LFL: hafta kuni', date: 'Sana bo‘yicha', ytd: 'Yil boshidan', mtd: 'Shu oy', d30: '30 kun', d7: '7 kun', fc: '15 kunlik prognoz',
+    tm: 'O‘rtacha', tx: 'Maksimum', tn: 'Minimum', kT: 'O‘rtacha t°', kP: 'Yog‘in', kR: 'Yog‘inli kunlar', kW: 'Iliqroq kunlar', ly: 'o‘tgan yil', cT: 'Nima o‘zgardi',
+    tT: 'Kunlik harorat', pT: 'Kunlik va jami yog‘in', wT: 'Hafta haftaga', dT: 'Kun kunga', this: 'bu yil', fcl: 'prognoz', diff: 'farq', cum: 'jami',
+    tS: m => `${m} harorat: bu yil va o‘tgan yil`, pS: 'ustunlar — kunlik mm, chiziqlar — jami', wS: m => m === 'lfl' ? 'Du–Ya haftalari o‘tgan yilning shu hafta kunlariga (−364 kun)' : 'Du–Ya haftalari o‘tgan yilning shu sanalariga',
+    dS: m => m === 'lfl' ? 'har kun o‘tgan yilning shu hafta kuniga (−364 kun)' : 'har kun o‘tgan yilning shu sanasiga', week: 'Hafta', day: 'Kun', t: 't°', ty: 'bu yil', lyS: 'o‘tgan', d: 'Δ', mm: 'mm', of: 'dan',
+    wd: ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'], mon: ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'],
+    note: 'Fakt: ERA5 (Copernicus) va so‘nggi kunlar uchun ECMWF tahlili; prognoz: ECMWF. Open-Meteo ma’lumotlari, kuniga 3 marta yangilanadi. LFL — o‘tgan yilning shu hafta kuni bilan (364 kun oldin) solishtirish: dam olish kunlari dam olish kunlari bilan.',
+    hsub: (p, a, b) => `${p} · ${a} — ${b}`, warmer: 'iliqroq', colder: 'sovuqroq', same: 'xuddi', load: 'Ma’lumot yuklanmadi. Keyinroq urinib ko‘ring.' } }[LANG];
+document.documentElement.lang = LANG;
+const $ = id => document.getElementById(id);
+const fmt = (x, d = 1) => x == null || isNaN(x) ? '—' : (Math.round(x * 10 ** d) / 10 ** d).toLocaleString(LANG === 'uz' ? 'uz-UZ' : 'ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
+const sgn = (x, d = 1) => x == null || isNaN(x) ? '—' : (x > 0 ? '+' : x < 0 ? '−' : '±') + fmt(Math.abs(x), d);
+const DAY = 864e5;
+let D, S = { place: Q.get('p') || 'tashkent', mode: 'lfl', range: 'ytd', tv: 'tm' }, chT, chP;
+try { const s = JSON.parse(localStorage.getItem('lfl') || '{}'); Object.assign(S, s, Q.get('p') ? { place: Q.get('p') } : {}); } catch (e) {}
+const save = () => { try { localStorage.setItem('lfl', JSON.stringify(S)); } catch (e) {} };
+
+const d0 = () => new Date(D.start + 'T00:00:00Z');
+const dateOf = i => new Date(d0().getTime() + i * DAY);
+const idxOf = dt => Math.round((dt - d0()) / DAY);
+const lab = (i, wd = true) => { const d = dateOf(i); return `${wd ? T.wd[d.getUTCDay()] + ' ' : ''}${d.getUTCDate()} ${T.mon[d.getUTCMonth()]}`; };
+function lyIdx(i) {  // the matching day last year
+  if (S.mode === 'lfl') return i - 364;
+  const d = dateOf(i); let m = d.getUTCMonth(), day = d.getUTCDate(); if (m === 1 && day === 29) day = 28;
+  return idxOf(new Date(Date.UTC(d.getUTCFullYear() - 1, m, day)));
+}
+function range() {  // [first, last] index of this year's days; fact ends yesterday
+  const ti = idxOf(new Date(D.today + 'T00:00:00Z')), n = D.places[0].tm.length; let last = n - 1;
+  while (last > ti && D.places.every(p => p.tm[last] == null)) last--;
+  const y = dateOf(ti).getUTCFullYear(), m = dateOf(ti).getUTCMonth();
+  const a = { ytd: idxOf(new Date(Date.UTC(y, 0, 1))), mtd: idxOf(new Date(Date.UTC(y, m, 1))), d30: ti - 30, d7: ti - 7, fc: ti }[S.range];
+  return { a, b: S.range === 'fc' ? last : (S.range === 'ytd' || S.range === 'mtd' ? last : ti - 1), ti, last };
+}
+const mean = a => { const v = a.filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+const sum = a => { const v = a.filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) : null; };
+
+function chips() {
+  $('mLfl').textContent = T.lfl; $('mDate').textContent = T.date;
+  $('bar2').innerHTML = ['ytd', 'mtd', 'd30', 'd7', 'fc'].map(k => `<button class="chip${S.range === k ? ' on' : ''}" data-r="${k}">${T[k]}</button>`).join('');
+  $('bar3').innerHTML = ['tm', 'tx', 'tn'].map(k => `<button class="chip${S.tv === k ? ' on' : ''}" data-t="${k}">${T[k]} t°</button>`).join('');
+  document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.m) S.mode = b.dataset.m; else if (b.dataset.r) S.range = b.dataset.r; else if (b.dataset.t) S.tv = b.dataset.t; else return;
+  save(); render();
+});
+$('place').addEventListener('change', e => { S.place = e.target.value; save(); render(); });
+
+function stats(p, a, b) {
+  const I = []; for (let i = a; i <= b; i++) I.push(i);
+  const t = I.map(i => p[S.tv][i]), l = I.map(i => p[S.tv][lyIdx(i)]), pr = I.map(i => p.pr[i]), lp = I.map(i => p.pr[lyIdx(i)]);
+  const sn = I.map(i => p.sn[i]), ls = I.map(i => p.sn[lyIdx(i)]);
+  const both = I.map((i, k) => t[k] != null && l[k] != null ? t[k] - l[k] : null);
+  return { I, t, l, pr, lp, sn, ls, both, mt: mean(t), ml: mean(l), sp: sum(pr), sl: sum(lp), rd: pr.filter(x => x >= 1).length, rl: lp.filter(x => x >= 1).length,
+    sd: sn.filter(x => x >= 0.5).length, sdl: ls.filter(x => x >= 0.5).length, warm: both.filter(x => x != null && x > 0.5).length, n: both.filter(x => x != null).length };
+}
+const pct = (a, b) => b ? (a - b) / b * 100 : null;
+function dTxt(dt, unit = '°') { const c = dt > 0.05 ? 'up' : dt < -0.05 ? 'dn' : ''; return `<span class="d ${c}">${sgn(dt)}${unit}</span>`; }
+function pTxt(a, b) { const p = pct(a, b); if (p == null) return `<span class="d">${a > 0 ? '+' + fmt(a) + ' ' + T.mm : '±0'}</span>`; return `<span class="d ${p > 0 ? 'wet' : p < 0 ? 'dry' : ''}">${sgn(p, 0)}%</span>`; }
+
+function comment(p, R) {
+  const nm = p[LANG], yr = dateOf(R.ti).getUTCFullYear(), out = [], how = S.mode === 'lfl' ? (LANG === 'ru' ? 'день недели к дню недели' : 'hafta kuni bo‘yicha') : (LANG === 'ru' ? 'дата к дате' : 'sana bo‘yicha');
+  const fe = Math.min(R.b, R.ti - 1), fa = R.a;
+  const w = (d) => d > 0.05 ? T.warmer : d < -0.05 ? T.colder : T.same;
+  if (fe >= fa) {
+    const s = stats(p, fa, fe), dt = s.mt - s.ml;
+    out.push(LANG === 'ru'
+      ? `<b>${nm}, ${lab(fa, false)} — ${lab(fe, false)}</b>: ${T[S.tv].toLowerCase()} температура ${fmt(s.mt)}° — на <b>${fmt(Math.abs(dt))}° ${w(dt)}</b>, чем год назад (${fmt(s.ml)}°, ${how}). Теплее прошлого года было ${s.warm} дн. ${T.of} ${s.n}.`
+      : `<b>${nm}, ${lab(fa, false)} — ${lab(fe, false)}</b>: ${T[S.tv].toLowerCase()} harorat ${fmt(s.mt)}° — o‘tgan yildan <b>${fmt(Math.abs(dt))}° ${w(dt)}</b> (${fmt(s.ml)}°, ${how}). ${s.n} kundan ${s.warm} kun iliqroq bo‘ldi.`);
+    const pp = pct(s.sp, s.sl);
+    out.push(LANG === 'ru'
+      ? `Осадков <b>${fmt(s.sp)} мм</b> против ${fmt(s.sl)} мм${pp != null ? ` (<b>${sgn(pp, 0)}%</b>)` : ''}; дней с осадками ${s.rd} против ${s.rl}${s.sd || s.sdl ? `, со снегом ${s.sd} против ${s.sdl}` : ''}.`
+      : `Yog‘in <b>${fmt(s.sp)} mm</b>, o‘tgan yil ${fmt(s.sl)} mm${pp != null ? ` (<b>${sgn(pp, 0)}%</b>)` : ''}; yog‘inli kunlar ${s.rd} / ${s.rl}${s.sd || s.sdl ? `, qorli ${s.sd} / ${s.sdl}` : ''}.`);
+    // weekends (LFL: Saturday and Sunday against Saturday and Sunday)
+    const we = s.I.map((i, k) => [dateOf(i).getUTCDay(), s.both[k]]).filter(([d, x]) => (d === 0 || d === 6) && x != null).map(x => x[1]);
+    if (we.length >= 2) { const m = mean(we); out.push(LANG === 'ru' ? `Выходные (сб–вс): в среднем на ${fmt(Math.abs(m))}° ${w(m)} прошлогодних выходных.` : `Dam olish kunlari (Sh–Ya): o‘tgan yilgidan o‘rtacha ${fmt(Math.abs(m))}° ${w(m)}.`); }
+    // the biggest differences
+    let hi = -1, lo = -1; s.both.forEach((x, k) => { if (x == null) return; if (hi < 0 || x > s.both[hi]) hi = k; if (lo < 0 || x < s.both[lo]) lo = k; });
+    if (hi >= 0 && s.both[hi] > 2) out.push(LANG === 'ru' ? `Самая большая разница в тёплую сторону — ${lab(s.I[hi])}: ${fmt(s.t[hi])}° против ${fmt(s.l[hi])}° (${sgn(s.both[hi])}°).` : `Eng katta iliq farq — ${lab(s.I[hi])}: ${fmt(s.t[hi])}°, o‘tgan yil ${fmt(s.l[hi])}° (${sgn(s.both[hi])}°).`);
+    if (lo >= 0 && s.both[lo] < -2) out.push(LANG === 'ru' ? `В холодную — ${lab(s.I[lo])}: ${fmt(s.t[lo])}° против ${fmt(s.l[lo])}° (${sgn(s.both[lo])}°).` : `Eng katta sovuq farq — ${lab(s.I[lo])}: ${fmt(s.t[lo])}°, o‘tgan yil ${fmt(s.l[lo])}° (${sgn(s.both[lo])}°).`);
+  }
+  // last 7 days and the forecast
+  if (S.range !== 'd7' && S.range !== 'fc' && R.ti - 7 >= 0) {
+    const s = stats(p, R.ti - 7, R.ti - 1), dt = s.mt - s.ml;
+    out.push(LANG === 'ru' ? `Последние 7 дней: ${fmt(s.mt)}° — ${dTxt(dt)} к прошлому году, осадков ${fmt(s.sp)} мм против ${fmt(s.sl)} мм.` : `So‘nggi 7 kun: ${fmt(s.mt)}° — o‘tgan yilga ${dTxt(dt)}, yog‘in ${fmt(s.sp)} mm / ${fmt(s.sl)} mm.`);
+  }
+  if (R.last >= R.ti) {
+    const s = stats(p, R.ti, R.last), dt = s.mt - s.ml;
+    out.push(LANG === 'ru'
+      ? `<b>Прогноз на ${R.last - R.ti + 1} дн.</b> (${lab(R.ti, false)} — ${lab(R.last, false)}): в среднем ${fmt(s.mt)}° — на <b>${fmt(Math.abs(dt))}° ${w(dt)}</b>, чем в те же дни год назад; осадков ${fmt(s.sp)} мм против ${fmt(s.sl)} мм, дней с осадками ${s.rd} против ${s.rl}.`
+      : `<b>${R.last - R.ti + 1} kunlik prognoz</b> (${lab(R.ti, false)} — ${lab(R.last, false)}): o‘rtacha ${fmt(s.mt)}° — o‘tgan yilning shu kunlaridan <b>${fmt(Math.abs(dt))}° ${w(dt)}</b>; yog‘in ${fmt(s.sp)} mm / ${fmt(s.sl)} mm, yog‘inli kunlar ${s.rd} / ${s.rl}.`);
+  }
+  return out.map(x => `<p>${x}</p>`).join('');
+}
+
+function render() {
+  chips();
+  const p = D.places.find(x => x.id === S.place) || D.places[0]; S.place = p.id; $('place').value = p.id;
+  const R = range(), yr = dateOf(R.ti).getUTCFullYear();
+  $('hsub').textContent = T.hsub(p[LANG], `${yr}`, `${yr - 1} · ${S.mode === 'lfl' ? T.lfl : T.date}`);
+  // KPI: the fact part of the range (the forecast part is in the comment and on the charts)
+  const fe = Math.min(R.b, R.ti - 1), fa = R.a, s = fe >= fa ? stats(p, fa, fe) : stats(p, R.ti, R.last);
+  $('kpis').innerHTML = [
+    [S.tv === 'tm' ? T.kT : `${T[S.tv]} t°`, fmt(s.mt) + '°', `${T.ly}: ${fmt(s.ml)}° · ${dTxt(s.mt - s.ml)}`],
+    [T.kP, fmt(s.sp) + ' ' + T.mm, `${T.ly}: ${fmt(s.sl)} ${T.mm} · ${pTxt(s.sp, s.sl)}`],
+    [T.kR, s.rd, `${T.ly}: ${s.rl}`],
+    [T.kW, LANG === 'uz' ? `${s.n} dan ${s.warm}` : `${s.warm} ${T.of} ${s.n}`, `${T.ly}: ${s.n - s.warm}`]
+  ].map(([l, v, x]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${x}</div></div>`).join('');
+  $('comment').innerHTML = comment(p, R); $('cT').textContent = T.cT;
+  // charts
+  const I = []; for (let i = R.a; i <= R.last && (S.range === 'ytd' || S.range === 'mtd' || S.range === 'fc' || i <= R.b); i++) I.push(i);
+  const labels = I.map(i => lab(i)), fut = I.map(i => i >= R.ti);
+  const ty = I.map(i => p[S.tv][i]), ly = I.map(i => p[S.tv][lyIdx(i)]);
+  const tyF = ty.map((x, k) => fut[k] || (k + 1 < fut.length && fut[k + 1]) ? x : null), tyO = ty.map((x, k) => fut[k] ? null : x);
+  const dif = ty.map((x, k) => x != null && ly[k] != null ? x - ly[k] : null);
+  $('tT').textContent = T.tT; $('tS').textContent = T.tS(T[S.tv]);
+  $('tL').innerHTML = `<span><i style="background:var(--warm)"></i>${yr}</span><span style="color:var(--warm)"><i class="dash"></i>${T.fcl}</span><span><i style="background:var(--ly)"></i>${yr - 1}</span><span><i style="background:rgba(224,100,58,.35)"></i><i style="background:rgba(47,111,208,.35);margin-left:-4px"></i>${T.diff}</span>`;
+  const base = { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2b3a4e', padding: 10, titleFont: { family: 'Golos Text', weight: '700' }, bodyFont: { family: 'Golos Text' } } },
+    scales: { x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7, font: { family: 'Golos Text', size: 11 }, color: '#6b7a8c' }, grid: { display: false } } } };
+  const tc = { ...base, scales: { ...base.scales, y: { ticks: { callback: v => v + '°', font: { family: 'Golos Text', size: 11 }, color: '#6b7a8c' }, grid: { color: '#eef1f4' } },
+    y2: { position: 'right', grid: { display: false }, ticks: { callback: v => (v > 0 ? '+' : '') + v + '°', font: { family: 'Golos Text', size: 10 }, color: '#9aa6b4' } } },
+    plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, callbacks: { label: c => c.raw == null ? null : `${c.dataset.label}: ${c.datasetIndex === 3 ? sgn(c.raw) : fmt(c.raw)}°` } } } };
+  if (chT) chT.destroy();
+  chT = new Chart($('cTemp'), { data: { labels, datasets: [
+    { type: 'line', label: String(yr), data: tyO, borderColor: '#e0643a', backgroundColor: '#e0643a', borderWidth: 2.2, pointRadius: 0, tension: 0.25, yAxisID: 'y', order: 1 },
+    { type: 'line', label: `${yr} · ${T.fcl}`, data: tyF, borderColor: '#e0643a', borderDash: [5, 4], borderWidth: 2.2, pointRadius: 0, tension: 0.25, yAxisID: 'y', order: 1 },
+    { type: 'line', label: String(yr - 1), data: ly, borderColor: '#9aa6b4', backgroundColor: '#9aa6b4', borderWidth: 1.8, pointRadius: 0, tension: 0.25, yAxisID: 'y', order: 2 },
+    { type: 'bar', label: T.diff, data: dif, backgroundColor: dif.map(x => x > 0 ? 'rgba(224,100,58,.28)' : 'rgba(47,111,208,.28)'), yAxisID: 'y2', order: 3, barPercentage: 1, categoryPercentage: 1 }] }, options: tc });
+  // precipitation: daily bars + cumulative lines
+  const pr = I.map(i => p.pr[i]), lp = I.map(i => p.pr[lyIdx(i)]);
+  let c1 = 0, c2 = 0; const cu = pr.map(x => (c1 += x || 0)), cl = lp.map(x => (c2 += x || 0));
+  $('pT').textContent = T.pT; $('pS').textContent = T.pS;
+  $('pL').innerHTML = `<span><i style="background:var(--rain)"></i>${yr}</span><span><i style="background:#c7cfd8"></i>${yr - 1}</span><span style="color:var(--rain)"><i style="background:var(--rain)"></i>${T.cum} ${yr}</span><span><i class="dash" style="color:#7d8896"></i>${T.cum} ${yr - 1}</span>`;
+  const pc = { ...base, scales: { ...base.scales, y: { beginAtZero: true, ticks: { font: { family: 'Golos Text', size: 11 }, color: '#6b7a8c' }, grid: { color: '#eef1f4' }, title: { display: true, text: T.mm + '/' + T.day.toLowerCase(), color: '#9aa6b4', font: { size: 10 } } },
+    y2: { position: 'right', beginAtZero: true, grid: { display: false }, ticks: { font: { family: 'Golos Text', size: 10 }, color: '#9aa6b4' }, title: { display: true, text: T.cum + ', ' + T.mm, color: '#9aa6b4', font: { size: 10 } } } },
+    plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, callbacks: { label: c => c.raw == null ? null : `${c.dataset.label}: ${fmt(c.raw)} ${T.mm}` } } } };
+  if (chP) chP.destroy();
+  chP = new Chart($('cPr'), { data: { labels, datasets: [
+    { type: 'bar', label: String(yr), data: pr, backgroundColor: fut.map(f => f ? 'rgba(59,130,214,.45)' : '#3b82d6'), yAxisID: 'y', order: 2, barPercentage: 0.9, categoryPercentage: 0.9 },
+    { type: 'bar', label: String(yr - 1), data: lp, backgroundColor: '#c7cfd8', yAxisID: 'y', order: 3, barPercentage: 0.9, categoryPercentage: 0.9 },
+    { type: 'line', label: `${T.cum} ${yr}`, data: cu, borderColor: '#3b82d6', borderWidth: 2.2, pointRadius: 0, yAxisID: 'y2', order: 1, segment: { borderDash: c => fut[c.p1DataIndex] ? [5, 4] : undefined } },
+    { type: 'line', label: `${T.cum} ${yr - 1}`, data: cl, borderColor: '#7d8896', borderDash: [4, 3], borderWidth: 1.8, pointRadius: 0, yAxisID: 'y2', order: 1 }] }, options: pc });
+  // week to week (Mon–Sun)
+  const wk = []; let cur = null;
+  I.forEach(i => { const d = dateOf(i), mon = i - ((d.getUTCDay() + 6) % 7); if (!cur || cur.mon !== mon) wk.push(cur = { mon, I: [] }); cur.I.push(i); });
+  $('wT').textContent = T.wT; $('wS').textContent = T.wS(S.mode);
+  const Y1 = String(yr).slice(2), Y0 = String(yr - 1).slice(2);
+  $('wTab').innerHTML = `<thead><tr><th>${T.week}</th><th>t° ’${Y1}</th><th>t° ’${Y0}</th><th>${T.d}</th><th>${T.mm} ’${Y1}</th><th>${T.mm} ’${Y0}</th><th>${T.d}</th></tr></thead><tbody>` +
+    wk.slice().reverse().map(w => { const s = stats(p, w.I[0], w.I[w.I.length - 1]); const f = w.I[w.I.length - 1] >= R.ti;
+      return `<tr class="${f ? 'fc' : ''}"><td>${lab(w.mon, false)}${f ? '<small>' + T.fcl + '</small>' : ''}</td><td>${fmt(s.mt)}</td><td>${fmt(s.ml)}</td><td>${dTxt(s.mt - s.ml, '')}</td><td>${fmt(s.sp)}</td><td>${fmt(s.sl)}</td><td>${pTxt(s.sp, s.sl)}</td></tr>`; }).join('') + '</tbody>';
+  // day to day
+  $('dT').textContent = T.dT; $('dS').textContent = T.dS(S.mode);
+  $('dTab').innerHTML = `<thead><tr><th>${T.day}</th><th>t° ’${Y1}</th><th>t° ’${Y0}</th><th>${T.d}</th><th>${T.mm} ’${Y1}</th><th>${T.mm} ’${Y0}</th></tr></thead><tbody>` +
+    I.slice().reverse().map(i => { const a = p[S.tv][i], b = p[S.tv][lyIdx(i)], wd = dateOf(i).getUTCDay();
+      return `<tr class="${i >= R.ti ? 'fc' : ''} ${wd === 0 || wd === 6 ? 'we' : ''}"><td>${lab(i)}<small>${S.mode === 'lfl' ? '↔ ' + lab(lyIdx(i)) + ' ’' + Y0 : (i >= R.ti ? T.fcl : '')}</small></td><td>${fmt(a)}</td><td>${fmt(b)}</td><td>${a != null && b != null ? dTxt(a - b, '') : '—'}</td><td>${fmt(p.pr[i])}${p.sn[i] >= 0.5 ? ' ❄' : ''}</td><td>${fmt(p.pr[lyIdx(i)])}${p.sn[lyIdx(i)] >= 0.5 ? ' ❄' : ''}</td></tr>`; }).join('') + '</tbody>';
+  $('note').textContent = T.note;
+}
+
+fetch(DATA + '?t=' + Math.floor(Date.now() / 3e5)).then(r => r.json()).then(j => {
+  D = j; $('h1').textContent = T.h1;
+  const grp = { UZ: LANG === 'ru' ? 'Узбекистан' : 'O‘zbekiston', KZ: LANG === 'ru' ? 'Казахстан' : 'Qozog‘iston', KG: LANG === 'ru' ? 'Кыргызстан' : 'Qirg‘iziston' };
+  $('place').innerHTML = Object.keys(grp).map(g => `<optgroup label="${grp[g]}">` + D.places.filter(p => p.iso === g).map(p => `<option value="${p.id}">${p[LANG]}</option>`).join('') + '</optgroup>').join('');
+  $('msg').hidden = true; $('app').hidden = false; render();
+}).catch(e => { $('msg').textContent = T.load; console.error(e); });
+</script>
+</body>
+</html>

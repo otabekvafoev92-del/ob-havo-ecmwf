@@ -791,7 +791,7 @@ const MOREM = { ru: '⚙️ <b>Ещё</b>', uz: '⚙️ <b>Yana</b>', tr: '⚙�
 function moreMenu(env, chat, lang, rid) {
   const R = RKL[lang] || RKL.ru, a = k => ({ text: R[k], callback_data: `MA:${lang}:${k}` });
   return tg(env, 'sendMessage', { chat_id: chat, text: MOREM[lang] || MOREM.ru, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
-    [a('cities'), a('countries')], [a('daily'), a('accuracy')], [{ text: R.site, web_app: { url: site(env, `prob/${rid}/${lang}/prob`) } }],
+    [a('cities'), a('countries')], [a('daily'), a('accuracy')], [{ text: lang === 'uz' ? '📊 Ob-havo o‘tgan yilga nisbatan' : '📊 Погода против прошлого года', web_app: { url: site(env, `lfl.html?lang=${lang}`) } }], [{ text: R.site, web_app: { url: site(env, `prob/${rid}/${lang}/prob`) } }],
     ...(TRJ.has(rid) ? [] : []), [a('help'), a('reset')]] } });
 }
 const rkAct = text => { for (const L of [...Object.values(RKL), ...Object.values(RKL_OLD)]) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
