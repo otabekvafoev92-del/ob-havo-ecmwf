@@ -1,0 +1,22 @@
+name: Weather vs last year
+# data of the mini-app page lfl.html (tools/lfl.py): kept on the "lfl" branch (one commit), read by the page from raw.githubusercontent.com
+on:
+  schedule:
+    - cron: '23 0,6,12 * * *'  # 05:23, 11:23, 17:23 Tashkent
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: lfl, cancel-in-progress: false}
+jobs:
+  l:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          pip install -q requests
+          python tools/lfl.py lfl
+          cd lfl && git init -q && git checkout -q -b lfl && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "lfl $(date -u +%F)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" lfl
