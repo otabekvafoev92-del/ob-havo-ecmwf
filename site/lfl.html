@@ -20,6 +20,8 @@ header p{margin:3px 0 0;font-size:12px;color:#c9d3df}
 .chip{flex:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:7px 12px;font:600 13px 'Golos Text',sans-serif;cursor:pointer;white-space:nowrap}
 .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .chip.mode.on{background:#fff4e8;color:#a1520c;border-color:var(--accent)}
+#ll{flex:1;min-width:150px;border:1px solid var(--line);border-radius:999px;padding:7px 12px;font:600 13px 'Golos Text',sans-serif;color:var(--ink)}
+#busy{color:var(--muted);font-size:12px;padding:0 10px 6px}
 select{flex:none;border:1px solid var(--line);border-radius:999px;padding:7px 10px;font:600 13px 'Golos Text',sans-serif;color:var(--ink);background:#fff;max-width:60vw}
 main{padding:10px;max-width:980px;margin:0 auto}
 .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
@@ -54,11 +56,13 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outlin
 </head>
 <body>
 <header><h1 id="h1">Погода против прошлого года</h1><p id="hsub"></p></header>
-<div class="bar" id="bar1"><select id="place" aria-label="Город"></select><button class="chip mode on" data-m="lfl" id="mLfl"></button><button class="chip mode" data-m="date" id="mDate"></button></div>
+<div class="bar" id="bar1"><select id="reg" aria-label="Регион"></select><select id="dist" aria-label="Район"></select></div>
+<div class="bar" id="bar0"><input id="ll" inputmode="decimal" placeholder="41.311, 69.279" aria-label="Широта, долгота"><button class="chip" id="go"></button><button class="chip" id="me"></button></div>
+<div class="bar"><button class="chip mode on" data-m="lfl" id="mLfl"></button><button class="chip mode" data-m="date" id="mDate"></button></div>
 <div class="bar" id="bar2"></div>
 <div class="bar" id="bar3"></div>
 <main>
-<div id="msg">Загрузка…</div>
+<div id="msg">Загрузка…</div><div id="busy" hidden></div>
 <div id="app" hidden>
   <div class="kpis" id="kpis"></div>
   <div class="card"><h2 id="cT">Сравнение</h2><div id="comment"></div></div>
@@ -80,22 +84,22 @@ const T = {
     tS: m => `${m} температура: этот год против прошлого`, pS: 'столбики — мм за день, линии — накопленная сумма', wS: m => m === 'lfl' ? 'недели Пн–Вс против тех же дней недели год назад (−364 дня)' : 'недели Пн–Вс против тех же дат год назад',
     dS: m => m === 'lfl' ? 'каждый день против того же дня недели год назад (−364 дня)' : 'каждый день против той же даты год назад', week: 'Неделя', day: 'День', t: 't°', ty: 'этот', lyS: 'прошл.', d: 'Δ', mm: 'мм', of: 'из',
     wd: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], mon: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
-    note: 'Факт: ERA5 (Copernicus) и анализ ECMWF за последние дни; прогноз: ECMWF. Данные Open-Meteo, обновление 3 раза в день. LFL — сравнение с тем же днём недели год назад (364 дня назад), чтобы выходные сравнивались с выходными.',
-    hsub: (p, a, b) => `${p} · ${a} — ${b}`, warmer: 'теплее', colder: 'холоднее', same: 'так же, как', load: 'Не удалось загрузить данные. Попробуйте позже.' },
+    note: 'Факт: реанализ ERA5 (ECMWF / Copernicus, сетка ~10–25 км) и анализ ECMWF за последние дни; прогноз: модель ECMWF IFS. Цифры через Open-Meteo. Это модель, а не показания метеостанций: температура обычно в пределах 1–2°, осадки за отдельные дни могут отличаться сильнее. LFL — сравнение с тем же днём недели год назад (364 дня назад), чтобы выходные сравнивались с выходными.',
+    hsub: (p, a, b) => `${p} · ${a} — ${b}`, reg: 'Регион', dist: '— центр региона —', go: 'Показать', me: '📍 Моё место', ll: 'широта, долгота', bad: 'Введите широту и долготу, например 41.311, 69.279', outside: 'Точка вне Узбекистана', loading: 'Загружаю данные для точки…', nogeo: 'Не удалось определить место', pt: 'Точка', warmer: 'теплее', colder: 'холоднее', same: 'так же, как', load: 'Не удалось загрузить данные. Попробуйте позже.' },
   uz: { h1: 'Ob-havo o‘tgan yilga nisbatan', lfl: 'LFL: hafta kuni', date: 'Sana bo‘yicha', ytd: 'Yil boshidan', mtd: 'Shu oy', d30: '30 kun', d7: '7 kun', fc: '15 kunlik prognoz',
     tm: 'O‘rtacha', tx: 'Maksimum', tn: 'Minimum', kT: 'O‘rtacha t°', kP: 'Yog‘in', kR: 'Yog‘inli kunlar', kW: 'Iliqroq kunlar', ly: 'o‘tgan yil', cT: 'Nima o‘zgardi',
     tT: 'Kunlik harorat', pT: 'Kunlik va jami yog‘in', wT: 'Hafta haftaga', dT: 'Kun kunga', this: 'bu yil', fcl: 'prognoz', diff: 'farq', cum: 'jami',
     tS: m => `${m} harorat: bu yil va o‘tgan yil`, pS: 'ustunlar — kunlik mm, chiziqlar — jami', wS: m => m === 'lfl' ? 'Du–Ya haftalari o‘tgan yilning shu hafta kunlariga (−364 kun)' : 'Du–Ya haftalari o‘tgan yilning shu sanalariga',
     dS: m => m === 'lfl' ? 'har kun o‘tgan yilning shu hafta kuniga (−364 kun)' : 'har kun o‘tgan yilning shu sanasiga', week: 'Hafta', day: 'Kun', t: 't°', ty: 'bu yil', lyS: 'o‘tgan', d: 'Δ', mm: 'mm', of: 'dan',
     wd: ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'], mon: ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'],
-    note: 'Fakt: ERA5 (Copernicus) va so‘nggi kunlar uchun ECMWF tahlili; prognoz: ECMWF. Open-Meteo ma’lumotlari, kuniga 3 marta yangilanadi. LFL — o‘tgan yilning shu hafta kuni bilan (364 kun oldin) solishtirish: dam olish kunlari dam olish kunlari bilan.',
-    hsub: (p, a, b) => `${p} · ${a} — ${b}`, warmer: 'iliqroq', colder: 'sovuqroq', same: 'xuddi', load: 'Ma’lumot yuklanmadi. Keyinroq urinib ko‘ring.' } }[LANG];
+    note: 'Fakt: ERA5 reanalizi (ECMWF / Copernicus, ~10–25 km to‘r) va so‘nggi kunlar uchun ECMWF tahlili; prognoz: ECMWF IFS modeli. Raqamlar Open-Meteo orqali. Bu model, meteostansiya emas: harorat odatda 1–2° ichida, alohida kunlardagi yog‘in ko‘proq farq qilishi mumkin. LFL — o‘tgan yilning shu hafta kuni bilan (364 kun oldin) solishtirish: dam olish kunlari dam olish kunlari bilan.',
+    hsub: (p, a, b) => `${p} · ${a} — ${b}`, reg: 'Viloyat', dist: '— viloyat markazi —', go: 'Ko‘rsatish', me: '📍 Mening joyim', ll: 'kenglik, uzunlik', bad: 'Kenglik va uzunlikni kiriting, masalan 41.311, 69.279', outside: 'Nuqta O‘zbekistondan tashqarida', loading: 'Nuqta uchun ma’lumot yuklanmoqda…', nogeo: 'Joyni aniqlab bo‘lmadi', pt: 'Nuqta', warmer: 'iliqroq', colder: 'sovuqroq', same: 'xuddi', load: 'Ma’lumot yuklanmadi. Keyinroq urinib ko‘ring.' } }[LANG];
 document.documentElement.lang = LANG;
 const $ = id => document.getElementById(id);
 const fmt = (x, d = 1) => x == null || isNaN(x) ? '—' : (Math.round(x * 10 ** d) / 10 ** d).toLocaleString(LANG === 'uz' ? 'uz-UZ' : 'ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
 const sgn = (x, d = 1) => x == null || isNaN(x) ? '—' : (x > 0 ? '+' : x < 0 ? '−' : '±') + fmt(Math.abs(x), d);
 const DAY = 864e5;
-let D, S = { place: Q.get('p') || 'tashkent', mode: 'lfl', range: 'ytd', tv: 'tm' }, chT, chP;
+let D, GEO, PT = null, S = { place: Q.get('p') || 'tashkent', mode: 'lfl', range: 'ytd', tv: 'tm', reg: -1, dist: -1, lat: null, lon: null }, chT, chP;
 try { const s = JSON.parse(localStorage.getItem('lfl') || '{}'); Object.assign(S, s, Q.get('p') ? { place: Q.get('p') } : {}); } catch (e) {}
 const save = () => { try { localStorage.setItem('lfl', JSON.stringify(S)); } catch (e) {} };
 
@@ -129,7 +133,77 @@ document.addEventListener('click', e => {
   if (b.dataset.m) S.mode = b.dataset.m; else if (b.dataset.r) S.range = b.dataset.r; else if (b.dataset.t) S.tv = b.dataset.t; else return;
   save(); render();
 });
-$('place').addEventListener('change', e => { S.place = e.target.value; save(); render(); });
+
+// ---- places: the 14 region centres are in lfl.json (instant); any district or point is fetched live from Open-Meteo
+const LLC = { tashkent: [41.31, 69.28], nurafshon: [41.04, 69.36], samarkand: [39.65, 66.96], bukhara: [39.77, 64.42], andijan: [40.78, 72.34], fergana: [40.39, 71.78], namangan: [41.0, 71.67], karshi: [38.86, 65.79], termez: [37.22, 67.28], jizzakh: [40.12, 67.84], gulistan: [40.49, 68.78], navoi: [40.1, 65.38], urgench: [41.55, 60.63], nukus: [42.46, 59.6] };
+const VV = ['temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'precipitation_sum', 'snowfall_sum'], KK = ['tx', 'tn', 'tm', 'pr', 'sn'];
+async function fetchPoint(lat, lon) {
+  const q = `latitude=${lat}&longitude=${lon}&daily=${VV.join(',')}&timezone=Asia%2FTashkent`;
+  const td = new Date(D.today + 'T00:00:00Z'), e = new Date(td.getTime() - 2 * DAY).toISOString().slice(0, 10);
+  const [a, f] = await Promise.all([fetch(`https://archive-api.open-meteo.com/v1/archive?${q}&start_date=${D.start}&end_date=${e}`).then(r => r.json()),
+    fetch(`https://api.open-meteo.com/v1/forecast?${q}&past_days=14&forecast_days=16&models=ecmwf_ifs025`).then(r => r.json()).catch(() => null)
+      .then(j => j && j.daily ? j : fetch(`https://api.open-meteo.com/v1/forecast?${q}&past_days=14&forecast_days=16`).then(r => r.json()))]);
+  const n = D.places[0].tm.length, o = {}; KK.forEach(k => o[k] = new Array(n).fill(null)); const src = new Array(n).fill(null);
+  for (const [b, tag] of [[a, 'a'], [f, 'f']]) { if (!b || !b.daily) continue; b.daily.time.forEach((d, i) => {
+    const j = idxOf(new Date(d + 'T00:00:00Z')); if (j < 0 || j >= n || b.daily[VV[0]][i] == null) return;
+    if (tag === 'f' && src[j] === 'a') return; KK.forEach((k, m) => o[k][j] = b.daily[VV[m]][i] == null ? null : Math.round(b.daily[VV[m]][i] * 10) / 10); src[j] = tag; }); }
+  if (!o.tm.some(x => x != null)) throw new Error('no data');
+  return o;
+}
+const inPoly = (x, y, ring) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+const inArea = (x, y, a) => (a.r || []).some(r => inPoly(x, y, r));
+function whereIs(lat, lon) { if (!GEO) return {}; const d = GEO.adm2.findIndex(a => inArea(lon, lat, a)); const r = d >= 0 ? GEO.adm2[d].p : GEO.adm1.findIndex(a => inArea(lon, lat, a)); return { r, d }; }
+const nm = o => o && o.name ? (o.name[LANG] || o.name.ru) : '';
+function fillSel() {
+  if (!GEO) { $('reg').hidden = $('dist').hidden = true; return; }
+  $('reg').innerHTML = GEO.adm1.map((a, i) => [a, i]).sort((x, y) => nm(x[0]).localeCompare(nm(y[0]))).map(([a, i]) => `<option value="${i}">${nm(a)}</option>`).join('');
+  $('reg').value = S.reg >= 0 ? S.reg : 0; fillDist();
+}
+function fillDist() {
+  const r = +$('reg').value; $('dist').innerHTML = `<option value="-1">${T.dist}</option>` + GEO.adm2.map((a, i) => [a, i]).filter(([a]) => a.p === r)
+    .sort((x, y) => nm(x[0]).localeCompare(nm(y[0]))).map(([a, i]) => `<option value="${i}">${nm(a)}</option>`).join('');
+  $('dist').value = S.dist;
+  if ($('dist').value === '') $('dist').value = '-1';
+}
+async function usePoint(lat, lon, label) {  // any point: the data from Open-Meteo
+  $('busy').hidden = false; $('busy').textContent = T.loading;
+  try { const o = await fetchPoint(lat, lon); PT = { id: 'pt', ru: label, uz: label, iso: 'UZ', ...o }; S.place = 'pt'; S.lat = lat; S.lon = lon; $('busy').hidden = true; save(); render(); }
+  catch (e) { $('busy').textContent = T.load; console.error(e); }
+}
+function centreOf(r) {  // the region centre from lfl.json (the one inside the region)
+  const a = GEO && GEO.adm1[r]; if (!a) return null;
+  const LL = LLC;
+  const hit = D.places.filter(p => LL[p.id] && inArea(LL[p.id][1], LL[p.id][0], a));
+  if (!hit.length) return null; if (hit.length > 1 && hit.some(p => p.id === 'nurafshon')) return a.name.ru.includes('город') || a.name.ru === 'Ташкент' ? 'tashkent' : 'nurafshon';
+  return hit[0].id;
+}
+function pickRegion() {
+  S.reg = +$('reg').value; S.dist = -1; fillDist(); const c = centreOf(S.reg);
+  if (c) { S.place = c; PT = null; save(); render(); } else { const a = GEO.adm1[S.reg]; usePoint(a.c[1], a.c[0], nm(a)); }
+}
+function pickDist() {
+  S.dist = +$('dist').value; if (S.dist < 0) return pickRegion();
+  const a = GEO.adm2[S.dist]; usePoint(a.c[1], a.c[0], `${nm(a)}, ${nm(GEO.adm1[a.p])}`);
+}
+$('reg').addEventListener('change', pickRegion); $('dist').addEventListener('change', pickDist);
+function parseLL(t) {  // "41.3, 69.2", "41,311 69,279", a Google / Yandex maps link
+  const m = String(t).replace(/(\d),(\d)/g, '$1.$2').match(/(-?\d{1,3}(?:\.\d+)?)[^\d.-]+(-?\d{1,3}(?:\.\d+)?)/); if (!m) return null;
+  let a = +m[1], b = +m[2]; if (a > 50 && b < 50) [a, b] = [b, a]; return [a, b];
+}
+function goLL(lat, lon) {
+  if (!(lat > 37 && lat < 45.7 && lon > 55.9 && lon < 73.3)) { $('busy').hidden = false; $('busy').textContent = T.outside; return; }
+  const w = whereIs(lat, lon); if (w.r >= 0) { S.reg = w.r; $('reg').value = w.r; fillDist(); S.dist = w.d; $('dist').value = w.d >= 0 ? w.d : -1; }
+  const name = w.d >= 0 ? `${nm(GEO.adm2[w.d])}, ${nm(GEO.adm1[w.r])}` : w.r >= 0 ? nm(GEO.adm1[w.r]) : T.pt;
+  usePoint(+lat.toFixed(4), +lon.toFixed(4), `${name} · ${lat.toFixed(3)}, ${lon.toFixed(3)}`);
+}
+$('go').addEventListener('click', () => { const v = parseLL($('ll').value); if (!v) { $('busy').hidden = false; $('busy').textContent = T.bad; return; } goLL(v[0], v[1]); });
+$('ll').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+$('me').addEventListener('click', () => {
+  const ok = p => { $('ll').value = `${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)}`; goLL(p.latitude, p.longitude); }, no = () => { $('busy').hidden = false; $('busy').textContent = T.nogeo; };
+  const LM = tg && tg.LocationManager;
+  if (LM && tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) LM.init(() => { if (LM.isLocationAvailable) LM.getLocation(l => l ? ok(l) : no()); else nav(); }); else nav();
+  function nav() { if (!navigator.geolocation) return no(); navigator.geolocation.getCurrentPosition(p => ok(p.coords), no, { timeout: 15000 }); }
+});
 
 function stats(p, a, b) {
   const I = []; for (let i = a; i <= b; i++) I.push(i);
@@ -180,7 +254,7 @@ function comment(p, R) {
 
 function render() {
   chips();
-  const p = D.places.find(x => x.id === S.place) || D.places[0]; S.place = p.id; $('place').value = p.id;
+  const p = S.place === 'pt' && PT ? PT : (D.places.find(x => x.id === S.place) || D.places[0]); S.place = p.id;
   const R = range(), yr = dateOf(R.ti).getUTCFullYear();
   $('hsub').textContent = T.hsub(p[LANG], `${yr}`, `${yr - 1} · ${S.mode === 'lfl' ? T.lfl : T.date}`);
   // KPI: the fact part of the range (the forecast part is in the comment and on the charts)
@@ -243,10 +317,17 @@ function render() {
 }
 
 fetch(DATA + '?t=' + Math.floor(Date.now() / 3e5)).then(r => r.json()).then(j => {
-  D = j; $('h1').textContent = T.h1;
-  const grp = { UZ: LANG === 'ru' ? 'Узбекистан' : 'O‘zbekiston', KZ: LANG === 'ru' ? 'Казахстан' : 'Qozog‘iston', KG: LANG === 'ru' ? 'Кыргызстан' : 'Qirg‘iziston' };
-  $('place').innerHTML = Object.keys(grp).map(g => `<optgroup label="${grp[g]}">` + D.places.filter(p => p.iso === g).map(p => `<option value="${p.id}">${p[LANG]}</option>`).join('') + '</optgroup>').join('');
-  $('msg').hidden = true; $('app').hidden = false; render();
+  D = j; D.places = D.places.filter(p => p.iso === 'UZ'); $('h1').textContent = T.h1;
+  $('go').textContent = T.go; $('me').textContent = T.me; $('ll').placeholder = '41.311, 69.279 — ' + T.ll;
+  const lat = parseFloat(Q.get('lat')), lon = parseFloat(Q.get('lon'));
+  return fetch('prob/hr/UZ_geo.json').then(r => r.ok ? r.json() : null).catch(() => null).then(g => {
+    GEO = g; fillSel(); $('msg').hidden = true; $('app').hidden = false;
+    if (lat && lon) { $('ll').value = `${lat}, ${lon}`; goLL(lat, lon); return; }
+    if (S.place === 'pt' && S.lat) { if (S.dist >= 0 && GEO) { $('dist').value = S.dist; pickDist(); } else goLL(S.lat, S.lon); }
+    if (S.place === 'pt') S.place = 'tashkent';
+    if (GEO && S.place !== 'pt' && LLC[S.place]) { const w = whereIs(...LLC[S.place]); if (w.r >= 0) { S.reg = w.r; $('reg').value = w.r; S.dist = -1; fillDist(); } }
+    render();
+  });
 }).catch(e => { $('msg').textContent = T.load; console.error(e); });
 </script>
 </body>

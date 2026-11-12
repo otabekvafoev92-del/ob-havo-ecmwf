@@ -13,9 +13,7 @@ P = [('tashkent', 'Ташкент', 'Toshkent', 41.31, 69.28, 'UZ'), ('nurafshon
      ('namangan', 'Наманган', 'Namangan', 41.0, 71.67, 'UZ'), ('karshi', 'Карши', 'Qarshi', 38.86, 65.79, 'UZ'),
      ('termez', 'Термез', 'Termiz', 37.22, 67.28, 'UZ'), ('jizzakh', 'Джизак', 'Jizzax', 40.12, 67.84, 'UZ'),
      ('gulistan', 'Гулистан', 'Guliston', 40.49, 68.78, 'UZ'), ('navoi', 'Навои', 'Navoiy', 40.1, 65.38, 'UZ'),
-     ('urgench', 'Ургенч', 'Urganch', 41.55, 60.63, 'UZ'), ('nukus', 'Нукус', 'Nukus', 42.46, 59.6, 'UZ'),
-     ('almaty', 'Алматы', 'Olmaota', 43.24, 76.89, 'KZ'), ('astana', 'Астана', 'Ostona', 51.17, 71.45, 'KZ'),
-     ('shymkent', 'Шымкент', 'Chimkent', 42.32, 69.6, 'KZ'), ('bishkek', 'Бишкек', 'Bishkek', 42.87, 74.59, 'KG'), ('osh', 'Ош', 'O‘sh', 40.53, 72.8, 'KG')]
+     ('urgench', 'Ургенч', 'Urganch', 41.55, 60.63, 'UZ'), ('nukus', 'Нукус', 'Nukus', 42.46, 59.6, 'UZ')]
 V = ['temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'precipitation_sum', 'snowfall_sum']
 K = ['tx', 'tn', 'tm', 'pr', 'sn']
 S = requests.Session()
