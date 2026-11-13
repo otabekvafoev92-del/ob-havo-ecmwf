@@ -14,12 +14,13 @@ P = [('tashkent', 'Ташкент', 'Toshkent', 41.31, 69.28, 'UZ'), ('nurafshon
      ('termez', 'Термез', 'Termiz', 37.22, 67.28, 'UZ'), ('jizzakh', 'Джизак', 'Jizzax', 40.12, 67.84, 'UZ'),
      ('gulistan', 'Гулистан', 'Guliston', 40.49, 68.78, 'UZ'), ('navoi', 'Навои', 'Navoiy', 40.1, 65.38, 'UZ'),
      ('urgench', 'Ургенч', 'Urganch', 41.55, 60.63, 'UZ'), ('nukus', 'Нукус', 'Nukus', 42.46, 59.6, 'UZ')]
-V = ['temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'precipitation_sum', 'snowfall_sum']
-K = ['tx', 'tn', 'tm', 'pr', 'sn']
+V = ['temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'precipitation_sum', 'snowfall_sum', 'wind_gusts_10m_max']
+K = ['tx', 'tn', 'tm', 'pr', 'sn', 'gu']
 S = requests.Session()
 
 
 def call(url, **q):
+    q.setdefault('wind_speed_unit', 'ms')
     q.update(latitude=','.join(str(p[3]) for p in P), longitude=','.join(str(p[4]) for p in P), daily=','.join(V), timezone='auto')
     for k in range(6):
         try: r = S.get(url, params=q, timeout=180)
@@ -28,6 +29,11 @@ def call(url, **q):
             j = r.json(); return j if isinstance(j, list) else [j]
         print('retry', url, r.status_code, r.text[:200], flush=True); time.sleep(20 * (k + 1))
     raise RuntimeError('Open-Meteo did not answer: ' + url)
+
+
+NORM = {}
+try: NORM = json.load(open(pathlib.Path(__file__).resolve().parent.parent / 'prob' / 'lfl_norm.json'))['places']
+except Exception: pass
 
 
 def main():
@@ -50,7 +56,12 @@ def main():
                 for k, v in zip(K, V):
                     x = d[v][i]; ser[k][j] = None if x is None else round(x, 1)
                 src[j] = tag
-        out['places'].append({'id': p[0], 'ru': p[1], 'uz': p[2], 'iso': p[5], 'tz': a.get('timezone'), **ser})
+        rec = {'id': p[0], 'ru': p[1], 'uz': p[2], 'iso': p[5], 'tz': a.get('timezone'), **ser}
+        if p[0] in NORM:  # the climate norm 1991–2020 of each day (tools/lfl_norm.py)
+            N = NORM[p[0]]; ix = {md: i for i, md in enumerate(N['md'])}
+            key = lambda d: int(d[5:7]) * 100 + int(d[8:10])
+            rec['norm'] = {k: [N[k][ix[key(d)]] if key(d) in ix else None for d in days] for k in ('tm', 'tx', 'tn', 'pr')}
+        out['places'].append(rec)
     json.dump(out, open(OUT / 'lfl.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     print('lfl.json', len(days), 'days', (OUT / 'lfl.json').stat().st_size // 1024, 'KB')
 

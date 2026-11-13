@@ -585,7 +585,7 @@ async function notifTick(env, small = false) {
     let r = null;
     try {
       if (n.sec === 'brief') r = await sendBrief(env, n.chat_id, lang, rid);
-      else if (n.sec === 'dyn') { r = await sendDyn(env, n.chat_id, lang); await sendDynXlsx(env, n.chat_id, lang); }
+      else if (n.sec === 'dyn') { r = await sendDyn(env, n.chat_id, lang); await sendDynXlsx(env, n.chat_id, lang, 'pdf'); await sendDynXlsx(env, n.chat_id, lang); }
       else if (n.sec === 'hourly') r = await sendHourly(env, n.chat_id, lang, rid);
       else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
       else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
@@ -839,10 +839,10 @@ const lflRaw = (f, ref) => `https://raw.githubusercontent.com/otabekvafoev92-del
 async function lflRef(env) { const r = await ghApi(env, 'commits/lfl').then(x => x.ok ? x.json() : null).catch(() => null); return r && r.sha ? r.sha : 'lfl'; }
 const DYN = {
   ru: { h: '📊 <b>Погода против прошлого года</b> · Узбекистан (среднее по 14 центрам регионов), LFL — те же дни недели год назад', m: 'Этот месяц', w: 'С начала года',
-    xl: '📥 Excel-отчёт: регионы и 199 районов', xlc: '📊 Погода против прошлого года · Excel: сводка, недели, районы (8 недель + прогноз), этот месяц по дням', open: '📈 Интерактивно: регион, район, координаты', vw: '🎬 Видео: по неделям с начала года', vm: '🎬 Видео: этот месяц по дням', none: 'Данные готовятся, попробуйте через несколько минут.',
+    pdf: '📄 PDF-отчёт с графиками и выводами', pdfc: '📄 Погода против прошлого года · PDF: главное, недели, месяц, регионы, показатели для бизнеса', xl: '📥 Excel-отчёт: регионы и 199 районов', xlc: '📊 Погода против прошлого года · Excel: сводка, недели, районы (8 недель + прогноз), этот месяц по дням', open: '📈 Интерактивно: регион, район, координаты', vw: '🎬 Видео: по неделям с начала года', vm: '🎬 Видео: этот месяц по дням', none: 'Данные готовятся, попробуйте через несколько минут.',
     note: 'Данные: ERA5 и прогноз ECMWF (модель, не метеостанции).' },
   uz: { h: '📊 <b>Ob-havo o‘tgan yilga nisbatan</b> · O‘zbekiston (14 viloyat markazi o‘rtachasi), LFL — o‘tgan yilning shu hafta kunlari', m: 'Shu oy', w: 'Yil boshidan',
-    xl: '📥 Excel-hisobot: viloyatlar va 199 tuman', xlc: '📊 Ob-havo o‘tgan yilga nisbatan · Excel: xulosa, haftalar, tumanlar (8 hafta + prognoz), shu oy kunlar bo‘yicha', open: '📈 Interaktiv: viloyat, tuman, koordinata', vw: '🎬 Video: yil boshidan haftalar', vm: '🎬 Video: shu oy kunlar bo‘yicha', none: 'Ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.',
+    pdf: '📄 PDF-hisobot: grafiklar va xulosalar', pdfc: '📄 Ob-havo o‘tgan yilga nisbatan · PDF: asosiy, haftalar, oy, viloyatlar, biznes ko‘rsatkichlari', xl: '📥 Excel-hisobot: viloyatlar va 199 tuman', xlc: '📊 Ob-havo o‘tgan yilga nisbatan · Excel: xulosa, haftalar, tumanlar (8 hafta + prognoz), shu oy kunlar bo‘yicha', open: '📈 Interaktiv: viloyat, tuman, koordinata', vw: '🎬 Video: yil boshidan haftalar', vm: '🎬 Video: shu oy kunlar bo‘yicha', none: 'Ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.',
     note: 'Ma’lumot: ERA5 va ECMWF prognozi (model, meteostansiya emas).' } };
 async function sendDyn(env, chat, lang) {
   const L = lang === 'uz' ? 'uz' : 'ru', X = DYN[L], ref = await lflRef(env);
@@ -851,15 +851,15 @@ async function sendDyn(env, chat, lang) {
   const block = (t, o, n) => o ? `\n\n<b>${t}</b>\n` + o.lines.slice(0, n).map(x => '• ' + esc(x)).join('\n') : '';
   const text = w || m ? X.h + block(X.m, m, 4) + block(X.w, w, 5) + `\n\n<i>${X.note}</i>` : `${X.h}\n\n${X.none}`;
   return tg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
-    [{ text: X.open, web_app: { url: site(env, `lfl.html?lang=${L}`) } }], [{ text: X.vm, callback_data: `DV:${L}:month` }], [{ text: X.vw, callback_data: `DV:${L}:weeks` }], [{ text: X.xl, callback_data: `DV:${L}:xlsx` }]] } });
+    [{ text: X.open, web_app: { url: site(env, `lfl.html?lang=${L}`) } }], [{ text: X.vm, callback_data: `DV:${L}:month` }], [{ text: X.vw, callback_data: `DV:${L}:weeks` }], [{ text: X.pdf, callback_data: `DV:${L}:pdf` }], [{ text: X.xl, callback_data: `DV:${L}:xlsx` }]] } });
 }
-async function sendDynXlsx(env, chat, lang) {  // the Excel report (made with the videos, 3 times a day)
+async function sendDynXlsx(env, chat, lang, ext = 'xlsx') {  // the Excel or PDF report (made with the videos, 3 times a day)
   const L = lang === 'uz' ? 'uz' : 'ru', X = DYN[L], ref = await lflRef(env);
-  const f = await fetch(lflRaw(`UZ_lfl_${L}.xlsx`, ref)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+  const f = await fetch(lflRaw(`UZ_lfl_${L}.${ext}`, ref)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
   if (!f) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_document' });
-  const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', X.xlc);
-  fd.append('document', new Blob([f], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${L === 'uz' ? 'ob-havo_otgan_yil' : 'pogoda_vs_proshlyi_god'}_${todayTZ()}.xlsx`);
+  const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', ext === 'pdf' ? X.pdfc : X.xlc);
+  fd.append('document', new Blob([f], { type: ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${L === 'uz' ? 'ob-havo_otgan_yil' : 'pogoda_vs_proshlyi_god'}_${todayTZ()}.${ext}`);
   return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
 }
 async function sendDynVideo(env, chat, lang, kind) {
@@ -1470,7 +1470,7 @@ async function handle(up, env) {
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
   if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
   if (kind === 'MV' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);
-  if (kind === 'DV') return id === 'xlsx' ? sendDynXlsx(env, chat.id, lang) : sendDynVideo(env, chat.id, lang, id === 'weeks' ? 'weeks' : 'month');
+  if (kind === 'DV') return id === 'xlsx' || id === 'pdf' ? sendDynXlsx(env, chat.id, lang, id) : sendDynVideo(env, chat.id, lang, id === 'weeks' ? 'weeks' : 'month');
   if (kind === 'SV' && TRJ.has(id)) return sendSat(env, chat.id, lang, id, 'clouds');  // one video: clouds and rain together (old "rain" buttons get it too)
   if (kind === 'AV' && TRJ.has(id)) {  // how much rain and snow falls (prob/moisture.py accum_video)
     const X = TJX[lang] || TJX.ru, url = `${base(env)}/prob/hr/${id}_accum_${lang === 'tr' ? 'ru' : lang}.mp4`;

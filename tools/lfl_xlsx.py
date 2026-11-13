@@ -17,12 +17,14 @@ TX = {'ru': dict(sum='Сводка', wk='Недели', ds='Районы', dd='�
                  t='t° ср.', tl='t° год назад', d='Δ t°', p='Осадки, мм', pl='Осадки год назад, мм', pp='Δ осадков, %', rd='Дней с осадками', rdl='год назад',
                  week='Неделя с', kind='Тип', fact='факт', fcs='прогноз', mix='факт+прогноз', date='Дата', wd='День', lyd='Год назад (LFL)',
                  title='Погода против прошлого года (LFL: те же дни недели 364 дня назад)', made='Данные на {d}. Факт: ERA5 и анализ ECMWF, прогноз: ECMWF IFS (Open-Meteo). Модель, не метеостанции.',
-                 wds=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
+                 wds=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], nm='К норме', norm='норма 1991–2020', dn='Δ к норме', pn='% нормы осадков', ind='Показатели',
+                 rw='Дождливых выходных', hot='Жарких дней (≥35°)', frost='Морозных дней (≤−5°)', snow='Дней со снегом', wind='Ветреных дней (порывы ≥15 м/с)', ty='этот год', lyy='год назад'),
       'uz': dict(sum='Xulosa', wk='Haftalar', ds='Tumanlar', dd='Kunlar', reg='Viloyat', dist='Tuman', ytd='1 yanvardan', mtd='Shu oy', l7='7 kun', fc='15 kunlik prognoz',
                  t='o‘rt. t°', tl='o‘tgan yil t°', d='Δ t°', p='Yog‘in, mm', pl='O‘tgan yil yog‘in, mm', pp='Δ yog‘in, %', rd='Yog‘inli kunlar', rdl='o‘tgan yil',
                  week='Hafta', kind='Turi', fact='fakt', fcs='prognoz', mix='fakt+prognoz', date='Sana', wd='Kun', lyd='O‘tgan yil (LFL)',
                  title='Ob-havo o‘tgan yilga nisbatan (LFL: 364 kun oldingi shu hafta kunlari)', made='{d} holatiga. Fakt: ERA5 va ECMWF tahlili, prognoz: ECMWF IFS (Open-Meteo). Model, meteostansiya emas.',
-                 wds=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'])}
+                 wds=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], nm='Me’yorga nisbatan', norm='me’yor 1991–2020', dn='Δ me’yorga', pn='Yog‘in me’yorning %', ind='Ko‘rsatkichlar',
+                 rw='Yomg‘irli dam olish kunlari', hot='Issiq kunlar (≥35°)', frost='Sovuq kunlar (≤−5°)', snow='Qorli kunlar', wind='Shamolli kunlar (≥15 m/s)', ty='bu yil', lyy='o‘tgan yil')}
 X = TX[LANG]
 _DS = {}
 HEAD = Font(bold=True, color='FFFFFF'); HFILL = PatternFill('solid', fgColor='2B3A4E'); FCF = PatternFill('solid', fgColor='FFF4E8')
@@ -100,6 +102,32 @@ def main():
             for v in stats(tm, pr, list(I))[:6]: ws.cell(row=r, column=c, value=v); c += 1
     for k in range(len(blocks)): dscale(ws, f"{get_column_letter(4 + 6 * k)}5:{get_column_letter(4 + 6 * k)}{4 + len(allp)}")
     ws.freeze_panes = 'B5'
+    # against the climate norm 1991–2020 (if tools/lfl_norm.py has been run)
+    NP = [(p[LANG], nan(p['tm']), nan(p['pr']), nan(p['norm']['tm']), nan(p['norm']['pr'])) for p in P if p.get('norm')]
+    if NP:
+        allN = [('Узбекистан' if LANG == 'ru' else 'O‘zbekiston', *[np.nanmean([x[k] for x in NP], 0) for k in (1, 2, 3, 4)])] + NP
+        wn = wb.create_sheet(X['nm'], 1)
+        header(wn, 1, [X['reg']] + [f"{b}\n{c}" for b, _ in blocks for c in (X['t'], X['norm'], X['dn'], X['p'], X['norm'] + ', ' + ('мм' if LANG == 'ru' else 'mm'), X['pn'])], [26] + [10] * 24)
+        for r, (nm_, tm, pr, nt, npr) in enumerate(allN, 2):
+            wn.cell(row=r, column=1, value=nm_).font = Font(bold=r == 2); c = 2
+            for _, I in blocks:
+                I = [i for i in I if 0 <= i < len(tm)]
+                t, n_, p_, q_ = np.nanmean(tm[I]), np.nanmean(nt[I]), np.nansum(pr[I]), np.nansum(npr[I])
+                for v in (round(t, 1), round(n_, 1), round(t - n_, 1), round(p_, 1), round(q_, 1), round(p_ / q_ * 100) if q_ > 0.5 else None): wn.cell(row=r, column=c, value=v); c += 1
+        for k in range(len(blocks)): dscale(wn, f"{get_column_letter(4 + 6 * k)}2:{get_column_letter(4 + 6 * k)}{1 + len(allN)}")
+        wn.freeze_panes = 'B2'
+    # business indicators: days that change how people shop and travel, this year against the same weekdays last year
+    wi = wb.create_sheet(X['ind'], 2 if NP else 1)
+    inds = [('rw', lambda P_, I: sum(1 for i in I if (s + dt.timedelta(days=i)).weekday() >= 5 and (P_['pr'][i] or 0) >= 1)),
+            ('hot', lambda P_, I: sum(1 for i in I if (P_['tx'][i] or -99) >= 35)), ('frost', lambda P_, I: sum(1 for i in I if (P_['tn'][i] if P_['tn'][i] is not None else 99) <= -5)),
+            ('snow', lambda P_, I: sum(1 for i in I if (P_['sn'][i] or 0) >= 0.5)), ('wind', lambda P_, I: sum(1 for i in I if P_.get('gu') and (P_['gu'][i] or 0) >= 15))]
+    header(wi, 1, [X['reg']] + [f"{b}\n{X[k]}\n{w}" for b, _ in blocks for k, _ in inds for w in (X['ty'], X['lyy'])], [26] + [9] * (len(blocks) * len(inds) * 2))
+    for r, p_ in enumerate(P, 2):
+        wi.cell(row=r, column=1, value=p_[LANG]); c = 2
+        for _, I in blocks:
+            I = [i for i in I if 364 <= i < n]; L = [i - 364 for i in I]
+            for _, fn in inds: wi.cell(row=r, column=c, value=fn(p_, I)); wi.cell(row=r, column=c + 1, value=fn(p_, L)); c += 2
+    wi.freeze_panes = 'B2'
     # weeks
     w2 = wb.create_sheet(X['wk']); mons = []
     i = y0 - dt.date(today.year, 1, 1).weekday()

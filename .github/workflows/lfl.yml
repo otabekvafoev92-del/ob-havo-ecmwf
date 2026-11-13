@@ -19,6 +19,7 @@ jobs:
           python tools/lfl.py lfl
           # the videos for the bot: Uzbekistan, by weeks since 1 January and this month by days
           for L in ru uz; do for M in weeks month; do python -W ignore tools/lfl_video.py lfl/lfl.json lfl/UZ_${M}_${L}.mp4 $L $M; done; done
+          python -W ignore tools/lfl_pdf.py lfl/lfl.json 'lfl/UZ_lfl_{lang}.pdf' ru,uz  # the PDF report
           python -W ignore tools/lfl_xlsx.py lfl/lfl.json 'lfl/UZ_lfl_{lang}.xlsx' ru,uz  # the Excel report (business mode)
           cd lfl && git init -q && git checkout -q -b lfl && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "lfl $(date -u +%F)"
