@@ -61,7 +61,8 @@ def districts(start, today):
         q = dict(latitude=','.join(str(d['c'][1]) for d in part), longitude=','.join(str(d['c'][0]) for d in part), daily='temperature_2m_mean,precipitation_sum', timezone='Asia/Tashkent')
         def get(url, **p):
             for n in range(5):
-                r = requests.get(url, params={**q, **p}, timeout=180)
+                try: r = requests.get(url, params={**q, **p}, timeout=180)
+                except requests.RequestException as e: print('retry', e, flush=True); time.sleep(30 * (n + 1)); continue
                 if r.ok: j = r.json(); return j if isinstance(j, list) else [j]
                 print('retry', r.status_code, r.text[:150], flush=True); time.sleep(30 * (n + 1))
             r.raise_for_status()

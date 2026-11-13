@@ -21,12 +21,13 @@ S = requests.Session()
 
 def call(url, **q):
     q.update(latitude=','.join(str(p[3]) for p in P), longitude=','.join(str(p[4]) for p in P), daily=','.join(V), timezone='auto')
-    for k in range(5):
-        r = S.get(url, params=q, timeout=180)
+    for k in range(6):
+        try: r = S.get(url, params=q, timeout=180)
+        except requests.RequestException as e: print('retry', url, e, flush=True); time.sleep(20 * (k + 1)); continue  # a timeout now and then
         if r.ok:
             j = r.json(); return j if isinstance(j, list) else [j]
         print('retry', url, r.status_code, r.text[:200], flush=True); time.sleep(20 * (k + 1))
-    r.raise_for_status()
+    raise RuntimeError('Open-Meteo did not answer: ' + url)
 
 
 def main():
