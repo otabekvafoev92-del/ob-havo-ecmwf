@@ -1,0 +1,18 @@
+name: Climate norm 1991-2020
+# once: the day-of-year norms of the region centres for the "weather against last year" report (tools/lfl_norm.py → prob/lfl_norm.json)
+on: {workflow_dispatch: {}}
+permissions: {contents: write}
+jobs:
+  n:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          pip install -q requests numpy
+          python tools/lfl_norm.py prob/lfl_norm.json
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com add prob/lfl_norm.json
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "Climate norm 1991-2020 for the weather-vs-last-year report"
+          git pull -q --rebase && git push -q
