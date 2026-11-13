@@ -231,3 +231,5 @@ if __name__ == '__main__':
     os.replace(tmp, OUT)
     for p in parts: p.unlink()
     lst.unlink(); print(OUT, OUT.stat().st_size // 1024, 'KB')
+    # the summary as text too: the bot sends it with the buttons
+    json.dump({'title': TITLE, 'name': NAME, 'today': TODAY.isoformat(), 'lines': summary_month() if M else summary()}, open(OUT.with_suffix('.json'), 'w'), ensure_ascii=False)
