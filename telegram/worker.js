@@ -1731,6 +1731,10 @@ async function privateMsg(msg, env) {
     if (act === 'location') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].locAsk, reply_markup: locOnce(lang) });
     if (act === 'site') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} ${NAMES[rid][lang]}`, reply_markup: { inline_keyboard: [[{ text: T[lang].site, web_app: { url: site(env, `prob/${rid}/${lang}/prob`) } }], [{ text: T[lang].rep, web_app: { url: site(env, 'map') } }]] } });
   }
+  if (!cmd && u && u.lang && env.AI && isQuestion(text)) {  // a question in words: the assistant (falls back to the town search)
+    const r = await askWeather(env, chat.id, u.lang, u, text).catch(e => { console.log('ask', e && e.stack); return null; });
+    if (r) return r;
+  }
   if (!cmd && u && u.lang) {  // a town name (also "погода в Самарканде завтра"): search it anywhere in the world
     const q = text.split(/\s+/).filter(w => !FILLER.has(norm(w))).join(' ').trim() || text;
     let found = await searchPlaces(env, q);
@@ -1745,6 +1749,66 @@ async function privateMsg(msg, env) {
   const kb = langKb('S');  // a returning user goes straight back to the country they chose last time
   if (u && u.region && NAMES[u.region] && T[u.lang]) kb.inline_keyboard.push([{ text: `▶️ ${FLAG[u.region]} ${NAMES[u.region][u.lang]}`, callback_data: `C:${u.lang}:${u.region}` }]);
   return tg(env, 'sendMessage', { chat_id: chat.id, text: T.uz.hi + '\n\n' + T.ru.hi.split('\n').slice(0, 2).join('\n') + '\nВыберите язык:', parse_mode: 'HTML', reply_markup: kb });
+}
+// ---- 🤖 the assistant: a question in words → what, where and when (Workers AI) → the numbers (Open-Meteo: forecast, ERA5 history, last year) → a short answer
+// the model only reads the question and writes the answer from the numbers given to it; the numbers come from the data, never from the model
+const isQuestion = t => /\?|^(будет|будут|когда|сколько|какая|какой|какие|где|почему|нужен|нужно|можно|стоит|ли|а |как |что |qachon|qancha|qanday|qayerda|bormi|kerakmi|bo‘ladimi|boladimi|yog[‘']?adimi)/i.test(t.trim()) || t.trim().split(/\s+/).length >= 5;
+const AIM = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const ASKX = { ru: { think: '🤖 Смотрю данные…', nf: 'Не понял, о каком месте или времени вопрос. Напишите, например: «будет ли дождь в Самарканде в субботу?» или «сколько осадков было в мае против прошлого года в Ташкенте?»', src: '🤖 Ответ по данным ECMWF / ERA5 (Open-Meteo). Модель, не метеостанции.' },
+  uz: { think: '🤖 Ma’lumotlarni ko‘ryapman…', nf: 'Qaysi joy yoki vaqt haqida so‘rayotganingizni tushunmadim. Masalan: «shanba kuni Samarqandda yomg‘ir bo‘ladimi?» yoki «Toshkentda may oyida o‘tgan yilga nisbatan qancha yog‘in bo‘ldi?»', src: '🤖 ECMWF / ERA5 ma’lumotlari asosida (Open-Meteo). Model, meteostansiya emas.' } };
+async function ai(env, messages, json) {
+  const r = await env.AI.run(AIM, { messages, max_tokens: json ? 300 : 600, temperature: 0.2, ...(json ? { response_format: { type: 'json_object' } } : {}) });
+  const t = r && (typeof r.response === 'string' ? r.response : JSON.stringify(r.response || ''));
+  return t || '';
+}
+async function askWeather(env, chat, lang, u, text) {
+  const L = lang === 'uz' ? 'uz' : 'ru', X = ASKX[L], today = todayTZ(), wd = new Date(today + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'typing' });
+  // 1. what is asked
+  const q = await ai(env, [{ role: 'system', content: `Today is ${today} (${wd}), Uzbekistan. Extract from the user's weather question a JSON object: {"weather": true|false (is it about weather/climate at all), "place": place name as written or null, "from": "YYYY-MM-DD", "to": "YYYY-MM-DD" (the dates asked about; "tomorrow", "Saturday", "this week", "in May" → concrete dates; if no date: today), "compare_last_year": true|false, "metric": "temp"|"rain"|"snow"|"wind"|"all"}. Only JSON.` }, { role: 'user', content: text }], true);
+  let Q; try { Q = JSON.parse(q.slice(q.indexOf('{'), q.lastIndexOf('}') + 1)); } catch (e) { return null; }
+  if (!Q || Q.weather === false) return null;
+  // 2. where
+  let lat, lon, name;
+  if (Q.place) {
+    let f = await searchPlaces(env, Q.place);
+    if (!f.length) f = await searchPlaces(env, String(Q.place).replace(/(ом|ем|ой|ей|ах|ях|е|у|ю|а|я|и|ы|da|dagi|ga)$/iu, ''));
+    if (f.length) { lat = f[0][5]; lon = f[0][6]; name = pname(f[0], lang); }
+    else for (const v of [Q.place, String(Q.place).replace(/(ом|ем|ой|ей|ах|ях|е|у|ю|а|я|и|ы|da|dagi|ga)$/iu, '')]) {  // anywhere in the world: the Open-Meteo geocoder
+      const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(v)}&count=1&language=${L}`).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (g && g.results && g.results[0]) { lat = g.results[0].latitude; lon = g.results[0].longitude; name = g.results[0].name; break; }
+    }
+  }
+  if (lat == null) { const pl = u && u.place ? JSON.parse(u.place) : null; if (pl) { lat = +pl[0]; lon = +pl[1]; const np = await nearestPlace(env, lat, lon, 40); name = np ? pname(np, lang) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`; } }
+  if (lat == null) { if (Q.place) return tg(env, 'sendMessage', { chat_id: chat, text: X.nf }); [lat, lon] = BRC[u && u.region] || BRC.UZ; name = L === 'uz' ? 'Toshkent' : 'Ташкент'; }
+  // 3. the numbers
+  const ok = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '');
+  let a = ok(Q.from) ? Q.from : today, b = ok(Q.to) ? Q.to : a; if (b < a) [a, b] = [b, a];
+  const day = 864e5, tD = Date.parse(today), maxF = new Date(tD + 15 * day).toISOString().slice(0, 10);
+  if (b > maxF) b = maxF; if (a > b) a = b;
+  if ((Date.parse(b) - Date.parse(a)) / day > 92) a = new Date(Date.parse(b) - 92 * day).toISOString().slice(0, 10);
+  const V = 'temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,snowfall_sum,precipitation_probability_max,wind_gusts_10m_max';
+  const loc = `latitude=${(+lat).toFixed(3)}&longitude=${(+lon).toFixed(3)}&timezone=auto&wind_speed_unit=ms`;
+  const get = async (from, to) => {
+    const fc = Date.parse(from) >= tD - 85 * day;  // recent and future: the forecast API (with its past days); older: the ERA5 archive
+    const url = fc ? `https://api.open-meteo.com/v1/forecast?${loc}&daily=${V}&start_date=${from}&end_date=${to}&models=ecmwf_ifs025`
+      : `https://archive-api.open-meteo.com/v1/archive?${loc}&daily=${V.replace(',precipitation_probability_max', '')}&start_date=${from}&end_date=${to}`;
+    const j = await fetch(url).then(r => r.ok ? r.json() : null).catch(() => null); return j && j.daily ? j.daily : null;
+  };
+  const cur = await get(a, b); if (!cur) return null;
+  const sh = d => new Date(Date.parse(d) - 364 * day).toISOString().slice(0, 10);
+  const prev = Q.compare_last_year ? await get(sh(a), sh(b)) : null;
+  const rows = cur.time.map((d, i) => [d, ...['temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'precipitation_sum', 'snowfall_sum', 'precipitation_probability_max', 'wind_gusts_10m_max'].map(k => cur[k] ? cur[k][i] : null)]);
+  const sum = (D, k) => D && D[k] ? +D[k].reduce((s, x) => s + (x || 0), 0).toFixed(1) : null, mean = (D, k) => D && D[k] ? +(D[k].filter(x => x != null).reduce((s, x) => s + x, 0) / Math.max(1, D[k].filter(x => x != null).length)).toFixed(1) : null;
+  const facts = { place: name, today, period: [a, b], forecast_from: today, days: rows.length <= 31 ? rows.map(r => ({ date: r[0], tmax: r[1], tmin: r[2], tmean: r[3], rain_mm: r[4], snow_cm: r[5], rain_prob: r[6], gust_ms: r[7] })) : undefined,
+    totals: { tmean: mean(cur, 'temperature_2m_mean'), rain_mm: sum(cur, 'precipitation_sum'), snow_cm: sum(cur, 'snowfall_sum'), rainy_days: cur.precipitation_sum.filter(x => x >= 1).length },
+    ...(prev ? { last_year_same_weekdays: { period: [sh(a), sh(b)], tmean: mean(prev, 'temperature_2m_mean'), rain_mm: sum(prev, 'precipitation_sum'), snow_cm: sum(prev, 'snowfall_sum'), rainy_days: prev.precipitation_sum.filter(x => x >= 1).length } } : {}) };
+  // 4. the answer, only from these numbers
+  const ans = await ai(env, [{ role: 'system', content: `You are the weather assistant of the Telegram bot Osmon. Answer in ${L === 'uz' ? 'Uzbek (Latin script)' : 'Russian'}, briefly (2–6 short lines), friendly, with a few weather emoji. Use ONLY the numbers in DATA, never invent any; dates on or after "forecast_from" are a forecast, earlier ones are past data — say so when it matters. Round temperatures to whole degrees, rain to whole mm (or one decimal under 1 mm). If DATA cannot answer the question, say what you can tell from it. No markdown headers, no tables.` },
+    { role: 'user', content: `Question: ${text}\nDATA: ${JSON.stringify(facts)}` }], false);
+  if (!ans) return null;
+  return tg(env, 'sendMessage', { chat_id: chat, text: `${esc(ans.trim()).slice(0, 3800)}\n\n<i>${X.src}</i>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: L === 'uz' ? '📊 Dinamika' : '📊 Динамика', callback_data: `MA:${lang}:dyn` }, { text: L === 'uz' ? '⏱ Soatma-soat' : '⏱ По часам', callback_data: `MA:${lang}:hourly` }]] } })
+    .then(r => r.ok ? r : tg(env, 'sendMessage', { chat_id: chat, text: `${ans.trim()}\n\n${X.src}`.slice(0, 4000) }));
 }
 // what people search for (admin statistics): daily totals per query, nothing about the person
 function ctxLog(env, p) { if (env._ctx) env._ctx.waitUntil(p.catch(() => {})); else p.catch(() => {}); }
