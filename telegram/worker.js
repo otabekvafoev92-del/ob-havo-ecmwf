@@ -737,9 +737,9 @@ async function mtnTick(env) {
 }
 // the menu is a keyboard under the input field (white buttons, as in the screenshot): one place for everything, no buttons under messages
 const RKL = {
-  ru: { rain: '🌧 Осадки и тучи', more: '⚙️ Ещё', traj: '🧭 Откуда придут осадки', hourly: '⏱ Сегодня и завтра по часам', regions: '🗺 Погода по регионам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
-  uz: { rain: '🌧 Yog‘in va bulutlar', more: '⚙️ Yana', traj: '🧭 Yog‘in qayerdan keladi', hourly: '⏱ Bugun va ertaga soatma-soat', regions: '🗺 Viloyatlar bo‘yicha', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
-  tr: { rain: '🌧 Yağış ve bulutlar', more: '⚙️ Daha fazla', traj: '🧭 Yağış nereden gelecek', hourly: '⏱ Bugün ve yarın saat saat', regions: '🗺 Bölgelere göre', days: '🗓 15 günlük tahmin', video: '🎬 15 günlük video tahmin', outlook: '📅 Haftalar ve aylar (haritalar)', mtn: '🏔 Dağlar: kar ve gezi', now: '🌡 Şu anki hava', air: '🌫 Bugün hava kalitesi', cities: '🏙 Şehir seç', loc: '📍 Konumumu gönder', countries: '🌍 Ülke değiştir', daily: '🔔 Her sabah tahmin', notif: '⏰ Bildirimlerim', accuracy: '🎯 Tahmin doğruluğu', alerts: '⚠️ Tehlikeli hava', site: '🗺 Harita-site ve küre', home: '🏠 Ana menü', reset: '🔄 Baştan başla', back: '⬅️ Geri', help: 'ℹ️ Kılavuz' } };
+  ru: { dyn: '📊 Динамика к прошлому году', rain: '🌧 Осадки и тучи', more: '⚙️ Ещё', traj: '🧭 Откуда придут осадки', hourly: '⏱ Сегодня и завтра по часам', regions: '🗺 Погода по регионам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
+  uz: { dyn: '📊 O‘tgan yilga nisbatan dinamika', rain: '🌧 Yog‘in va bulutlar', more: '⚙️ Yana', traj: '🧭 Yog‘in qayerdan keladi', hourly: '⏱ Bugun va ertaga soatma-soat', regions: '🗺 Viloyatlar bo‘yicha', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
+  tr: { dyn: '📊 Geçen yıla göre', rain: '🌧 Yağış ve bulutlar', more: '⚙️ Daha fazla', traj: '🧭 Yağış nereden gelecek', hourly: '⏱ Bugün ve yarın saat saat', regions: '🗺 Bölgelere göre', days: '🗓 15 günlük tahmin', video: '🎬 15 günlük video tahmin', outlook: '📅 Haftalar ve aylar (haritalar)', mtn: '🏔 Dağlar: kar ve gezi', now: '🌡 Şu anki hava', air: '🌫 Bugün hava kalitesi', cities: '🏙 Şehir seç', loc: '📍 Konumumu gönder', countries: '🌍 Ülke değiştir', daily: '🔔 Her sabah tahmin', notif: '⏰ Bildirimlerim', accuracy: '🎯 Tahmin doğruluğu', alerts: '⚠️ Tehlikeli hava', site: '🗺 Harita-site ve küre', home: '🏠 Ana menü', reset: '🔄 Baştan başla', back: '⬅️ Geri', help: 'ℹ️ Kılavuz' } };
 // the labels the keyboard had before (people may still have the old keyboard on their phone): they keep working
 const RKL_OLD = {
   ru: { days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', mtn: '🏔 Горы и снег', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', help: 'ℹ️ Помощь' },
@@ -787,6 +787,36 @@ async function satTick(env) {  // every 10 minutes: a new snapshot at EUMETSAT �
   await setKv(env, 'sat_kick', String(Date.now()));
   await ghApi(env, 'actions/workflows/sat.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main' }), headers: { 'content-type': 'application/json' } });
 }
+// ---- weather against last year: a short summary, the interactive page and two videos (made 3 times a day on the "lfl" branch)
+const lflRaw = (f, ref) => `https://raw.githubusercontent.com/otabekvafoev92-del/ob-havo-ecmwf/${ref || 'lfl'}/${f}`;
+async function lflRef(env) { const r = await ghApi(env, 'commits/lfl').then(x => x.ok ? x.json() : null).catch(() => null); return r && r.sha ? r.sha : 'lfl'; }
+const DYN = {
+  ru: { h: '📊 <b>Погода против прошлого года</b> · Узбекистан (среднее по 14 центрам регионов), LFL — те же дни недели год назад', m: 'Этот месяц', w: 'С начала года',
+    open: '📈 Интерактивно: регион, район, координаты', vw: '🎬 Видео: по неделям с начала года', vm: '🎬 Видео: этот месяц по дням', none: 'Данные готовятся, попробуйте через несколько минут.',
+    note: 'Данные: ERA5 и прогноз ECMWF (модель, не метеостанции).' },
+  uz: { h: '📊 <b>Ob-havo o‘tgan yilga nisbatan</b> · O‘zbekiston (14 viloyat markazi o‘rtachasi), LFL — o‘tgan yilning shu hafta kunlari', m: 'Shu oy', w: 'Yil boshidan',
+    open: '📈 Interaktiv: viloyat, tuman, koordinata', vw: '🎬 Video: yil boshidan haftalar', vm: '🎬 Video: shu oy kunlar bo‘yicha', none: 'Ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.',
+    note: 'Ma’lumot: ERA5 va ECMWF prognozi (model, meteostansiya emas).' } };
+async function sendDyn(env, chat, lang) {
+  const L = lang === 'uz' ? 'uz' : 'ru', X = DYN[L], ref = await lflRef(env);
+  const [w, m] = await Promise.all(['weeks', 'month'].map(k => fetch(lflRaw(`UZ_${k}_${L}.json`, ref)).then(r => r.ok ? r.json() : null).catch(() => null)));
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const block = (t, o, n) => o ? `\n\n<b>${t}</b>\n` + o.lines.slice(0, n).map(x => '• ' + esc(x)).join('\n') : '';
+  const text = w || m ? X.h + block(X.m, m, 4) + block(X.w, w, 5) + `\n\n<i>${X.note}</i>` : `${X.h}\n\n${X.none}`;
+  return tg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
+    [{ text: X.open, web_app: { url: site(env, `lfl.html?lang=${L}`) } }], [{ text: X.vm, callback_data: `DV:${L}:month` }], [{ text: X.vw, callback_data: `DV:${L}:weeks` }]] } });
+}
+async function sendDynVideo(env, chat, lang, kind) {
+  const L = lang === 'uz' ? 'uz' : 'ru', X = DYN[L], ref = await lflRef(env);
+  const [v, j] = await Promise.all([fetch(lflRaw(`UZ_${kind}_${L}.mp4`, ref)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null), fetch(lflRaw(`UZ_${kind}_${L}.json`, ref)).then(r => r.ok ? r.json() : null).catch(() => null)]);
+  if (!v) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+  const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('supports_streaming', 'true');
+  fd.append('caption', `📊 ${j ? j.title : ''} · ${j ? j.name : ''}`.slice(0, 1000));
+  fd.append('reply_markup', JSON.stringify({ inline_keyboard: [[{ text: X.open, web_app: { url: site(env, `lfl.html?lang=${L}`) } }], [{ text: kind === 'month' ? X.vw : X.vm, callback_data: `DV:${L}:${kind === 'month' ? 'weeks' : 'month'}` }]] }));
+  fd.append('video', new Blob([v], { type: 'video/mp4' }), `UZ_${kind}.mp4`);
+  return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
+}
 const MOREM = { ru: '⚙️ <b>Ещё</b>', uz: '⚙️ <b>Yana</b>', tr: '⚙️ <b>Daha fazla</b>' };
 function moreMenu(env, chat, lang, rid) {
   const R = RKL[lang] || RKL.ru, a = k => ({ text: R[k], callback_data: `MA:${lang}:${k}` });
@@ -800,6 +830,7 @@ function replyKb(env, lang, id) {
   // two buttons a row, the everyday ones on top; the rare ones live in «⚙️ More» (the old labels still work)
   return { keyboard: [
     [b(X.now), b(X.hourly)],
+    ...(id === 'UZ' ? [[b(X.dyn)]] : []),  // weather against last year (LFL): one wide button, the people who plan by it look for it first
     [...(TRJ.has(id) ? [b(X.rain)] : [b(X.video)]), b(X.days)],
     [...(ADM.has(id) ? [b(X.regions)] : []), b(X.air)],
     ...(id === 'UZ' ? [[b(X.outlook), b(X.mtn)]] : []),
@@ -1383,6 +1414,7 @@ async function handle(up, env) {
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
   if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
   if (kind === 'MV' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);
+  if (kind === 'DV') return sendDynVideo(env, chat.id, lang, id === 'weeks' ? 'weeks' : 'month');
   if (kind === 'SV' && TRJ.has(id)) return sendSat(env, chat.id, lang, id, 'clouds');  // one video: clouds and rain together (old "rain" buttons get it too)
   if (kind === 'AV' && TRJ.has(id)) {  // how much rain and snow falls (prob/moisture.py accum_video)
     const X = TJX[lang] || TJX.ru, url = `${base(env)}/prob/hr/${id}_accum_${lang === 'tr' ? 'ru' : lang}.mp4`;
@@ -1619,6 +1651,7 @@ async function privateMsg(msg, env) {
     if (act === 'reset') return cbk(`RS:${lang}`);
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
     if (act === 'outlook') return sendOutlook(env, chat.id, lang);
+    if (act === 'dyn') return sendDyn(env, chat.id, lang);
     if (act === 'mtn') return sendMountains(env, chat.id, lang);
     if (act === 'regions') return sendRegions(env, chat.id, lang, ADM.has(rid) ? rid : 'UZ');
     if (act === 'air') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'typing' }); return sendAir(env, chat.id, lang, rid); }
