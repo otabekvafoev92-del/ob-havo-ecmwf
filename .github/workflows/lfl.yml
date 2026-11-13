@@ -15,10 +15,11 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: |
-          sudo apt-get install -y -qq ffmpeg >/dev/null; pip install -q requests numpy matplotlib
+          sudo apt-get install -y -qq ffmpeg >/dev/null; pip install -q requests numpy matplotlib openpyxl
           python tools/lfl.py lfl
           # the videos for the bot: Uzbekistan, by weeks since 1 January and this month by days
           for L in ru uz; do for M in weeks month; do python -W ignore tools/lfl_video.py lfl/lfl.json lfl/UZ_${M}_${L}.mp4 $L $M; done; done
+          python -W ignore tools/lfl_xlsx.py lfl/lfl.json 'lfl/UZ_lfl_{lang}.xlsx' ru,uz  # the Excel report (business mode)
           cd lfl && git init -q && git checkout -q -b lfl && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "lfl $(date -u +%F)"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" lfl

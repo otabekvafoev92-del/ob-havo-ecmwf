@@ -506,8 +506,8 @@ const NX_ = {
   ru: { btn: '⏰ Присылать автоматически', ask: '⏰ Во сколько присылать «{s}»? Время — по Ташкенту.', weekly: ' (по понедельникам)', off: '🔕 Не присылать', on: '✅ «{s}» будет приходить каждый день в {h}.', onW: '✅ «{s}» будет приходить по понедельникам в {h}.', offT: '🔕 «{s}» больше не присылаю.', list: '⏰ <b>Мои уведомления</b>', none: 'Пока ничего не приходит автоматически. Нажмите раздел ниже и выберите время:', at: 'в', edit: 'Нажмите раздел, чтобы поменять время или выключить:', daily: '🔔 Прогноз каждое утро — включается кнопкой «🔔 Прогноз каждое утро»' },
   uz: { btn: '⏰ Avtomatik yuborish', ask: '⏰ «{s}» soat nechada kelsin? Vaqt — Toshkent bo‘yicha.', weekly: ' (dushanba kunlari)', off: '🔕 Yubormaslik', on: '✅ «{s}» har kuni soat {h} da keladi.', onW: '✅ «{s}» har dushanba soat {h} da keladi.', offT: '🔕 «{s}» endi yuborilmaydi.', list: '⏰ <b>Bildirishnomalarim</b>', none: 'Hozircha hech narsa avtomatik kelmaydi. Quyidagi bo‘limni bosing va vaqtni tanlang:', at: 'soat', edit: 'Vaqtni o‘zgartirish yoki o‘chirish uchun bo‘limni bosing:', daily: '🔔 Har tongi prognoz — «🔔 Har tongi prognoz» tugmasi bilan yoqiladi' },
   tr: { btn: '⏰ Otomatik gönder', ask: '⏰ «{s}» saat kaçta gelsin? Saat — Taşkent saati.', weekly: ' (pazartesi günleri)', off: '🔕 Gönderme', on: '✅ «{s}» her gün saat {h} gelecek.', onW: '✅ «{s}» her pazartesi saat {h} gelecek.', offT: '🔕 «{s}» artık gönderilmeyecek.', list: '⏰ <b>Bildirimlerim</b>', none: 'Şu anda otomatik bir şey gelmiyor. Aşağıdan bölüm seçip saati belirleyin:', at: 'saat', edit: 'Saati değiştirmek veya kapatmak için bölüme dokunun:', daily: '🔔 Her sabah tahmin — «🔔 Her sabah tahmin» düğmesiyle açılır' } };
-const NSEC = ['brief', 'hourly', 'outlook', 'mtn', 'air', 'traj'];  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
-const NWEEKLY = { outlook: true };                   // the weeks and months change slowly: once a week is enough
+const NSEC = ['brief', 'dyn', 'hourly', 'outlook', 'mtn', 'air', 'traj'];  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
+const NWEEKLY = { outlook: true, dyn: true };  // «📊 against last year» on Mondays: the summary and the Excel report                   // the weeks and months change slowly: once a week is enough
 const secName = (sec, lang) => ((RKL[lang] || RKL.ru)[sec] || sec).replace(/^\S+\s/, '');
 const notifBtn = (lang, sec) => ({ text: (NX_[lang] || NX_.ru).btn, callback_data: `NS:${lang}:${sec}` });
 async function notifGet(env, chat, sec) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM notif WHERE chat_id = ?1 AND sec = ?2').bind(chat, sec).first(); }
@@ -546,7 +546,7 @@ async function groupNotif(env, chat, lang, msgId, note) {
   if (!env.DB) return; await db(env);
   const G = GNX[lang] || GNX.ru, s0 = await sub(env, chat), regs = regionsOf(s0), uz = !regs.length || regs.includes('UZ');
   const rows = (await env.DB.prepare('SELECT * FROM notif WHERE chat_id = ?1').bind(chat).all()).results, by = Object.fromEntries(rows.map(r => [r.sec, r]));
-  const snow = await mtnSub(env, chat), secs = NSEC.filter(x => uz || !['outlook', 'mtn'].includes(x));  // weeks/months and the mountains are about Uzbekistan
+  const snow = await mtnSub(env, chat), secs = NSEC.filter(x => uz || !['outlook', 'mtn', 'dyn'].includes(x));  // weeks/months and the mountains are about Uzbekistan
   const text = [...(note ? [note, ''] : []), G.head, '', G.main.replace('{h}', hh(s0 && s0.post_hour != null ? s0.post_hour : POST_HOUR)).replace('{c}', (regs.length ? regs : ['UZ']).map(r => `${FLAG[r] || ''} ${NAMES[r] ? NAMES[r][lang] : r}`).join(', ')), '', G.tip].join('\n');
   const kb = [...secs.map(sec => [{ text: `${by[sec] ? '✅' : '➕'} ${(RKL[lang] || RKL.ru)[sec]}${by[sec] ? ` · ${hh(by[sec].hour)}` : ''}`, callback_data: `NS:${lang}:${sec}` }]),
     ...(uz ? [[{ text: `${snow ? '✅' : '➕'} ${G.snow}`, callback_data: `WS:${lang}` }]] : []),
@@ -559,7 +559,7 @@ async function groupAll(env, chat, lang, on) {  // every section at the group's 
   const s0 = await sub(env, chat), h = s0 && s0.post_hour != null ? s0.post_hour : POST_HOUR, regs = regionsOf(s0), uz = !regs.length || regs.includes('UZ');
   if (!on) { await env.DB.prepare('DELETE FROM notif WHERE chat_id = ?1').bind(chat).run(); await env.DB.prepare('DELETE FROM mtn WHERE chat_id = ?1').bind(chat).run(); return; }
   const last = h <= new Date(Date.now() + TZ * 3600e3).getUTCHours() ? todayTZ() : '';
-  for (const sec of NSEC.filter(x => uz || !['outlook', 'mtn'].includes(x)))
+  for (const sec of NSEC.filter(x => uz || !['outlook', 'mtn', 'dyn'].includes(x)))
     await env.DB.prepare('INSERT INTO notif (chat_id, sec, hour, lang, region, last_day, added) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(chat_id, sec) DO UPDATE SET hour = ?3, lang = ?4, region = ?5')
       .bind(chat, sec, h, lang, regs[0] || 'UZ', last, new Date().toISOString()).run();
   if (uz) await env.DB.prepare('INSERT OR REPLACE INTO mtn (chat_id, lang, ver, added) VALUES (?1, ?2, ?3, ?4)').bind(chat, lang, (await kv(env, 'mtn_ver')) || '', new Date().toISOString()).run();
@@ -585,6 +585,7 @@ async function notifTick(env, small = false) {
     let r = null;
     try {
       if (n.sec === 'brief') r = await sendBrief(env, n.chat_id, lang, rid);
+      else if (n.sec === 'dyn') { r = await sendDyn(env, n.chat_id, lang); await sendDynXlsx(env, n.chat_id, lang); }
       else if (n.sec === 'hourly') r = await sendHourly(env, n.chat_id, lang, rid);
       else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
       else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
@@ -838,10 +839,10 @@ const lflRaw = (f, ref) => `https://raw.githubusercontent.com/otabekvafoev92-del
 async function lflRef(env) { const r = await ghApi(env, 'commits/lfl').then(x => x.ok ? x.json() : null).catch(() => null); return r && r.sha ? r.sha : 'lfl'; }
 const DYN = {
   ru: { h: '📊 <b>Погода против прошлого года</b> · Узбекистан (среднее по 14 центрам регионов), LFL — те же дни недели год назад', m: 'Этот месяц', w: 'С начала года',
-    open: '📈 Интерактивно: регион, район, координаты', vw: '🎬 Видео: по неделям с начала года', vm: '🎬 Видео: этот месяц по дням', none: 'Данные готовятся, попробуйте через несколько минут.',
+    xl: '📥 Excel-отчёт: регионы и 199 районов', xlc: '📊 Погода против прошлого года · Excel: сводка, недели, районы (8 недель + прогноз), этот месяц по дням', open: '📈 Интерактивно: регион, район, координаты', vw: '🎬 Видео: по неделям с начала года', vm: '🎬 Видео: этот месяц по дням', none: 'Данные готовятся, попробуйте через несколько минут.',
     note: 'Данные: ERA5 и прогноз ECMWF (модель, не метеостанции).' },
   uz: { h: '📊 <b>Ob-havo o‘tgan yilga nisbatan</b> · O‘zbekiston (14 viloyat markazi o‘rtachasi), LFL — o‘tgan yilning shu hafta kunlari', m: 'Shu oy', w: 'Yil boshidan',
-    open: '📈 Interaktiv: viloyat, tuman, koordinata', vw: '🎬 Video: yil boshidan haftalar', vm: '🎬 Video: shu oy kunlar bo‘yicha', none: 'Ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.',
+    xl: '📥 Excel-hisobot: viloyatlar va 199 tuman', xlc: '📊 Ob-havo o‘tgan yilga nisbatan · Excel: xulosa, haftalar, tumanlar (8 hafta + prognoz), shu oy kunlar bo‘yicha', open: '📈 Interaktiv: viloyat, tuman, koordinata', vw: '🎬 Video: yil boshidan haftalar', vm: '🎬 Video: shu oy kunlar bo‘yicha', none: 'Ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.',
     note: 'Ma’lumot: ERA5 va ECMWF prognozi (model, meteostansiya emas).' } };
 async function sendDyn(env, chat, lang) {
   const L = lang === 'uz' ? 'uz' : 'ru', X = DYN[L], ref = await lflRef(env);
@@ -850,7 +851,16 @@ async function sendDyn(env, chat, lang) {
   const block = (t, o, n) => o ? `\n\n<b>${t}</b>\n` + o.lines.slice(0, n).map(x => '• ' + esc(x)).join('\n') : '';
   const text = w || m ? X.h + block(X.m, m, 4) + block(X.w, w, 5) + `\n\n<i>${X.note}</i>` : `${X.h}\n\n${X.none}`;
   return tg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
-    [{ text: X.open, web_app: { url: site(env, `lfl.html?lang=${L}`) } }], [{ text: X.vm, callback_data: `DV:${L}:month` }], [{ text: X.vw, callback_data: `DV:${L}:weeks` }]] } });
+    [{ text: X.open, web_app: { url: site(env, `lfl.html?lang=${L}`) } }], [{ text: X.vm, callback_data: `DV:${L}:month` }], [{ text: X.vw, callback_data: `DV:${L}:weeks` }], [{ text: X.xl, callback_data: `DV:${L}:xlsx` }]] } });
+}
+async function sendDynXlsx(env, chat, lang) {  // the Excel report (made with the videos, 3 times a day)
+  const L = lang === 'uz' ? 'uz' : 'ru', X = DYN[L], ref = await lflRef(env);
+  const f = await fetch(lflRaw(`UZ_lfl_${L}.xlsx`, ref)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+  if (!f) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_document' });
+  const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', X.xlc);
+  fd.append('document', new Blob([f], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${L === 'uz' ? 'ob-havo_otgan_yil' : 'pogoda_vs_proshlyi_god'}_${todayTZ()}.xlsx`);
+  return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
 }
 async function sendDynVideo(env, chat, lang, kind) {
   const L = lang === 'uz' ? 'uz' : 'ru', X = DYN[L], ref = await lflRef(env);
@@ -1460,7 +1470,7 @@ async function handle(up, env) {
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
   if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
   if (kind === 'MV' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);
-  if (kind === 'DV') return sendDynVideo(env, chat.id, lang, id === 'weeks' ? 'weeks' : 'month');
+  if (kind === 'DV') return id === 'xlsx' ? sendDynXlsx(env, chat.id, lang) : sendDynVideo(env, chat.id, lang, id === 'weeks' ? 'weeks' : 'month');
   if (kind === 'SV' && TRJ.has(id)) return sendSat(env, chat.id, lang, id, 'clouds');  // one video: clouds and rain together (old "rain" buttons get it too)
   if (kind === 'AV' && TRJ.has(id)) {  // how much rain and snow falls (prob/moisture.py accum_video)
     const X = TJX[lang] || TJX.ru, url = `${base(env)}/prob/hr/${id}_accum_${lang === 'tr' ? 'ru' : lang}.mp4`;
