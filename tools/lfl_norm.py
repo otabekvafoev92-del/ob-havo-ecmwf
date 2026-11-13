@@ -31,7 +31,7 @@ def get(p):
 out = {'period': '1991-2020', 'source': 'ERA5 (Open-Meteo archive)', 'places': {}}
 for p in P:
     d = get(p); doy = np.array([int(t[5:7]) * 100 + int(t[8:10]) for t in d['time']])
-    days = sorted(set(doy)); idx = {x: i for i, x in enumerate(days)}  # 366 month-day keys, 29 Feb included
+    days = sorted(int(x) for x in set(doy.tolist())); idx = {x: i for i, x in enumerate(days)}  # 366 month-day keys, 29 Feb included
     rec = {}
     for k, v in zip(K, V):
         x = np.array([np.nan if y is None else y for y in d[v]], float); m = np.full(len(days), np.nan)
