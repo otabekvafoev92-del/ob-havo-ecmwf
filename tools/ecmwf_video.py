@@ -199,7 +199,7 @@ def main():
                     fig.patches.append(Circle((0.07, y0 - 0.112), 0.012, transform=fig.transFigure, fc='none', ec='#2f7fd1', lw=4))
                     fig.text(0.1, y0 - 0.1, X['obs_ring'], fontsize=18, color=MUTED, va='top')
                 # towns panel: now (this frame) for the 8 biggest towns
-                y1 = y0 - 0.15; fig.text(0.05, y1, X['town'], fontsize=24, color=INK, fontweight='bold', va='center')
+                y1 = y0 - 0.135; fig.text(0.05, y1, X['town'], fontsize=24, color=INK, fontweight='bold', va='center')
                 vals = []
                 for tw in TOWNS[:8]:
                     if mode == 'obs':
@@ -209,7 +209,7 @@ def main():
                     elif mode == 'fc': vals.append((tw, at(t2, tw[2], tw[3])))
                     else: vals.append((tw, tot.get(tw, 0)))
                 for i, (tw, v) in enumerate(vals):
-                    cx = 0.05 + (i % 2) * 0.46; cy = y1 - 0.045 - (i // 2) * 0.045
+                    cx = 0.05 + (i % 2) * 0.46; cy = y1 - 0.042 - (i // 2) * 0.039
                     fig.text(cx, cy, tw[0 if lang == 'ru' else 1], fontsize=24, color=INK, va='center')
                     fig.text(cx + 0.4, cy, '—' if v is None else (f"{v:.0f} мм" if lang == 'ru' else f"{v:.0f} mm") if mode == 'total' else f"{v:+.0f}°", fontsize=26, color=INK, fontweight='bold', va='center', ha='right')
                 # what it means
