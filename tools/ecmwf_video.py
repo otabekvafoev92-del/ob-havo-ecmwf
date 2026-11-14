@@ -201,6 +201,15 @@ def main():
                 if GA:
                     ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#ffffff', linewidths=3.2, alpha=0.55, zorder=3))
                     ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#55657a', linewidths=1.3, zorder=3.1))
+                # axes: a grid of latitude and longitude every 2°, the degrees along the left and the bottom edge
+                for g in range(56, 74, 2): ax.axvline(g, color='#2b3a4e', lw=0.7, alpha=0.28, ls=(0, (4, 4)), zorder=3.2)
+                for g in range(37, 46, 1 if False else 2): ax.axhline(g, color='#2b3a4e', lw=0.7, alpha=0.28, ls=(0, (4, 4)), zorder=3.2)
+                for g in range(58, 74, 2):
+                    ax.text(g, V[2] + 0.08, f"{g}°{'в.д.' if lang == 'ru' else 'E'}", ha='center', va='bottom', fontsize=13, color='#2b3a4e', zorder=6.5,
+                            bbox=dict(boxstyle='round,pad=0.15', fc='#ffffffcc', ec='none'))
+                for g in range(39, 46, 2):
+                    ax.text(V[0] + 0.08, g, f"{g}°{'с.ш.' if lang == 'ru' else 'N'}", ha='left', va='center', fontsize=13, color='#2b3a4e', zorder=6.5,
+                            bbox=dict(boxstyle='round,pad=0.15', fc='#ffffffcc', ec='none'))
                 # values: the stations (fact) or the towns (forecast)
                 pts = []
                 if mode == 'obs':
@@ -255,9 +264,9 @@ def main():
             per = [fr['d'] for fr in frames]
             lst = fd / 'list.txt'; lst.write_text(''.join(f"file '{i:03d}.png'\nduration {d}\n" for i, d in enumerate(per)) + f"file '{len(per) - 1:03d}.png'\n")
             out = OUT / f'{kind}_{lang}.mp4'; tmp = OUT / f'.{kind}_{lang}.part.mp4'
-            subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-vf',
+            subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a', '-vf',
                             'framerate=fps=30:interp_start=0:interp_end=255:scene=100,format=yuv420p', '-c:v', 'libx264', '-crf', '18', '-preset', 'veryfast',
-                            '-movflags', '+faststart', str(tmp)], check=True)
+                            '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(tmp)], check=True)
             tmp.replace(out); shutil.rmtree(fd); print(out, out.stat().st_size // 1024, 'KB', flush=True)
         meta[kind] = {'until': fts[-1].strftime('%Y-%m-%dT%HZ') if fts else None, 'wettest': [wet[0][0], round(wet[1], 1)]}
     json.dump(meta, open(OUT / 'meta.json', 'w'), ensure_ascii=False)

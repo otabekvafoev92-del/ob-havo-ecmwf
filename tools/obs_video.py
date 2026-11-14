@@ -209,9 +209,9 @@ def main():
             fig.text(0.012, 0.012, X['src'], fontsize=10, color='#6b7a8c')
             fig.savefig(fd / f'{n_:03d}.png', facecolor='#ffffff'); plt.close(fig)
         mp4 = OUT / f'obs_{lang}.mp4'; tmp = OUT / f'.obs_{lang}.part.mp4'
-        subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '1.2', '-i', str(fd / '%03d.png'), '-vf',
+        subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '1.2', '-i', str(fd / '%03d.png'), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a', '-vf',
                         'tpad=stop_mode=clone:stop_duration=1.5,framerate=fps=30:interp_start=0:interp_end=255:scene=100,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p',
-                        '-c:v', 'libx264', '-crf', '20', '-preset', 'veryfast', '-movflags', '+faststart', str(tmp)], check=True)
+                        '-c:v', 'libx264', '-crf', '20', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(tmp)], check=True)
         tmp.replace(mp4); shutil.rmtree(fd); print(mp4, mp4.stat().st_size // 1024, 'KB', flush=True)
 
 
