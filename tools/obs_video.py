@@ -11,8 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import font_manager as fm
 from PIL import Image
 
-OUT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'obs'); OUT.mkdir(parents=True, exist_ok=True)
-LANGS = (sys.argv[2] if len(sys.argv) > 2 else 'ru,uz').split(',')
+OUT, LANGS = None, None  # set when run as a script (the module is also imported for its station tools)
 HERE = pathlib.Path(__file__).resolve().parent.parent / 'prob'
 V = (55.8, 73.4, 36.4, 46.4)  # Uzbekistan (the map part keeps the true proportions)
 W, H = 1920, 1080
@@ -217,4 +216,6 @@ def main():
 
 
 if __name__ == '__main__':
+    OUT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'obs'); OUT.mkdir(parents=True, exist_ok=True)
+    LANGS = (sys.argv[2] if len(sys.argv) > 2 else 'ru,uz').split(',')
     main()

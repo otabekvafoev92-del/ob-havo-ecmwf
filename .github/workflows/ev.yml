@@ -1,0 +1,23 @@
+name: Phone videos (stations 6 h + ECMWF 12 h / 3 days)
+# vertical videos for the bot (tools/ecmwf_video.py): what the stations reported over the last 6 hours, then the ECMWF forecast for 12 hours and 3 days; kept on the "ev" branch
+on:
+  schedule:
+    - cron: '58 0,3,6,9,12,15,18,21 * * *'
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: ev, cancel-in-progress: false}
+jobs:
+  v:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          sudo apt-get install -y -qq ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          pip install -q requests numpy scipy matplotlib pillow eccodes metpy
+          python -W ignore tools/ecmwf_video.py ev ru,uz
+          cd ev && git init -q && git checkout -q -b ev && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "ev $(date -u +%F' '%H:%M)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ev
