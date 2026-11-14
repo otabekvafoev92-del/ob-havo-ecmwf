@@ -19,9 +19,9 @@ K = ['tx', 'tn', 'tm', 'pr', 'sn', 'gu']
 S = requests.Session()
 
 
-def call(url, **q):
+def call(url, extra=(), **q):
     q.setdefault('wind_speed_unit', 'ms')
-    q.update(latitude=','.join(str(p[3]) for p in P), longitude=','.join(str(p[4]) for p in P), daily=','.join(V), timezone='auto')
+    q.update(latitude=','.join(str(p[3]) for p in P), longitude=','.join(str(p[4]) for p in P), daily=','.join(V + list(extra)), timezone='auto')
     for k in range(6):
         try: r = S.get(url, params=q, timeout=180)
         except requests.RequestException as e: print('retry', url, e, flush=True); time.sleep(20 * (k + 1)); continue  # a timeout now and then
@@ -39,13 +39,14 @@ except Exception: pass
 def main():
     today = dt.date.today(); y0 = dt.date(today.year - 1, 1, 1)
     arc = call('https://archive-api.open-meteo.com/v1/archive', start_date=y0.isoformat(), end_date=(today - dt.timedelta(days=2)).isoformat())
-    try: fc = call('https://api.open-meteo.com/v1/forecast', past_days=14, forecast_days=16, models='ecmwf_ifs025')
+    PP = ['precipitation_probability_max']  # the forecast's chance of rain (ECMWF ensemble), for the weekend outlook
+    try: fc = call('https://api.open-meteo.com/v1/forecast', PP, past_days=14, forecast_days=16, models='ecmwf_ifs025')
     except Exception as e:
-        print('ecmwf model failed, best match', e, flush=True); fc = call('https://api.open-meteo.com/v1/forecast', past_days=14, forecast_days=16)
+        print('ecmwf model failed, best match', e, flush=True); fc = call('https://api.open-meteo.com/v1/forecast', PP, past_days=14, forecast_days=16)
     days = [(y0 + dt.timedelta(days=i)).isoformat() for i in range((today - y0).days + 16)]
     out = {'made': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'start': y0.isoformat(), 'today': today.isoformat(), 'places': []}
     for p, a, f in zip(P, arc, fc):
-        ser = {k: [None] * len(days) for k in K}; src = [None] * len(days)
+        ser = {k: [None] * len(days) for k in K + ['pp']}; src = [None] * len(days)
         for blk, tag in ((a, 'a'), (f, 'f')):  # the archive first; the model fills the days the archive does not have yet (and the forecast)
             d = blk['daily']
             for i, day in enumerate(d['time']):
@@ -53,8 +54,8 @@ def main():
                 if not 0 <= j < len(days): continue
                 if tag == 'f' and src[j] == 'a' and d[V[0]][i] is not None and ser['tx'][j] is not None: continue
                 if d[V[0]][i] is None: continue
-                for k, v in zip(K, V):
-                    x = d[v][i]; ser[k][j] = None if x is None else round(x, 1)
+                for k, v in zip(K + ['pp'], V + PP):
+                    x = d.get(v, [None] * (i + 1))[i]; ser[k][j] = None if x is None else round(x, 1)
                 src[j] = tag
         rec = {'id': p[0], 'ru': p[1], 'uz': p[2], 'iso': p[5], 'tz': a.get('timezone'), **ser}
         if p[0] in NORM:  # the climate norm 1991–2020 of each day (tools/lfl_norm.py)

@@ -144,7 +144,13 @@ def main():
     dscale(w2, f"C2:{get_column_letter(2 + len(allp))}{1 + len(mons)}"); w2.freeze_panes = 'C2'
     # districts
     try:
-        if 'v' not in _DS: _DS['v'] = districts(s, today)  # fetched once for both languages
+        if 'v' not in _DS:
+            _DS['v'] = districts(s, today)  # fetched once for both languages
+            Dv, a0 = _DS['v']; wkn = lambda arr, k: float(np.nanmean(arr[7 * k:7 * k + 7])); wks = lambda arr, k: float(np.nansum(arr[7 * k:7 * k + 7]))
+            json.dump({'weeks': [(a0 + dt.timedelta(weeks=k)).isoformat() for k in range(10)], 'today': today.isoformat(),  # for the PDF report (tools/lfl_pdf.py)
+                       'd': [{'r': r_, 'n': n_, 'dt': [None if np.isnan(wkn(t, k) - wkn(lt, k)) else round(wkn(t, k) - wkn(lt, k), 1) for k in range(10)],
+                              'p': [round(wks(p_, k), 1) for k in range(10)], 'q': [round(wks(lp, k), 1) for k in range(10)]} for r_, n_, t, p_, lt, lp in Dv]},
+                      open(pathlib.Path(OUTP).parent / 'districts.json', 'w'), ensure_ascii=False, separators=(',', ':'))
         DS, a = _DS['v']; DS = [(r_[LANG], n_[LANG], *rest) for r_, n_, *rest in DS]; w3 = wb.create_sheet(X['ds'])
         wk = [(a + dt.timedelta(weeks=k)) for k in range(10)]
         header(w3, 1, [X['reg'], X['dist']] + [f"{w.strftime('%d.%m')}\n{X['d']}" + (f"\n{X['fcs']}" if w + dt.timedelta(days=6) >= today else '') for w in wk] + [f"{w.strftime('%d.%m')}\n{X['p']}" for w in wk], [24, 24] + [10] * 20)
