@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Osmon — инструкция по инфраструктуре</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+:root { --navy:#1f2d3d; --ink:#1f2d3d; --muted:#6b7a8c; --line:#dde3ea; --soft:#f5f7f9; --acc:#f08a24; --blue:#2f6fd0; --warn:#fff6e8; --warnb:#f3d9bd; --ok:#e9f6ee; --okb:#bfe3cc; }
+* { box-sizing: border-box; }
+body { font-family: 'Inter', 'DejaVu Sans', sans-serif; color: var(--ink); font-size: 10.2pt; line-height: 1.5; margin: 0; }
+h1 { font-size: 30pt; margin: 0 0 6px; letter-spacing: -0.5px; }
+h2 { font-size: 16pt; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--navy); page-break-after: avoid; }
+h2 .n { display: inline-block; background: var(--navy); color: #fff; border-radius: 6px; padding: 0 8px; margin-right: 8px; font-size: 13pt; }
+h3 { font-size: 11.5pt; margin: 14px 0 6px; page-break-after: avoid; }
+p { margin: 0 0 8px; }
+section { page-break-before: always; }
+.cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; background: var(--navy); color: #fff; margin: -16mm -15mm 0; padding: 22mm 18mm; border-left: 8px solid var(--acc); }
+.cover .brand { font-size: 13pt; color: #9fb0c4; letter-spacing: 3px; font-weight: 700; }
+.cover .sub { font-size: 13pt; color: #c9d3df; max-width: 140mm; }
+.cover .meta { color: #9fb0c4; font-size: 10pt; }
+.toc { columns: 2; column-gap: 12mm; font-size: 10.5pt; color: #dfe6ee; }
+.toc div { margin: 0 0 5px; }
+.toc b { color: var(--acc); display: inline-block; width: 22px; }
+ol.steps { counter-reset: s; list-style: none; padding: 0; margin: 6px 0 10px; }
+ol.steps > li { counter-increment: s; position: relative; padding: 6px 0 6px 34px; border-bottom: 1px solid #eef1f4; page-break-inside: avoid; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--blue); color: #fff; font-weight: 700; font-size: 9pt; text-align: center; line-height: 22px; }
+.btn { display: inline-block; border: 1px solid #c9d1da; border-radius: 5px; padding: 0 6px; background: #fff; font-weight: 600; font-size: 9pt; white-space: nowrap; }
+code, .code { font-family: 'DejaVu Sans Mono', monospace; font-size: 8.4pt; }
+code { background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+pre { background: #10171f; color: #e6edf3; border-radius: 8px; padding: 10px 12px; font-size: 8.2pt; line-height: 1.45; white-space: pre-wrap; word-break: break-all; margin: 6px 0 10px; page-break-inside: avoid; }
+.box { border-radius: 8px; padding: 9px 12px; margin: 8px 0 12px; page-break-inside: avoid; }
+.warn { background: var(--warn); border: 1px solid var(--warnb); }
+.ok { background: var(--ok); border: 1px solid var(--okb); }
+.info { background: #eef4fd; border: 1px solid #c8daf6; }
+.box b.t { display: block; margin-bottom: 3px; }
+table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 9.2pt; page-break-inside: avoid; }
+th { background: var(--navy); color: #fff; text-align: left; padding: 6px 8px; font-weight: 600; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:nth-child(even) td { background: var(--soft); }
+.map { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0 12px; }
+.map div { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: var(--soft); font-size: 9pt; }
+.map div b { display: block; font-size: 10pt; margin-bottom: 2px; }
+.map .hl { border-color: var(--acc); background: #fff8f0; }
+.check li { list-style: none; margin-left: -20px; padding: 3px 0; }
+.check li::before { content: '☐  '; color: var(--blue); }
+.muted { color: var(--muted); }
+.small { font-size: 8.8pt; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div>
+    <div class="brand">OSMON · WEATHER INTELLIGENCE</div>
+    <h1 style="margin-top:40mm">Инструкция по&nbsp;инфраструктуре</h1>
+    <div class="sub">Как устроены бот, сайт, видео и отчёты Osmon — и как самому создать сервер, подключить домен, обновить бота и найти ошибку.</div>
+  </div>
+  <div>
+    <div class="toc">
+      <div><b>1</b>Как всё устроено</div>
+      <div><b>2</b>Что работает само и когда</div>
+      <div><b>3</b>Сервер Hetzner</div>
+      <div><b>4</b>Подключить сервер к GitHub</div>
+      <div><b>5</b>Домен для сайта</div>
+      <div><b>6</b>Автозаливка бота (токен Cloudflare)</div>
+      <div><b>7</b>Залить бота вручную и откатить</div>
+      <div><b>8</b>Где смотреть ошибки</div>
+      <div><b>9</b>Расходы</div>
+      <div><b>10</b>Безопасность</div>
+      <div><b>11</b>Контрольный список</div>
+    </div>
+    <p class="meta" style="margin-top:14mm">Версия от 14.11.2026 · бот @ObHavo_ECMWF_bot · репозиторий github.com/otabekvafoev92-del/ob-havo-ecmwf</p>
+  </div>
+</div>
+
+<section>
+<h2><span class="n">1</span>Как всё устроено</h2>
+<p>Osmon состоит из нескольких частей. Каждая живёт в своём месте; все они собираются из одного репозитория на GitHub.</p>
+<div class="map">
+  <div class="hl"><b>GitHub — репозиторий</b>Весь код: бот, сайт, сборки прогнозов, видео и отчётов. github.com/otabekvafoev92-del/ob-havo-ecmwf</div>
+  <div><b>GitHub Actions — «сборщик»</b>Скачивает данные ECMWF, рисует карты, видео и отчёты по расписанию. Позже — на вашем сервере Hetzner.</div>
+  <div><b>GitHub Pages — сайт</b>Карты, мини-приложение бота, страница «Погода против прошлого года». Позже — свой домен.</div>
+  <div class="hl"><b>Cloudflare Worker «osmon-bot»</b>Сам Telegram-бот: меню, уведомления, брифинг, ИИ-помощник.</div>
+  <div><b>Cloudflare D1 «osmon»</b>База пользователей бота: язык, регион, место, уведомления.</div>
+  <div><b>Cloudflare Workers AI</b>Умный помощник: понимает вопрос словами и пишет ответ по нашим данным.</div>
+  <div><b>Ветка «sat»</b>Видео со спутника (обновляются каждые ~30 минут).</div>
+  <div><b>Ветка «lfl»</b>Динамика к прошлому году: данные, видео, PDF и Excel (3 раза в день).</div>
+  <div><b>Источники данных</b>ECMWF (прогнозы), ERA5/Copernicus (архив, норма), EUMETSAT (спутник), Open-Meteo (доступ к данным).</div>
+</div>
+<table>
+  <tr><th style="width:32%">Что</th><th>Где найти</th></tr>
+  <tr><td>Код и сборки</td><td>github.com/otabekvafoev92-del/ob-havo-ecmwf → вкладка <span class="btn">Actions</span></td></tr>
+  <tr><td>Сайт</td><td>otabekvafoev92-del.github.io/ob-havo-ecmwf (после покупки домена — osmon.ai)</td></tr>
+  <tr><td>Бот</td><td>dash.cloudflare.com → <span class="btn">Workers &amp; Pages</span> → <span class="btn">osmon-bot</span></td></tr>
+  <tr><td>База пользователей</td><td>dash.cloudflare.com → <span class="btn">Storage &amp; Databases</span> → <span class="btn">D1</span> → <span class="btn">osmon</span></td></tr>
+  <tr><td>Сервер</td><td>console.hetzner.com → проект <span class="btn">Osmon</span> → сервер <span class="btn">osmon-1</span></td></tr>
+</table>
+<div class="box info"><b class="t">Главное правило</b>Код меняется только в репозитории GitHub. Сайт и сборки подхватывают изменения сами; бот — сам после настройки раздела 6 (или вручную, раздел 7).</div>
+
+<h2 style="margin-top:14px"><span class="n">2</span>Что работает само и когда</h2>
+<p class="small muted">Зелёная галочка ✓ у запуска в Actions — всё хорошо, красный крестик ✗ — ошибка (раздел 8).</p>
+<table>
+  <tr><th style="width:30%">Процесс</th><th style="width:30%">Когда (Ташкент)</th><th>Где проверить</th></tr>
+  <tr><td>Прогнозы, карты, видео «Откуда придут осадки»</td><td>после каждого нового расчёта ECMWF (2–4 раза в сутки)</td><td>Actions → <span class="btn">Update forecast</span></td></tr>
+  <tr><td>Спутник: тучи и осадки</td><td>каждые ~30 минут</td><td>Actions → <span class="btn">Satellite videos</span></td></tr>
+  <tr><td>Динамика к прошлому году, PDF, Excel</td><td>05:23, 11:23, 17:23</td><td>Actions → <span class="btn">Weather vs last year</span></td></tr>
+  <tr><td>Утренний брифинг, «Откуда придут осадки»</td><td>07:00 (у кого включено)</td><td>бот сам; ошибки — раздел 8</td></tr>
+  <tr><td>Отчёт по понедельникам</td><td>понедельник, выбранный час</td><td>«⏰ Мои уведомления» в боте</td></tr>
+</table>
+</section>
+
+<section>
+<h2><span class="n">3</span>Сервер Hetzner</h2>
+<p>Свой сервер работает круглосуточно: данные и программы остаются на диске, видео и отчёты готовы через 15–30 минут после прихода данных, а не через 1–2 часа.</p>
+<h3>3.1 Аккаунт (один раз)</h3>
+<ol class="steps">
+  <li>Регистрация на <b>hetzner.com</b> → <span class="btn">Login</span> → <span class="btn">Register</span>. В форме данных выберите <b>«Индивидуальный»</b>, поле «ИНН» (VAT ID) оставьте пустым, почтовый индекс — ваш (массив Феруза: <b>100124</b>).</li>
+  <li><b>Проверка личности:</b> accounts.hetzner.com → <span class="btn">Verification</span> → фото паспорта (или ID-карты) и селфи. Ждать от нескольких минут до суток; придёт письмо.</li>
+  <li>Включите <b>2FA</b>: accounts.hetzner.com → <span class="btn">2FA settings</span> (приложение Google Authenticator или аналог).</li>
+</ol>
+<h3>3.2 Создать сервер</h3>
+<ol class="steps">
+  <li>console.hetzner.com → <span class="btn">New project</span> → имя <b>Osmon</b> → откройте проект.</li>
+  <li><span class="btn">Add Server</span> (или <span class="btn">Create resource</span> → <span class="btn">Servers</span>).</li>
+  <li><b>Location:</b> Falkenstein или Nuremberg (Германия); если нет — Helsinki.</li>
+  <li><b>Image:</b> Ubuntu 24.04.</li>
+  <li><b>Type:</b> Shared vCPU → <b>x86 (Intel/AMD)</b> → <b>Cost-Optimized</b>: <b>CX43</b> (8 ядер, 16 ГБ, ~€16/мес). Нет в наличии — <b>CX33</b> (4 ядра, 8 ГБ, ~€8.5). Нет серии CX — <b>CPX32</b>. Arm (CAX) не берите.</li>
+  <li><b>Networking:</b> оставьте <b>Public IPv4</b> и <b>IPv6</b> (IPv4 обязателен — GitHub работает только через него).</li>
+  <li><b>SSH keys</b> — можно пропустить (пароль root придёт на почту). Volumes, Firewalls, Backups — не трогать.</li>
+  <li><b>Cloud config</b> (поле «User data») — вставьте целиком текст ниже. Он сам поставит всё, что нужно сборкам.</li>
+  <li><b>Name:</b> <code>osmon-1</code> → <span class="btn">Create &amp; Buy now</span>. Через 1–2 минуты статус станет <b>Running</b>; подождите ещё ~5 минут, пока выполнится Cloud config.</li>
+</ol>
+<pre>#cloud-config
+package_update: true
+packages: [ffmpeg, fonts-inter, python3-pip, python3-venv, git, curl, jq, libeccodes0, libeccodes-tools, unzip]
+runcmd:
+  - useradd -m -s /bin/bash runner
+  - mkdir -p /home/runner/actions-runner /data &amp;&amp; chown runner:runner /data
+  - cd /home/runner/actions-runner &amp;&amp; curl -sSL -o r.tgz https://github.com/actions/runner/releases/download/v2.321.0/actions-runner-linux-x64-2.321.0.tar.gz &amp;&amp; tar xzf r.tgz &amp;&amp; rm r.tgz
+  - chown -R runner:runner /home/runner/actions-runner
+  - /home/runner/actions-runner/bin/installdependencies.sh</pre>
+<div class="box warn"><b class="t">Если CX43 / CX33 «Sold out»</b>Дешёвые серии CX/CAX у Hetzner после повышения цен в июне 2026 часто распроданы. Попробуйте другую локацию (Nuremberg ↔ Falkenstein ↔ Helsinki) или возьмите CPX32. Сервер всегда можно заменить позже.</div>
+</section>
+
+<section>
+<h2><span class="n">4</span>Подключить сервер к GitHub</h2>
+<p>После этого все сборки (прогнозы, видео, отчёты) будут выполняться на вашем сервере. Паролей сервера никому давать не нужно: сервер сам забирает задания у GitHub.</p>
+<ol class="steps">
+  <li>GitHub → репозиторий <b>ob-havo-ecmwf</b> → <span class="btn">Settings</span> → слева <span class="btn">Actions</span> → <span class="btn">Runners</span> → <span class="btn">New self-hosted runner</span>.</li>
+  <li>Выберите <b>Linux</b> и <b>x64</b>. В блоке <b>Configure</b> скопируйте строку, которая начинается с <code>./config.sh --url https://github.com/...</code> — в ней ваш временный ключ (действует ~1 час, никому не пересылайте).</li>
+  <li>Hetzner → проект Osmon → сервер <b>osmon-1</b> → значок <span class="btn">&gt;_</span> (<b>Console</b>) справа вверху. Войдите: логин <code>root</code>, пароль — из письма Hetzner (при первом входе попросит сменить).</li>
+  <li>В консоли выполните по очереди (после <code>./config.sh</code> вставьте скопированное из GitHub продолжение строки и добавьте в конец <code>--labels osmon --unattended</code>):
+<pre>su - runner
+cd actions-runner
+./config.sh --url https://github.com/otabekvafoev92-del/ob-havo-ecmwf --token ВАШ_КЛЮЧ_ИЗ_GITHUB --labels osmon --unattended
+exit
+cd /home/runner/actions-runner &amp;&amp; ./svc.sh install runner &amp;&amp; ./svc.sh start</pre></li>
+  <li>Вернитесь в GitHub → <span class="btn">Settings</span> → <span class="btn">Actions</span> → <span class="btn">Runners</span>: сервер <b>osmon-1</b> должен быть со статусом <b>Idle</b> (зелёный). Готово — напишите в чат, и сборки переключатся на сервер.</li>
+</ol>
+<div class="box info"><b class="t">Подсказка по консоли Hetzner</b>Вставка текста: правая кнопка мыши → Paste, либо кнопка «Paste» в панели консоли. Если вставка не работает — наберите команду вручную; ключ из GitHub проще вставить в строку целиком, скопировав её из GitHub полностью.</div>
+<div class="box ok"><b class="t">Если сервер нужно заменить или перезапустить</b>Перезапуск: Hetzner → сервер → <span class="btn">Power</span> → <span class="btn">Reboot</span> — раннер запустится сам. Новый сервер: повторите разделы 3.2 и 4 (в GitHub удалите старый раннер: Runners → … → Remove).</div>
+
+<h2 style="margin-top:18px"><span class="n">5</span>Домен для сайта</h2>
+<ol class="steps">
+  <li>dash.cloudflare.com → <span class="btn">Domains</span> → <span class="btn">Register</span> (Registrar). В поиске введите <b>osmon.ai</b> (свободен, $80 в год) и/или <b>osmonweather.com</b> ($11.17 в год).</li>
+  <li><span class="btn">Purchase</span> → заполните контакты → оплата картой. Включите <b>Auto-renew</b>, чтобы домен не пропал.</li>
+  <li>Подключение домена к сайту и почту/редиректы настроит Claude: напишите в чат, какой домен куплен.</li>
+</ol>
+<p class="small muted">Цены Cloudflare Registrar — по себестоимости, без наценки. Домен в зоне .uz покупается у узбекских регистраторов отдельно (по желанию).</p>
+</section>
+
+<section>
+<h2><span class="n">6</span>Автозаливка бота (токен Cloudflare)</h2>
+<p>После этого каждое изменение бота в GitHub само попадает в Telegram — без входа в Cloudflare.</p>
+<h3>6.1 Создать токен в Cloudflare</h3>
+<ol class="steps">
+  <li>Откройте <b>dash.cloudflare.com/profile/api-tokens</b> → <span class="btn">Create Token</span>.</li>
+  <li>Шаблон <b>Edit Cloudflare Workers</b> → <span class="btn">Use template</span>.</li>
+  <li>В блоке <b>Account policy</b> нажмите ✏️ → добавьте разрешение <b>Workers AI → Edit</b> (для умного помощника). Не нашли — пропустите.</li>
+  <li><b>Token expiration:</b> <b>No expiration</b> (иначе через 7 дней перестанет работать).</li>
+  <li><span class="btn">Continue to summary</span> → <span class="btn">Create Token</span> → <span class="btn">Copy</span>. Токен показывается <b>один раз</b>.</li>
+</ol>
+<h3>6.2 Сохранить токен в GitHub</h3>
+<ol class="steps">
+  <li>Откройте <b>github.com/otabekvafoev92-del/ob-havo-ecmwf/settings/secrets/actions</b> → <span class="btn">New repository secret</span>.</li>
+  <li><b>Name:</b> <code>CLOUDFLARE_API_TOKEN</code>, <b>Secret:</b> вставьте токен → <span class="btn">Add secret</span>.</li>
+  <li>Проверка: Actions → <span class="btn">Deploy bot</span> → <span class="btn">Run workflow</span>. Зелёная галочка — бот залит.</li>
+</ol>
+<div class="box warn"><b class="t">Никогда не пересылайте токен</b>Ни в чат, ни в Telegram, ни по почте. В GitHub он хранится скрыто; если токен утёк — удалите его в Cloudflare (API Tokens → Roll / Delete) и создайте новый.</div>
+
+<h2 style="margin-top:18px"><span class="n">7</span>Залить бота вручную и откатить</h2>
+<h3>7.1 Залить вручную (если автозаливка не настроена или сломалась)</h3>
+<ol class="steps">
+  <li>Откройте файл бота: <b>github.com/otabekvafoev92-del/ob-havo-ecmwf/blob/main/telegram/worker.js</b> → кнопка <span class="btn">Raw</span> → выделите всё (Ctrl+A) → скопируйте (Ctrl+C).</li>
+  <li>dash.cloudflare.com → <span class="btn">Workers &amp; Pages</span> → <span class="btn">osmon-bot</span> → <span class="btn">Edit code</span>.</li>
+  <li>В редакторе слева откройте <b>worker.js</b>, выделите весь код (Ctrl+A), вставьте новый (Ctrl+V) → <span class="btn">Deploy</span>.</li>
+  <li>Проверьте бота: напишите ему <b>/start</b> — должно прийти меню.</li>
+</ol>
+<h3>7.2 Откатить на прошлую версию (если после обновления бот сломался)</h3>
+<ol class="steps">
+  <li>osmon-bot → вкладка <span class="btn">Deployments</span>.</li>
+  <li>У предыдущей версии нажмите <span class="btn">…</span> → <span class="btn">Rollback</span> → подтвердите. Бот вернётся к прежнему коду за несколько секунд.</li>
+</ol>
+<div class="box info"><b class="t">Настройки бота не трогать</b>osmon-bot → Settings: секреты <code>BOT_TOKEN</code>, <code>GH_TOKEN</code>, переменная <code>SITE_URL</code>, привязки <code>DB</code> (D1) и <code>AI</code>. Если их удалить, бот перестанет работать.</div>
+</section>
+
+<section>
+<h2><span class="n">8</span>Где смотреть ошибки</h2>
+<table>
+  <tr><th style="width:28%">Признак</th><th style="width:36%">Где смотреть</th><th>Что делать</th></tr>
+  <tr><td>Видео или карты не обновляются</td><td>GitHub → Actions → нужный процесс → последний запуск с ✗ → откройте шаг с ошибкой</td><td>Нажмите <span class="btn">Re-run jobs</span>. Повторяется — пришлите Claude ссылку на запуск.</td></tr>
+  <tr><td>Бот не отвечает</td><td>Cloudflare → osmon-bot → <span class="btn">Observability</span> / <span class="btn">Logs</span></td><td>Откат (раздел 7.2), затем ссылку/скриншот ошибки — Claude.</td></tr>
+  <tr><td>Не пришли утренние уведомления</td><td>В боте: админ-сводка; Cloudflare → osmon-bot → Logs около 07:00</td><td>Обычно приходит позже из-за очереди; если нет совсем — сообщите Claude.</td></tr>
+  <tr><td>Сайт показывает 404</td><td>GitHub → Actions → <span class="btn">Update forecast</span> (шаг deploy)</td><td>Дождаться следующей сборки или <span class="btn">Run workflow</span>.</td></tr>
+  <tr><td>Сервер не берёт задания</td><td>GitHub → Settings → Actions → Runners: статус <b>Offline</b></td><td>Hetzner → сервер → Reboot. Не помогло — раздел 4 заново.</td></tr>
+</table>
+
+<h2 style="margin-top:18px"><span class="n">9</span>Расходы</h2>
+<table>
+  <tr><th>Что</th><th>Цена</th><th>Где оплачивается</th></tr>
+  <tr><td>Сервер Hetzner CX43 (или CX33)</td><td>~€16 (или ~€8.5) в месяц + €0.50 за IPv4</td><td>Hetzner, ежемесячно</td></tr>
+  <tr><td>Hetzner Object Storage (по желанию)</td><td>€6.49 в месяц (1 ТБ + 1 ТБ трафика)</td><td>Hetzner</td></tr>
+  <tr><td>Домен osmon.ai / osmonweather.com</td><td>$80 / $11.17 в год</td><td>Cloudflare Registrar</td></tr>
+  <tr><td>Cloudflare Workers, D1, Pages, R2 (до 10 ГБ)</td><td>$0 на текущих объёмах</td><td>—</td></tr>
+  <tr><td>GitHub (публичный репозиторий)</td><td>$0</td><td>—</td></tr>
+</table>
+<p class="small muted">Цены Hetzner — после повышения 15.06.2026, без НДС. Данные: прогнозы ECMWF открыты по лицензии CC BY 4.0 (указывать «© ECMWF»). Для коммерческого использования архива через Open-Meteo нужен платный план Open-Meteo или загрузка ERA5 напрямую из Copernicus.</p>
+
+<h2 style="margin-top:18px"><span class="n">10</span>Безопасность</h2>
+<ul>
+  <li>Включите <b>2FA</b> в Hetzner, Cloudflare и GitHub.</li>
+  <li>Токены и ключи храните только в «секретах» (GitHub Secrets, Cloudflare Secrets). Не пересылайте их в чаты.</li>
+  <li>Если кто-то получил доступ к токену: удалите его в сервисе, где создавали, и создайте новый.</li>
+  <li>Пароль root сервера смените при первом входе и храните в менеджере паролей.</li>
+</ul>
+</section>
+
+<section>
+<h2><span class="n">11</span>Контрольный список</h2>
+<ul class="check">
+  <li>Hetzner: аккаунт подтверждён, 2FA включена</li>
+  <li>Hetzner: проект Osmon, сервер osmon-1 (Running)</li>
+  <li>GitHub: раннер osmon-1 — Idle (зелёный)</li>
+  <li>Cloudflare: домен куплен, Auto-renew включён</li>
+  <li>GitHub Secrets: CLOUDFLARE_API_TOKEN добавлен, «Deploy bot» — зелёная галочка</li>
+  <li>Бот отвечает на /start, «📊 Динамика к прошлому году» присылает PDF и Excel</li>
+  <li>Actions: последние запуски Update forecast, Satellite videos, Weather vs last year — зелёные</li>
+</ul>
+<div class="box ok" style="margin-top:16px"><b class="t">Что делает Claude</b>Код, сборки, дизайн сайта и бота, подключение домена, перевод сборок на сервер, проверка после каждого изменения. От вас — только оплаты, подтверждения личности и вставка ключей (их Claude не вводит по правилам безопасности).</div>
+</section>
+</body>
+</html>
