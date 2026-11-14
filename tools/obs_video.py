@@ -14,7 +14,7 @@ from PIL import Image
 OUT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'obs'); OUT.mkdir(parents=True, exist_ok=True)
 LANGS = (sys.argv[2] if len(sys.argv) > 2 else 'ru,uz').split(',')
 HERE = pathlib.Path(__file__).resolve().parent.parent / 'prob'
-V = (55.8, 73.4, 36.9, 45.8)  # Uzbekistan
+V = (55.8, 73.4, 36.4, 46.4)  # Uzbekistan (the map part keeps the true proportions)
 W, H = 1920, 1080
 if any('inter' in x.lower() for x in fm.findSystemFonts()): plt.rcParams['font.family'] = 'Inter'
 S = requests.Session(); S.headers['User-Agent'] = 'Osmon weather bot (github.com/otabekvafoev92-del/ob-havo-ecmwf)'
@@ -26,6 +26,8 @@ TX = {'ru': dict(fact='Факт · метеостанции', fc='Прогноз
       'uz': dict(fact='Fakt · meteostansiyalar', fc='ECMWF prognozi', at='Toshkent vaqti {t}', plus='+{h} soat', src='Fakt: O‘zbekiston meteostansiyalari SYNOP xabarlari (JMT) · prognoz: ECMWF IFS',
                  lg=[('yomg‘ir', '#2f7fd1'), ('qor', '#7b4fd0'), ('momaqaldiroq', '#e0643a'), ('tuman', '#8a96a3'), ('chang', '#b7791f')], wind='shamol, m/s', now='Hozir', in6='6 soatdan keyin',
                  ww='{t} xabari')}
+UZN = {'Ташкент': 'Toshkent', 'Самарканд': 'Samarqand', 'Бухара': 'Buxoro', 'Нукус': 'Nukus', 'Ургенч': 'Urganch', 'Наманган': 'Namangan', 'Андижан': 'Andijon', 'Фергана': 'Farg‘ona',
+       'Карши': 'Qarshi', 'Термез': 'Termiz', 'Навои': 'Navoiy', 'Джизак': 'Jizzax', 'Гулистан': 'Guliston', 'Коканд': 'Qo‘qon', 'Шахрисабз': 'Shahrisabz', 'Зарафшан': 'Zarafshon'}
 MAIN = ['TASHKENT', 'SAMARKAND', 'BUKHARA', 'NUKUS', 'URGENCH', 'NAMANGAN', 'ANDIZHAN', 'FERGANA', 'KARSHI', 'TERMEZ', 'NAVOI', 'DZIZAK']
 
 
@@ -40,7 +42,8 @@ def stations():
         near = min(pl, key=lambda p: (p['lat'] - la) ** 2 + ((p['lon'] - lo) * 0.76) ** 2)
         close = ((near['lat'] - la) ** 2 + ((near['lon'] - lo) * 0.76) ** 2) ** 0.5 < 0.25
         nm = r['STATION NAME'].split('/')[0].split(' AIRPORT')[0].strip().title()
-        out[wmo] = dict(wmo=wmo, lat=la, lon=lo, en=r['STATION NAME'], ru=near.get('ru') if close else nm, uz=near.get('uz') if close else nm,
+        ru = near.get('ru') if close else nm
+        out[wmo] = dict(wmo=wmo, lat=la, lon=lo, en=r['STATION NAME'], ru=ru, uz=UZN.get(ru, near.get('en') if close else nm),
                         main=any(m in r['STATION NAME'] for m in MAIN), icao=r['ICAO'])
     return out
 
@@ -172,7 +175,7 @@ def main():
             fig = plt.figure(figsize=(W / 100, H / 100), dpi=100); fig.patch.set_facecolor('#ffffff')
             ax = fig.add_axes([0, 0, 0.74, 1]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off'); ax.set_facecolor('#eef1e6')
             ax.add_patch(plt.Rectangle((V[0], V[2]), V[1] - V[0], V[3] - V[2], color='#eef1e6', zorder=0))
-            if rel: ax.imshow(rel[0], extent=tuple(rel[1]), aspect='auto', zorder=0.2, alpha=0.9)
+            if rel: ax.imshow(rel[0], extent=tuple(rel[1]), aspect='auto', zorder=0.2, alpha=0.55, interpolation='bicubic')
             ax.add_collection(PCOL(sea, facecolors='#cfe3f0', edgecolors='#8fb4cf', linewidths=0.6, zorder=0.3))
             ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors='#3d4a5c', linewidths=1.3, zorder=1))
             if GA:
@@ -188,7 +191,7 @@ def main():
                 if v.get('ws') and v['ws'] >= 2 and v.get('wd') is not None:
                     a = np.radians(v['wd']); L_ = 0.12 + min(0.5, v['ws'] / 25); dx, dy = -np.sin(a) * L_ / 0.76, -np.cos(a) * L_
                     ax.annotate('', xy=(x + dx * 1.9, y + dy * 1.9), xytext=(x + dx * 0.75, y + dy * 0.75), arrowprops=dict(arrowstyle='-|>', color='#1f2d3d', lw=1.6, mutation_scale=12), zorder=4.5)
-                if big: ax.text(x, y - 0.32, s[lang], ha='center', va='top', fontsize=11, color='#1f2d3d', fontweight='bold', zorder=5,
+                if big: ax.text(x, y - 0.36, s[lang], ha='center', va='top', fontsize=11, color='#1f2d3d', fontweight='bold', zorder=5,
                                 bbox=dict(boxstyle='round,pad=0.15', fc='#ffffffcc', ec='none'))
             loc = t + dt.timedelta(hours=5)
             col = '#c0562b' if fut else '#1f2d3d'
