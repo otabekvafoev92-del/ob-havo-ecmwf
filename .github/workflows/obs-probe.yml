@@ -1,0 +1,16 @@
+name: Observations probe
+on: {workflow_dispatch: {}}
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set -x
+          curl -sS -m 60 "https://www.ncei.noaa.gov/pub/data/noaa/isd-history.csv" -o h.csv; grep -c '"UZ"' h.csv; grep '"UZ"' h.csv | awk -F'","' '$11 >= "20261101"' | head -80
+          D1=$(date -u -d '2 days ago' +%F); D2=$(date -u +%F)
+          curl -sS -m 90 "https://www.ncei.noaa.gov/access/services/data/v1?dataset=global-hourly&stations=38457099999,38696099999,38262099999&startDate=${D1}T00:00:00&endDate=${D2}T23:59:59&format=json&includeStationName=true" -o g.json; python3 -c "
+          import json;d=json.load(open('g.json'));print(len(d));[print(x.get('STATION'),x.get('DATE'),x.get('REPORT_TYPE'),x.get('TMP'),x.get('WND'),x.get('AA1'),x.get('GA1'),x.get('MW1')) for x in d[-8:]]"
+          curl -sS -m 60 "https://aviationweather.gov/api/data/metar?ids=UTTT,UTSS,UTSB,UTSA,UTSK,UTST,UTNU,UTNN,UTFN,UTFA,UTFF&hours=24&format=json" -o m.json; python3 -c "
+          import json;d=json.load(open('m.json'));print(len(d));import collections;print(collections.Counter(x['icaoId'] for x in d));[print(x['icaoId'],x['reportTime'],x.get('temp'),x.get('wdir'),x.get('wspd'),x.get('wxString'),x.get('rawOb')) for x in d[:6]]"
+          curl -sS -m 60 "https://www.ncei.noaa.gov/pub/data/noaa/isd-lite/2026/" | grep -o '384[0-9]*-99999-2026.gz' | sort -u | head -90 | tr '\n' ' '; echo
+          curl -sS -m 60 -I "https://www.ncei.noaa.gov/pub/data/noaa/isd-lite/2026/384570-99999-2026.gz" | grep -i -E 'last-modified|content-length'
