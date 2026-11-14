@@ -474,6 +474,14 @@ def main():
             line = X['reg_wet'].format(t=short(wet[0]['name'][lang]), mm=f"{wet[1]:.1f}".rstrip('0').rstrip('.')) if wet[1] >= 0.3 else X['reg_dry']
             videos[f'reg/{rid}_{lang}'] = dict(lang=lang, kind='12h', ext=Er, rel=f'r{rid}', borders=bord, borders_c=borders_uz + [(rings, '#5b2a86', 3.4, (0, (6, 3, 1, 3)), 1.0, 3.4)], wind=False, clip=rings, frames=frames,
                                                title=f"{a['name'][lang]} · {X['reg_t']}", line=line, chart=f'r{rid}', chart_t=X['chart_r'], dir=tempfile.mkdtemp(), out=str(OUT / 'reg' / f'{rid}_{lang}.mp4'))
+    # the points for the bot: every town and every district, hour by hour for 12 hours (the caption under the video)
+    def series(lo_, la_):
+        return dict(t=[round(atu(k[0], la_, lo_), 1) for k in keys12], pr=[round(atu(k[1], la_, lo_) / 3, 2) for k in keys12], fog=[round(atu(k[6], la_, lo_), 2) for k in keys12])
+    regof = lambda lo_, la_: next((a_['id'] for a_ in GA['adm1'] if any(MPath(np.asarray(r)).contains_point((lo_, la_)) for r in a_['r'])), None)
+    pts_json = dict(run=meta['run'], made=meta['made'], hours=[(t + dt.timedelta(hours=5)).strftime('%H') for t in fts12],
+                    towns=[dict(ru=tw[0], uz=tw[1], rid=regof(tw[3], tw[2]), **series(tw[3], tw[2])) for tw in TOWNS],
+                    districts={str(a_['id']): [dict(ru=short(d['name']['ru']), uz=short(d['name']['uz']), c=[round(d['c'][0], 3), round(d['c'][1], 3)], **series(d['c'][0], d['c'][1])) for d in GA['adm2'] if d['p'] == a_['id']] for a_ in GA['adm1']})
+    json.dump(pts_json, open(OUT / 'points.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     for v in videos.values():  # the camera: a slow zoom over the forecast; an opening of 0.8 s
         fs = v['frames']; nf = len(fs)
         for j, f_ in enumerate(fs):

@@ -1382,17 +1382,54 @@ function allDays(item, lang) {
 // ECMWF phone videos (branch ev, every 3 h): the stations over the last 6 hours, then the forecast for 12 hours or 3 days with the clouds moving
 const EVRAW = 'https://raw.githubusercontent.com/otabekvafoev92-del/ob-havo-ecmwf';
 const EVT = {
-  ru: { t: '🎬 <b>Видео-прогноз ECMWF</b>\nТучи и осадки в движении: сначала факт метеостанций за 6 часов, затем прогноз.', b12: '🎬 12 часов', b3: '🎬 3 дня', bobs: '📡 Факт: метеостанции', b7: '🗓 По дням: 7 дней', c7: '🗓 <b>Погода по дням: 7 дней</b>', breg: '📍 Моя область крупно', preg: '📍 Выберите область — покажу её целиком, с районами:', creg: '📍 <b>{r}</b> · прогноз на 12 часов',
+  ru: { t: '🎬 <b>Видео-прогноз ECMWF</b>\nТучи и осадки в движении: сначала факт метеостанций за 6 часов, затем прогноз.', b12: '🎬 12 часов', b3: '🎬 3 дня', bobs: '📡 Факт: метеостанции', bplace: '📍 Мой город, регион, район или посёлок', pplace: '📍 Что показать?', bcity: '🏙 Город', bregion: '🗺 Регион (область)', bdist: '📍 Район', bvil: '🏘 Посёлок / кишлак', pcity: '🏙 Выберите город:', pdreg: '📍 Сначала область:', pdist: '📍 Район:', pvil: '🏘 Напишите название посёлка после /v — например:\n<code>/v Чимган</code>\nИли отправьте 📎 геолокацию — покажу погоду в этой точке.', nf: 'Не нашёл «{q}» в Узбекистане. Попробуйте иначе написать или отправьте геолокацию.', fnow: 'сейчас', fnight: 'до {t}° к ночи', fday: 'до {t}° днём', frain: '🌧 дождь {a}–{b} ч, до {mm} мм', fsnow: '🌨 снег {a}–{b} ч, до {mm} мм', fdry: '☀️ без осадков 12 ч', ffog: '🌫 туман {a}–{b} ч', fin: 'в районе {d}', b7: '🗓 По дням: 7 дней', c7: '🗓 <b>Погода по дням: 7 дней</b>', breg: '📍 Моя область крупно', preg: '📍 Выберите область — покажу её целиком, с районами:', creg: '📍 <b>{r}</b> · прогноз на 12 часов',
         c12: '🌦 <b>Погода: 6 часов факт + 12 часов прогноз</b>', c3: '🌦 <b>Погода: 6 часов факт + 3 дня прогноз</b>', cobs: '📡 <b>Что показали метеостанции Узбекистана</b>',
         run: 'Прогон ECMWF {r} UTC · обновлено {m} по Ташкенту', wet: 'Больше всего осадков: {t} — {mm} мм', dry: 'Заметных осадков не ожидается', err: 'Видео сейчас обновляется, попробуйте через пару минут.' },
-  uz: { t: '🎬 <b>ECMWF video-prognozi</b>\nBulutlar va yog‘in harakatda: avval 6 soatlik meteostansiyalar fakti, keyin prognoz.', b12: '🎬 12 soat', b3: '🎬 3 kun', bobs: '📡 Fakt: meteostansiyalar', b7: '🗓 Kunlar bo‘yicha: 7 kun', c7: '🗓 <b>Kunlar bo‘yicha ob-havo: 7 kun</b>', breg: '📍 Viloyatim yaqindan', preg: '📍 Viloyatni tanlang — tumanlari bilan butunligicha ko‘rsataman:', creg: '📍 <b>{r}</b> · 12 soatlik prognoz',
+  uz: { t: '🎬 <b>ECMWF video-prognozi</b>\nBulutlar va yog‘in harakatda: avval 6 soatlik meteostansiyalar fakti, keyin prognoz.', b12: '🎬 12 soat', b3: '🎬 3 kun', bobs: '📡 Fakt: meteostansiyalar', bplace: '📍 Shahrim, viloyat, tuman yoki qishloq', pplace: '📍 Nimani ko‘rsatay?', bcity: '🏙 Shahar', bregion: '🗺 Viloyat', bdist: '📍 Tuman', bvil: '🏘 Qishloq / posyolok', pcity: '🏙 Shaharni tanlang:', pdreg: '📍 Avval viloyat:', pdist: '📍 Tuman:', pvil: '🏘 Qishloq nomini /v dan keyin yozing — masalan:\n<code>/v Chimyon</code>\nYoki 📎 geolokatsiya yuboring — shu nuqtadagi ob-havoni ko‘rsataman.', nf: '«{q}» O‘zbekistonda topilmadi. Boshqacha yozib ko‘ring yoki geolokatsiya yuboring.', fnow: 'hozir', fnight: 'tunga {t}° gacha', fday: 'kunduzi {t}° gacha', frain: '🌧 yomg‘ir {a}–{b}, {mm} mm gacha', fsnow: '🌨 qor {a}–{b}, {mm} mm gacha', fdry: '☀️ 12 soat yog‘insiz', ffog: '🌫 tuman {a}–{b}', fin: '{d} tumanida', b7: '🗓 Kunlar bo‘yicha: 7 kun', c7: '🗓 <b>Kunlar bo‘yicha ob-havo: 7 kun</b>', breg: '📍 Viloyatim yaqindan', preg: '📍 Viloyatni tanlang — tumanlari bilan butunligicha ko‘rsataman:', creg: '📍 <b>{r}</b> · 12 soatlik prognoz',
         c12: '🌦 <b>Ob-havo: 6 soat fakt + 12 soat prognoz</b>', c3: '🌦 <b>Ob-havo: 6 soat fakt + 3 kun prognoz</b>', cobs: '📡 <b>O‘zbekiston meteostansiyalari nimani ko‘rsatdi</b>',
         run: 'ECMWF hisobi {r} UTC · Toshkent vaqti {m} da yangilandi', wet: 'Eng ko‘p yog‘in: {t} — {mm} mm', dry: 'Sezilarli yog‘in kutilmaydi', err: 'Video hozir yangilanmoqda, bir necha daqiqadan so‘ng urinib ko‘ring.' } };
-const evKb = L => ({ inline_keyboard: [[{ text: EVT[L].b12, callback_data: `EV:${L}:12h` }, { text: EVT[L].b3, callback_data: `EV:${L}:3d` }], [{ text: EVT[L].b7, callback_data: `EV:${L}:7d` }], [{ text: EVT[L].breg, callback_data: `EV:${L}:regs` }], [{ text: EVT[L].bobs, callback_data: `EV:${L}:obs` }]] });
+const evKb = L => ({ inline_keyboard: [[{ text: EVT[L].b12, callback_data: `EV:${L}:12h` }, { text: EVT[L].b3, callback_data: `EV:${L}:3d` }], [{ text: EVT[L].b7, callback_data: `EV:${L}:7d` }], [{ text: EVT[L].bplace, callback_data: `EV:${L}:place` }], [{ text: EVT[L].bobs, callback_data: `EV:${L}:obs` }]] });
 const EVREG = [[13, 'Ташкент', 'Toshkent sh.'], [8, 'Ташкентская', 'Toshkent vil.'], [7, 'Самаркандская', 'Samarqand'], [11, 'Бухарская', 'Buxoro'], [12, 'Кашкадарьинская', 'Qashqadaryo'],
   [6, 'Сурхандарьинская', 'Surxondaryo'], [5, 'Навоийская', 'Navoiy'], [10, 'Джизакская', 'Jizzax'], [9, 'Сырдарьинская', 'Sirdaryo'], [2, 'Ферганская', 'Farg‘ona'],
   [0, 'Андижанская', 'Andijon'], [1, 'Наманганская', 'Namangan'], [4, 'Хорезмская', 'Xorazm'], [3, 'Каракалпакстан', 'Qoraqalpog‘iston']];
-const evRegKb = L => ({ inline_keyboard: EVREG.reduce((rows, r, i) => { if (i % 2 === 0) rows.push([]); rows[rows.length - 1].push({ text: L === 'uz' ? r[2] : r[1], callback_data: `EV:${L}:r${r[0]}` }); return rows; }, []) });
+const two = btns => btns.reduce((rows, b, i) => { if (i % 2 === 0) rows.push([]); rows[rows.length - 1].push(b); return rows; }, []);
+const evRegKb = (L, p = 'r') => ({ inline_keyboard: two(EVREG.map(r => ({ text: L === 'uz' ? r[2] : r[1], callback_data: `EV:${L}:${p}${r[0]}` }))) });
+async function evPoints(env) { try { return await (await fetch(`${EVRAW}/ev/points.json?t=${Math.floor(Date.now() / 300e3)}`)).json(); } catch (e) { return null; } }
+function evCaption(L, P, name, s, dname) {  // a point's next 12 hours in a few lines
+  const X = EVT[L], hrs = P.hours, t = s.t, n = t.length, f = v => (v > 0 ? '+' : '') + Math.round(v);
+  const out = [`📍 <b>${name}</b>${dname ? ' · ' + X.fin.replace('{d}', dname) : ''}`, `🌡 ${X.fnow} ${f(t[0])}° · ` + (Math.min(...t) < t[0] - 1 ? X.fnight.replace('{t}', f(Math.min(...t))) : X.fday.replace('{t}', f(Math.max(...t))))];
+  const wet = s.pr.map((v, i) => v >= 0.1 ? i : -1).filter(i => i >= 0);
+  if (wet.length) { const mm = s.pr.reduce((a, b) => a + b, 0), snow = t[wet[0]] <= 0.5; out.push((snow ? X.fsnow : X.frain).replace('{a}', hrs[wet[0]]).replace('{b}', hrs[Math.min(n - 1, wet[wet.length - 1] + 1)] || hrs[n - 1]).replace('{mm}', mm < 1 ? mm.toFixed(1) : Math.round(mm))); }
+  else out.push(X.fdry);
+  const fg = s.fog.map((v, i) => v >= 0.5 ? i : -1).filter(i => i >= 0);
+  if (fg.length) out.push(X.ffog.replace('{a}', hrs[fg[0]]).replace('{b}', hrs[Math.min(n - 1, fg[fg.length - 1] + 1)]));
+  return out.join('\n');
+}
+function evNearest(P, lon, lat) {  // the district nearest to a point (its centre)
+  let best = null;
+  for (const [rid, ds] of Object.entries(P.districts || {})) for (let j = 0; j < ds.length; j++) { const d = ds[j], q = (d.c[0] - lon) ** 2 * 0.57 + (d.c[1] - lat) ** 2; if (!best || q < best.q) best = { rid, j, q }; }
+  return best;
+}
+async function evPlaceVideo(env, chat, L, rid, caption) {  // the region's video with the place's forecast under it
+  const X = EVT[L]; let meta = {}; try { meta = await (await fetch(`${EVRAW}/ev/meta.json?t=${Math.floor(Date.now() / 300e3)}`)).json(); } catch (e) {}
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+  const r = await tg(env, 'sendVideo', { chat_id: chat, video: `${EVRAW}/ev/reg/${rid}_${L}.mp4?v=${encodeURIComponent(meta.made || Math.floor(Date.now() / 1800e3))}`, caption: caption.slice(0, 1000), parse_mode: 'HTML', supports_streaming: true, width: 1080, height: 1920, reply_markup: evKb(L) });
+  if (!r || !r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: caption + '\n\n' + X.err, parse_mode: 'HTML', reply_markup: evKb(L) });
+  return r;
+}
+async function evVillage(env, chat, lang, q, lon, lat) {  // a village by name (the places of the site) or a location
+  const L = lang === 'uz' ? 'uz' : 'ru', X = EVT[L], P = await evPoints(env); if (!P) return tg(env, 'sendMessage', { chat_id: chat, text: X.err });
+  let name = q;
+  if (lon == null) {
+    const n = norm(q), ps = (await places(env)).filter(p => p[4] === 'UZ');
+    const p = ps.find(p => [p[0], p[1], p[2], p[3]].some(x => norm(x) === n)) || ps.find(p => [p[0], p[1], p[2], p[3]].some(x => norm(x).startsWith(n)));
+    if (!p) return tg(env, 'sendMessage', { chat_id: chat, text: X.nf.replace('{q}', q) });
+    name = pname(p, L); lat = p[5]; lon = p[6];
+  }
+  const b = evNearest(P, lon, lat); if (!b) return tg(env, 'sendMessage', { chat_id: chat, text: X.err });
+  const d = P.districts[b.rid][b.j];
+  return evPlaceVideo(env, chat, L, b.rid, evCaption(L, P, name || d[L], d, d[L]));
+}
 async function evMenu(env, chat, lang) {
   const L = lang === 'uz' ? 'uz' : 'ru';
   return tg(env, 'sendMessage', { chat_id: chat, text: EVT[L].t, parse_mode: 'HTML', reply_markup: evKb(L) });
@@ -1401,7 +1438,17 @@ async function sendEv(env, chat, lang, which) {
   const L = lang === 'uz' ? 'uz' : 'ru', X = EVT[L], fill = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k] ?? '');
   let meta = {}; try { meta = await (await fetch(`${EVRAW}/ev/meta.json?t=${Math.floor(Date.now() / 300e3)}`)).json(); } catch (e) {}
   let url, cap;
+  if (which === 'place') return tg(env, 'sendMessage', { chat_id: chat, text: X.pplace, reply_markup: { inline_keyboard: [[{ text: X.bcity, callback_data: `EV:${L}:city` }, { text: X.bregion, callback_data: `EV:${L}:regs` }], [{ text: X.bdist, callback_data: `EV:${L}:dreg` }, { text: X.bvil, callback_data: `EV:${L}:vil` }]] } });
   if (which === 'regs') return tg(env, 'sendMessage', { chat_id: chat, text: X.preg, reply_markup: evRegKb(L) });
+  if (which === 'dreg') return tg(env, 'sendMessage', { chat_id: chat, text: X.pdreg, reply_markup: evRegKb(L, 'd') });
+  if (which === 'vil') return tg(env, 'sendMessage', { chat_id: chat, text: X.pvil, parse_mode: 'HTML' });
+  if (which === 'city' || /^[cdq]/.test(which)) {
+    const P = await evPoints(env); if (!P) return tg(env, 'sendMessage', { chat_id: chat, text: X.err });
+    if (which === 'city') return tg(env, 'sendMessage', { chat_id: chat, text: X.pcity, reply_markup: { inline_keyboard: two(P.towns.map((t, i) => ({ text: t[L], callback_data: `EV:${L}:c${i}` }))) } });
+    if (which[0] === 'c') { const t = P.towns[+which.slice(1)]; if (!t) return; return evPlaceVideo(env, chat, L, t.rid, evCaption(L, P, t[L], t)); }
+    if (which[0] === 'd') { const id = which.slice(1), ds = P.districts[id] || []; return tg(env, 'sendMessage', { chat_id: chat, text: X.pdist, reply_markup: { inline_keyboard: two(ds.map((d, j) => ({ text: d[L], callback_data: `EV:${L}:q${id}_${j}` }))) } }); }
+    if (which[0] === 'q') { const [id, j] = which.slice(1).split('_'), d = (P.districts[id] || [])[+j]; if (!d) return; return evPlaceVideo(env, chat, L, id, evCaption(L, P, d[L], d)); }
+  }
   if (which === 'obs') { url = `${EVRAW}/obs/obs_${L}.mp4?v=${Math.floor(Date.now() / 1800e3)}`; cap = X.cobs; }
   else if (/^r\d+$/.test(which)) {
     const id = which.slice(1), nm = (meta.regions && meta.regions[id] && meta.regions[id][L]) || (EVREG.find(r => String(r[0]) === id) || [0, '', ''])[L === 'uz' ? 2 : 1];
@@ -1620,6 +1667,7 @@ async function privateMsg(msg, env) {
   const chat = msg.chat, text = msg.text || '', cmd = (text.trim().match(/^\/(\w+)(@\w+)?/) || [])[1];
   const u = await getUser(env, chat.id), lang = (u && T[u.lang] && u.lang) || (/^ru/.test(msg.from && msg.from.language_code || '') ? 'ru' : /^tr/.test(msg.from && msg.from.language_code || '') ? 'tr' : 'uz');
   await saveUser(env, chat.id, who(msg.from));
+  if (cmd === 'v') { const q = text.replace(/^\/v(@\w+)?\s*/, '').trim(); if (!q) return evMenu(env, chat.id, lang === 'uz' ? 'uz' : 'ru').then(() => sendEv(env, chat.id, lang, 'vil')); return evVillage(env, chat.id, lang, q); }
   const admin = await kv(env, 'admin');
   // the admin answers a user: Reply to the forwarded message
   if (admin && String(chat.id) === admin && msg.reply_to_message && !cmd) {
