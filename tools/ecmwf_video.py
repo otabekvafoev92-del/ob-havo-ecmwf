@@ -29,6 +29,7 @@ HEAD, CHART = 210, 400            # px: the header on top, the rain dynamics at 
 HD = H - HEAD - CHART              # the 3D map between them
 WS, HS = 1512, 1834                # the map drawn 1.4× and scaled down (sharp lines)
 TOPIN, BOTOUT = 0, 0               # seen from straight above (a tilt would be TOPIN>0)
+SLOW = 4.0                         # the speed: 0.25× (every frame held 4× longer)
 DOM = (54.0, 76.5, 34.5, 48.5)     # the data grid (all the regions fit)
 if any('inter' in x.lower() for x in fm.findSystemFonts()): plt.rcParams['font.family'] = 'Inter'
 NAVY, ORANGE, INK, MUTED = '#0f1d30', '#e8742c', '#1f2d3d', '#5d6b7c'
@@ -244,7 +245,7 @@ def render(job):
 
 
 def encode(vk):
-    V = CTX['videos'][vk]; fd = pathlib.Path(V['dir']); per = [fr['d'] for fr in V['frames']]
+    V = CTX['videos'][vk]; fd = pathlib.Path(V['dir']); per = [fr['d'] * (1.5 if fr.get('intro') is not None else SLOW) for fr in V['frames']]
     lst = fd / 'list.txt'; lst.write_text(''.join(f"file '{i:04d}.png'\nduration {d}\n" for i, d in enumerate(per)) + f"file '{len(per) - 1:04d}.png'\n")
     out = pathlib.Path(V['out']); tmp = out.with_name('.' + out.name + '.part.mp4')
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a', '-vf',
