@@ -23,5 +23,8 @@ export default {
     }
     return new Response('ok');
   },
-  async scheduled() { /* paused: no notifications until the new version */ }
+  async scheduled(ev, env) {  // paused: no notifications; the old menu button and command list are taken away
+    for (const lc of [undefined, 'ru', 'uz', 'tr']) await tg(env, 'deleteMyCommands', lc ? { language_code: lc } : {});
+    await tg(env, 'setChatMenuButton', { menu_button: { type: 'default' } });
+  }
 };
