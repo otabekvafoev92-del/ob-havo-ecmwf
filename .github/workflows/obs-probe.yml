@@ -5,12 +5,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          set -x
-          curl -sS -m 60 "https://www.ncei.noaa.gov/pub/data/noaa/isd-history.csv" -o h.csv; grep -c '"UZ"' h.csv; grep '"UZ"' h.csv | awk -F'","' '$11 >= "20261101"' | head -80
-          D1=$(date -u -d '2 days ago' +%F); D2=$(date -u +%F)
-          curl -sS -m 90 "https://www.ncei.noaa.gov/access/services/data/v1?dataset=global-hourly&stations=38457099999,38696099999,38262099999&startDate=${D1}T00:00:00&endDate=${D2}T23:59:59&format=json&includeStationName=true" -o g.json; python3 -c "
-          import json;d=json.load(open('g.json'));print(len(d));[print(x.get('STATION'),x.get('DATE'),x.get('REPORT_TYPE'),x.get('TMP'),x.get('WND'),x.get('AA1'),x.get('GA1'),x.get('MW1')) for x in d[-8:]]"
-          curl -sS -m 60 "https://aviationweather.gov/api/data/metar?ids=UTTT,UTSS,UTSB,UTSA,UTSK,UTST,UTNU,UTNN,UTFN,UTFA,UTFF&hours=24&format=json" -o m.json; python3 -c "
-          import json;d=json.load(open('m.json'));print(len(d));import collections;print(collections.Counter(x['icaoId'] for x in d));[print(x['icaoId'],x['reportTime'],x.get('temp'),x.get('wdir'),x.get('wspd'),x.get('wxString'),x.get('rawOb')) for x in d[:6]]"
-          curl -sS -m 60 "https://www.ncei.noaa.gov/pub/data/noaa/isd-lite/2026/" | grep -o '384[0-9]*-99999-2026.gz' | sort -u | head -90 | tr '\n' ' '; echo
-          curl -sS -m 60 -I "https://www.ncei.noaa.gov/pub/data/noaa/isd-lite/2026/384570-99999-2026.gz" | grep -i -E 'last-modified|content-length'
+          curl -sS -m 60 "https://www.ncei.noaa.gov/pub/data/noaa/isd-history.csv" -o h.csv
+          python3 - <<'PY'
+          import csv
+          r=[x for x in csv.DictReader(open('h.csv')) if x['CTRY']=='UZ']
+          r.sort(key=lambda x:x['END'], reverse=True)
+          print('UZ stations', len(r)); [print(x['USAF'],x['WBAN'],x['STATION NAME'],x['ICAO'],x['LAT'],x['LON'],x['END']) for x in r[:45]]
+          PY
+          for st in 38457099999 38696099999; do curl -sS -m 90 "https://www.ncei.noaa.gov/access/services/data/v1?dataset=global-hourly&stations=$st&startDate=2026-10-25T00:00:00&endDate=2026-11-14T23:59:59&format=json" -o g.json; python3 -c "
+          import json;d=json.load(open('g.json'));print('$st', len(d), d[-1]['DATE'] if d else None, d[-1].get('TMP') if d else None, d[-1].get('REPORT_TYPE') if d else None)"; done
+          echo METAR; curl -sS -m 60 -w ' HTTP %{http_code}\n' "https://aviationweather.gov/api/data/metar?ids=UTTT,UTSS,UTNN&hours=48" | head -12
+          echo METAR-bbox; curl -sS -m 60 -w ' HTTP %{http_code}\n' "https://aviationweather.gov/api/data/metar?bbox=37,56,46,74&hours=3&format=raw" | head -20
+          echo OGIMET; curl -sS -m 60 -w ' HTTP %{http_code}\n' "https://www.ogimet.com/cgi-bin/getsynop?block=384&begin=$(date -u -d '6 hours ago' +%Y%m%d%H)00" | head -8
+          echo ISDLITE; curl -sS -m 60 -I "https://www.ncei.noaa.gov/pub/data/noaa/isd-lite/2026/384570-99999-2026.gz" | grep -i -E 'HTTP|last-modified|content-length'
+          echo GHCNh; curl -sS -m 60 -I "https://www.ncei.noaa.gov/oa/global-historical-climatology-network/hourly/access/by-year/2026/psv/GHCNh_UZM00038457_2026.psv" | grep -i -E 'HTTP|last-modified|content-length'
