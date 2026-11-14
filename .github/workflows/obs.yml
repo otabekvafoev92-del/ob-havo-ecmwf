@@ -1,0 +1,22 @@
+name: Weather now (stations + 6 h)
+# the video of the weather stations of Uzbekistan (last 24 h, WMO SYNOP) and the ECMWF forecast for 6 hours (tools/obs_video.py); kept on the "obs" branch
+on:
+  schedule:
+    - cron: '52 0,3,6,9,12,15,18,21 * * *'  # ~50 minutes after each 3-hourly observation term
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: obs, cancel-in-progress: false}
+jobs:
+  o:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          sudo apt-get install -y -qq ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib; pip install -q requests numpy matplotlib pillow
+          python -W ignore tools/obs_video.py obs ru,uz
+          cd obs && git init -q && git checkout -q -b obs && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "obs $(date -u +%F' '%H:%M)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" obs
