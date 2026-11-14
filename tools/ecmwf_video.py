@@ -24,11 +24,11 @@ W, H = 1080, 1920
 V = (55.8, 73.4, 36.9, 45.8)  # Uzbekistan
 MAP_H = int(round(W * (V[3] - V[2]) / ((V[1] - V[0]) * math.cos(math.radians(41.3)))))  # true proportions
 if any('inter' in x.lower() for x in fm.findSystemFonts()): plt.rcParams['font.family'] = 'Inter'
-NAVY, ORANGE, INK, MUTED, PAPER = '#1f2d3d', '#c0562b', '#1f2d3d', '#5d6b7c', '#f5f7f9'
+NAVY, ORANGE, INK, MUTED, PAPER = '#08111f', '#e8742c', '#eef3f8', '#93a4b8', '#0d1829'  # the dark look of the world weather maps
 # precipitation in steps (mm in 3 hours): one palette everywhere in Osmon
 PR_LV = [0.2, 1, 3, 6, 12, 99]
-RAIN = ['#b9dcf7', '#7cbcf0', '#3f8fdd', '#1f5fb3', '#173f84']
-SNOW = ['#e1d4f7', '#c2a6ef', '#9a70e0', '#7346c2', '#4f2a95']
+RAIN = ['#9be59a', '#3fca5a', '#f2e33a', '#f59a2c', '#e53935']  # radar colours
+SNOW = ['#f3e9ff', '#e2c4ff', '#cf94f5', '#b55ee6', '#8e2fc9']
 TCOL = lambda t: OV.tcol(t)
 TOWNS = [('Ташкент', 'Toshkent', 41.31, 69.28), ('Самарканд', 'Samarqand', 39.65, 66.96), ('Бухара', 'Buxoro', 39.77, 64.42), ('Нукус', 'Nukus', 42.46, 59.6),
          ('Ургенч', 'Urganch', 41.55, 60.63), ('Наманган', 'Namangan', 41.0, 71.67), ('Андижан', 'Andijon', 40.78, 72.34), ('Фергана', 'Farg‘ona', 40.39, 71.78),
@@ -38,12 +38,12 @@ TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ
                  at='{d} · {h} по Ташкенту', plus='+{h} ч', rain='дождь, мм за 3 ч', snow='снег', town='Города', src='Факт: метеостанции Узбекистана (ВМО SYNOP) · Прогноз: ECMWF IFS · Osmon',
                  wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], mon=['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
                  dry='Без осадков по всей стране', wet='Больше всего осадков: {t} — {mm} мм', wet3='За 3 дня больше всего осадков: {t} — {mm} мм', none3='3 дня без заметных осадков',
-                 tot='Осадки за 3 дня, мм', fog='туман', obs_ring='осадки или явление на станции', total='ИТОГ · 3 дня'),
+                 wind='штрихи — ветер у земли · белые линии — давление', tot='Осадки за 3 дня, мм', fog='туман', obs_ring='осадки или явление на станции', total='ИТОГ · 3 дня'),
       'uz': dict(fact='FAKT · meteostansiyalar', fc='ECMWF PROGNOZI', t12='Ob-havo: 6 soat fakt + 12 soat prognoz', t3='Ob-havo: 6 soat fakt + 3 kun prognoz',
                  at='{d} · Toshkent vaqti {h}', plus='+{h} soat', rain='yomg‘ir, 3 soatda mm', snow='qor', town='Shaharlar', src='Fakt: O‘zbekiston meteostansiyalari (JMT SYNOP) · Prognoz: ECMWF IFS · Osmon',
                  wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], mon=['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'],
                  dry='Butun mamlakatda yog‘in yo‘q', wet='Eng ko‘p yog‘in: {t} — {mm} mm', wet3='3 kunda eng ko‘p yog‘in: {t} — {mm} mm', none3='3 kun sezilarli yog‘insiz',
-                 tot='3 kunlik yog‘in, mm', fog='tuman', obs_ring='stansiyada yog‘in yoki hodisa', total='JAMI · 3 kun')}
+                 wind='chiziqchalar — yer yonidagi shamol · oq chiziqlar — bosim', tot='3 kunlik yog‘in, mm', fog='tuman', obs_ring='stansiyada yog‘in yoki hodisa', total='JAMI · 3 kun')}
 S = requests.Session(); S.headers['User-Agent'] = 'Osmon weather (github.com/otabekvafoev92-del/ob-havo-ecmwf)'
 
 
@@ -73,8 +73,8 @@ def relief():
     el = np.maximum(big[np.ix_(iy, ix)], 0)
     hs = LightSource(azdeg=315, altdeg=40).hillshade(el, vert_exag=0.012, dx=1, dy=1)
     # land in soft greens/sands by height, shaded
-    base = np.dstack([np.interp(el, [0, 300, 1200, 2500, 4500], c) for c in ([0.93, 0.92, 0.88, 0.86, 0.97], [0.93, 0.92, 0.87, 0.84, 0.97], [0.86, 0.86, 0.82, 0.82, 0.98])])
-    img = np.clip(base * (0.62 + 0.45 * hs[..., None]), 0, 1)
+    base = np.dstack([np.interp(el, [0, 300, 1200, 2500, 4200], c) for c in ([0.20, 0.22, 0.27, 0.40, 0.88], [0.21, 0.23, 0.26, 0.38, 0.9], [0.19, 0.19, 0.22, 0.36, 0.94])])
+    img = np.clip(base * (0.42 + 0.9 * hs[..., None]), 0, 1)
     return (img * 255).astype(np.uint8)
 
 
@@ -106,7 +106,8 @@ def main():
         mix = lambda k: cut(F[a][k]) * (1 - w) + cut(F[b][k]) * w
         b3 = min([s for s in steps if s >= L], default=steps[-1]); a3 = max([s for s in steps if s <= b3 - 3], default=steps[0])
         pr = np.maximum(cut(F[b3]['tp']) - cut(F[a3]['tp']), 0) * (3 / max(3, b3 - a3))
-        return mix('t2'), pr, mix('tcc')
+        mx = lambda k, alt: cut(F[a].get(k, F[a][alt])) * (1 - w) + cut(F[b].get(k, F[b][alt])) * w
+        return mix('t2'), pr, mix('tcc'), mix('msl'), mx('u10', 'u'), mx('v10', 'v')
     def at(a, la, lo): return float(a[np.abs(LAT - la).argmin(), np.abs(LON - lo).argmin()])
     # motion: the fields upsampled ×4, the optical flow between two forecast hours moves the clouds and the rain between them
     UP = 4; up = lambda a: zoom(a, UP, order=1)
@@ -125,15 +126,32 @@ def main():
     def sequence(fts, kind):  # the forecast frames: N in-between frames per interval, clouds and rain carried along the flow
         N, dur = (8, 0.5) if kind == '12h' else (6, 0.4); stp = 1 if kind == '12h' else 3
         keys = [tuple(up(x) for x in field(t)) for t in fts]; nz = NOISE.copy(); out = []
+        # the wind: particles carried by the 10 m wind, each with a short fading trail
+        pr_rng = np.random.default_rng(3); NP, TR = 950, 7
+        spawn = lambda n: np.c_[pr_rng.uniform(V[0], V[1], n), pr_rng.uniform(V[2], V[3], n)]
+        P = spawn(NP); age = pr_rng.integers(0, 50, NP); life = pr_rng.integers(35, 70, NP); hist = [P.copy() for _ in range(TR)]
+        def step(u, v):
+            nonlocal P, age, hist
+            iy = np.clip(np.searchsorted(LATu, P[:, 1]), 0, hu - 1); ix = np.clip(np.searchsorted(LONu, P[:, 0]), 0, wu - 1)
+            K = 0.0055; P = P + np.c_[u[iy, ix] * K / np.cos(np.radians(P[:, 1])), v[iy, ix] * K]; age += 1
+            dead = (age > life) | (P[:, 0] < V[0]) | (P[:, 0] > V[1]) | (P[:, 1] < V[2]) | (P[:, 1] > V[3])
+            if dead.any():
+                P[dead] = spawn(int(dead.sum())); age[dead] = 0
+                for h_ in hist: h_[dead] = P[dead]
+            hist = hist[1:] + [P.copy()]
+            return np.stack(hist)
         for i, t in enumerate(fts):
-            t2a, pra, tca = keys[i]
+            t2a, pra, tca, msa, ua, va = keys[i]
             if i == len(fts) - 1:
-                out.append(dict(mode='fc', t=t, t2=t2a, pr=pra, tcc=tca, nz=nz, d=1.0)); break
-            t2b, prb, tcb = keys[i + 1]; fl = flow(gaussian_filter(sig(pra, tca), 2), gaussian_filter(sig(prb, tcb), 2))
+                for k in range(N):  # the last hour: the wind keeps blowing while it holds
+                    out.append(dict(mode='fc', t=t, t2=t2a, pr=pra, tcc=tca, msl=msa, nz=nz, tr=step(ua, va), d=(1.0 if k == N - 1 else 0.6 / N)))
+                break
+            t2b, prb, tcb, msb, ub, vb = keys[i + 1]; fl = flow(gaussian_filter(sig(pra, tca), 2), gaussian_filter(sig(prb, tcb), 2))
             for k in range(N):
                 s = k / N
                 pr_ = (1 - s) * warp(pra, fl, s) + s * warp(prb, fl, s - 1); tc_ = (1 - s) * warp(tca, fl, s) + s * warp(tcb, fl, s - 1)
-                out.append(dict(mode='fc', t=t + dt.timedelta(hours=round(s * stp)), t2=(1 - s) * t2a + s * t2b, pr=pr_, tcc=tc_, nz=nz, d=dur / N))
+                out.append(dict(mode='fc', t=t + dt.timedelta(hours=round(s * stp)), t2=(1 - s) * t2a + s * t2b, pr=pr_, tcc=tc_, msl=(1 - s) * msa + s * msb, nz=nz,
+                                tr=step((1 - s) * ua + s * ub, (1 - s) * va + s * vb), d=dur / N))
                 nz = warp(nz, fl, 1 / N)
         return out
     # the stations: the last 6 hours (the 3-hourly terms)
@@ -147,6 +165,11 @@ def main():
     print('obs terms', terms, flush=True)
     REL = relief(); print('relief', REL.shape, flush=True)
     G = json.load(open(ROOT / 'prob' / 'geo_world.json'))['countries']; GA = json.load(open(ROOT / 'prob' / 'geo_admin.json')).get('UZ', {})
+    from matplotlib.path import Path as MPath  # Uzbekistan bright, the neighbours dimmed
+    gx_, gy_ = np.meshgrid(np.linspace(V[0], V[1], REL.shape[1]), np.linspace(V[3], V[2], REL.shape[0])); pts_ = np.c_[gx_.ravel(), gy_.ravel()]
+    ins = np.zeros(len(pts_), bool)
+    for r in G['UZ']['rings']: ins |= MPath(np.asarray(r)).contains_points(pts_)
+    REL = np.where(ins.reshape(REL.shape[:2])[..., None], REL, (REL * 0.55).astype(np.uint8)); UZR = [np.asarray(r) for r in G['UZ']['rings']]
     WAT = json.load(open(ROOT / 'prob' / 'geo_water.json')); sea = [np.asarray(r) for r in WAT['ocean']] + [np.asarray(l['r']) for l in WAT['lakes']]
     meta = {'run': run.strftime('%Y-%m-%dT%HZ'), 'made': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), 'obs': [t.strftime('%H:%MZ') for t in terms]}
     for kind in ('12h', '3d'):
@@ -155,7 +178,7 @@ def main():
         # what it means: the wettest town over the period
         tot = {}
         for t in fts[::(3 if kind == '12h' else 1)]:
-            _, pr, _ = field(t)
+            pr = field(t)[1]
             for tw in TOWNS: tot[tw] = tot.get(tw, 0) + at(pr, tw[2], tw[3])
         wet = max(tot.items(), key=lambda kv: kv[1])
         seq = sequence(fts, kind); print(kind, len(seq), 'forecast frames', flush=True)
@@ -181,35 +204,41 @@ def main():
                 # the map
                 top = 270; ax = fig.add_axes([0, 1 - (top + MAP_H) / H, 1, MAP_H / H]); ax.set_xlim(V[0], V[1]); ax.set_ylim(V[2], V[3]); ax.axis('off')
                 ax.imshow(REL, extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0, interpolation='lanczos')
-                ax.add_collection(PCOL(sea, facecolors='#bcd8ec', edgecolors='#7fa9c6', linewidths=0.8, zorder=0.5))
+                ax.add_collection(PCOL(sea, facecolors='#0b2036', edgecolors='#2a5079', linewidths=0.8, zorder=0.5))
                 if mode == 'fc' or mode == 'total':
                     if mode == 'fc': t2, pr, tcc = fr['t2'], fr['pr'], fr['tcc']; acc = pr
                     else: acc, t2 = acc3, t2end
                     # clouds: white where thin, grey where thick, a texture that drifts with the wind; precipitation in steps on top
                     if mode == 'fc':
                         th = np.clip((tcc - 0.7) / 0.3, 0, 1)[..., None]; cl = np.zeros(tcc.shape + (4,))
-                        cl[..., :3] = (1 - th) * np.array([1.0, 1.0, 1.0]) + th * np.array([0.6, 0.64, 0.69])
-                        cl[..., 3] = np.clip((tcc - 0.2) / 0.6, 0, 1) * (0.35 + 0.45 * np.clip(fr['nz'] * 1.6 - 0.3, 0, 1)) * 0.8
+                        cl[..., :3] = (1 - th) * np.array([0.95, 0.96, 0.98]) + th * np.array([0.74, 0.77, 0.82])
+                        cl[..., 3] = np.clip((tcc - 0.15) / 0.6, 0, 1) * (0.4 + 0.55 * np.clip(fr['nz'] * 1.6 - 0.3, 0, 1)) * 0.88
                         ax.imshow(cl, extent=ext, origin='lower', aspect='auto', interpolation='bicubic', zorder=1)
                     lv = PR_LV if mode == 'fc' else [1, 5, 10, 20, 40, 999]
                     snow = t2 <= 0.5
                     for mask, cols in ((~snow, RAIN), (snow, SNOW)):
                         a = np.where(mask, acc, np.nan)
                         if np.nanmax(np.nan_to_num(a)) >= lv[0]:
-                            ax.contourf(LONu, LATu, a, levels=lv, colors=cols, alpha=0.85, zorder=2, antialiased=True)
-                ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors='#2b3a4e', linewidths=2.2, zorder=3))
+                            ax.contourf(LONu, LATu, a, levels=lv, colors=cols, alpha=0.88, zorder=2, antialiased=True)
+                    if mode == 'fc':
+                        ms = gaussian_filter(fr['msl'], 4); lo_, hi_ = int(np.floor(ms.min() / 4) * 4), int(np.ceil(ms.max() / 4) * 4)
+                        if hi_ > lo_: ax.contour(LONu, LATu, ms, levels=range(lo_, hi_ + 1, 4), colors='#ffffff', linewidths=1.1, alpha=0.38, zorder=2.6)
+                        tr = fr['tr']; segs = np.stack([tr[:-1], tr[1:]], axis=2).reshape(-1, 2, 2)  # (TR−1)·NP segments, old to new
+                        al = np.repeat(np.linspace(0.05, 0.6, tr.shape[0] - 1), tr.shape[1])
+                        ax.add_collection(LC(segs, colors=np.c_[np.ones((len(al), 3)), al], linewidths=1.2, zorder=2.8, capstyle='round'))
+                ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors='#c9d3df', linewidths=1.2, alpha=0.6, zorder=3))
+                ax.add_collection(LC(UZR, colors='#ffffff', linewidths=2.6, zorder=3.3))
                 if GA:
-                    ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#ffffff', linewidths=3.2, alpha=0.55, zorder=3))
-                    ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#55657a', linewidths=1.3, zorder=3.1))
+                    ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#ffffff', linewidths=1.0, alpha=0.3, zorder=3))
                 # axes: a grid of latitude and longitude every 2°, the degrees along the left and the bottom edge
-                for g in range(56, 74, 2): ax.axvline(g, color='#2b3a4e', lw=0.7, alpha=0.28, ls=(0, (4, 4)), zorder=3.2)
-                for g in range(37, 46, 1 if False else 2): ax.axhline(g, color='#2b3a4e', lw=0.7, alpha=0.28, ls=(0, (4, 4)), zorder=3.2)
+                for g in range(56, 74, 2): ax.axvline(g, color='#ffffff', lw=0.7, alpha=0.13, ls=(0, (4, 4)), zorder=3.2)
+                for g in range(37, 46, 1 if False else 2): ax.axhline(g, color='#ffffff', lw=0.7, alpha=0.13, ls=(0, (4, 4)), zorder=3.2)
                 for g in range(58, 74, 2):
-                    ax.text(g, V[2] + 0.08, f"{g}°{'в.д.' if lang == 'ru' else 'E'}", ha='center', va='bottom', fontsize=13, color='#2b3a4e', zorder=6.5,
-                            bbox=dict(boxstyle='round,pad=0.15', fc='#ffffffcc', ec='none'))
+                    ax.text(g, V[2] + 0.08, f"{g}°{'в.д.' if lang == 'ru' else 'E'}", ha='center', va='bottom', fontsize=13, color='#cfd8e3', zorder=6.5,
+                            bbox=dict(boxstyle='round,pad=0.15', fc='#08111fb0', ec='none'))
                 for g in range(39, 46, 2):
-                    ax.text(V[0] + 0.08, g, f"{g}°{'с.ш.' if lang == 'ru' else 'N'}", ha='left', va='center', fontsize=13, color='#2b3a4e', zorder=6.5,
-                            bbox=dict(boxstyle='round,pad=0.15', fc='#ffffffcc', ec='none'))
+                    ax.text(V[0] + 0.08, g, f"{g}°{'с.ш.' if lang == 'ru' else 'N'}", ha='left', va='center', fontsize=13, color='#cfd8e3', zorder=6.5,
+                            bbox=dict(boxstyle='round,pad=0.15', fc='#08111fb0', ec='none'))
                 # values: the stations (fact) or the towns (forecast)
                 pts = []
                 if mode == 'obs':
@@ -228,8 +257,8 @@ def main():
                         mm = tot.get(tw, 0); ax.text(tw[3], tw[2], f"{mm:.0f}", ha='center', va='center', fontsize=18, fontweight='bold', color='#173f84', zorder=6,
                                                       bbox=dict(boxstyle='round,pad=0.3', fc='#ffffffdd', ec='#173f84', lw=1.5))
                 for tw in TOWNS[:12]:
-                    ax.text(tw[3], tw[2] - 0.42, tw[0 if lang == 'ru' else 1], ha='center', va='top', fontsize=15, fontweight='bold', color='#1f2d3d', zorder=6,
-                            bbox=dict(boxstyle='round,pad=0.15', fc='#ffffffcc', ec='none'))
+                    ax.text(tw[3], tw[2] - 0.42, tw[0 if lang == 'ru' else 1], ha='center', va='top', fontsize=15, fontweight='bold', color='#ffffff', zorder=6,
+                            bbox=dict(boxstyle='round,pad=0.2', fc='#08111fcc', ec='none'))
                 # legend tiles
                 y0 = 1 - (top + MAP_H + 40) / H
                 fig.text(0.05, y0, X['rain'] if mode != 'total' else X['tot'], fontsize=21, color=INK, fontweight='bold', va='center')
@@ -241,6 +270,8 @@ def main():
                     from matplotlib.patches import Circle
                     fig.patches.append(Circle((0.07, y0 - 0.112), 0.012, transform=fig.transFigure, fc='none', ec='#2f7fd1', lw=4))
                     fig.text(0.1, y0 - 0.1, X['obs_ring'], fontsize=18, color=MUTED, va='top')
+                elif mode == 'fc':
+                    fig.text(0.05, y0 - 0.1, X['wind'], fontsize=18, color=MUTED, va='top')
                 # towns panel: now (this frame) for the 8 biggest towns
                 y1 = y0 - 0.135; fig.text(0.05, y1, X['town'], fontsize=24, color=INK, fontweight='bold', va='center')
                 vals = []
@@ -256,8 +287,8 @@ def main():
                     fig.text(cx, cy, tw[0 if lang == 'ru' else 1], fontsize=24, color=INK, va='center')
                     fig.text(cx + 0.4, cy, '—' if v is None else (f"{v:.0f} мм" if lang == 'ru' else f"{v:.0f} mm") if mode == 'total' else f"{v:+.0f}°", fontsize=26, color=INK, fontweight='bold', va='center', ha='right')
                 # what it means
-                fig.patches.append(plt.Rectangle((0, 0.075), 1, 0.06, transform=fig.transFigure, fc='#fff4e8', ec='none'))
-                fig.text(0.05, 0.105, line, fontsize=25, color='#a1520c', fontweight='bold', va='center')
+                fig.patches.append(plt.Rectangle((0, 0.075), 1, 0.06, transform=fig.transFigure, fc='#16243a', ec='none'))
+                fig.text(0.05, 0.105, line, fontsize=25, color='#ffb066', fontweight='bold', va='center')
                 fig.text(0.05, 0.04, X['src'], fontsize=15, color=MUTED, va='center')
                 fig.savefig(fd / f'{n_:03d}.png', facecolor=PAPER); plt.close(fig); n_ += 1
             # timing: the facts slower, the forecast smooth
