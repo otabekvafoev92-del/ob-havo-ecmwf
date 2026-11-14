@@ -486,7 +486,7 @@ def main():
     for v in videos.values():  # the camera: a slow zoom over the forecast; an opening of 0.8 s
         fs = v['frames']; nf = len(fs)
         for j, f_ in enumerate(fs):
-            if 'zf' not in f_: f_['zf'] = 1 + 0.07 * j / max(1, nf - 1) if f_['mode'] != 'total' and not f_.get('country') else 1.0
+            if 'zf' not in f_: f_['zf'] = 1 + 0.07 * j / max(1, nf - 1) if f_['mode'] != 'total' and not f_.get('country') and v['ext'] is not E0 else 1.0  # the country fills the width: no zoom, nothing cut
         intro = [dict(fs[0], intro=float(a_), d=0.08, zf=1.0) for a_ in np.linspace(1, 0, 10)]
         intro[0]['d'] = 0.6; v['frames'] = intro + fs
     print('relief done:', len(rel), 'maps;', sum(len(v['frames']) for v in videos.values()), 'frames to draw', flush=True)
