@@ -1382,13 +1382,17 @@ function allDays(item, lang) {
 // ECMWF phone videos (branch ev, every 3 h): the stations over the last 6 hours, then the forecast for 12 hours or 3 days with the clouds moving
 const EVRAW = 'https://raw.githubusercontent.com/otabekvafoev92-del/ob-havo-ecmwf';
 const EVT = {
-  ru: { t: '🎬 <b>Видео-прогноз ECMWF</b>\nТучи и осадки в движении: сначала факт метеостанций за 6 часов, затем прогноз.', b12: '🎬 12 часов', b3: '🎬 3 дня', bobs: '📡 Факт: метеостанции',
+  ru: { t: '🎬 <b>Видео-прогноз ECMWF</b>\nТучи и осадки в движении: сначала факт метеостанций за 6 часов, затем прогноз.', b12: '🎬 12 часов', b3: '🎬 3 дня', bobs: '📡 Факт: метеостанции', b7: '🗓 По дням: 7 дней', c7: '🗓 <b>Погода по дням: 7 дней</b>', breg: '📍 Моя область крупно', preg: '📍 Выберите область — покажу её целиком, с районами:', creg: '📍 <b>{r}</b> · прогноз на 12 часов',
         c12: '🌦 <b>Погода: 6 часов факт + 12 часов прогноз</b>', c3: '🌦 <b>Погода: 6 часов факт + 3 дня прогноз</b>', cobs: '📡 <b>Что показали метеостанции Узбекистана</b>',
         run: 'Прогон ECMWF {r} UTC · обновлено {m} по Ташкенту', wet: 'Больше всего осадков: {t} — {mm} мм', dry: 'Заметных осадков не ожидается', err: 'Видео сейчас обновляется, попробуйте через пару минут.' },
-  uz: { t: '🎬 <b>ECMWF video-prognozi</b>\nBulutlar va yog‘in harakatda: avval 6 soatlik meteostansiyalar fakti, keyin prognoz.', b12: '🎬 12 soat', b3: '🎬 3 kun', bobs: '📡 Fakt: meteostansiyalar',
+  uz: { t: '🎬 <b>ECMWF video-prognozi</b>\nBulutlar va yog‘in harakatda: avval 6 soatlik meteostansiyalar fakti, keyin prognoz.', b12: '🎬 12 soat', b3: '🎬 3 kun', bobs: '📡 Fakt: meteostansiyalar', b7: '🗓 Kunlar bo‘yicha: 7 kun', c7: '🗓 <b>Kunlar bo‘yicha ob-havo: 7 kun</b>', breg: '📍 Viloyatim yaqindan', preg: '📍 Viloyatni tanlang — tumanlari bilan butunligicha ko‘rsataman:', creg: '📍 <b>{r}</b> · 12 soatlik prognoz',
         c12: '🌦 <b>Ob-havo: 6 soat fakt + 12 soat prognoz</b>', c3: '🌦 <b>Ob-havo: 6 soat fakt + 3 kun prognoz</b>', cobs: '📡 <b>O‘zbekiston meteostansiyalari nimani ko‘rsatdi</b>',
         run: 'ECMWF hisobi {r} UTC · Toshkent vaqti {m} da yangilandi', wet: 'Eng ko‘p yog‘in: {t} — {mm} mm', dry: 'Sezilarli yog‘in kutilmaydi', err: 'Video hozir yangilanmoqda, bir necha daqiqadan so‘ng urinib ko‘ring.' } };
-const evKb = L => ({ inline_keyboard: [[{ text: EVT[L].b12, callback_data: `EV:${L}:12h` }, { text: EVT[L].b3, callback_data: `EV:${L}:3d` }], [{ text: EVT[L].bobs, callback_data: `EV:${L}:obs` }]] });
+const evKb = L => ({ inline_keyboard: [[{ text: EVT[L].b12, callback_data: `EV:${L}:12h` }, { text: EVT[L].b3, callback_data: `EV:${L}:3d` }], [{ text: EVT[L].b7, callback_data: `EV:${L}:7d` }], [{ text: EVT[L].breg, callback_data: `EV:${L}:regs` }], [{ text: EVT[L].bobs, callback_data: `EV:${L}:obs` }]] });
+const EVREG = [[13, 'Ташкент', 'Toshkent sh.'], [8, 'Ташкентская', 'Toshkent vil.'], [7, 'Самаркандская', 'Samarqand'], [11, 'Бухарская', 'Buxoro'], [12, 'Кашкадарьинская', 'Qashqadaryo'],
+  [6, 'Сурхандарьинская', 'Surxondaryo'], [5, 'Навоийская', 'Navoiy'], [10, 'Джизакская', 'Jizzax'], [9, 'Сырдарьинская', 'Sirdaryo'], [2, 'Ферганская', 'Farg‘ona'],
+  [0, 'Андижанская', 'Andijon'], [1, 'Наманганская', 'Namangan'], [4, 'Хорезмская', 'Xorazm'], [3, 'Каракалпакстан', 'Qoraqalpog‘iston']];
+const evRegKb = L => ({ inline_keyboard: EVREG.reduce((rows, r, i) => { if (i % 2 === 0) rows.push([]); rows[rows.length - 1].push({ text: L === 'uz' ? r[2] : r[1], callback_data: `EV:${L}:r${r[0]}` }); return rows; }, []) });
 async function evMenu(env, chat, lang) {
   const L = lang === 'uz' ? 'uz' : 'ru';
   return tg(env, 'sendMessage', { chat_id: chat, text: EVT[L].t, parse_mode: 'HTML', reply_markup: evKb(L) });
@@ -1397,14 +1401,19 @@ async function sendEv(env, chat, lang, which) {
   const L = lang === 'uz' ? 'uz' : 'ru', X = EVT[L], fill = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k] ?? '');
   let meta = {}; try { meta = await (await fetch(`${EVRAW}/ev/meta.json?t=${Math.floor(Date.now() / 300e3)}`)).json(); } catch (e) {}
   let url, cap;
+  if (which === 'regs') return tg(env, 'sendMessage', { chat_id: chat, text: X.preg, reply_markup: evRegKb(L) });
   if (which === 'obs') { url = `${EVRAW}/obs/obs_${L}.mp4?v=${Math.floor(Date.now() / 1800e3)}`; cap = X.cobs; }
+  else if (/^r\d+$/.test(which)) {
+    const id = which.slice(1), nm = (meta.regions && meta.regions[id] && meta.regions[id][L]) || (EVREG.find(r => String(r[0]) === id) || [0, '', ''])[L === 'uz' ? 2 : 1];
+    url = `${EVRAW}/ev/reg/${id}_${L}.mp4?v=${encodeURIComponent(meta.made || Math.floor(Date.now() / 1800e3))}`; cap = fill(X.creg, { r: nm });
+  }
   else {
-    const k = which === '3d' ? '3d' : '12h', m = meta[k] || {};
+    const k = which === '3d' ? '3d' : which === '7d' ? '7d' : '12h', m = meta[k] || {};
     url = `${EVRAW}/ev/${k}_${L}.mp4?v=${encodeURIComponent(meta.made || Math.floor(Date.now() / 1800e3))}`;
     const run = (meta.run || '').replace(/^(\d{4})-(\d\d)-(\d\d)T(\d\d)Z$/, '$3.$2 $4:00');
     const made = meta.made ? new Date(Date.parse(meta.made.replace(/Z$/, ':00Z')) + 5 * 3600e3) : null;
     const mt = made && !isNaN(made) ? `${String(made.getUTCDate()).padStart(2, '0')}.${String(made.getUTCMonth() + 1).padStart(2, '0')} ${String(made.getUTCHours()).padStart(2, '0')}:${String(made.getUTCMinutes()).padStart(2, '0')}` : '';
-    cap = [k === '12h' ? X.c12 : X.c3, m.wettest && m.wettest[1] >= 1 ? fill(X.wet, { t: m.wettest[0], mm: Math.round(m.wettest[1]) }) : X.dry, meta.run ? fill(X.run, { r: run, m: mt }) : ''].filter(Boolean).join('\n');
+    cap = [k === '12h' ? X.c12 : k === '7d' ? X.c7 : X.c3, k === '7d' ? '' : m.wettest && m.wettest[1] >= 1 ? fill(X.wet, { t: m.wettest[0], mm: Math.round(m.wettest[1]) }) : X.dry, meta.run ? fill(X.run, { r: run, m: mt }) : ''].filter(Boolean).join('\n');
   }
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   const r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, width: 1080, height: 1920, reply_markup: evKb(L) });

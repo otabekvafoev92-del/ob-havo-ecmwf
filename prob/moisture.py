@@ -75,7 +75,7 @@ def fetch(run, steps=None):
             x = json.loads(line); p = x.get('param')
             if kind == 'ens' and not (x.get('type') == 'cf' or x.get('number') == '1'): continue  # the open ensemble files carry the members (no control): member 1
             lt, lv = x.get('levtype'), x.get('levelist')
-            key = (p if lt == 'sfc' and p in ('tcwv', 'msl', 'tp', 'tcc', '2t', '10u', '10v', '10fg', 'fg10', 'i10fg', 'sp') else p if lt == 'pl' and lv == '700' and p in ('u', 'v')
+            key = (p if lt == 'sfc' and p in ('tcwv', 'msl', 'tp', 'tcc', '2t', '2d', '10u', '10v', '10fg', 'fg10', 'i10fg', 'sp') else p if lt == 'pl' and lv == '700' and p in ('u', 'v')
                    else p + '850' if lt == 'pl' and lv == '850' and p in ('t', 'r') else None)
             if key: jobs.append((st, key, base + '.grib2', (x['_offset'], x['_offset'] + x['_length'] - 1)))
     F = {}
@@ -95,6 +95,7 @@ def fetch(run, steps=None):
             if 'tcwv' not in f: f['tcwv'] = f['tcc'] * 40 if 'tcc' in f else np.full_like(f['msl'], 15.0)
             out[st] = {'tcwv': f['tcwv'], 'msl': f['msl'] / 100.0, 'tp': f.get('tp', np.zeros_like(f['tcwv'])) * 1000.0, 'u': f['u'], 'v': f['v'],
                        'tcc': f.get('tcc', np.clip((f['tcwv'] - 10) / 25, 0, 1)), 't2': f['2t'] - 273.15 if '2t' in f else np.full_like(f['tcwv'], 10.0)}
+            if '2d' in f: out[st]['td2'] = f['2d'] - 273.15  # the dew point: fog where the air is saturated and calm
             if '10u' in f and '10v' in f: out[st]['ws'] = np.hypot(f['10u'], f['10v']); out[st]['u10'] = f['10u']; out[st]['v10'] = f['10v']
             g_ = next((f[k] for k in ('10fg', 'fg10', 'i10fg') if k in f), None)
             if g_ is not None: out[st]['gust'] = g_
