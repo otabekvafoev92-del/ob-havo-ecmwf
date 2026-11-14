@@ -10,6 +10,8 @@ from matplotlib.collections import LineCollection as LC, PolyCollection as PCOL
 from matplotlib.colors import ListedColormap, BoundaryNorm, LightSource
 from matplotlib import font_manager as fm
 from PIL import Image
+import cv2
+from scipy.ndimage import zoom, gaussian_filter
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'prob')); sys.path.insert(0, str(ROOT / 'tools'))
@@ -106,6 +108,34 @@ def main():
         pr = np.maximum(cut(F[b3]['tp']) - cut(F[a3]['tp']), 0) * (3 / max(3, b3 - a3))
         return mix('t2'), pr, mix('tcc')
     def at(a, la, lo): return float(a[np.abs(LAT - la).argmin(), np.abs(LON - lo).argmin()])
+    # motion: the fields upsampled ×4, the optical flow between two forecast hours moves the clouds and the rain between them
+    UP = 4; up = lambda a: zoom(a, UP, order=1)
+    hu, wu = up(np.zeros((len(LAT), len(LON)))).shape
+    LATu, LONu = np.linspace(LAT[0], LAT[-1], hu), np.linspace(LON[0], LON[-1], wu)
+    def atu(a, la, lo): return float(a[np.abs(LATu - la).argmin(), np.abs(LONu - lo).argmin()])
+    GX, GY = np.meshgrid(np.arange(wu, dtype=np.float32), np.arange(hu, dtype=np.float32))
+    def warp(a, fl, s):  # a sampled at x − s·flow
+        return cv2.remap(a.astype(np.float32), GX - s * fl[..., 0], GY - s * fl[..., 1], cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    def flow(a, b):
+        u8 = lambda x: np.clip(x * 255, 0, 255).astype(np.uint8)
+        return cv2.calcOpticalFlowFarneback(u8(a), u8(b), None, 0.5, 4, 31, 5, 7, 1.5, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
+    sig = lambda pr, tc: 0.65 * tc + 0.35 * np.clip(pr / 6, 0, 1)
+    rng = np.random.default_rng(7); NOISE = sum(gaussian_filter(rng.random((hu, wu)), s_) * w_ for s_, w_ in ((3, 1), (7, 1.6), (16, 2.2)))
+    NOISE = (NOISE - NOISE.min()) / (NOISE.max() - NOISE.min())
+    def sequence(fts, kind):  # the forecast frames: N in-between frames per interval, clouds and rain carried along the flow
+        N, dur = (8, 0.5) if kind == '12h' else (6, 0.4); stp = 1 if kind == '12h' else 3
+        keys = [tuple(up(x) for x in field(t)) for t in fts]; nz = NOISE.copy(); out = []
+        for i, t in enumerate(fts):
+            t2a, pra, tca = keys[i]
+            if i == len(fts) - 1:
+                out.append(dict(mode='fc', t=t, t2=t2a, pr=pra, tcc=tca, nz=nz, d=1.0)); break
+            t2b, prb, tcb = keys[i + 1]; fl = flow(gaussian_filter(sig(pra, tca), 2), gaussian_filter(sig(prb, tcb), 2))
+            for k in range(N):
+                s = k / N
+                pr_ = (1 - s) * warp(pra, fl, s) + s * warp(prb, fl, s - 1); tc_ = (1 - s) * warp(tca, fl, s) + s * warp(tcb, fl, s - 1)
+                out.append(dict(mode='fc', t=t + dt.timedelta(hours=round(s * stp)), t2=(1 - s) * t2a + s * t2b, pr=pr_, tcc=tc_, nz=nz, d=dur / N))
+                nz = warp(nz, fl, 1 / N)
+        return out
     # the stations: the last 6 hours (the 3-hourly terms)
     st = OV.stations(); obs = {}
     for line in OV.synops(hours=9).splitlines():
@@ -128,11 +158,14 @@ def main():
             _, pr, _ = field(t)
             for tw in TOWNS: tot[tw] = tot.get(tw, 0) + at(pr, tw[2], tw[3])
         wet = max(tot.items(), key=lambda kv: kv[1])
+        seq = sequence(fts, kind); print(kind, len(seq), 'forecast frames', flush=True)
+        acc3 = up(sum(field(tt)[1] for tt in fts)); t2end = up(field(fts[-1])[0])
         for lang in LANGS:
             X = TX[lang]; fd = pathlib.Path(tempfile.mkdtemp()); n_ = 0
             line = (X['wet3' if kind == '3d' else 'wet'].format(t=wet[0][0 if lang == 'ru' else 1], mm=round(wet[1])) if wet[1] >= 1 else X['none3' if kind == '3d' else 'dry'])
-            frames = [(t, 'obs') for t in terms] + [(t, 'fc') for t in fts] + ([(None, 'total')] if kind == '3d' else [])
-            for t, mode in frames:
+            frames = [dict(mode='obs', t=t, d=1.2) for t in terms] + seq + ([dict(mode='total', t=None, d=3.0)] if kind == '3d' else [])
+            for fr in frames:
+                t, mode = fr['t'], fr['mode']
                 fig = plt.figure(figsize=(W / 100, H / 100), dpi=100); fig.patch.set_facecolor(PAPER)
                 # header
                 fig.patches.append(plt.Rectangle((0, 1 - 250 / H), 1, 250 / H, transform=fig.transFigure, fc=NAVY, ec='none'))
@@ -150,19 +183,20 @@ def main():
                 ax.imshow(REL, extent=(V[0], V[1], V[2], V[3]), aspect='auto', zorder=0, interpolation='lanczos')
                 ax.add_collection(PCOL(sea, facecolors='#bcd8ec', edgecolors='#7fa9c6', linewidths=0.8, zorder=0.5))
                 if mode == 'fc' or mode == 'total':
-                    if mode == 'fc': t2, pr, tcc = field(t); acc = pr
-                    else:
-                        acc = sum(field(tt)[1] for tt in fts); t2 = field(fts[-1])[0]
-                    # clouds: a soft white veil, precipitation in steps on top
+                    if mode == 'fc': t2, pr, tcc = fr['t2'], fr['pr'], fr['tcc']; acc = pr
+                    else: acc, t2 = acc3, t2end
+                    # clouds: white where thin, grey where thick, a texture that drifts with the wind; precipitation in steps on top
                     if mode == 'fc':
-                        cl = np.zeros(tcc.shape + (4,)); cl[..., :3] = 1; cl[..., 3] = np.clip((tcc - 0.3) / 0.7, 0, 1) * 0.45
+                        th = np.clip((tcc - 0.7) / 0.3, 0, 1)[..., None]; cl = np.zeros(tcc.shape + (4,))
+                        cl[..., :3] = (1 - th) * np.array([1.0, 1.0, 1.0]) + th * np.array([0.6, 0.64, 0.69])
+                        cl[..., 3] = np.clip((tcc - 0.2) / 0.6, 0, 1) * (0.35 + 0.45 * np.clip(fr['nz'] * 1.6 - 0.3, 0, 1)) * 0.8
                         ax.imshow(cl, extent=ext, origin='lower', aspect='auto', interpolation='bicubic', zorder=1)
                     lv = PR_LV if mode == 'fc' else [1, 5, 10, 20, 40, 999]
                     snow = t2 <= 0.5
                     for mask, cols in ((~snow, RAIN), (snow, SNOW)):
                         a = np.where(mask, acc, np.nan)
                         if np.nanmax(np.nan_to_num(a)) >= lv[0]:
-                            ax.contourf(LON, LAT, a, levels=lv, colors=cols, alpha=0.85, zorder=2, antialiased=True)
+                            ax.contourf(LONu, LATu, a, levels=lv, colors=cols, alpha=0.85, zorder=2, antialiased=True)
                 ax.add_collection(LC([np.asarray(r) for c in G.values() for r in c['rings']], colors='#2b3a4e', linewidths=2.2, zorder=3))
                 if GA:
                     ax.add_collection(LC([np.asarray(r) for a in GA['adm1'] for r in a['r']], colors='#ffffff', linewidths=3.2, alpha=0.55, zorder=3))
@@ -174,7 +208,7 @@ def main():
                         s_ = st[w]; k = OV.wx(o.get('ww'))
                         pts.append((s_['lon'], s_['lat'], o['t'], k, s_['main']))
                 elif mode == 'fc':
-                    for tw in TOWNS: pts.append((tw[3], tw[2], at(t2, tw[2], tw[3]), (1 if at(t2, tw[2], tw[3]) <= 0.5 else 0) if at(pr, tw[2], tw[3]) >= 0.3 else None, True))
+                    for tw in TOWNS: pts.append((tw[3], tw[2], atu(t2, tw[2], tw[3]), (1 if atu(t2, tw[2], tw[3]) <= 0.5 else 0) if atu(pr, tw[2], tw[3]) >= 0.3 else None, True))
                 for x, y, v, k, big in sorted(pts, key=lambda q: q[4]):
                     if not (V[0] < x < V[1] and V[2] < y < V[3]): continue
                     if k is not None and OV.KC[OV.KI[k]]: ax.scatter(x, y, s=(2300 if big else 1300), facecolors='none', edgecolors=OV.KC[OV.KI[k]], linewidths=5, zorder=4)
@@ -206,7 +240,7 @@ def main():
                         near = min(obs[t].items(), key=lambda kv: (st[kv[0]]['lat'] - tw[2]) ** 2 + (st[kv[0]]['lon'] - tw[3]) ** 2)
                         d2 = (st[near[0]]['lat'] - tw[2]) ** 2 + (st[near[0]]['lon'] - tw[3]) ** 2
                         vals.append((tw, near[1]['t'] if d2 < 0.09 else None))
-                    elif mode == 'fc': vals.append((tw, at(t2, tw[2], tw[3])))
+                    elif mode == 'fc': vals.append((tw, atu(t2, tw[2], tw[3])))
                     else: vals.append((tw, tot.get(tw, 0)))
                 for i, (tw, v) in enumerate(vals):
                     cx = 0.05 + (i % 2) * 0.46; cy = y1 - 0.042 - (i // 2) * 0.039
@@ -218,7 +252,7 @@ def main():
                 fig.text(0.05, 0.04, X['src'], fontsize=15, color=MUTED, va='center')
                 fig.savefig(fd / f'{n_:03d}.png', facecolor=PAPER); plt.close(fig); n_ += 1
             # timing: the facts slower, the forecast smooth
-            per = [1.2 if m == 'obs' else (0.45 if kind == '12h' else 0.35) if m == 'fc' else 3.0 for _, m in frames]
+            per = [fr['d'] for fr in frames]
             lst = fd / 'list.txt'; lst.write_text(''.join(f"file '{i:03d}.png'\nduration {d}\n" for i, d in enumerate(per)) + f"file '{len(per) - 1:03d}.png'\n")
             out = OUT / f'{kind}_{lang}.mp4'; tmp = OUT / f'.{kind}_{lang}.part.mp4'
             subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-vf',

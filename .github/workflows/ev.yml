@@ -16,7 +16,7 @@ jobs:
         with: {python-version: '3.12'}
       - run: |
           sudo apt-get install -y -qq ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
-          pip install -q requests numpy scipy matplotlib pillow eccodes metpy
+          pip install -q requests numpy scipy matplotlib pillow eccodes metpy opencv-python-headless
           python -W ignore tools/ecmwf_video.py ev ru,uz
           cd ev && git init -q && git checkout -q -b ev && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "ev $(date -u +%F' '%H:%M)"
