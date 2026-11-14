@@ -249,7 +249,8 @@ def encode(vk):
     lst = fd / 'list.txt'; lst.write_text(''.join(f"file '{i:04d}.png'\nduration {d}\n" for i, d in enumerate(per)) + f"file '{len(per) - 1:04d}.png'\n")
     out = pathlib.Path(V['out']); tmp = out.with_name('.' + out.name + '.part.mp4')
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a', '-vf',
-                    'framerate=fps=30:interp_start=0:interp_end=255:scene=100,format=yuv420p', '-c:v', 'libx264', '-crf', '15', '-preset', 'medium', '-tune', 'animation', '-profile:v', 'high', '-level', '4.2',
+                    'framerate=fps=30:interp_start=0:interp_end=255:scene=100,format=yuv420p', '-c:v', 'libx264', '-crf', '19', '-maxrate', '1700k', '-bufsize', '3400k', '-preset', 'slow', '-tune', 'animation', '-profile:v', 'high', '-level', '4.2',  # under 20 MB: Telegram takes a video by link only up to that
+                   
                     '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(tmp)], check=True)
     tmp.replace(out); shutil.rmtree(fd); return f"{out} {out.stat().st_size // 1024} KB"
 
