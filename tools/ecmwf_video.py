@@ -322,7 +322,7 @@ def main():
     print('obs terms', terms, flush=True)
     # the forecast frames: N in-between frames per interval, the clouds and the rain carried along the flow, the wind as particles
     fields = []
-    E0 = fit_ext(58.4, 73.3, 37.1, 45.65, 0.03)
+    E0 = fit_ext(55.9, 73.25, 37.15, 45.6, 0.02)  # the whole country, from the Ustyurt to the Fergana valley
     def sequence(fts, kind):
         N, dur = (6, 0.5) if kind == '12h' else (4, 0.42); stp = 1 if kind == '12h' else 3
         keys = [tuple(up(x) for x in field(t)) for t in fts]; nz = NOISE.copy(); out = []
