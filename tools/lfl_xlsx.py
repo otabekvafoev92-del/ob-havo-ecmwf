@@ -177,6 +177,19 @@ def main():
                 if i >= ti: x.fill = FCF
             r += 1
     dscale(w4, f"G2:G{r}"); w4.freeze_panes = 'A2'; w4.auto_filter.ref = f"A1:J{r - 1}"
+    # a first sheet about the report, and every sheet ready to print (landscape, one page wide), the differences signed
+    ab = wb.create_sheet('О отчёте' if LANG == 'ru' else 'Hisobot haqida', 0); ab.sheet_view.showGridLines = False
+    ab['B2'] = 'OSMON'; ab['B2'].font = Font(bold=True, size=20, color='1F2D3D'); ab['B3'] = X['title']; ab['B3'].font = Font(bold=True, size=14, color='1F2D3D')
+    ab['B4'] = X['made'].format(d=today.strftime('%d.%m.%Y')); ab['B4'].font = Font(italic=True, color='6B7A8C')
+    for i, ws_ in enumerate(wb.worksheets[1:], 6): ab.cell(row=i, column=2, value=f'{i - 5}. {ws_.title}').font = Font(size=12, color='2F6FD0')
+    ab.column_dimensions['B'].width = 90
+    for ws_ in wb.worksheets:
+        ws_.page_setup.orientation = 'landscape'; ws_.page_setup.fitToWidth = 1; ws_.page_setup.fitToHeight = 0; ws_.sheet_properties.pageSetUpPr.fitToPage = True
+        ws_.print_title_rows = '1:1' if ws_.title not in (X['sum'],) else '4:4'
+        for row in ws_.iter_rows(min_row=2):
+            for c in row:
+                h = ws_.cell(row=1 if ws_.title != X['sum'] else 4, column=c.column).value or ''
+                if isinstance(c.value, (int, float)) and ('Δ' in str(h)): c.number_format = '+0.0;−0.0;0.0'
     wb.save(OUT); print(OUT, OUT.stat().st_size // 1024, 'KB')
 
 
