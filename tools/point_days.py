@@ -38,7 +38,14 @@ while d <= d1:
     print(d, 'ECMWF ok', flush=True); d += dt.timedelta(days=1)
 
 # the weather stations within 40 km
-st = OV.stations(); near = {k: v for k, v in st.items() if 111 * math.hypot(v['lat'] - la0, (v['lon'] - lo0) * math.cos(math.radians(la0))) <= 40}
+st = OV.stations()
+REG = sys.argv[7] if len(sys.argv) > 7 else None  # a region id of geo_admin: every station inside it, not only those within 40 km
+if REG:
+    from matplotlib.path import Path as MPath
+    ga = next(a for a in json.load(open(ROOT / 'prob' / 'geo_admin.json'))['UZ']['adm1'] if str(a['id']) == REG)
+    near = {k: v for k, v in st.items() if any(MPath(np.asarray(r)).contains_point((v['lon'], v['lat'])) for r in ga['r'])}
+else:
+    near = {k: v for k, v in st.items() if 111 * math.hypot(v['lat'] - la0, (v['lon'] - lo0) * math.cos(math.radians(la0))) <= 40}
 print('stations', {k: v.get('name') for k, v in near.items()}, flush=True)
 beg = dt.datetime(d0.year, d0.month, d0.day) - dt.timedelta(hours=6); end = dt.datetime(d1.year, d1.month, d1.day, 21)
 txt = ''
