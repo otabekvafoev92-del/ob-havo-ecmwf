@@ -1,0 +1,25 @@
+name: A place by days (stations + ECMWF)
+# the weather at one place for a period: the SYNOP reports of the stations near it and ECMWF there (tools/point_days.py); the result on "reports-point"
+on:
+  workflow_dispatch:
+    inputs:
+      name: {description: 'place', required: true}
+      lat: {description: 'latitude', required: true}
+      lon: {description: 'longitude', required: true}
+      start: {description: 'first day (YYYY-MM-DD)', required: true}
+      end: {description: 'last day (YYYY-MM-DD)', required: true}
+permissions: {contents: write}
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          pip install -q requests numpy scipy matplotlib pillow eccodes
+          python -W ignore tools/point_days.py "${{ inputs.name }}" "${{ inputs.lat }}" "${{ inputs.lon }}" "${{ inputs.start }}" "${{ inputs.end }}" rep
+          cd rep && git init -q && git checkout -q -b reports-point && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "point ${{ inputs.name }} ${{ inputs.start }}..${{ inputs.end }}"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" reports-point
