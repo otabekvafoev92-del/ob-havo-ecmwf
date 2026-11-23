@@ -1,0 +1,23 @@
+name: Regions by days (ECMWF)
+# the weather of the regions by days for a period, from the ECMWF runs (tools/region_days.py); the result on the "reports" branch
+on:
+  workflow_dispatch:
+    inputs:
+      start: {description: 'first day (YYYY-MM-DD)', required: true}
+      end: {description: 'last day (YYYY-MM-DD)', required: true}
+permissions: {contents: write}
+jobs:
+  r:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          pip install -q requests numpy scipy matplotlib eccodes
+          python -W ignore tools/region_days.py "${{ inputs.start }}" "${{ inputs.end }}" rep
+          cd rep && mv region_days.json "region_days_${{ inputs.start }}_${{ inputs.end }}.json"
+          git init -q && git checkout -q -b reports && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "region days ${{ inputs.start }}..${{ inputs.end }}"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" reports
