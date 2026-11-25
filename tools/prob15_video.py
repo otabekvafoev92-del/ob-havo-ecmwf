@@ -174,7 +174,7 @@ def encode(lang):
     lst = fd / 'list.txt'; lst.write_text(''.join(f"file '{i:04d}.png'\nduration {fr['d']}\n" for i, fr in enumerate(V['frames'])) + f"file '{len(V['frames']) - 1:04d}.png'\n")
     out = pathlib.Path(V['out']); tmp = out.with_name('.' + out.name + '.part.mp4')
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a',
-                    '-vf', 'framerate=fps=30:interp_start=0:interp_end=255:scene=100,format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-maxrate', '1900k', '-bufsize', '3800k',
+                    '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-maxrate', '1900k', '-bufsize', '3800k',
                     '-preset', 'slow', '-tune', 'animation', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(tmp)], check=True)
     tmp.replace(out); shutil.rmtree(fd); return f'{out} {out.stat().st_size // 1024} KB'
 
