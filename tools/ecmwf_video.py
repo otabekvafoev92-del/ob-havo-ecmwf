@@ -441,7 +441,7 @@ def main():
                     fields.append(dict(t2=t2a, pr=pra, tcc=tca, msl=msa, fog=fga, nz=nz, tr=step(ua, va)))
                     out.append(dict(t=t, k=len(fields) - 1, ci=i, d=(1.2 if k == N - 1 else 0.5 / N)))
                 break
-            if kind == '15d': stp = max(1, int((fts[i + 1] - t).total_seconds() // 3600)); N = stp; dur = 0.03 * N  # one frame an hour
+            if kind == '15d': stp = max(1, int((fts[i + 1] - t).total_seconds() // 3600)); N = stp; dur = 0.075 * N  # one frame an hour, each hour held ~0.3 s on screen
             t2b, prb, tcb, msb, ub, vb, fgb = keys[i + 1]; fl = flow(gaussian_filter(sig(pra, tca), 2), gaussian_filter(sig(prb, tcb), 2))
             for k in range(N):
                 s = k / N
@@ -597,7 +597,7 @@ def main():
             seq15, keys15 = sequence(fts15, '15d'); print('15d', len(seq15), 'frames', flush=True)
             ch15 = chart(keys15, fts15, MUZ, '15d'); seen = set(); lab15 = []
             for t in fts15:
-                dd_ = (t + dt.timedelta(hours=5)).strftime('%d.%m'); lab15.append(dd_ if dd_ not in seen and (t + dt.timedelta(hours=5)).hour >= 3 else ''); seen.add(dd_)
+                dd_ = (t + dt.timedelta(hours=5)).strftime('%d.%m'); ok_ = dd_ not in seen and (t + dt.timedelta(hours=5)).hour >= 3; lab15.append(dd_ if ok_ else ''); seen.add(dd_) if ok_ else None
             ch15.update(lab=lab15, every=1); charts['15d'] = ch15
             hrs = [max(3, int((fts15[i] - (fts15[i - 1] if i else now)).total_seconds() // 3600)) for i in range(len(fts15))]
             tot15 = {tw: sum(atu(k[1], tw[2], tw[3]) * h / 3 for k, h in zip(keys15, hrs)) for tw in TOWNS[:12]}; wet15 = max(tot15.items(), key=lambda kv: kv[1])
