@@ -23,12 +23,12 @@ SNOW = ['#eadcff', '#d3bcfa', '#b897f0', '#9b72e2', '#7a4bc8', '#5a2da0']
 COLD, WARM = '#2f63d6', '#d8432b'
 TX = {'ru': dict(title='Откуда идёт влага · тучи и осадки · 15 дней', tz='по Ташкенту', day='день {i} из {n}', moist='Влажный воздух', dry='сухо', wet='влажно', cl='тучи',
                  rain='дождь', snow='снег', mm='мм за 3 ч', cold='холодный фронт', warm='тёплый фронт', hi='В', lo='Н', hil='антициклон: ясно', lol='циклон: тучи, осадки',
-                 path='путь влаги к городу', src='Влага: {s}', wind='стрелки — ветер на высоте ~3 км (куда течёт влага)', chart='Ташкент: осадки (мм за 3 ч, столбики) и температура (линия)',
+                 path='путь влаги к городу', src='Влага: {s}', wind='тонкие линии — ветер на высоте ~3 км (куда течёт влага)', chart='Ташкент: осадки (мм за 3 ч, столбики) и температура (линия)',
                  w_dry='сухо', w_cl='облачно', w_fog='туман', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], intro1='Откуда идёт влага', intro2='тучи, осадки и фронты на 15 дней по часам',
                  end1='Погода в вашем районе и посёлке', end2='в Telegram-боте @ObHavo_ECMWF_bot', models='ECMWF IFS (до 10 дней), далее ансамбль ECMWF · Osmon'),
       'uz': dict(title='Namlik qayerdan keladi · bulut va yog‘in · 15 kun', tz='Toshkent vaqti', day='{i}-kun / {n}', moist='Nam havo', dry='quruq', wet='nam', cl='bulut',
                  rain='yomg‘ir', snow='qor', mm='mm / 3 soat', cold='sovuq front', warm='iliq front', hi='Y', lo='P', hil='antisiklon: ochiq', lol='siklon: bulut, yog‘in',
-                 path='namlikning shaharga yo‘li', src='Namlik: {s}', wind='strelkalar — ~3 km balandlikdagi shamol (namlik oqimi)', chart='Toshkent: yog‘in (mm / 3 soat, ustunlar) va harorat (chiziq)',
+                 path='namlikning shaharga yo‘li', src='Namlik: {s}', wind='ingichka chiziqlar — ~3 km balandlikdagi shamol (namlik oqimi)', chart='Toshkent: yog‘in (mm / 3 soat, ustunlar) va harorat (chiziq)',
                  w_dry='quruq', w_cl='bulutli', w_fog='tuman', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], intro1='Namlik qayerdan keladi', intro2='15 kunga soatma-soat bulut, yog‘in va frontlar',
                  end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda: @ObHavo_ECMWF_bot', models='ECMWF IFS (10 kungacha), keyin ECMWF ansambli · Osmon')}
 CTX = {}
@@ -42,22 +42,32 @@ def draw(job):
     lang, i = job; C = CTX; V = C['videos'][lang]; fr = V['frames'][i]; X = TX[lang]
     fig = plt.figure(figsize=(W / PV.DPI, H / PV.DPI), dpi=PV.DPI); fig.patch.set_facecolor('white')
     ax = fig.add_axes(PV.MAP); x0, x1 = C['lon_ext']; ax.set_xlim(x0, x1); ax.set_ylim(LAT_A, LAT_B); ax.set_aspect(1 / PV.COSL); ax.axis('off')
-    LO, LA = C['LONu'], C['LATu']; f = C['fields'][fr['k']]; a_in = fr.get('fade', 1.0)
-    ax.contourf(LO, LA, f['tcwv'], levels=TCWV_LV, colors=TCWV_COL, zorder=0.3, alpha=a_in, antialiased=True)
-    for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=PV.SEA, ec='#b9cfe3', lw=0.6, zorder=0.5, alpha=0.85)
-    if f['tcc'].max() >= 0.6:  # clouds: soft grey
-        ax.contourf(LO, LA, f['tcc'], levels=[0.6, 0.85, 1.01], colors=['#d9dde2', '#c3c9d0'], alpha=0.55 * a_in, zorder=1.2, antialiased=True)
+    LO, LA = C['LONu'], C['LATu']; f = {k: v.astype(np.float32) for k, v in C['fields'][fr['k']].items()}; a_in = fr.get('fade', 1.0)
+    ext_ = (LO[0], LO[-1], LA[0], LA[-1])
+    # the water vapour as a smooth wash: dry air white, moist air green
+    ax.imshow(C['wv_cmap'](np.clip((f['tcwv'] - 8) / 37, 0, 1)), extent=ext_, origin='lower', interpolation='bicubic', aspect='auto', zorder=0.3, alpha=a_in)
+    for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=PV.SEA, ec='#b9cfe3', lw=0.6, zorder=0.5, alpha=0.8)
+    # clouds: a soft grey veil, thicker where the cloud is thicker
+    cl = np.zeros(f['tcc'].shape + (4,), np.float32); cl[..., :3] = (0.56, 0.6, 0.66); cl[..., 3] = np.clip((f['tcc'] - 0.35) / 0.65, 0, 1) ** 1.3 * 0.42 * a_in
+    ax.imshow(cl, extent=ext_, origin='lower', interpolation='bicubic', aspect='auto', zorder=1.2)
     snow = f['t2'] <= 0.5; Pr, Ps = np.where(snow, 0, f['pr']), np.where(snow, f['pr'], 0)
-    if Pr.max() >= PR_LV[0]: ax.contourf(LO, LA, Pr, levels=PR_LV, colors=RAIN, alpha=0.92 * a_in, zorder=2, antialiased=True)
-    if Ps.max() >= PR_LV[0]: ax.contourf(LO, LA, Ps, levels=PR_LV, colors=SNOW, alpha=0.92 * a_in, zorder=2.1, antialiased=True)
-    # the wind at ~3 km: where the moisture flows
-    q = C['qi']; ax.quiver(LO[q[1]], LA[q[0]], f['u'][np.ix_(q[0], q[1])], f['v'][np.ix_(q[0], q[1])], color='#5f7f8c', alpha=0.55 * a_in, scale=520, width=0.0018, headwidth=4, headlength=4.5, zorder=2.4)
-    # fronts
+    for P_, pal, z in ((Pr, RAIN, 2), (Ps, SNOW, 2.1)):
+        if P_.max() >= PR_LV[0]:
+            ax.contourf(LO, LA, P_, levels=PR_LV, colors=pal, alpha=0.9 * a_in, zorder=z, antialiased=True)
+            ax.contour(LO, LA, P_, levels=PR_LV[:1], colors=[pal[2]], linewidths=0.8, alpha=0.7 * a_in, zorder=z + 0.01)
+    ax.set_xlim(x0, x1); ax.set_ylim(LAT_A, LAT_B); ax.set_aspect(1 / PV.COSL)
+    # the wind at ~3 km as flowing streaks: each particle drifts with the wind and leaves a fading trail
+    tr = C['trails'][fr['p']].astype(np.float32); TRn = tr.shape[0]
+    seg = np.stack([tr[:-1], tr[1:]], axis=2)  # (TR-1, N, 2 points, 2)
+    ok = (np.abs(seg[:, :, 1] - seg[:, :, 0]).max(-1) < 0.8)
+    alph = np.repeat((np.arange(1, TRn) / (TRn - 1)) ** 1.4, seg.shape[1]).reshape(TRn - 1, -1) * 0.5 * a_in
+    rgba = np.zeros(alph.shape + (4,), np.float32); rgba[..., :3] = matplotlib.colors.to_rgb('#3d5a6c'); rgba[..., 3] = alph
+    ax.add_collection(LineCollection(seg[ok], colors=rgba[ok], linewidths=1.0, zorder=2.4, capstyle='round'))
+    # fronts with their symbols on the side the front moves to
     for line, kind in C['fronts'].get(fr['fk'], []):
         col = COLD if kind == 'cold' else WARM
-        ax.plot(line[:, 0], line[:, 1], color=col, lw=2.6, zorder=3.4, alpha=a_in, solid_capstyle='round')
-        step = max(3, len(line) // 12)
-        ax.plot(line[step // 2::step, 0], line[step // 2::step, 1], ls='none', marker='^' if kind == 'cold' else 'o', ms=8, color=col, mec='white', mew=0.8, zorder=3.45, alpha=a_in)
+        ax.plot(line[:, 0], line[:, 1], color=col, lw=2.8, zorder=3.4, alpha=a_in, solid_capstyle='round', solid_joinstyle='round')
+        for poly in front_symbols(line, kind): ax.fill(poly[:, 0], poly[:, 1], color=col, ec='none', zorder=3.45, alpha=a_in)
     # highs and lows
     for x_, y_, hi in fr['hl']:
         ax.text(x_, y_, X['hi'] if hi else X['lo'], fontsize=26, fontweight='bold', color=COLD if hi else WARM, ha='center', va='center', zorder=3.6, alpha=a_in,
@@ -153,6 +163,19 @@ def draw(job):
     fig.savefig(pathlib.Path(V['dir']) / f'{i:04d}.png', dpi=PV.DPI, facecolor='white'); plt.close(fig)
 
 
+def front_symbols(line, kind, every=1.1, size=0.22):
+    """Triangles (cold) or half-discs (warm) along a front, in lon/lat, drawn on one side of the line."""
+    xy = np.c_[line[:, 0] * PV.COSL, line[:, 1]]  # an even scale in both directions
+    d = np.r_[0, np.cumsum(np.hypot(*np.diff(xy, axis=0).T))]; out = []
+    for s in np.arange(every / 2, d[-1] - size, every):
+        j = int(np.clip(np.searchsorted(d, s) - 1, 0, len(xy) - 2)); a = (s - d[j]) / max(d[j + 1] - d[j], 1e-9)
+        p = xy[j] + a * (xy[j + 1] - xy[j]); t = xy[j + 1] - xy[j]; t = t / (np.hypot(*t) + 1e-9); n = np.array([-t[1], t[0]])
+        if kind == 'cold': pts = np.array([p - t * size, p + t * size, p + n * size * 1.25])
+        else: th = np.linspace(0, np.pi, 14); pts = np.array([p + size * (np.cos(q) * t + np.sin(q) * n) for q in th])
+        out.append(np.c_[pts[:, 0] / PV.COSL, pts[:, 1]])
+    return out
+
+
 def PV_deg(v):
     v = int(round(v)); return f'{v:+d}°' if v else '0°'
 
@@ -187,29 +210,46 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
                     loc_ = Mg[max(0, y_ - 30):y_ + 30, max(0, x_ - 30):x_ + 30]
                     if (hi and Mg[y_, x_] - loc_.min() >= 3) or (not hi and loc_.max() - Mg[y_, x_] >= 3): out.append((float(LONu[x_]), float(LATu[y_]), hi))
         return out
-    fields, frames0 = [], []
-    for h in hours:
+    fields, frames0, trails = [], [], []
+    rng = np.random.default_rng(7); NP, TRn = 1300, 10
+    spawn = lambda n: np.c_[rng.uniform(ext[0], ext[1], n), rng.uniform(LAT_A - 0.3, LAT_B + 0.3, n)]
+    P = spawn(NP); age = rng.integers(0, 60, NP); life = rng.integers(45, 90, NP); hist = [P.copy() for _ in range(TRn)]
+    times = [h + s for h in hours for s in (0.0, 0.5)][:-1]
+    for h in times:  # a frame every half hour: the fields eased in time, the particles moved by the wind of that half hour
         f = M.interp(F, h)
         g = dict(tcwv=up(f['tcwv'], 1.5), tcc=np.clip(up(f['tcc'], 1.5), 0, 1), pr=np.clip(up(f['pr'], 1.2), 0, None), t2=up(f['t2']), u=up(f['u']), v=up(f['v']), msl=up(f['msl']))
+        iy = np.clip(np.searchsorted(LATu, P[:, 1]), 0, len(LATu) - 1); ix = np.clip(np.searchsorted(LONu, P[:, 0]), 0, len(LONu) - 1)
+        P = P + np.c_[g['u'][iy, ix] * 1800 / (111e3 * np.cos(np.radians(P[:, 1]))), g['v'][iy, ix] * 1800 / 111e3]; age += 1
+        dead = (age > life) | (P[:, 0] < ext[0] - 0.5) | (P[:, 0] > ext[1] + 0.5) | (P[:, 1] < LAT_A - 0.5) | (P[:, 1] > LAT_B + 0.5)
+        if dead.any():
+            P[dead] = spawn(int(dead.sum())); age[dead] = 0
+            for q in hist: q[dead] = P[dead]
+        hist = hist[1:] + [P.copy()]; trails.append(np.stack(hist).astype(np.float16))
         fog = None
         if 'td2' in F[min(F)]:
             ks = sorted(F); k_ = min(ks, key=lambda s: abs(s - h)); fog = up(F[k_]['td2'])
-        fields.append(g)
-        frames0.append(dict(h=h, k=len(fields) - 1, fk=min(fronts, key=lambda s: abs(s - h)) if fronts else None, hl=centres(g['msl']), fog=fog))
-    qy = np.arange(6, len(LATu), 12); qx = np.arange(6, len(LONu), 12)
+        fields.append({k: v.astype(np.float16) for k, v in g.items() if k != 'msl'})
+        frames0.append(dict(h=h, k=len(fields) - 1, p=len(trails) - 1, fk=min(fronts, key=lambda s: abs(s - h)) if fronts else None, hl=centres(g['msl']) if h == int(h) else None, fog=fog,
+                            g=dict(t2=g['t2'], pr=g['pr'], tcc=g['tcc'])))
+    for j, fr in enumerate(frames0):  # the highs and lows of the half hours: those of the hour before
+        if fr['hl'] is None: fr['hl'] = frames0[j - 1]['hl']
+    hours = [fr['h'] for fr in frames0 if fr['h'] == int(fr['h'])]
     # Tashkent's chart: mm in 3 h at each 3rd hour, the temperature every hour
     tash = PV.TOWNS[0]
     ch_h = [h for h in hours if h % 3 == 0]
-    ch_pr = [at(fields[hours.index(h)]['pr'], tash[2], tash[3]) for h in ch_h]
-    ch_sn = [at(fields[hours.index(h)]['t2'], tash[2], tash[3]) <= 0.5 for h in ch_h]
-    ch_t = [at(g['t2'], tash[2], tash[3]) for g in fields]
+    byh = {fr['h']: fr['g'] for fr in frames0}
+    ch_pr = [at(byh[h]['pr'], tash[2], tash[3]) for h in ch_h]
+    ch_sn = [at(byh[h]['t2'], tash[2], tash[3]) <= 0.5 for h in ch_h]
+    ch_t = [at(byh[h]['t2'], tash[2], tash[3]) for h in hours]
     loc = lambda h: run + dt.timedelta(hours=h + 5)
     days = []; t0 = loc(0); d = (loc(hours[0])).replace(hour=0, minute=0, second=0) + dt.timedelta(days=1)
     while (d - t0).total_seconds() / 3600 < hours[-1]:
         days.append(((d - t0).total_seconds() / 3600, {l: f"{TX[l]['wd'][d.weekday()]}\n{d:%d.%m}" for l in TX})); d += dt.timedelta(days=1)
     G = json.load(open(ROOT / 'prob' / 'geo_casia.json'))['countries']; GA = json.load(open(ROOT / 'prob' / 'geo_admin.json'))['UZ']
     WAT = json.load(open(ROOT / 'prob' / 'geo_water.json'))
-    CTX.update(LONu=LONu, LATu=LATu, fields=fields, fronts=fronts, qi=(qy, qx), lon_ext=ext,
+    from matplotlib.colors import LinearSegmentedColormap
+    CTX.update(LONu=LONu, LATu=LATu, fields=fields, trails=trails, fronts=fronts, lon_ext=ext,
+               wv_cmap=LinearSegmentedColormap.from_list('wv', ['#ffffff', '#f4f9f5', '#e3f2e9', '#c9e9d8', '#a6d9c1', '#7cc4a8', '#52a88e', '#3a8f7a']),
                sea=[np.asarray(r) for r in WAT['ocean']] + [np.asarray(l_['r']) for l_ in WAT['lakes']],
                borders=[([np.asarray(r) for k, c in G.items() if k != 'UZ' for r in c['rings']], '#a3acb6', 1.0, 3), ([np.asarray(r) for a in GA['adm1'] for r in a['r']], '#b7c0ca', 0.8, 3.05),
                         ([np.asarray(r) for r in G['UZ']['rings']], '#1c2633', 2.6, 3.3)],
@@ -218,14 +258,14 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
     for lang in langs:
         X = TX[lang]; frames = []
         for fr in frames0:
-            g = fields[fr['k']]; h = fr['h']; t = loc(h)
+            g = fr['g']; h = fr['h']; t = loc(h)
             towns = []
             for tw in PV.TOWNS:
                 t_ = at(g['t2'], tw[2], tw[3]); fog = fr['fog'] is not None and t_ - at(fr['fog'], tw[2], tw[3]) <= 1.0 and at(g['pr'], tw[2], tw[3]) < 0.3
                 towns.append((t_, at(g['pr'], tw[2], tw[3]), t_ <= 0.5, at(g['tcc'], tw[2], tw[3]), fog))
             ps = [dict(p, a=float(np.clip(1 - (abs(h - p['h']) - 18) / 12, 0, 1))) for p in paths if abs(h - p['h']) <= 30]
             frames.append(dict(fr, when=f"{X['wd'][t.weekday()]} {t:%d.%m} · {t:%H}:00", day=X['day'].format(i=int(np.clip((t.date() - d1).days + 1, 1, 15)), n=15),
-                               prog=(h - hours[0]) / max(1, hours[-1] - hours[0]), d=0.2, towns=towns, tash_t=at(g['t2'], tash[2], tash[3]), paths=[p for p in ps if p['a'] > 0]))
+                               prog=(h - hours[0]) / max(1, hours[-1] - hours[0]), d=0.1, towns=towns, tash_t=at(g['t2'], tash[2], tash[3]), paths=[p for p in ps if p['a'] > 0]))
         frames[-1] = dict(frames[-1], d=1.2)
         intro = [dict(frames[0], card='intro', a=1.0, fade=0.0, d=1.6)] + [dict(frames[0], card='intro', a=float(a_), fade=float(1 - a_), d=0.07) for a_ in np.linspace(1, 0, 9)[1:]]
         CTX['videos'][lang] = dict(frames=intro + frames + [dict(frames[-1], card='end', d=4.0)], dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f'moist15_{lang}.mp4'))
