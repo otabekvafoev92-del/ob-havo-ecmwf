@@ -1382,18 +1382,47 @@ function allDays(item, lang) {
 // ECMWF phone videos (branch ev, every 3 h): the stations over the last 6 hours, then the forecast for 12 hours or 3 days with the clouds moving
 const EVRAW = 'https://raw.githubusercontent.com/otabekvafoev92-del/ob-havo-ecmwf';
 const EVT = {
-  ru: { t: '🎬 <b>Видео-прогноз ECMWF</b>\nТучи и осадки в движении: сначала факт метеостанций за 6 часов, затем прогноз.', b12: '🎬 12 часов', b3: '🎬 3 дня', bobs: '📡 Факт: метеостанции', bplace: '📍 Мой город, регион, район или посёлок', pplace: '📍 Что показать?', bcity: '🏙 Город', bregion: '🗺 Регион (область)', bdist: '📍 Район', bvil: '🏘 Посёлок / кишлак', pcity: '🏙 Выберите город:', pdreg: '📍 Сначала область:', pdist: '📍 Район:', pvil: '🏘 Напишите название посёлка после /v — например:\n<code>/v Чимган</code>\nИли отправьте 📎 геолокацию — покажу погоду в этой точке.', nf: 'Не нашёл «{q}» в Узбекистане. Попробуйте иначе написать или отправьте геолокацию.', fnow: 'сейчас', fnight: 'до {t}° к ночи', fday: 'до {t}° днём', frain: '🌧 дождь {a}–{b} ч, до {mm} мм', fsnow: '🌨 снег {a}–{b} ч, до {mm} мм', fdry: '☀️ без осадков 12 ч', ffog: '🌫 туман {a}–{b} ч', fin: 'в районе {d}', b7: '🗓 По дням: 7 дней', c7: '🗓 <b>Погода по дням: 7 дней</b>', breg: '📍 Моя область крупно', preg: '📍 Выберите область — покажу её целиком, с районами:', creg: '📍 <b>{r}</b> · прогноз на 12 часов',
+  ru: { t: '🎬 <b>Видео-прогноз ECMWF</b>\nТучи и осадки в движении: сначала факт метеостанций за 6 часов, затем прогноз.', b12: '🎬 12 часов', b3: '🎬 3 дня', bobs: '📡 Факт: метеостанции', byest: '📅 Как было вчера (метеостанции)', pyest: '📅 Выберите область — покажу, что было по метеостанциям вчера и сегодня:', bplace: '📍 Мой город, регион, район или посёлок', pplace: '📍 Что показать?', bcity: '🏙 Город', bregion: '🗺 Регион (область)', bdist: '📍 Район', bvil: '🏘 Посёлок / кишлак', pcity: '🏙 Выберите город:', pdreg: '📍 Сначала область:', pdist: '📍 Район:', pvil: '🏘 Напишите название посёлка после /v — например:\n<code>/v Чимган</code>\nИли отправьте 📎 геолокацию — покажу погоду в этой точке.', nf: 'Не нашёл «{q}» в Узбекистане. Попробуйте иначе написать или отправьте геолокацию.', fnow: 'сейчас', fnight: 'до {t}° к ночи', fday: 'до {t}° днём', frain: '🌧 дождь {a}–{b} ч, до {mm} мм', fsnow: '🌨 снег {a}–{b} ч, до {mm} мм', fdry: '☀️ без осадков 12 ч', ffog: '🌫 туман {a}–{b} ч', fin: 'в районе {d}', b7: '🗓 По дням: 7 дней', c7: '🗓 <b>Погода по дням: 7 дней</b>', breg: '📍 Моя область крупно', preg: '📍 Выберите область — покажу её целиком, с районами:', creg: '📍 <b>{r}</b> · прогноз на 12 часов',
         c12: '🌦 <b>Погода: 6 часов факт + 12 часов прогноз</b>', c3: '🌦 <b>Погода: 6 часов факт + 3 дня прогноз</b>', cobs: '📡 <b>Что показали метеостанции Узбекистана</b>',
         run: 'Прогон ECMWF {r} UTC · обновлено {m} по Ташкенту', wet: 'Больше всего осадков: {t} — {mm} мм', dry: 'Заметных осадков не ожидается', err: 'Видео сейчас обновляется, попробуйте через пару минут.' },
-  uz: { t: '🎬 <b>ECMWF video-prognozi</b>\nBulutlar va yog‘in harakatda: avval 6 soatlik meteostansiyalar fakti, keyin prognoz.', b12: '🎬 12 soat', b3: '🎬 3 kun', bobs: '📡 Fakt: meteostansiyalar', bplace: '📍 Shahrim, viloyat, tuman yoki qishloq', pplace: '📍 Nimani ko‘rsatay?', bcity: '🏙 Shahar', bregion: '🗺 Viloyat', bdist: '📍 Tuman', bvil: '🏘 Qishloq / posyolok', pcity: '🏙 Shaharni tanlang:', pdreg: '📍 Avval viloyat:', pdist: '📍 Tuman:', pvil: '🏘 Qishloq nomini /v dan keyin yozing — masalan:\n<code>/v Chimyon</code>\nYoki 📎 geolokatsiya yuboring — shu nuqtadagi ob-havoni ko‘rsataman.', nf: '«{q}» O‘zbekistonda topilmadi. Boshqacha yozib ko‘ring yoki geolokatsiya yuboring.', fnow: 'hozir', fnight: 'tunga {t}° gacha', fday: 'kunduzi {t}° gacha', frain: '🌧 yomg‘ir {a}–{b}, {mm} mm gacha', fsnow: '🌨 qor {a}–{b}, {mm} mm gacha', fdry: '☀️ 12 soat yog‘insiz', ffog: '🌫 tuman {a}–{b}', fin: '{d} tumanida', b7: '🗓 Kunlar bo‘yicha: 7 kun', c7: '🗓 <b>Kunlar bo‘yicha ob-havo: 7 kun</b>', breg: '📍 Viloyatim yaqindan', preg: '📍 Viloyatni tanlang — tumanlari bilan butunligicha ko‘rsataman:', creg: '📍 <b>{r}</b> · 12 soatlik prognoz',
+  uz: { t: '🎬 <b>ECMWF video-prognozi</b>\nBulutlar va yog‘in harakatda: avval 6 soatlik meteostansiyalar fakti, keyin prognoz.', b12: '🎬 12 soat', b3: '🎬 3 kun', bobs: '📡 Fakt: meteostansiyalar', byest: '📅 Kecha qanday bo‘ldi (meteostansiyalar)', pyest: '📅 Viloyatni tanlang — meteostansiyalar kecha va bugun nima ko‘rsatganini aytaman:', bplace: '📍 Shahrim, viloyat, tuman yoki qishloq', pplace: '📍 Nimani ko‘rsatay?', bcity: '🏙 Shahar', bregion: '🗺 Viloyat', bdist: '📍 Tuman', bvil: '🏘 Qishloq / posyolok', pcity: '🏙 Shaharni tanlang:', pdreg: '📍 Avval viloyat:', pdist: '📍 Tuman:', pvil: '🏘 Qishloq nomini /v dan keyin yozing — masalan:\n<code>/v Chimyon</code>\nYoki 📎 geolokatsiya yuboring — shu nuqtadagi ob-havoni ko‘rsataman.', nf: '«{q}» O‘zbekistonda topilmadi. Boshqacha yozib ko‘ring yoki geolokatsiya yuboring.', fnow: 'hozir', fnight: 'tunga {t}° gacha', fday: 'kunduzi {t}° gacha', frain: '🌧 yomg‘ir {a}–{b}, {mm} mm gacha', fsnow: '🌨 qor {a}–{b}, {mm} mm gacha', fdry: '☀️ 12 soat yog‘insiz', ffog: '🌫 tuman {a}–{b}', fin: '{d} tumanida', b7: '🗓 Kunlar bo‘yicha: 7 kun', c7: '🗓 <b>Kunlar bo‘yicha ob-havo: 7 kun</b>', breg: '📍 Viloyatim yaqindan', preg: '📍 Viloyatni tanlang — tumanlari bilan butunligicha ko‘rsataman:', creg: '📍 <b>{r}</b> · 12 soatlik prognoz',
         c12: '🌦 <b>Ob-havo: 6 soat fakt + 12 soat prognoz</b>', c3: '🌦 <b>Ob-havo: 6 soat fakt + 3 kun prognoz</b>', cobs: '📡 <b>O‘zbekiston meteostansiyalari nimani ko‘rsatdi</b>',
         run: 'ECMWF hisobi {r} UTC · Toshkent vaqti {m} da yangilandi', wet: 'Eng ko‘p yog‘in: {t} — {mm} mm', dry: 'Sezilarli yog‘in kutilmaydi', err: 'Video hozir yangilanmoqda, bir necha daqiqadan so‘ng urinib ko‘ring.' } };
-const evKb = L => ({ inline_keyboard: [[{ text: EVT[L].b12, callback_data: `EV:${L}:12h` }, { text: EVT[L].b3, callback_data: `EV:${L}:3d` }], [{ text: EVT[L].b7, callback_data: `EV:${L}:7d` }], [{ text: EVT[L].bplace, callback_data: `EV:${L}:place` }], [{ text: EVT[L].bobs, callback_data: `EV:${L}:obs` }]] });
+const evKb = L => ({ inline_keyboard: [[{ text: EVT[L].b12, callback_data: `EV:${L}:12h` }, { text: EVT[L].b3, callback_data: `EV:${L}:3d` }], [{ text: EVT[L].b7, callback_data: `EV:${L}:7d` }], [{ text: EVT[L].bplace, callback_data: `EV:${L}:place` }], [{ text: EVT[L].byest, callback_data: `EV:${L}:yest` }], [{ text: EVT[L].bobs, callback_data: `EV:${L}:obs` }]] });
 const EVREG = [[13, 'Ташкент', 'Toshkent sh.'], [8, 'Ташкентская', 'Toshkent vil.'], [7, 'Самаркандская', 'Samarqand'], [11, 'Бухарская', 'Buxoro'], [12, 'Кашкадарьинская', 'Qashqadaryo'],
   [6, 'Сурхандарьинская', 'Surxondaryo'], [5, 'Навоийская', 'Navoiy'], [10, 'Джизакская', 'Jizzax'], [9, 'Сырдарьинская', 'Sirdaryo'], [2, 'Ферганская', 'Farg‘ona'],
   [0, 'Андижанская', 'Andijon'], [1, 'Наманганская', 'Namangan'], [4, 'Хорезмская', 'Xorazm'], [3, 'Каракалпакстан', 'Qoraqalpog‘iston']];
 const two = btns => btns.reduce((rows, b, i) => { if (i % 2 === 0) rows.push([]); rows[rows.length - 1].push(b); return rows; }, []);
 const evRegKb = (L, p = 'r') => ({ inline_keyboard: two(EVREG.map(r => ({ text: L === 'uz' ? r[2] : r[1], callback_data: `EV:${L}:${p}${r[0]}` }))) });
+// what the weather stations reported yesterday and today (obs branch, stations_days.json), with what it meant for going out
+const EVY = {
+  ru: { title: '📅 <b>{r}</b> · по метеостанциям', d0: 'Вчера', d1: 'Сегодня (до {h})', imp: ['🟢 благоприятно', '🟡 так себе', '🔴 неблагоприятно'],
+        why: { fog_morning: 'утренний туман', fog: 'туман', snow: 'снег', rain_heavy: 'сильный дождь', rain: 'дождь', thunder: 'гроза', dust: 'пыль', frost: 'мороз', cold: 'холодно', heat: 'сильная жара', hot: 'жарко', storm: 'шторм', wind: 'сильный ветер' },
+        none: 'Нет свежих сводок станций этой области.', fogw: '🌫 туман {h} (видимость от {v} км)', pr: '💧 {mm} мм', wind: '💨 до {w} м/с', src: 'Источник: сводки SYNOP метеостанций (ВМО), каждые 3 часа.' },
+  uz: { title: '📅 <b>{r}</b> · meteostansiyalar bo‘yicha', d0: 'Kecha', d1: 'Bugun ({h} gacha)', imp: ['🟢 qulay', '🟡 o‘rtacha', '🔴 noqulay'],
+        why: { fog_morning: 'ertalabki tuman', fog: 'tuman', snow: 'qor', rain_heavy: 'kuchli yomg‘ir', rain: 'yomg‘ir', thunder: 'momaqaldiroq', dust: 'chang', frost: 'sovuq', cold: 'salqin', heat: 'kuchli issiq', hot: 'issiq', storm: 'bo‘ron', wind: 'kuchli shamol' },
+        none: 'Bu viloyat stansiyalaridan yangi xabar yo‘q.', fogw: '🌫 tuman {h} (ko‘rinish {v} km dan)', pr: '💧 {mm} mm', wind: '💨 {w} m/s gacha', src: 'Manba: meteostansiyalar SYNOP xabarlari (JMT), har 3 soatda.' } };
+async function evYesterday(env, chat, L, rid) {
+  const X = EVY[L], back = { inline_keyboard: [[{ text: EVT[L].byest, callback_data: `EV:${L}:yest` }]] };
+  let D = null; try { D = await (await fetch(`${EVRAW}/obs/stations_days.json?t=${Math.floor(Date.now() / 300e3)}`)).json(); } catch (e) {}
+  const ws = D && D.regions && D.regions[rid] || [], reg = EVREG.find(r => String(r[0]) === rid) || [0, '', ''];
+  if (!ws.length) return tg(env, 'sendMessage', { chat_id: chat, text: X.none, reply_markup: back });
+  const f = v => v == null ? '—' : (v > 0 ? '+' : '') + Math.round(v), out = [X.title.replace('{r}', L === 'uz' ? reg[2] : reg[1])];
+  for (const w of ws.slice(0, 6)) {
+    const s = D.stations[w]; out.push('', `<b>${s[L] || s.ru}</b>`);
+    D.days.forEach((day, i) => {
+      const d = s.days[day]; if (!d) return;
+      const bits = [`${f(d.t_min)}…${f(d.t_max)}°`];
+      if (d.pr != null && d.pr > 0) bits.push(X.pr.replace('{mm}', String(d.pr).replace('.', ',')));
+      if (d.fog_hours.length) bits.push(X.fogw.replace('{h}', String(d.fog_hours[0]).padStart(2, '0') + '–' + String(d.fog_hours[d.fog_hours.length - 1] + 3).padStart(2, '0')).replace('{v}', String(d.vis_min).replace('.', ',')));
+      if (d.wind_max >= 8) bits.push(X.wind.replace('{w}', d.wind_max));
+      const why = d.why.map(k => X.why[k] || k).join(', ');
+      out.push(`${i === 0 ? X.d0 : X.d1.replace('{h}', d.last)}: ${bits.join(' · ')} — ${X.imp[d.impact]}${why ? ' (' + why + ')' : ''}`);
+    });
+  }
+  out.push('', `<i>${X.src}</i>`);
+  return tg(env, 'sendMessage', { chat_id: chat, text: out.join('\n').slice(0, 4000), parse_mode: 'HTML', reply_markup: back });
+}
 async function evPoints(env) { try { return await (await fetch(`${EVRAW}/ev/points.json?t=${Math.floor(Date.now() / 300e3)}`)).json(); } catch (e) { return null; } }
 function evCaption(L, P, name, s, dname) {  // a point's next 12 hours in a few lines
   const X = EVT[L], hrs = P.hours, t = s.t, n = t.length, f = v => (v > 0 ? '+' : '') + Math.round(v);
@@ -1438,6 +1467,8 @@ async function sendEv(env, chat, lang, which) {
   const L = lang === 'uz' ? 'uz' : 'ru', X = EVT[L], fill = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k] ?? '');
   let meta = {}; try { meta = await (await fetch(`${EVRAW}/ev/meta.json?t=${Math.floor(Date.now() / 300e3)}`)).json(); } catch (e) {}
   let url, cap;
+  if (which === 'yest') return tg(env, 'sendMessage', { chat_id: chat, text: X.pyest, reply_markup: evRegKb(L, 'y') });
+  if (/^y\d+$/.test(which)) return evYesterday(env, chat, L, which.slice(1));
   if (which === 'place') return tg(env, 'sendMessage', { chat_id: chat, text: X.pplace, reply_markup: { inline_keyboard: [[{ text: X.bcity, callback_data: `EV:${L}:city` }, { text: X.bregion, callback_data: `EV:${L}:regs` }], [{ text: X.bdist, callback_data: `EV:${L}:dreg` }, { text: X.bvil, callback_data: `EV:${L}:vil` }]] } });
   if (which === 'regs') return tg(env, 'sendMessage', { chat_id: chat, text: X.preg, reply_markup: evRegKb(L) });
   if (which === 'dreg') return tg(env, 'sendMessage', { chat_id: chat, text: X.pdreg, reply_markup: evRegKb(L, 'd') });
