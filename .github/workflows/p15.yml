@@ -18,8 +18,8 @@ jobs:
           (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
           pip install -q numpy scipy matplotlib pyproj qrcode
           id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
-          gh run download $id -n npz -D npz
-          python -W ignore tools/prob15_video.py npz/prob.npz npz/wx.npz p15 ru,uz
+          timeout 600 gh run download $id -n npz -D npz && ls -la npz && date
+          timeout 2400 python -u -W ignore tools/prob15_video.py npz/prob.npz npz/wx.npz p15 ru,uz
           cd p15 && git init -q && git checkout -q -b p15 && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "15 days $(date -u +%F' '%H:%M)"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" p15
