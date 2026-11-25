@@ -54,6 +54,7 @@ MAP = (0.0, 0.272, 1.0, 0.640)  # the map: the full width, between the header an
 LAT0, LAT1 = 36.95, 45.95
 COSL = np.cos(np.radians(41.4))
 CTX = {}
+FOG = None
 
 
 def card(fig, x, y, w, h, fc, ec='none', r=10, lw=1.0, z=20, alpha=1.0):
@@ -73,6 +74,32 @@ BOLT = MPath([(0.2, 1.0), (-0.55, -0.05), (-0.05, -0.05), (-0.35, -1.0), (0.6, 0
 
 def bolt(ax, x, y, size=520, z=9.6):
     ax.scatter([x], [y], marker=BOLT, s=size, c='#ffc21a', edgecolors='#5c3d00', linewidths=1.6, zorder=z)
+
+
+def place(ax, items, fig):
+    """Where each town's label goes: the first spot around its circle (preferred side first) that covers no temperature
+    circle and no label already placed. items: [(lon, lat, text, fontsize, main, (dx, dy, ha, va) preferred)] → offsets."""
+    ax.apply_aspect()
+    k = fig.dpi / 72; circ = []
+    for lo, la, txt, fs, main, pref in items:
+        x, y = ax.transData.transform((lo, la)); circ.append((x, y, (31 if main else 25)))
+    boxes, out = [], []
+    for (lo, la, txt, fs, main, pref), (x, y, r) in zip(items, circ):
+        w, h = len(txt) * fs * 0.6 * k + 14, fs * 1.5 * k + 8
+        g = r + 8
+        cands = [pref, (g, 0, 'left', 'center'), (-g, 0, 'right', 'center'), (0, g, 'center', 'bottom'), (0, -g, 'center', 'top'),
+                 (g * 0.8, g * 0.8, 'left', 'bottom'), (-g * 0.8, g * 0.8, 'right', 'bottom'), (g * 0.8, -g * 0.8, 'left', 'top'), (-g * 0.8, -g * 0.8, 'right', 'top'),
+                 (g + 30, 0, 'left', 'center'), (-g - 30, 0, 'right', 'center'), (0, g + 26, 'center', 'bottom'), (0, -g - 26, 'center', 'top')]
+        best = None
+        for dx, dy, ha, va in cands:
+            bx0 = x + dx - (w if ha == 'right' else w / 2 if ha == 'center' else 0); by0 = y + dy - (h if va == 'top' else h / 2 if va == 'center' else 0)
+            b = (bx0, by0, bx0 + w, by0 + h)
+            hit = any(cx + cr > b[0] and cx - cr < b[2] and cy + cr > b[1] and cy - cr < b[3] for cx, cy, cr in circ) or \
+                  any(not (b[2] < o[0] or b[0] > o[2] or b[3] < o[1] or b[1] > o[3]) for o in boxes)
+            if not hit: best = (dx, dy, ha, va, b); break
+        if best is None: dx, dy, ha, va = pref; best = (dx, dy, ha, va, (0, 0, 0, 0))
+        boxes.append(best[4]); out.append(best[:4])
+    return out
 
 
 def tcol(t):  # the colour of a temperature circle: violet in frost, blue when cold, green when cool, orange and red when warm
@@ -98,7 +125,7 @@ def draw(job):
     Pr, Ps = np.where(snow, 0, P), np.where(snow, P, 0)
     LO, LA = C['LONu'], C['LATu']
     if fr.get('Cl') is not None:  # clouds: a soft grey veil under the rain, thicker where the sky is more covered
-        cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = (0.55, 0.59, 0.65); cl[..., 3] = np.clip((fr['Cl'] - 0.3) / 0.7, 0, 1) ** 1.2 * 0.5 * a_in
+        cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = (0.6, 0.64, 0.7); cl[..., 3] = np.clip((fr['Cl'] - 0.5) / 0.5, 0, 1) ** 1.3 * 0.32 * a_in
         ax.imshow(cl, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.5)
         ax.set_xlim(x0, x1); ax.set_ylim(LAT0, LAT1); ax.set_aspect(1 / COSL)
     if Pr.max() >= LEVELS[0]:
@@ -110,21 +137,28 @@ def draw(job):
     if np.nanmin(T) < 0 < np.nanmax(T):
         ax.contour(LO, LA, T, levels=[0], colors=['#3d7be0'], linewidths=1.3, linestyles=[(0, (5, 3))], alpha=0.75 * a_in, zorder=2.6)
     for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
+    if fr.get('Fg') is not None and fr['Fg'].max() >= 0.35:  # fog: a pale haze with fine horizontal lines, like on a weather chart
+        fg = np.zeros(fr['Fg'].shape + (4,), np.float32); fg[..., :3] = (0.93, 0.9, 0.84); fg[..., 3] = np.clip((fr['Fg'] - 0.3) / 0.5, 0, 1) * 0.8 * a_in
+        ax.imshow(fg, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=2.7)
+        with matplotlib.rc_context({'hatch.color': '#a39a8a', 'hatch.linewidth': 1.0}):
+            ax.contourf(LO, LA, fr['Fg'], levels=[0.5, 2], colors='none', hatches=['---'], zorder=2.75)
+        ax.set_xlim(x0, x1); ax.set_ylim(LAT0, LAT1); ax.set_aspect(1 / COSL)
     # thunderstorms: a lightning bolt where they are likely (rain likely and enough energy in the air)
     for bx_, by_ in fr.get('storms', []): bolt(ax, bx_, by_, 1500, 7.5)
     # the towns: dot, name, chance and temperature
     L = 0 if lang == 'ru' else 1
-    for tw, (p_, t_, st_) in zip(TOWNS, fr['towns']):
-        main = tw[0] == 'Ташкент'; dx, dy, ha, va = OFF[tw[0]]
+    offs = place(ax, [(tw[3], tw[2], f"{tw[L]}  {p_:.0f}%" + (' · туман' if fg_ else ''), 17 if tw[0] == 'Ташкент' else 13.5, tw[0] == 'Ташкент', OFF[tw[0]]) for tw, (p_, t_, st_, fg_) in zip(TOWNS, fr['towns'])], fig)
+    for tw, (p_, t_, st_, fg_), (dx, dy, ha, va) in zip(TOWNS, fr['towns'], offs):
+        main = tw[0] == 'Ташкент'
         col = level(p_, SNOW if t_ <= 0.5 else RAIN)
         tt = f"{t_:+.0f}°".replace('+0°', '0°').replace('-0°', '0°')
         ax.annotate(tt, (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
                     bbox=dict(boxstyle='circle,pad=0.32' if not main else 'circle,pad=0.38', fc=tcol(t_), ec=ORANGE if main else 'white', lw=3 if main else 2))
         if st_: bolt(ax, tw[3] + 0.36, tw[2] + 0.32, 1100 if main else 850, 9.7)
         fs = 17 if main else 13.5
-        txt = f"{tw[L]}  {p_:.0f}%"
-        an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color=INK, zorder=9,
-                         bbox=dict(boxstyle='round,pad=0.32,rounding_size=0.7', fc='white', ec=ORANGE if main else (col or '#c9d2db'), lw=2.2 if main else 1.4, alpha=0.93))
+        txt = f"{tw[L]}  {p_:.0f}%" + ((' · туман' if lang == 'ru' else ' · tuman') if fg_ else '')
+        an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
+                         bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#f1f3f5', ec=ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.72))
     ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=NAVY, ec='none', zorder=-1))
@@ -146,10 +180,13 @@ def draw(job):
             fig.text(xx + 0.0215, y, lab, fontsize=10.5, fontweight='bold', color='white' if k >= 2 else INK, ha='center', va='center')
     fig.add_artist(matplotlib.lines.Line2D([0.62, 0.645], [0.214, 0.214], color='#3d7be0', lw=1.6, ls=(0, (4, 2.5)), transform=fig.transFigure))
     fig.text(0.65, 0.214, '0°' + (' — дождь / снег' if lang == 'ru' else ' — yomg‘ir / qor'), fontsize=12, color=MUTED, va='center')
-    fig.patches.append(FancyBboxPatch((0.765, 0.202), 0.036, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#b9bfc7', ec='none'))
-    fig.text(0.806, 0.214, 'тучи' if lang == 'ru' else 'bulut', fontsize=12, color=MUTED, va='center')
-    lg = fig.add_axes([0.862, 0.196, 0.02, 0.036]); lg.set_xlim(-1, 1); lg.set_ylim(-1.2, 1.2); lg.axis('off'); bolt(lg, 0, 0, 600)
-    fig.text(0.884, 0.214, 'гроза' if lang == 'ru' else 'momaqaldiroq', fontsize=12, color=MUTED, va='center')
+    fig.patches.append(FancyBboxPatch((0.74, 0.202), 0.036, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#b9bfc7', ec='none'))
+    fig.text(0.781, 0.214, 'тучи' if lang == 'ru' else 'bulut', fontsize=12, color=MUTED, va='center')
+    lg = fig.add_axes([0.826, 0.196, 0.02, 0.036]); lg.set_xlim(-1, 1); lg.set_ylim(-1.2, 1.2); lg.axis('off'); bolt(lg, 0, 0, 600)
+    fig.text(0.848, 0.214, 'гроза' if lang == 'ru' else 'momaqaldiroq', fontsize=12, color=MUTED, va='center')
+    with matplotlib.rc_context({'hatch.color': '#a39a8a', 'hatch.linewidth': 1.0}):
+        fig.patches.append(FancyBboxPatch((0.918, 0.202), 0.024, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#efe8dc', ec='#cfc5b4', hatch='---', lw=0.6))
+    fig.text(0.945, 0.214, 'туман' if lang == 'ru' else 'tuman', fontsize=12, color=MUTED, va='center')
     fig.text(0.984, 0.247, X['models'].format(n=C['members']), fontsize=11, color=FAINT, ha='right', va='center')
     # Tashkent: bars of the chance, the temperature line
     fig.text(0.016, 0.178, X['chart'], fontsize=13, fontweight='bold', color=INK, va='center')
@@ -217,6 +254,15 @@ def main(npz, wxp, outd, langs, only=None):
     if Cm is not None: Cm = np.pad(Cm, ((0, 0), (0, 0), (PAD, PAD)), mode='edge')
     if Km is not None: Km = np.pad(Km, ((0, 0), (0, 0), (PAD, PAD)), mode='edge')
     Ck = {i: np.clip(up(Cm[i]), 0, 1) if Cm is not None and np.isfinite(Cm[i]).any() else None for i in keep}
+    Fk = {i: None for i in keep}
+    if FOG and pathlib.Path(FOG).exists():  # fog from ECMWF (tools/fog_fetch.py): the step nearest the window's middle
+        from scipy.interpolate import RegularGridInterpolator
+        Z = np.load(FOG); vt = Z['vt']; LOg, LAg = np.meshgrid(lon, lat_s)
+        for i in keep:
+            tm = (run + dt.timedelta(hours=steps[i] - win[i] / 2) - dt.datetime(1970, 1, 1)).total_seconds() / 3600; j = int(np.abs(vt - tm).argmin())
+            if abs(vt[j] - tm) > 6: continue
+            f_ = RegularGridInterpolator((Z['lat'], Z['lon']), Z['fog'][j].astype(np.float32), bounds_error=False, fill_value=0)
+            Fk[i] = np.clip(up(f_(np.stack([LAg, LOg], -1))), 0, 1)
     # the chance of a thunderstorm, 0…1: precipitation likely, enough convective energy (GEFS CAPE) and warm enough air
     Sk = {i: (np.clip((Pk[i] - 30) / 40, 0, 1) * np.clip((up(Km[i]) - 500) / 1000, 0, 1) * (Tk[i] >= 3)) if Km is not None and np.isfinite(Km[i]).any() else None for i in keep}
     loc = lambda h: run + dt.timedelta(hours=h + 5)
@@ -244,11 +290,11 @@ def main(npz, wxp, outd, langs, only=None):
         nxt = keep[min(n_ + 1, len(keep) - 1)]; N = win[i]
         for k in range(N):
             a = k / N; mix = lambda D_: None if D_[i] is None or D_[nxt] is None else (1 - a) * D_[i] + a * D_[nxt]
-            seq.append((n_, i, (1 - a) * Pk[i] + a * Pk[nxt], (1 - a) * Tk[i] + a * Tk[nxt], k, mix(Ck), mix(Sk)))
+            seq.append((n_, i, (1 - a) * Pk[i] + a * Pk[nxt], (1 - a) * Tk[i] + a * Tk[nxt], k, mix(Ck), mix(Sk), mix(Fk)))
     tot_h = (steps[keep[-1]] - h0)
     for lang in langs:
         X = TX[lang]; frames = []
-        for n_, i, Pf, Tf, k, Cf, Sf in seq:
+        for n_, i, Pf, Tf, k, Cf, Sf, Ff in seq:
             t2 = loc(steps[i]); t1 = t2 - dt.timedelta(hours=win[i]); th = t1 + dt.timedelta(hours=k)
             when = f"{X['wd'][th.weekday()]} {th:%d.%m} · {th:%H}:00"
             dayn = max(1, (th.date() - loc(h0).date()).days + (0 if loc(h0).hour >= 12 else 1))  # day 1: the first full local day
@@ -258,8 +304,8 @@ def main(npz, wxp, outd, langs, only=None):
                 mx = (maximum_filter(Sf, size=24) == Sf) & (Sf >= 0.35)
                 for yy, xx in zip(*np.nonzero(mx)):
                     if not any(abs(LONu[xx] - tw[3]) < 0.7 and abs(LATu[yy] - tw[2]) < 0.5 for tw in TOWNS): storms.append((float(LONu[xx]), float(LATu[yy])))
-            frames.append(dict(P=Pf, T=Tf, Cl=Cf, storms=storms[:14], s=n_, when=when, day=X['day'].format(i=min(dayn, 15), n=15), prog=(steps[i] - win[i] + k - h0) / tot_h, d=0.2,
-                               towns=[(at(Pf, tw[2], tw[3]), at(Tf, tw[2], tw[3]), Sf is not None and at(Sf, tw[2], tw[3]) >= 0.35) for tw in TOWNS], tash_t=at(Tf, tash[2], tash[3])))
+            frames.append(dict(P=Pf, T=Tf, Cl=Cf, Fg=Ff, storms=storms[:14], s=n_, when=when, day=X['day'].format(i=min(dayn, 15), n=15), prog=(steps[i] - win[i] + k - h0) / tot_h, d=0.2,
+                               towns=[(at(Pf, tw[2], tw[3]), at(Tf, tw[2], tw[3]), Sf is not None and at(Sf, tw[2], tw[3]) >= 0.35, Ff is not None and at(Ff, tw[2], tw[3]) >= 0.5) for tw in TOWNS], tash_t=at(Tf, tash[2], tash[3])))
         frames[-1] = dict(frames[-1], d=1.2)
         intro = [dict(frames[0], card='intro', a=1.0, fade=0.0, d=1.6)] + [dict(frames[0], card='intro', a=float(a_), fade=float(1 - a_), d=0.07) for a_ in np.linspace(1, 0, 9)[1:]]
         end = [dict(frames[-1], card='end', d=4.0)]
@@ -269,6 +315,7 @@ def main(npz, wxp, outd, langs, only=None):
 
 if __name__ == '__main__':
     npz, wxp, outd = sys.argv[1:4]; langs = (sys.argv[4] if len(sys.argv) > 4 else 'ru,uz').split(',')
+    FOG = sys.argv[5] if len(sys.argv) > 5 else None
     pathlib.Path(outd).mkdir(parents=True, exist_ok=True)
     main(npz, wxp, outd, langs)
     jobs = [(l, i) for l in langs for i in range(len(CTX['videos'][l]['frames']))]; print(len(jobs), 'frames', flush=True)

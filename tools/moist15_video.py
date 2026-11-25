@@ -84,16 +84,17 @@ def draw(job):
         ax.text(sx, sy, X['src'].format(s=p['src'][lang]), fontsize=14, fontweight='bold', color='white', ha='center', va='center', zorder=9.5, alpha=p['a'],
                 bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.6', fc=PV.ORANGE, ec='none', alpha=0.95 * p['a']))
     L = 0 if lang == 'ru' else 1
-    for tw, (t_, pr_, sn_, cl_, fog_) in zip(PV.TOWNS, fr['towns']):
-        main = tw[0] == 'Ташкент'; dx, dy, ha, va = PV.OFF[tw[0]]
+    def wx_(pr_, sn_, cl_, fog_):
+        if pr_ >= 0.3: return f"{X['snow'] if sn_ else X['rain']} {pr_:.1f}".replace('.', ',') + (' мм' if lang == 'ru' else ' mm')
+        return X['w_fog'] if fog_ else X['w_cl'] if cl_ >= 0.7 else None
+    labs = [tw[L] + (f" · {wx_(*v[1:])}" if wx_(*v[1:]) else '') for tw, v in zip(PV.TOWNS, fr['towns'])]
+    offs = PV.place(ax, [(tw[3], tw[2], lb, 17 if tw[0] == 'Ташкент' else 13.5, tw[0] == 'Ташкент', PV.OFF[tw[0]]) for tw, lb in zip(PV.TOWNS, labs)], fig)
+    for tw, (t_, pr_, sn_, cl_, fog_), (dx, dy, ha, va), lb in zip(PV.TOWNS, fr['towns'], offs, labs):
+        main = tw[0] == 'Ташкент'
         ax.annotate(PV_deg(t_), (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
                     bbox=dict(boxstyle='circle,pad=0.38' if main else 'circle,pad=0.32', fc=PV.tcol(t_), ec=PV.ORANGE if main else 'white', lw=3 if main else 2))
-        if pr_ >= 0.3: w = f"{X['snow'] if sn_ else X['rain']} {pr_:.1f}".replace('.', ',') + ' мм' * (lang == 'ru') + ' mm' * (lang != 'ru'); ec = SNOW[3] if sn_ else RAIN[2]
-        elif fog_: w, ec = X['w_fog'], '#8a96a3'
-        elif cl_ >= 0.7: w, ec = X['w_cl'], '#aab3bd'
-        else: w, ec = None, '#d5dbe1'
-        ax.annotate(tw[L] + (f" · {w}" if w else ''), (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5,
-                    fontweight='bold' if main else 'semibold', color=PV.INK, zorder=9, bbox=dict(boxstyle='round,pad=0.32,rounding_size=0.7', fc='white', ec=PV.ORANGE if main else ec, lw=2.2 if main else 1.6, alpha=0.93))
+        ax.annotate(lb, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5,
+                    fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9, bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#eef1f4', ec=PV.ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.62))
     ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))

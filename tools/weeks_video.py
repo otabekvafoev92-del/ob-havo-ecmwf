@@ -114,16 +114,18 @@ def draw(job):
     ax.contour(C['LONu'], C['LATu'], fr['pct'], levels=[80, 120], colors=['#c9a77a', '#8fb6dc'], linewidths=0.8, alpha=0.8 * a_in, zorder=2.05)
     for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
     L = 0 if lang == 'ru' else 1
-    for tw, (p_, t_, d_) in zip(PV.TOWNS, fr['towns']):
-        main = tw[0] == 'Ташкент'; dx, dy, ha, va = PV.OFF[tw[0]]
+    labs = [f"{tw[L]}  {p_:.0f}%" + ('' if d_ is None or not np.isfinite(d_) else f" ({deg(d_)})") for tw, (p_, t_, d_) in zip(PV.TOWNS, fr['towns'])]
+    offs = PV.place(ax, [(tw[3], tw[2], lb, 17 if tw[0] == 'Ташкент' else 13.5, tw[0] == 'Ташкент', PV.OFF[tw[0]]) for tw, lb in zip(PV.TOWNS, labs)], fig)
+    for tw, (p_, t_, d_), (dx, dy, ha, va) in zip(PV.TOWNS, fr['towns'], offs):
+        main = tw[0] == 'Ташкент'
         tt = deg(t_)
         ax.annotate(tt, (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
                     bbox=dict(boxstyle='circle,pad=0.38' if main else 'circle,pad=0.32', fc=PV.tcol(t_), ec=PV.ORANGE if main else 'white', lw=3 if main else 2))
         ec = '#a0632c' if p_ < 80 else '#1c63c0' if p_ > 120 else '#c9d2db'
         sub = '' if d_ is None or not np.isfinite(d_) else f" ({deg(d_)})"
         ax.annotate(f"{tw[L]}  {p_:.0f}%" + sub, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5,
-                    fontweight='bold' if main else 'semibold', color=PV.INK, zorder=9,
-                    bbox=dict(boxstyle='round,pad=0.32,rounding_size=0.7', fc='white', ec=PV.ORANGE if main else ec, lw=2.2 if main else 1.4, alpha=0.93))
+                    fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
+                    bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#eef1f4', ec=PV.ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.62))
     ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
