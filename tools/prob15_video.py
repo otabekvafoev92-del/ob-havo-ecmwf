@@ -121,8 +121,8 @@ def draw(job):
     ax = fig.add_axes(MAP); x0, x1 = C['lon_ext']; ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl']); ax.axis('off')
     for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=SEA, ec='#b9cfe3', lw=0.6, zorder=0.5)
     P, T = fr['P'], fr['T']; a_in = fr.get('fade', 1.0)
-    snow = T <= 0.5
-    Pr, Ps = np.where(snow, 0, P), np.where(snow, P, 0)
+    sf = np.clip((1.5 - T) / 2.0, 0, 1)  # the share of snow: a soft edge between rain and snow, not the model grid's steps
+    Pr, Ps = np.where(sf < 0.5, P, 0) * np.clip(1.6 - 2 * sf, 0, 1) ** 0.5, np.where(sf >= 0.5, P, 0) * np.clip(2 * sf - 0.4, 0, 1) ** 0.5
     LO, LA = C['LONu'], C['LATu']
     if fr.get('Cl') is not None:  # clouds: a soft grey veil under the rain, thicker where the sky is more covered
         cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = (0.6, 0.64, 0.7); cl[..., 3] = np.clip((fr['Cl'] - 0.5) / 0.5, 0, 1) ** 1.3 * 0.32 * a_in
@@ -253,7 +253,8 @@ def main(npz, wxp, outd, langs, only=None, view=None):
     PAD = 16 if (ext[0] < lon[0] + 0.5 or ext[1] > lon[-1] - 0.5) else 0  # the map wider than the data: the edge values carried on
     P = np.pad(P, ((0, 0), (0, 0), (PAD, PAD)), mode='edge'); Tm = np.pad(Tm, ((0, 0), (0, 0), (PAD, PAD)), mode='edge')
     lon = np.r_[lon[0] - g['d'] * np.arange(PAD, 0, -1), lon, lon[-1] + g['d'] * np.arange(1, PAD + 1)]
-    UP = 4; up = lambda a: gaussian_filter(zoom(np.nan_to_num(a, nan=np.nanmean(a)), UP, order=1), 1.6)
+    UP, SIG = view.get('up', 4), view.get('sig', 1.6)  # a close-up: finer and smoother, so the model's grid does not show
+    up = lambda a: gaussian_filter(zoom(np.nan_to_num(a, nan=np.nanmean(a)), UP, order=3), SIG)
     LONu = np.linspace(lon[0], lon[-1], len(lon) * UP); LATu = np.linspace(lat_s[0], lat_s[-1], len(lat_s) * UP)
     at = lambda a, la, lo: float(a[np.abs(LATu - la).argmin(), np.abs(LONu - lo).argmin()])
     run = dt.datetime.fromisoformat(D['run'].replace('Z', '')[:19]); steps = [int(x) for x in D['steps']]; win = [int(x) for x in D['win']]

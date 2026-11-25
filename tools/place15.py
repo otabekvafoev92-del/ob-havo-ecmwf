@@ -126,7 +126,7 @@ def main():
         near += [t for t in towns_of(iso, box, 30)]
         near.sort(key=lambda t: math.hypot((t[3] - a.lon) * cl, t[2] - a.lat))  # the nearest first
         towns = spread([me] + near, 0.11)[:10]
-        view = dict(lat=lat, lc=lc, towns=towns, main=nm, borders=borders(iso, adm2=True), off=off, stem='place', src=src_for(lat, (lc - span / 2, lc + span / 2)),
+        view = dict(lat=lat, lc=lc, up=6, sig=5.0, towns=towns, main=nm, borders=borders(iso, adm2=True), off=off, stem='place', src=src_for(lat, (lc - span / 2, lc + span / 2)),
                     title={lang: f"{nm} · {X['title']}"}, tzl={lang: tz}, chart_t={lang: X['chart'].replace('Ташкент', nm).replace('Toshkent', nm)})
         files.append(('place', render(data, out, lang, view)))
     json.dump([[k, str(f)] for k, f in files], open(out / 'files.json', 'w'))
