@@ -325,8 +325,46 @@ function outlookKb(its, lang, cur) {
   const by = k => its.filter(i => k.includes(i.key)).map(btn), rows = [by(['past']), by(['w1', 'w2']), by(['m0', 'm1']), by(['dust']),
     its.filter(i => !['past', 'w1', 'w2', 'm0', 'm1', 'dust'].includes(i.key)).map(btn)].filter(r => r.length);
   rows.push([{ text: A.all, callback_data: `OA:${lang}` }]);
+  rows.push(...weeksKb(lang).inline_keyboard);
   rows.push([notifBtn(lang, 'outlook')]);
   return { inline_keyboard: rows };
+}
+/* ---------- a week day by day: the ISO weeks within the 15-day forecast, at the user's place (or Tashkent) ---------- */
+const WKX = {
+  ru: { btn: '📆 Неделя {n} · {a}–{b} по дням', head: 'неделя {n} · {a}–{b}', temp: 'Температура за неделю: от {lo} ночью до {hi} днём', wet: 'Осадки вероятны {n} дн.: {d}', mm: ', всего ~{mm} мм', dry: 'Неделя без заметных осадков',
+        part: 'Прогноз по дням есть до {last}; дальше — в «📅 Недели и месяцы» (осадки и температура к норме).', far: 'Прогноз по дням пока есть только до {last}. Для этой недели смотрите «📅 Недели и месяцы».', pick: '📆 Выберите неделю — пришлю погоду по дням:' },
+  uz: { btn: '📆 {n}-hafta · {a}–{b} kunma-kun', head: '{n}-hafta · {a}–{b}', temp: 'Hafta harorati: kechasi {lo} dan kunduzi {hi} gacha', wet: 'Yog‘in ehtimoli {n} kun: {d}', mm: ', jami ~{mm} mm', dry: 'Hafta sezilarli yog‘insiz',
+        part: 'Kunma-kun prognoz {last} gacha bor; keyingisi — «📅 Haftalar va oylar»da (yog‘in va harorat me’yorga nisbatan).', far: 'Kunma-kun prognoz hozircha {last} gacha. Bu hafta uchun «📅 Haftalar va oylar»ni ko‘ring.', pick: '📆 Haftani tanlang — kunma-kun ob-havoni yuboraman:' },
+  tr: { btn: '📆 {n}. hafta · {a}–{b} gün gün', head: '{n}. hafta · {a}–{b}', temp: 'Hafta sıcaklığı: gece {lo}, gündüz {hi}', wet: 'Yağış olası {n} gün: {d}', mm: ', toplam ~{mm} mm', dry: 'Kayda değer yağış yok',
+        part: 'Gün gün tahmin {last} tarihine kadar var.', far: 'Gün gün tahmin şimdilik {last} tarihine kadar.', pick: '📆 Haftayı seçin — gün gün hava göndereyim:' } };
+const WDL = { uz: ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'], ru: ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'], tr: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'] };
+function isoWeek(d) { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); const y0 = Date.UTC(t.getUTCFullYear(), 0, 1); return Math.ceil(((t - y0) / 864e5 + 1) / 7); }
+const dAdd = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+function weeksKb(lang, cur) {  // this ISO week and the next two (the forecast reaches ~15 days)
+  const X = WKX[lang] || WKX.ru, today = new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10), dow = new Date(today + 'T12:00:00Z').getUTCDay() || 7, mon = dAdd(today, 1 - dow);
+  return { inline_keyboard: [0, 1, 2].map(k => { const a = dAdd(mon, 7 * k), b = dAdd(a, 6);
+    return [{ text: `${cur === a ? '✅ ' : ''}${X.btn.replace('{n}', isoWeek(a)).replace('{a}', ddm(a)).replace('{b}', ddm(b))}`, callback_data: `WK:${lang}:${a}`, ...(cur === a ? {} : { style: 'success' }) }]; }) };
+}
+async function weekDays(env, chat, lang, a, b) {  // the user's saved place, else Tashkent
+  const u = await getUser(env, chat), pl = u && u.place ? JSON.parse(u.place) : [41.311, 69.279];
+  return pointForecast(env, chat, lang, +pl[0], +pl[1], await nearestPlace(env, +pl[0], +pl[1], 8), null, [a, b || dAdd(a, 6)]);
+}
+// "30.11–06.12", "с 30 ноября по 6 декабря", "30 noyabr – 6 dekabr", "неделя", "следующая неделя", "неделя 49"
+const MON_RX = [['янв', 'yanv', 'oca'], ['фев', 'fev', 'şub'], ['мар', 'mart', 'mar'], ['апр', 'apr', 'nis'], ['ма[йя]', 'may', 'mayıs'], ['июн', 'iyun', 'haz'], ['июл', 'iyul', 'tem'], ['авг', 'avg', 'ağu'], ['сен', 'sen', 'eyl'], ['окт', 'okt', 'eki'], ['ноя', 'noy', 'kas'], ['дек', 'dek', 'ara']];
+function parseRange(text) {
+  const t = text.toLowerCase().replace(/ё/g, 'е'), today = new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10), Y = +today.slice(0, 4);
+  const dow = new Date(today + 'T12:00:00Z').getUTCDay() || 7, mon = dAdd(today, 1 - dow);
+  const mk = (d, m) => { let y = Y; const s = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; if (s < dAdd(today, -60)) y++; return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; };
+  let m = t.match(/(\d{1,2})[./](\d{1,2})\D{1,12}?(\d{1,2})[./](\d{1,2})/);
+  if (m) return [mk(+m[1], +m[2]), mk(+m[3], +m[4])];
+  const mon_ = w => MON_RX.findIndex(v => v.some(x => new RegExp('^' + x).test(w))) + 1;
+  m = t.match(/(\d{1,2})\s*([a-zа-яʻ‘'ğışçöü]+)?\s*(?:-|–|—|по|до|gacha|dan|\.\.)\s*(\d{1,2})\s+([a-zа-яʻ‘'ğışçöü]+)/);
+  if (m && mon_(m[4])) { const m2 = mon_(m[4]), m1 = m[2] && mon_(m[2]) ? mon_(m[2]) : m2; return [mk(+m[1], m1), mk(+m[3], m2)]; }
+  if (/(неделя|недел[юи]|hafta)\s*(\d{1,2})\b/.test(t)) { const n = +t.match(/(неделя|недел[юи]|hafta)\s*(\d{1,2})/)[2], a = dAdd(mon, 7 * (n - isoWeek(mon))); return [a, dAdd(a, 6)]; }
+  if (/(\d{1,2})\s*-?\s*hafta/.test(t)) { const n = +t.match(/(\d{1,2})\s*-?\s*hafta/)[1], a = dAdd(mon, 7 * (n - isoWeek(mon))); return [a, dAdd(a, 6)]; }
+  if (/(следующ\w* недел|keyingi hafta|через неделю)/.test(t)) return [dAdd(mon, 7), dAdd(mon, 13)];
+  if (/^(эта |на |погода на )?(недел[яюи]|hafta|bu hafta)$/.test(t.trim())) return [mon, dAdd(mon, 6)];
+  return null;
 }
 async function sendOutlook(env, chat, lang) {
   const { its } = await outlookItems(env, lang);
@@ -1154,7 +1192,7 @@ function nowLine(c, lang) {
   return `${wmoIcon(c.weather_code, c.is_day)} <b>${X.now}: ${f(c.temperature_2m)}</b>${w ? `, ${w}` : ''}\n      ${X.feels} ${f(c.apparent_temperature)} · ${X.hum} ${Math.round(c.relative_humidity_2m)}% · ${X.wind} ${Math.round(c.wind_speed_10m)} ${X.ms}${c.wind_gusts_10m >= 10 ? ` (${X.gust} ${Math.round(c.wind_gusts_10m)})` : ''}`;
 }
 const MAPB = { ru: '🗺 Показать на карте (район выделен)', uz: '🗺 Xaritada ko‘rsatish (tuman ajratilgan)', tr: '🗺 Haritada göster (ilçe işaretli)' };
-async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
+async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   const L = PT[lang];
   await saveUser(env, chat, { place: JSON.stringify([lat, lon]) });
   // the 0.25° tiles of the region first (the same numbers as the videos, city texts and hourly forecast), the 0.5° world tiles elsewhere
@@ -1237,6 +1275,17 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver) {
     return `\n      ☂️ ${r}\n      🧥 ${K.wear}: ${wearText(lang, x.lo, x.hi, x.p, x.snow, x.w)}`;
   };
   const day = (x, w) => `${x.ic} <b>${w}</b> · ${wd(x.d)}\n      ${deg(x.lo)}…${deg(x.hi)} · ${pr(x)}${isFinite(x.w) && x.w >= 5 ? ` · ${K.windW} ${Math.round(x.w)} ${L.ms}` : ''}${detail(x)}`;
+  if (range) {  // one week (or any days asked for), day by day
+    const WX = WKX[lang] || WKX.ru, [a, b] = range, Dw = D.filter(x => x.d >= a && x.d <= b);
+    const nm0 = place ? `${FLAG[place[4]] || '📍'} <b>${esc(pname(place, lang))}</b>` : `📍 <b>${lat.toFixed(2)}, ${lon.toFixed(2)}</b>`;
+    const head = `${nm0} · ${WX.head.replace('{n}', isoWeek(a)).replace('{a}', ddm(a)).replace('{b}', ddm(b))}`;
+    if (!Dw.length) return tg(env, 'sendMessage', { chat_id: chat, text: `${head}\n\n${WX.far.replace('{last}', ddm(D[D.length - 1].d))}`, parse_mode: 'HTML', reply_markup: weeksKb(lang) });
+    const wetW = Dw.filter(wet), mm = Dw.reduce((s_, x) => s_ + (x.mm || 0), 0), lo = Math.min(...Dw.map(x => x.lo)), hi = Math.max(...Dw.map(x => x.hi));
+    const brief = [WX.temp.replace('{lo}', deg(lo)).replace('{hi}', deg(hi)), wetW.length ? WX.wet.replace('{n}', wetW.length).replace('{d}', wetW.map(x => wd(x.d)).join(', ')) + (mm >= 1 ? WX.mm.replace('{mm}', Math.round(mm)) : '') : WX.dry];
+    const cut = Dw.length < 1 + (Date.parse(b) - Date.parse(a)) / 864e5 ? `\n<i>${WX.part.replace('{last}', ddm(D[D.length - 1].d))}</i>` : '';
+    const txt = [head, '', ...brief.map(x => `▸ ${x}`), '', ...Dw.map(x => day(x, x.d === today ? T[lang].tdy : x.d === tmrw ? T[lang].tmw : WDL[lang][new Date(x.d + 'T12:00:00Z').getUTCDay()])), cut, `<i>${K.note}</i>`].join('\n');
+    return tg(env, 'sendMessage', { chat_id: chat, text: txt.slice(0, 4000), parse_mode: 'HTML', reply_markup: weeksKb(lang, a) });
+  }
   const isAdmin = String(chat) === (await kv(env, 'admin'));  // update times only for the bot's admin
   const text = [`${nm} · ${L.head}`, ...(isAdmin ? [`<i>${I.built ? K.upd : K.run} ${u} (UTC${off >= 0 ? '+' : ''}${off})</i>`] : []), '', ...(nowT ? [nowT, ''] : []),
     `<b>${K.brief}</b>`, ...sum.map(x => `▸ ${x}`), '',
@@ -1586,6 +1635,7 @@ async function handle(up, env) {
   if (kind === 'EV') { await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: ({ uz: '⏳ Video yuklanmoqda…', ru: '⏳ Загружаю видео…', tr: '⏳ Video yükleniyor…' })[lang] || '⏳' }); return sendEv(env, chat.id, lang, id); }
   if (kind === 'O') return sendOutlook(env, chat.id, lang);
   if (kind === 'OP') return sendOutlookPart(env, chat.id, lang, id);
+  if (kind === 'WK') return weekDays(env, chat.id, lang, id);
   if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
@@ -1812,6 +1862,9 @@ async function privateMsg(msg, env) {
       }
     }
     const cbk = data => handle({ callback_query: { id: '0', from: msg.from, data, message: { chat, message_id: msg.message_id } } }, env);
+    const rg = !cmd && !rk && parseRange(text);
+    if (rg && rg[0] <= rg[1] && (Date.parse(rg[1]) - Date.parse(rg[0])) / 864e5 <= 15) return weekDays(env, chat.id, lang, rg[0], rg[1]);
+    if (cmd === 'week' || cmd === 'hafta' || cmd === 'nedelya') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     
     if (act === 'rain') return TRJ.has(rid) ? rainMenu(env, chat.id, lang, rid) : cbk(`V:${lang}:${rid}`);
     if (act === 'more') return moreMenu(env, chat.id, lang, rid);
