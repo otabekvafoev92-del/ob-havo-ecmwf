@@ -74,12 +74,15 @@ def draw(job):
         ax.text(x_, y_, X['hi'] if hi else X['lo'], fontsize=30, fontweight='bold', color=COLD if hi else WARM, ha='center', va='center', zorder=3.6, alpha=0.45 * a_in)  # semi-transparent: the weather under it shows through
     for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
     # the moisture's path to a town (from its source, ~2 days back)
+    used = []  # the source labels: never on top of each other, never on the map's bottom edge
     for p in fr['paths']:
         xy = np.asarray(p['path'])[:, :2]
         ax.plot(xy[:, 0], xy[:, 1], color=PV.ORANGE, lw=2.6, ls=(0, (6, 3)), zorder=3.8, alpha=p['a'])
         dv = xy[min(2, len(xy) - 1)] - xy[0]; dv = dv / (np.hypot(*dv) + 1e-9)  # the arrow head at the town
         ax.annotate('', xy=xy[0], xytext=xy[0] + 0.45 * dv, arrowprops=dict(arrowstyle='-|>', color=PV.ORANGE, lw=2.6, mutation_scale=24), zorder=3.85, alpha=p['a'])
-        sx, sy = np.clip(xy[-1, 0], x0 + 1.5, x1 - 1.5), np.clip(xy[-1, 1], LAT_A + 0.5, LAT_B - 0.6)
+        sx, sy = float(np.clip(xy[-1, 0], x0 + 1.8, x1 - 1.8)), float(np.clip(xy[-1, 1], LAT_A + 1.0, LAT_B - 0.6))
+        while any(abs(sx - ux) < 3.2 and abs(sy - uy) < 0.45 for ux, uy in used): sy += 0.5
+        used.append((sx, sy))
         ax.text(sx, sy, X['src'].format(s=p['src'][lang]), fontsize=14, fontweight='bold', color='white', ha='center', va='center', zorder=9.5, alpha=p['a'],
                 bbox=dict(boxstyle='round,pad=0.35,rounding_size=0.6', fc=PV.ORANGE, ec='none', alpha=0.95 * p['a']))
     L = 0 if lang == 'ru' else 1

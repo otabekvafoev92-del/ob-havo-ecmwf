@@ -20,6 +20,7 @@ jobs:
           id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
           timeout 600 gh run download $id -n npz -D npz && ls -la npz
           timeout 4800 python -u -W ignore tools/moist15_video.py npz/prob.npz m15 ru,uz
+          for f in m15/moist15_*.mp4; do ffmpeg -v error -y -i $f -c:v libx264 -preset slow -b:v 900k -maxrate 1300k -bufsize 2600k -pix_fmt yuv420p -c:a copy -movflags +faststart ${f%.mp4}_s.mp4 && mv ${f%.mp4}_s.mp4 $f; done  # under 20 MB for Telegram
           cd m15 && git init -q && git checkout -q -b m15 && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "moisture 15 days $(date -u +%F' '%H:%M)"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" m15
