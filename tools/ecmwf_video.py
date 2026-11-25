@@ -24,10 +24,11 @@ import obs_video as OV  # the stations and their SYNOP reports
 
 OUT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'ev'); OUT.mkdir(parents=True, exist_ok=True)
 LANGS = (sys.argv[2] if len(sys.argv) > 2 else 'ru,uz').split(',')
-W, H = 1080, 1920
-HEAD, CHART = 210, 400            # px: the header on top, the rain dynamics at the bottom
-HD = H - HEAD - CHART              # the 3D map between them
-WS, HS = 1512, 1834                # the map drawn 1.4× and scaled down (sharp lines)
+# the format of the frame (EV_FORMAT): 9x16 phone (the default), 4x5 feed, 1x1 square, 16x9 wide
+W, H, HEAD, CHART = {'9x16': (1080, 1920, 210, 400), '4x5': (1080, 1350, 190, 300), '1x1': (1080, 1080, 170, 270), '16x9': (1920, 1080, 170, 270)}[os.environ.get('EV_FORMAT', '9x16')]
+HD = H - HEAD - CHART              # the map between the header and the rain dynamics
+WS, HS = round(W * 1.4), round(HD * 1.4)  # the map drawn 1.4× and scaled down (sharp lines)
+CS = CHART / 400                   # the rain-dynamics panel scales with its height
 TOPIN, BOTOUT = 0, 0               # seen from straight above (a tilt would be TOPIN>0)
 SLOW = 4.0                         # the speed: 0.25× (every frame held 4× longer)
 DOM = (54.0, 76.5, 34.5, 48.5)     # the data grid (all the regions fit)
@@ -215,17 +216,18 @@ def render(job):
         if fr.get('when'): a0.text(W / 2, H * 0.515, fr['when'], ha='center', va='center', fontsize=24, color='#dfe6ee', alpha=min(1, al * 1.4), zorder=10.6)
     # header
     a0.add_patch(plt.Rectangle((0, 0), W, HEAD, fc=NAVY, ec='none', zorder=11))
-    a0.text(50, 46, 'OSMON', color='#f08a24', fontsize=24, fontweight='bold', va='center', zorder=12)
-    a0.text(50, 100, V['title'], color='#ffffff', fontsize=29, fontweight='bold', va='center', zorder=12)
-    a0.text(50, 162, fr['badge'], color='#ffffff', fontsize=23, fontweight='bold', va='center', zorder=12, bbox=dict(boxstyle='round,pad=0.35', fc=fr['bc'], ec='none'))
-    if fr.get('when'): a0.text(W - 50, 162, fr['when'], color='#dfe6ee', fontsize=22, va='center', ha='right', zorder=12)
+    hs_ = HEAD / 210
+    a0.text(50, 46 * hs_, 'OSMON', color='#f08a24', fontsize=24, fontweight='bold', va='center', zorder=12)
+    a0.text(50, 100 * hs_, V['title'], color='#ffffff', fontsize=29, fontweight='bold', va='center', zorder=12)
+    a0.text(50, 162 * hs_, fr['badge'], color='#ffffff', fontsize=23, fontweight='bold', va='center', zorder=12, bbox=dict(boxstyle='round,pad=0.35', fc=fr['bc'], ec='none'))
+    if fr.get('when'): a0.text(W - 50, 162 * hs_, fr['when'], color='#dfe6ee', fontsize=22, va='center', ha='right', zorder=12)
     # the dynamics of the rain
     y0 = H - CHART; a0.add_patch(plt.Rectangle((0, y0), W, CHART, fc='#ffffff', ec='none', zorder=11))
     a0.plot([0, W], [y0, y0], color='#e3e8ee', lw=2, zorder=12)
-    a0.text(50, y0 + 34, V['line'], fontsize=20, color='#a1520c', fontweight='bold', va='center', zorder=12)
-    a0.text(50, y0 + 76, V['chart_t'], fontsize=17, color=INK, fontweight='bold', va='center', zorder=12)
+    a0.text(50, y0 + 34 * CS, V['line'], fontsize=20, color='#a1520c', fontweight='bold', va='center', zorder=12)
+    a0.text(50, y0 + 76 * CS, V['chart_t'], fontsize=17, color=INK, fontweight='bold', va='center', zorder=12)
     ch = CTX['charts'][V['chart']]; n = len(ch['pct']); cur = fr.get('ci')
-    cx0, cx1, cyb, cyt = 60, W - 40, y0 + 290, y0 + 150; bw = (cx1 - cx0) / max(n, 1)
+    cx0, cx1, cyb, cyt = 60, W - 40, y0 + CHART - 110, y0 + 150 * CS; bw = (cx1 - cx0) / max(n, 1)
     a0.plot([cx0, cx1], [cyb, cyb], color='#c9d1da', lw=1.5, zorder=12)
     for j, (pc, mx) in enumerate(zip(ch['pct'], ch['mx'])):
         hgt = max(pc, 0.8 if mx >= 0.2 else 0) / 100 * (cyb - cyt); ci = int(np.clip(np.searchsorted(PR_LV, mx, side='right') - 1, 0, 4))

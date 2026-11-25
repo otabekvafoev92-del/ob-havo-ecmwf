@@ -1,0 +1,20 @@
+name: Video formats (samples)
+# the 12-hour video in each frame format, to compare them (tools/ecmwf_video.py with EV_FORMAT); the files are the run's artifacts
+on: {workflow_dispatch: {}}
+permissions: {contents: read}
+jobs:
+  f:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy: {fail-fast: false, matrix: {fmt: ['9x16', '4x5', '1x1', '16x9']}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          pip install -q requests numpy scipy matplotlib pillow eccodes metpy opencv-python-headless
+          EV_FORMAT=${{ matrix.fmt }} EV_KINDS=12h EV_REGIONS=none python -W ignore tools/ecmwf_video.py out ru
+          mv out/12h_ru.mp4 "out/osmon_${{ matrix.fmt }}.mp4"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'fmt-${{ matrix.fmt }}', path: 'out/osmon_${{ matrix.fmt }}.mp4'}

@@ -13,6 +13,11 @@ import obs_video as OV
 
 OUT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'obs'); OUT.mkdir(parents=True, exist_ok=True)
 LOC = dt.timedelta(hours=5)
+NAMES = {'Jaslyk': ('Жаслык', 'Jasliq'), 'Karakapalkija': ('Каракалпакия', 'Qoraqalpog‘iston'), 'Ak-Bajtal': ('Акбайтал', 'Oqboytal'), 'Buzaubaj': ('Бузаубай', 'Buzaubay'),
+         'Mashikuduk': ('Машикудук', 'Mashikuduq'), 'Nurata': ('Нурата', 'Nurota'), 'Tamdy-Bulak': ('Тамдыбулак', 'Tomdibuloq'), 'Olgaing': ('Ойгаинг', 'Oygaing'), 'Pskem': ('Пскем', 'Piskom'),
+         'Gurlen': ('Гурлен', 'Gurlan'), 'Ayakagitma': ('Аякагитма', 'Ayoqog‘itma'), 'Dzangeldy': ('Джангельды', 'Jongeldi'), 'Karakul': ('Каракуль', 'Qorako‘l'), 'Bahmal': ('Бахмал', 'Baxmal'),
+         'Zapadny Arnasay': ('Западный Арнасай', 'G‘arbiy Arnasoy'), "Syr-Dar'Ja": ('Сырдарья', 'Sirdaryo'), 'Akrabat': ('Акрабат', 'Akrabot'), 'Guzar': ('Гузар', 'G‘uzor'),
+         'Minchukur': ('Минчукур', 'Minchuqur'), 'Baysun': ('Байсун', 'Boysun'), 'Shirabad': ('Шерабад', 'Sherobod'), 'Shurchi': ('Шурчи', 'Sho‘rchi'), 'Каган': ('Каган (Бухара)', 'Kogon (Buxoro)')}
 VV = lambda c: (c / 10 if c <= 50 else c - 50 if 56 <= c <= 80 else 30 + (c - 80) * 5 if 81 <= c <= 89 else {90: 0.05, 91: 0.05, 92: 0.2, 93: 0.5, 94: 1, 95: 2, 96: 4, 97: 10, 98: 20, 99: 50}.get(c))
 KIND = {0: 'rain', 1: 'snow', 3: 'fog', 4: 'thunder', 5: 'dust'}
 
@@ -70,10 +75,12 @@ def main():
                      clouds=round(sum(o['n'] for _, o in ts if o.get('n') is not None) / max(1, sum(1 for _, o in ts if o.get('n') is not None)), 1))
             d['impact'], d['why'] = impact(d)
             dd[day.isoformat()] = d
-        if dd: out[w] = dict(ru=s['ru'], uz=s['uz'], lat=s['lat'], lon=s['lon'], main=s['main'], region=regof(s), days=dd)
+        ru, uz = NAMES.get(s['ru'], (s['ru'], s['uz']))
+        if dd: out[w] = dict(ru=ru, uz=uz, lat=s['lat'], lon=s['lon'], main=s['main'], region=regof(s), days=dd)
     regions = {}
     for w, s in out.items():
         if s['region'] is not None: regions.setdefault(str(s['region']), []).append(w)
+    if '38457' in out: regions['13'] = ['38457']  # Tashkent city: its airport station
     for k in regions: regions[k].sort(key=lambda w: (not out[w]['main'], out[w]['ru']))
     json.dump(dict(made=now.strftime('%Y-%m-%dT%H:%MZ'), days=[d.isoformat() for d in days], stations=out, regions=regions,
                    source='WMO SYNOP of the stations of Uzbekistan (OGIMET), every 3 hours'), open(OUT / 'stations_days.json', 'w'), ensure_ascii=False, separators=(',', ':'))
