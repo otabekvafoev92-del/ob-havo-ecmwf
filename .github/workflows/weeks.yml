@@ -1,0 +1,23 @@
+name: Weather by ISO weeks (video)
+# precipitation as % of the normal and the mean temperature, week by week (past week + ECMWF EC46), tools/weeks_video.py; kept on the "weeks" branch
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch: {}
+permissions: {contents: write}
+concurrency: {group: weeks, cancel-in-progress: true}
+jobs:
+  v:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          pip install -q numpy scipy matplotlib pyproj requests qrcode
+          python -W ignore tools/weeks_video.py wk ru,uz
+          cd wk && git init -q && git checkout -q -b weeks && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "weeks $(date -u +%F)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" weeks
