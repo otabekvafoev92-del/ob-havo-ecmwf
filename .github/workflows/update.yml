@@ -15,7 +15,7 @@ on:
     paths: ['site/**', 'pipeline/**', 'prob/**', '.github/workflows/update.yml']
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -101,6 +101,7 @@ jobs:
           - { part: cis-b-uz, npz: prob.npz, args: '--regions AZ,AM,BY,MD,RU,TR --langs uz' }
           - { part: cis-b-ru, npz: prob.npz, args: '--regions AZ,AM,BY,MD,RU,TR --langs ru' }
           - { part: cis-b-tr, npz: prob.npz, args: '--regions AZ,TR --langs tr' }
+          - { part: osmon-prob, npz: prob.npz, args: '' }
           - { part: cities-UZ-ru, npz: prob.npz, args: "--regions UZ --langs ru --products '' --city-videos UZ --city-langs ru" }
           - { part: cities-UZ-uz, npz: prob.npz, args: "--regions UZ --langs uz --products '' --city-videos UZ --city-langs uz" }
           - { part: cities-KZ-ru, npz: prob.npz, args: "--regions KZ --langs ru --products '' --city-videos KZ --city-langs ru" }
@@ -152,6 +153,12 @@ jobs:
             if [ "${{ matrix.part }}" = hr-a ]; then  # where the rain and snow come from (Uzbekistan, Kazakhstan)
               pip install eccodes >/dev/null && python prob/trajectory.py prob.npz out --regions UZ,KZ,KG --langs ru,uz || echo 'trajectories failed'
             fi
+          elif [ "${{ matrix.part }}" = osmon-prob ]; then
+            # the chance of precipitation in the Osmon video style (tools/prob_video.py); also kept on the "pv" branch for the bot
+            sudo apt-get install -y -qq --no-install-recommends fonts-inter >/dev/null || true; rm -rf ~/.cache/matplotlib
+            pip install -q opencv-python-headless
+            EV_FORMAT=${EV_FORMAT:-9x16} python -W ignore tools/prob_video.py prob.npz out ru,uz
+            mkdir -p /tmp/pv && cp out/prob_*.mp4 /tmp/pv/ && (cd /tmp/pv && git init -q && git checkout -q -b pv && git add -A && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "prob video" && git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" pv) || echo 'pv push failed'
           elif [ "${{ matrix.part }}" = yt ]; then
             python prob/broadcast.py prob.npz glob.npz wx.npz out --langs ru,uz
           elif [ "${{ matrix.part }}" = globe ]; then

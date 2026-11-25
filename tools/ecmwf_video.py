@@ -35,6 +35,7 @@ DOM = (54.0, 76.5, 34.5, 48.5)     # the data grid (all the regions fit)
 if any('inter' in x.lower() for x in fm.findSystemFonts()): plt.rcParams['font.family'] = 'Inter'
 NAVY, ORANGE, INK, MUTED = '#0f1d30', '#e8742c', '#1f2d3d', '#5d6b7c'
 PR_LV = [0.2, 1, 3, 6, 12, 99]
+PROB_LV = [10, 30, 50, 70, 90, 101]; PROB = ['#cfe6fb', '#8cc3f2', '#3f8fdd', '#1f5fb3', '#5b2a86']  # the chance of precipitation, %
 RAIN = ['#9be59a', '#3fca5a', '#f2e33a', '#f59a2c', '#e53935']  # radar colours
 SNOW = ['#f3e9ff', '#e2c4ff', '#cf94f5', '#b55ee6', '#8e2fc9']
 TCOL = lambda t: OV.tcol(t)
@@ -53,7 +54,7 @@ TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ
                  dry='Без осадков по всей стране', spots='В городах сухо, осадки местами: до {p}% территории, до {mm} мм за 3 ч', wet='Больше всего осадков: {t} — {mm} мм', wet3='За 3 дня больше всего: {t} — {mm} мм', none3='3 дня без заметных осадков',
                  reg_t='прогноз на 12 часов', reg_wet='Больше всего за 12 ч: {t} — {mm} мм', reg_dry='Ближайшие 12 часов без заметных осадков',
                  chart='Динамика дождей: где идут осадки, % территории', chart_r='Динамика дождей в области, % территории', upto='до {mm} мм', none_='без осадков',
-                 tot='Осадки за 3 дня, мм', total='ИТОГ · 3 дня', lat='с.ш.', lon='в.д.', fog='туман', day_mm='мм за сутки',
+                 tot='Осадки за 3 дня, мм', total='ИТОГ · 3 дня', lat='с.ш.', lon='в.д.', fog='туман', prob_leg='Вероятность осадков (≥0,2 мм за 6 ч)', day_mm='мм за сутки',
                  t7='Погода по дням: 7 дней', d7='день {i} из {n}', chart7='Осадки по дням: где пройдут, % территории', wet7='Самый дождливый день: {d} — до {mm} мм', dry7='Неделя без заметных осадков', nightc='в кружке — днём, рядом — ночью'),
       'uz': dict(fact='FAKT · meteostansiyalar', fc='ECMWF PROGNOZI', t12='Ob-havo: 6 soat fakt + 12 soat prognoz', t3='Ob-havo: 6 soat fakt + 3 kun prognoz',
                  at='{d} · Toshkent vaqti {h}', plus='+{h} soat', rain='3 soatda mm', snow='qor', src='Fakt: O‘zbekiston meteostansiyalari (JMT SYNOP) · Prognoz: ECMWF IFS · Osmon',
@@ -61,7 +62,7 @@ TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ
                  dry='Butun mamlakatda yog‘in yo‘q', spots='Shaharlarda quruq, joylarda yog‘in: hududning {p}% gacha, 3 soatda {mm} mm gacha', wet='Eng ko‘p yog‘in: {t} — {mm} mm', wet3='3 kunda eng ko‘p: {t} — {mm} mm', none3='3 kun sezilarli yog‘insiz',
                  reg_t='12 soatlik prognoz', reg_wet='12 soatda eng ko‘p: {t} — {mm} mm', reg_dry='Yaqin 12 soatda sezilarli yog‘in yo‘q',
                  chart='Yog‘in dinamikasi: yog‘in yog‘ayotgan hudud, %', chart_r='Viloyatda yog‘in dinamikasi, % hudud', upto='{mm} mm gacha', none_='yog‘insiz',
-                 tot='3 kunlik yog‘in, mm', total='JAMI · 3 kun', lat='N', lon='E', fog='tuman', day_mm='sutkada mm',
+                 tot='3 kunlik yog‘in, mm', total='JAMI · 3 kun', lat='N', lon='E', fog='tuman', prob_leg='Yog‘ingarchilik ehtimoli (6 soatda ≥0,2 mm)', day_mm='sutkada mm',
                  t7='Kunlar bo‘yicha ob-havo: 7 kun', d7='{i}-kun / {n}', chart7='Kunlar bo‘yicha yog‘in: hudud, %', wet7='Eng yog‘inli kun: {d} — {mm} mm gacha', dry7='Hafta sezilarli yog‘insiz', nightc='doirada — kunduz, yonida — tun')}
 S = requests.Session(); S.headers['User-Agent'] = 'Osmon weather (github.com/otabekvafoev92-del/ob-havo-ecmwf)'
 CTX = {}  # filled by main before the workers fork: they read it, nothing is copied
@@ -150,6 +151,11 @@ def render(job):
     if V.get('clip') is not None and not ctry:
         clip = PathPatch(MPath.make_compound_path(*[MPath(r) for r in V['clip']]), transform=ax.transData, fc='none', ec='none'); ax.add_patch(clip)
     LATu, LONu, ext = CTX['LATu'], CTX['LONu'], CTX['ext']
+    if mode == 'prob':  # the chance of precipitation from all the models
+        Pf = CTX['fields'][fr['k']]['P']
+        if np.nanmax(Pf) >= PROB_LV[0]:
+            cs = ax.contourf(LONu, LATu, Pf, levels=PROB_LV, colors=PROB, alpha=0.82, zorder=2, antialiased=True)
+            if clip is not None: cs.set_clip_path(clip)
     if mode in ('fc', 'total', 'day'):
         F = CTX['fields'][fr['k']] if mode != 'total' else None
         if mode != 'total':
@@ -230,17 +236,27 @@ def render(job):
     cx0, cx1, cyb, cyt = 60, W - 40, y0 + CHART - 110, y0 + 150 * CS; bw = (cx1 - cx0) / max(n, 1)
     a0.plot([cx0, cx1], [cyb, cyb], color='#c9d1da', lw=1.5, zorder=12)
     for j, (pc, mx) in enumerate(zip(ch['pct'], ch['mx'])):
-        hgt = max(pc, 0.8 if mx >= 0.2 else 0) / 100 * (cyb - cyt); ci = int(np.clip(np.searchsorted(PR_LV, mx, side='right') - 1, 0, 4))
-        col = (SNOW if ch['snow'][j] else RAIN)[ci] if mx >= 0.2 else '#dfe4ea'
+        if ch.get('kind') == 'prob':
+            hgt = pc / 100 * (cyb - cyt); col = PROB[int(np.clip(np.searchsorted(PROB_LV, pc, side='right') - 1, 0, 4))] if pc >= 10 else '#dfe4ea'
+        else:
+            hgt = max(pc, 0.8 if mx >= 0.2 else 0) / 100 * (cyb - cyt); ci = int(np.clip(np.searchsorted(PR_LV, mx, side='right') - 1, 0, 4))
+            col = (SNOW if ch['snow'][j] else RAIN)[ci] if mx >= 0.2 else '#dfe4ea'
         on = cur is not None and j <= cur; xx = cx0 + j * bw
         a0.add_patch(plt.Rectangle((xx + bw * 0.14, cyb - max(hgt, 3)), bw * 0.72, max(hgt, 3), fc=col, ec='none', alpha=1.0 if (on or cur is None) else 0.35, zorder=12))
         if j % ch['every'] == 0: a0.text(xx + bw / 2, cyb + 10, ch['lab'][j], ha='center', va='top', fontsize=12, color=MUTED, zorder=12)
     if cur is not None:
         xx = cx0 + (cur + 0.5) * bw; a0.plot([xx, xx], [cyt - 6, cyb], color=INK, lw=2, zorder=13)
         pc, mx = ch['pct'][cur], ch['mx'][cur]
-        a0.text(min(max(xx, 150), W - 150), cyt - 12, (f"{pc:.0f}% · " + X['upto'].format(mm=f'{mx:.0f}' if mx >= 1 else f'{mx:.1f}')) if mx >= 0.2 else X['none_'],
+        a0.text(min(max(xx, 150), W - 150), cyt - 12, f"{pc:.0f}%" if ch.get('kind') == 'prob' else (f"{pc:.0f}% · " + X['upto'].format(mm=f'{mx:.0f}' if mx >= 1 else f'{mx:.1f}')) if mx >= 0.2 else X['none_'],
                 ha='center', va='bottom', fontsize=15, fontweight='bold', color=INK, zorder=13, bbox=dict(boxstyle='round,pad=0.25', fc='#ffffff', ec='#c9d1da'))
     # legend and source
+    if mode == 'prob':
+        lx = 40; a0.text(lx, H - 52, X['prob_leg'], fontsize=13, color=MUTED, va='center', zorder=12); lx += 330 if V['lang'] == 'ru' else 350
+        for c, l_ in zip(PROB, ['10', '30', '50', '70', '90%']):
+            a0.add_patch(plt.Rectangle((lx, H - 62), 40, 20, fc=c, ec='none', zorder=12)); a0.text(lx + 45, H - 52, l_, fontsize=12, color=MUTED, va='center', zorder=12); lx += 92
+        a0.text(50, H - 18, V.get('src', X['src']), fontsize=11, color='#7d8c9e', va='center', zorder=12)
+        fig.savefig(pathlib.Path(V['dir']) / f'{i:04d}.png'); plt.close(fig)
+        return vk
     lx = 40; a0.text(lx, H - 52, X['rain'] if mode not in ('total', 'day') else X['tot'] if mode == 'total' else X['day_mm'], fontsize=13, color=MUTED, va='center', zorder=12); lx += 112 if V['lang'] == 'ru' else 118
     for c, l_ in zip(RAIN, ['0.2', '1', '3', '6', '12+'] if mode not in ('total', 'day') else ['1', '5', '10', '20', '40+'] if mode == 'total' else ['1', '3', '5', '10', '20+']):
         a0.add_patch(plt.Rectangle((lx, H - 62), 40, 20, fc=c, ec='none', zorder=12)); a0.text(lx + 45, H - 52, l_, fontsize=12, color=MUTED, va='center', zorder=12); lx += 92
