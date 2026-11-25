@@ -60,15 +60,17 @@ def draw(job):
     tr = C['trails'][fr['p']].astype(np.float32); TRn = tr.shape[0]
     seg = np.stack([tr[:-1], tr[1:]], axis=2)  # (TR-1, N, 2 points, 2)
     ok = (np.abs(seg[:, :, 1] - seg[:, :, 0]).max(-1) < 0.8)
-    sp_ = np.hypot(*(seg[:, :, 1] - seg[:, :, 0]).T).T  # degrees per half hour
-    alph = (np.arange(1, TRn) / (TRn - 1))[:, None] ** 1.6 * np.clip((sp_ - 0.03) / 0.22, 0, 1) * 0.42 * a_in
-    rgba = np.zeros(alph.shape + (4,), np.float32); rgba[..., :3] = matplotlib.colors.to_rgb('#3d5a6c'); rgba[..., 3] = alph
-    ax.add_collection(LineCollection(seg[ok], colors=rgba[ok], linewidths=0.9, zorder=2.4, capstyle='round'))
+    sp_ = np.hypot(*(seg[:, :, 1] - seg[:, :, 0]).T).T * 111e3 / 1800  # m/s
+    age_ = (np.arange(1, TRn) / (TRn - 1))[:, None]  # 0 tail … 1 head
+    show = np.clip((sp_ - 2.5) / 6, 0, 1)  # calm air leaves no streak
+    rgba = C['wind_cmap'](np.clip(sp_ / 35, 0, 1)); rgba[..., 3] = (age_ ** 1.4 * show * 0.6 * a_in)
+    lw = np.broadcast_to(0.3 + 1.25 * age_ ** 1.5, sp_.shape)  # thin tail, a thicker head: the streak points where the air goes
+    ax.add_collection(LineCollection(seg[ok], colors=rgba[ok], linewidths=lw[ok], zorder=2.4, capstyle='round', joinstyle='round'))
     # fronts with their symbols on the side the front moves to
     for line, kind in C['fronts'].get(fr['fk'], []):
         col = COLD if kind == 'cold' else WARM
-        ax.plot(line[:, 0], line[:, 1], color=col, lw=2.8, zorder=3.4, alpha=a_in, solid_capstyle='round', solid_joinstyle='round')
-        for poly in front_symbols(line, kind): ax.fill(poly[:, 0], poly[:, 1], color=col, ec='none', zorder=3.45, alpha=a_in)
+        ax.plot(line[:, 0], line[:, 1], color=col, lw=2.6, zorder=3.4, alpha=0.45 * a_in, solid_capstyle='round', solid_joinstyle='round')  # semi-transparent: the weather shows through
+        for poly in front_symbols(line, kind): ax.fill(poly[:, 0], poly[:, 1], color=col, ec='none', zorder=3.45, alpha=0.45 * a_in)
     # highs and lows
     for x_, y_, hi in fr['hl']:
         ax.text(x_, y_, X['hi'] if hi else X['lo'], fontsize=30, fontweight='bold', color=COLD if hi else WARM, ha='center', va='center', zorder=3.6, alpha=0.45 * a_in)  # semi-transparent: the weather under it shows through
@@ -215,7 +217,7 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
                     if (hi and Mg[y_, x_] - loc_.min() >= 3) or (not hi and loc_.max() - Mg[y_, x_] >= 3): out.append((float(LONu[x_]), float(LATu[y_]), hi))
         return out
     fields, frames0, trails = [], [], []
-    rng = np.random.default_rng(7); NP, TRn = 1000, 12
+    rng = np.random.default_rng(7); NP, TRn = 900, 18
     spawn = lambda n: np.c_[rng.uniform(ext[0], ext[1], n), rng.uniform(LAT_A - 0.3, LAT_B + 0.3, n)]
     P = spawn(NP); age = rng.integers(0, 60, NP); life = rng.integers(45, 90, NP); hist = [P.copy() for _ in range(TRn)]
     times = [h + s for h in hours for s in (0.0, 0.5)][:-1]
@@ -253,6 +255,7 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
     WAT = json.load(open(ROOT / 'prob' / 'geo_water.json'))
     from matplotlib.colors import LinearSegmentedColormap
     CTX.update(LONu=LONu, LATu=LATu, fields=fields, trails=trails, fronts=fronts, lon_ext=ext,
+               wind_cmap=LinearSegmentedColormap.from_list('wind', ['#a9bccb', '#7ea3c4', '#5585c0', '#4f68b8', '#6a55b0', '#8a4aa6']),
                wv_cmap=LinearSegmentedColormap.from_list('wv', ['#ffffff', '#f4f9f5', '#e3f2e9', '#c9e9d8', '#a6d9c1', '#7cc4a8', '#52a88e', '#3a8f7a']),
                sea=[np.asarray(r) for r in WAT['ocean']] + [np.asarray(l_['r']) for l_ in WAT['lakes']],
                borders=[([np.asarray(r) for k, c in G.items() if k != 'UZ' for r in c['rings']], '#a3acb6', 1.0, 3), ([np.asarray(r) for a in GA['adm1'] for r in a['r']], '#b7c0ca', 0.8, 3.05),
