@@ -239,14 +239,16 @@ def main(npz, wxp, outd, langs, only=None, view=None):
     """view (optional): the map of another country or place — lat (south, north), lc (centre longitude), towns [(ru, uz, lat, lon)], main (ru name),
     borders [(rings, colour, width, z)], names [(label, lon, lat)], title/tzl/chart_t {lang: text}, off (hours from UTC), stem (file name)."""
     view = view or {}
-    D = load(npz); P, models, members = probability(D); WX = load_wx_npz(D, wxp)
-    g = D['grid'].item(); lon = g['lon0'] + np.arange(g['W']) * g['d']; lat = g['lat0'] - np.arange(g['H']) * g['d']
     towns = view.get('towns', TOWNS); la0, la1 = view.get('lat', (LAT0, LAT1)); cosl = np.cos(np.radians((la0 + la1) / 2))
     span = (la1 - la0) / cosl * (MAP[2] * W) / (MAP[3] * H); lc = view.get('lc', 64.8); ext = (lc - span / 2, lc + span / 2)
-    # only the map's box (+ a margin) is kept: the full grid upsampled would not fit in memory
+    D = load(npz); g = D['grid'].item(); lon = g['lon0'] + np.arange(g['W']) * g['d']; lat = g['lat0'] - np.arange(g['H']) * g['d']
+    # only the map's box (+ a margin) is kept, before anything is computed: the whole grid would not fit in memory
     ci = np.flatnonzero((lon >= ext[0] - 2) & (lon <= ext[1] + 2)); ri = np.flatnonzero((lat >= la0 - 2) & (lat <= la1 + 2))
-    lon, lat = lon[ci], lat[ri]; cut3 = lambda a: a[:, ri][:, :, ci]
-    P = cut3(P); WX = {k: (cut3(v) if v is not None else None) for k, v in WX.items()}
+    for k, a_ in list(D.items()):
+        if isinstance(a_, np.ndarray) and a_.ndim >= 2 and a_.shape[-2:] == (g['H'], g['W']): D[k] = a_[..., ri[0]:ri[-1] + 1, ci[0]:ci[-1] + 1]
+    D['grid'] = np.array(dict(g, lon0=float(lon[ci[0]]), lat0=float(lat[ri[0]]), W=len(ci), H=len(ri)), dtype=object)
+    lon, lat = lon[ci], lat[ri]
+    P, models, members = probability(D); WX = load_wx_npz(D, wxp)
     lat_s, P = lat[::-1], P[:, ::-1]; Tm = WX['T'][:, ::-1]
     PAD = 16 if (ext[0] < lon[0] + 0.5 or ext[1] > lon[-1] - 0.5) else 0  # the map wider than the data: the edge values carried on
     P = np.pad(P, ((0, 0), (0, 0), (PAD, PAD)), mode='edge'); Tm = np.pad(Tm, ((0, 0), (0, 0), (PAD, PAD)), mode='edge')
