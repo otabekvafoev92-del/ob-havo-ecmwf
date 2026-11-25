@@ -1,0 +1,25 @@
+name: Weather by hours, 15 days (ECMWF)
+# the hour-by-hour video for 15 days (tools/ecmwf_video.py, EV_KINDS=15d) after each 00/12 UTC run; kept on the "ev15" branch
+on:
+  schedule:
+    - cron: '40 8,20 * * *'
+  workflow_dispatch:
+    inputs:
+      format: {description: 'frame format (9x16, 4x5, 1x1, 16x9)', required: false, default: '9x16'}
+permissions: {contents: write}
+concurrency: {group: ev15, cancel-in-progress: false}
+jobs:
+  v:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: |
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          pip install -q requests numpy scipy matplotlib pillow eccodes metpy opencv-python-headless qrcode
+          EV_FORMAT=${{ inputs.format || '9x16' }} EV_KINDS=15d EV_REGIONS=none python -W ignore tools/ecmwf_video.py ev15 ru,uz
+          cd ev15 && rm -rf reg points.json && git init -q && git checkout -q -b ev15 && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "15 days $(date -u +%F' '%H:%M)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ev15

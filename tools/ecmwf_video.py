@@ -36,7 +36,7 @@ if any('inter' in x.lower() for x in fm.findSystemFonts()): plt.rcParams['font.f
 NAVY, ORANGE, INK, MUTED = '#0f1d30', '#e8742c', '#1f2d3d', '#5d6b7c'
 PR_LV = [0.2, 1, 3, 6, 12, 99]
 PROB_LV = [10, 30, 50, 70, 90, 101]; PROB = ['#cfe6fb', '#8cc3f2', '#3f8fdd', '#1f5fb3', '#5b2a86']  # the chance of precipitation, %
-RAIN = ['#9be59a', '#3fca5a', '#f2e33a', '#f59a2c', '#e53935']  # radar colours
+RAIN = ['#cfe6fb', '#8cc3f2', '#3f8fdd', '#1f5fb3', '#0f3f8c']  # light → heavy, all blue
 SNOW = ['#f3e9ff', '#e2c4ff', '#cf94f5', '#b55ee6', '#8e2fc9']
 TCOL = lambda t: OV.tcol(t)
 DOT = (0, (0.1, 2.0))  # dotted borders (with round caps the dashes become dots)
@@ -55,7 +55,7 @@ TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ
                  reg_t='прогноз на 12 часов', reg_wet='Больше всего за 12 ч: {t} — {mm} мм', reg_dry='Ближайшие 12 часов без заметных осадков',
                  chart='Динамика дождей: где идут осадки, % территории', chart_r='Динамика дождей в области, % территории', upto='до {mm} мм', none_='без осадков',
                  tot='Осадки за 3 дня, мм', total='ИТОГ · 3 дня', lat='с.ш.', lon='в.д.', fog='туман', prob_leg='Вероятность осадков (≥0,2 мм за 6 ч)', head='ГЛАВНОЕ', hd_temp='Днём до {tx}° ({tt}), ночью до {tn}° ({tnn})', hd_fog='Возможен туман: {t}', hd_spots='Местами осадки, в городах сухо', end1='Погода в вашем районе и посёлке', end2='в Telegram-боте @ObHavo_ECMWF_bot', hd_warm7='Теплее всего: {d} — до {t}° ({tt})', day_mm='мм за сутки',
-                 t7='Погода по дням: 7 дней', d7='день {i} из {n}', chart7='Осадки по дням: где пройдут, % территории', wet7='Самый дождливый день: {d} — до {mm} мм', dry7='Неделя без заметных осадков', nightc='в кружке — днём, рядом — ночью'),
+                 t15='Погода по часам: 15 дней', chart15='Динамика дождей на 15 дней: где идут осадки, % территории', wet15='За 15 дней больше всего: {t} — {mm} мм', t7='Погода по дням: 7 дней', d7='день {i} из {n}', chart7='Осадки по дням: где пройдут, % территории', wet7='Самый дождливый день: {d} — до {mm} мм', dry7='Неделя без заметных осадков', nightc='в кружке — днём, рядом — ночью'),
       'uz': dict(fact='FAKT · meteostansiyalar', fc='ECMWF PROGNOZI', t12='Ob-havo: 6 soat fakt + 12 soat prognoz', t3='Ob-havo: 6 soat fakt + 3 kun prognoz',
                  at='{d} · Toshkent vaqti {h}', plus='+{h} soat', rain='3 soatda mm', snow='qor', src='Fakt: O‘zbekiston meteostansiyalari (JMT SYNOP) · Prognoz: ECMWF IFS · Osmon',
                  wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], mon=['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'],
@@ -63,7 +63,7 @@ TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ
                  reg_t='12 soatlik prognoz', reg_wet='12 soatda eng ko‘p: {t} — {mm} mm', reg_dry='Yaqin 12 soatda sezilarli yog‘in yo‘q',
                  chart='Yog‘in dinamikasi: yog‘in yog‘ayotgan hudud, %', chart_r='Viloyatda yog‘in dinamikasi, % hudud', upto='{mm} mm gacha', none_='yog‘insiz',
                  tot='3 kunlik yog‘in, mm', total='JAMI · 3 kun', lat='N', lon='E', fog='tuman', prob_leg='Yog‘ingarchilik ehtimoli (6 soatda ≥0,2 mm)', head='ASOSIYSI', hd_temp='Kunduzi {tx}° gacha ({tt}), tunda {tn}° gacha ({tnn})', hd_fog='Tuman ehtimoli: {t}', hd_spots='Joylarda yog‘in, shaharlarda quruq', end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda @ObHavo_ECMWF_bot', hd_warm7='Eng issiq kun: {d} — {t}° gacha ({tt})', day_mm='sutkada mm',
-                 t7='Kunlar bo‘yicha ob-havo: 7 kun', d7='{i}-kun / {n}', chart7='Kunlar bo‘yicha yog‘in: hudud, %', wet7='Eng yog‘inli kun: {d} — {mm} mm gacha', dry7='Hafta sezilarli yog‘insiz', nightc='doirada — kunduz, yonida — tun')}
+                 t15='Soatbay ob-havo: 15 kun', chart15='15 kunlik yog‘in dinamikasi: hududning %', wet15='15 kunda eng ko‘p: {t} — {mm} mm', t7='Kunlar bo‘yicha ob-havo: 7 kun', d7='{i}-kun / {n}', chart7='Kunlar bo‘yicha yog‘in: hudud, %', wet7='Eng yog‘inli kun: {d} — {mm} mm gacha', dry7='Hafta sezilarli yog‘insiz', nightc='doirada — kunduz, yonida — tun')}
 S = requests.Session(); S.headers['User-Agent'] = 'Osmon weather (github.com/otabekvafoev92-del/ob-havo-ecmwf)'
 CTX = {}  # filled by main before the workers fork: they read it, nothing is copied
 
@@ -260,7 +260,7 @@ def render(job):
         k = (0.7 + 0.3 * (y - HEAD) / HD) if TOPIN else 1.0; sz = (1500 if big else 800) * k * k
         if ring: a0.scatter(x, y, s=sz * 1.55, facecolors='none', edgecolors=ring, linewidths=4.5 * k, zorder=8)
         a0.scatter(x, y, s=sz, c=[col], edgecolors='#ffffff', linewidths=2.2, zorder=9)
-        if ico: draw_icon(a0, x + 30 * k, y - 22 * k, ico, 12 * k)
+        if ico and os.environ.get('EV_ICONS'): draw_icon(a0, x + 30 * k, y - 22 * k, ico, 12 * k)  # the weather symbols: off unless asked for
         a0.text(x, y, txt, ha='center', va='center', fontsize=(18 if big else 13) * k, fontweight='bold', color='#1f2d3d', zorder=10)
         dx, dy, ha, va = OFF.get(lab, (0, (30 if big else 22) * k, 'center', 'top')) if lab else (0, 0, 'center', 'top')
         if lab: a0.text(x + dx, y + dy, lab, ha=ha, va=va, fontsize=(15 if big else 11) * k, fontweight='bold' if big else 'normal', color='#1f2d3d', zorder=10,
@@ -426,7 +426,7 @@ def main():
         def step(u, v):
             nonlocal P, age, hist
             iy = np.clip(np.searchsorted(LATu, P[:, 1]), 0, hu - 1); ix = np.clip(np.searchsorted(LONu, P[:, 0]), 0, wu - 1)
-            K = 0.008 if kind == '12h' else 0.011
+            K = 0.008 if kind in ('12h', '15d') else 0.011
             P = P + np.c_[u[iy, ix] * K / np.cos(np.radians(P[:, 1])), v[iy, ix] * K]; age += 1
             dead = (age > life) | (P[:, 0] < E0[0]) | (P[:, 0] > E0[1]) | (P[:, 1] < E0[2]) | (P[:, 1] > E0[3])
             if dead.any():
@@ -441,6 +441,7 @@ def main():
                     fields.append(dict(t2=t2a, pr=pra, tcc=tca, msl=msa, fog=fga, nz=nz, tr=step(ua, va)))
                     out.append(dict(t=t, k=len(fields) - 1, ci=i, d=(1.2 if k == N - 1 else 0.5 / N)))
                 break
+            if kind == '15d': stp = max(1, int((fts[i + 1] - t).total_seconds() // 3600)); N = stp; dur = 0.03 * N  # one frame an hour
             t2b, prb, tcb, msb, ub, vb, fgb = keys[i + 1]; fl = flow(gaussian_filter(sig(pra, tca), 2), gaussian_filter(sig(prb, tcb), 2))
             for k in range(N):
                 s = k / N
@@ -586,6 +587,36 @@ def main():
             line = X['reg_wet'].format(t=short(wet[0]['name'][lang]), mm=f"{wet[1]:.1f}".rstrip('0').rstrip('.')) if wet[1] >= 0.3 else X['reg_dry']
             videos[f'reg/{rid}_{lang}'] = dict(head=[line], lang=lang, kind='12h', ext=Er, rel=f'r{rid}', borders=bord, borders_c=borders_uz + [(rings, '#5b2a86', 3.4, (0, (6, 3, 1, 3)), 1.0, 3.4)], wind=False, clip=rings, frames=frames,
                                                title=f"{a['name'][lang]} · {X['reg_t']}", line=line, chart=f'r{rid}', chart_t=X['chart_r'], dir=tempfile.mkdtemp(), out=str(OUT / 'reg' / f'{rid}_{lang}.mp4'))
+    # hour by hour for 15 days: the last 00/12 UTC run, HRES to 10 days (3 h, then 6 h), then one ensemble member to 15 days
+    if '15d' in KINDS:
+        run15 = run if run.hour in (0, 12) else run - dt.timedelta(hours=6); l15 = int((now - run15).total_seconds() // 3600)
+        F15 = M.fetch(run15, [x for x in M.STEPS15 if x[0] >= l15 - 6])
+        if len(F15) > 10:
+            F, steps, run = F15, sorted(F15), run15  # field() reads these
+            fts15 = [run15 + dt.timedelta(hours=h) for h in steps if h > l15 and h >= 3]
+            seq15, keys15 = sequence(fts15, '15d'); print('15d', len(seq15), 'frames', flush=True)
+            ch15 = chart(keys15, fts15, MUZ, '15d'); seen = set(); lab15 = []
+            for t in fts15:
+                dd_ = (t + dt.timedelta(hours=5)).strftime('%d.%m'); lab15.append(dd_ if dd_ not in seen and (t + dt.timedelta(hours=5)).hour >= 3 else ''); seen.add(dd_)
+            ch15.update(lab=lab15, every=1); charts['15d'] = ch15
+            hrs = [max(3, int((fts15[i] - (fts15[i - 1] if i else now)).total_seconds() // 3600)) for i in range(len(fts15))]
+            tot15 = {tw: sum(atu(k[1], tw[2], tw[3]) * h / 3 for k, h in zip(keys15, hrs)) for tw in TOWNS[:12]}; wet15 = max(tot15.items(), key=lambda kv: kv[1])
+            for lang in LANGS:
+                X = TX[lang]; L = 0 if lang == 'ru' else 1; frames = []
+                for fr in seq15:
+                    Fd = fields[fr['k']]; dh = int((fr['t'] - now).total_seconds() // 3600); pts = []
+                    for tw in TOWNS[:12]:
+                        v = atu(Fd['t2'], tw[2], tw[3]); mm = atu(Fd['pr'], tw[2], tw[3])
+                        pts.append((tw[3], tw[2], f"{v:+.0f}" if round(v) != 0 else '0', TCOL(v), ('#7b4fd0' if v <= 0.5 else '#2f7fd1') if mm >= 0.3 else None, tw[L], True))
+                    frames.append(dict(mode='fc', t=fr['t'], k=fr['k'], d=fr['d'], ci=fr['ci'], pts=pts, bc=ORANGE, when=when(fr['t'], X),
+                                       badge=X['fc'] + ' · ' + (f"{X['d7'].format(i=dh // 24 + 1, n=15)}" if dh >= 24 else X['plus'].format(h=max(dh, 1)))))
+                line = X['wet15'].format(t=wet15[0][L], mm=round(wet15[1])) if wet15[1] >= 1 else X['none3']
+                txs = [(atu(fields[f_['k']]['t2'], tw[2], tw[3]), tw, f_['t']) for f_ in seq15[::3] for tw in TOWNS[:12]]
+                hi_, lo_ = max(txs, key=lambda q: q[0]), min(txs, key=lambda q: q[0]); sg = lambda v: f'{v:+.0f}'.replace('+0', '0').replace('-0', '0')
+                head = [line, X['hd_temp'].format(tx=sg(hi_[0]), tt=hi_[1][L], tn=sg(lo_[0]), tnn=lo_[1][L])]
+                videos[f'15d_{lang}'] = dict(head=head, lang=lang, kind='15d', ext=E0, rel='uz', borders=borders_uz, borders_c=borders_uz, wind=True, frames=frames, title=X['t15'], line=line,
+                                             chart='15d', chart_t=X['chart15'], dir=tempfile.mkdtemp(), out=str(OUT / f'15d_{lang}.mp4'))
+                meta['15d'] = {'run': run15.strftime('%Y-%m-%dT%HZ'), 'until': fts15[-1].strftime('%Y-%m-%dT%HZ'), 'wettest': [wet15[0][0], round(wet15[1], 1)]}
     # the points for the bot: every town and every district, hour by hour for 12 hours (the caption under the video)
     def series(lo_, la_):
         return dict(t=[round(atu(k[0], la_, lo_), 1) for k in keys12], pr=[round(atu(k[1], la_, lo_) / 3, 2) for k in keys12], fog=[round(atu(k[6], la_, lo_), 2) for k in keys12])
