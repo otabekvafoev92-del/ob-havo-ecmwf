@@ -67,6 +67,14 @@ def qr(url):
     except Exception: return None
 
 
+from matplotlib.path import Path as MPath
+BOLT = MPath([(0.2, 1.0), (-0.55, -0.05), (-0.05, -0.05), (-0.35, -1.0), (0.6, 0.2), (0.08, 0.2), (0.55, 1.0), (0.2, 1.0)], closed=True)  # ⚡
+
+
+def bolt(ax, x, y, size=520, z=9.6):
+    ax.scatter([x], [y], marker=BOLT, s=size, c='#ffc21a', edgecolors='#5c3d00', linewidths=1.6, zorder=z)
+
+
 def tcol(t):  # the colour of a temperature circle: violet in frost, blue when cold, green when cool, orange and red when warm
     stops = [(-15, '#4b2a8f'), (-5, '#2f5fc4'), (0, '#3f8fdd'), (6, '#2a9d8f'), (12, '#7cad3a'), (18, '#e3a21a'), (25, '#e0601b'), (32, '#c0262d')]
     for (t0, c0), (t1, c1) in zip(stops, stops[1:]):
@@ -89,6 +97,10 @@ def draw(job):
     snow = T <= 0.5
     Pr, Ps = np.where(snow, 0, P), np.where(snow, P, 0)
     LO, LA = C['LONu'], C['LATu']
+    if fr.get('Cl') is not None:  # clouds: a soft grey veil under the rain, thicker where the sky is more covered
+        cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = (0.55, 0.59, 0.65); cl[..., 3] = np.clip((fr['Cl'] - 0.3) / 0.7, 0, 1) ** 1.2 * 0.5 * a_in
+        ax.imshow(cl, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.5)
+        ax.set_xlim(x0, x1); ax.set_ylim(LAT0, LAT1); ax.set_aspect(1 / COSL)
     if Pr.max() >= LEVELS[0]:
         ax.contourf(LO, LA, Pr, levels=LEVELS, cmap=ListedColormap(RAIN), norm=BoundaryNorm(LEVELS, 5), zorder=2, alpha=0.92 * a_in, antialiased=True)
         ax.contour(LO, LA, Pr, levels=LEVELS[1:-1], colors=['#ffffff'], linewidths=0.5, alpha=0.55 * a_in, zorder=2.05)
@@ -98,14 +110,17 @@ def draw(job):
     if np.nanmin(T) < 0 < np.nanmax(T):
         ax.contour(LO, LA, T, levels=[0], colors=['#3d7be0'], linewidths=1.3, linestyles=[(0, (5, 3))], alpha=0.75 * a_in, zorder=2.6)
     for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
+    # thunderstorms: a lightning bolt where they are likely (rain likely and enough energy in the air)
+    for bx_, by_ in fr.get('storms', []): bolt(ax, bx_, by_, 1500, 7.5)
     # the towns: dot, name, chance and temperature
     L = 0 if lang == 'ru' else 1
-    for tw, (p_, t_) in zip(TOWNS, fr['towns']):
+    for tw, (p_, t_, st_) in zip(TOWNS, fr['towns']):
         main = tw[0] == 'Ташкент'; dx, dy, ha, va = OFF[tw[0]]
         col = level(p_, SNOW if t_ <= 0.5 else RAIN)
         tt = f"{t_:+.0f}°".replace('+0°', '0°').replace('-0°', '0°')
         ax.annotate(tt, (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
                     bbox=dict(boxstyle='circle,pad=0.32' if not main else 'circle,pad=0.38', fc=tcol(t_), ec=ORANGE if main else 'white', lw=3 if main else 2))
+        if st_: bolt(ax, tw[3] + 0.36, tw[2] + 0.32, 1100 if main else 850, 9.7)
         fs = 17 if main else 13.5
         txt = f"{tw[L]}  {p_:.0f}%"
         an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color=INK, zorder=9,
@@ -130,7 +145,11 @@ def draw(job):
             fig.patches.append(FancyBboxPatch((xx, y - 0.012), 0.043, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=c, ec='none'))
             fig.text(xx + 0.0215, y, lab, fontsize=10.5, fontweight='bold', color='white' if k >= 2 else INK, ha='center', va='center')
     fig.add_artist(matplotlib.lines.Line2D([0.62, 0.645], [0.214, 0.214], color='#3d7be0', lw=1.6, ls=(0, (4, 2.5)), transform=fig.transFigure))
-    fig.text(0.65, 0.214, '0°' + (' — граница дождя и снега' if lang == 'ru' else ' — yomg‘ir va qor chegarasi'), fontsize=12, color=MUTED, va='center')
+    fig.text(0.65, 0.214, '0°' + (' — дождь / снег' if lang == 'ru' else ' — yomg‘ir / qor'), fontsize=12, color=MUTED, va='center')
+    fig.patches.append(FancyBboxPatch((0.765, 0.202), 0.036, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#b9bfc7', ec='none'))
+    fig.text(0.806, 0.214, 'тучи' if lang == 'ru' else 'bulut', fontsize=12, color=MUTED, va='center')
+    lg = fig.add_axes([0.862, 0.196, 0.02, 0.036]); lg.set_xlim(-1, 1); lg.set_ylim(-1.2, 1.2); lg.axis('off'); bolt(lg, 0, 0, 600)
+    fig.text(0.884, 0.214, 'гроза' if lang == 'ru' else 'momaqaldiroq', fontsize=12, color=MUTED, va='center')
     fig.text(0.984, 0.247, X['models'].format(n=C['members']), fontsize=11, color=FAINT, ha='right', va='center')
     # Tashkent: bars of the chance, the temperature line
     fig.text(0.016, 0.178, X['chart'], fontsize=13, fontweight='bold', color=INK, va='center')
@@ -194,6 +213,12 @@ def main(npz, wxp, outd, langs, only=None):
     keep = [i for i, s in enumerate(steps) if run + dt.timedelta(hours=s) > now + dt.timedelta(hours=1)]
     if only: keep = keep[:only]
     Pk = {i: np.clip(up(P[i]), 0, 100) for i in keep}; Tk = {i: up(Tm[i]) for i in keep}
+    Cm = WX['C'][:, ::-1] if WX.get('C') is not None else None; Km = WX['K'][:, ::-1] if WX.get('K') is not None else None
+    if Cm is not None: Cm = np.pad(Cm, ((0, 0), (0, 0), (PAD, PAD)), mode='edge')
+    if Km is not None: Km = np.pad(Km, ((0, 0), (0, 0), (PAD, PAD)), mode='edge')
+    Ck = {i: np.clip(up(Cm[i]), 0, 1) if Cm is not None and np.isfinite(Cm[i]).any() else None for i in keep}
+    # the chance of a thunderstorm, 0…1: precipitation likely, enough convective energy (GEFS CAPE) and warm enough air
+    Sk = {i: (np.clip((Pk[i] - 30) / 40, 0, 1) * np.clip((up(Km[i]) - 500) / 1000, 0, 1) * (Tk[i] >= 3)) if Km is not None and np.isfinite(Km[i]).any() else None for i in keep}
     loc = lambda h: run + dt.timedelta(hours=h + 5)
     tash = TOWNS[0]
     # the chart under the map: hours from the first window's start
@@ -218,16 +243,23 @@ def main(npz, wxp, outd, langs, only=None):
     for n_, i in enumerate(keep):  # one frame for every hour of the window (15:00, 16:00, …), the fields eased towards the next window
         nxt = keep[min(n_ + 1, len(keep) - 1)]; N = win[i]
         for k in range(N):
-            a = k / N; seq.append((n_, i, (1 - a) * Pk[i] + a * Pk[nxt], (1 - a) * Tk[i] + a * Tk[nxt], k))
+            a = k / N; mix = lambda D_: None if D_[i] is None or D_[nxt] is None else (1 - a) * D_[i] + a * D_[nxt]
+            seq.append((n_, i, (1 - a) * Pk[i] + a * Pk[nxt], (1 - a) * Tk[i] + a * Tk[nxt], k, mix(Ck), mix(Sk)))
     tot_h = (steps[keep[-1]] - h0)
     for lang in langs:
         X = TX[lang]; frames = []
-        for n_, i, Pf, Tf, k in seq:
+        for n_, i, Pf, Tf, k, Cf, Sf in seq:
             t2 = loc(steps[i]); t1 = t2 - dt.timedelta(hours=win[i]); th = t1 + dt.timedelta(hours=k)
             when = f"{X['wd'][th.weekday()]} {th:%d.%m} · {th:%H}:00"
             dayn = max(1, (th.date() - loc(h0).date()).days + (0 if loc(h0).hour >= 12 else 1))  # day 1: the first full local day
-            frames.append(dict(P=Pf, T=Tf, s=n_, when=when, day=X['day'].format(i=min(dayn, 15), n=15), prog=(steps[i] - win[i] + k - h0) / tot_h, d=0.2,
-                               towns=[(at(Pf, tw[2], tw[3]), at(Tf, tw[2], tw[3])) for tw in TOWNS], tash_t=at(Tf, tash[2], tash[3])))
+            storms = []
+            if Sf is not None and Sf.max() >= 0.35:  # one bolt per storm area (the strongest point within ~1.5°)
+                from scipy.ndimage import maximum_filter
+                mx = (maximum_filter(Sf, size=24) == Sf) & (Sf >= 0.35)
+                for yy, xx in zip(*np.nonzero(mx)):
+                    if not any(abs(LONu[xx] - tw[3]) < 0.7 and abs(LATu[yy] - tw[2]) < 0.5 for tw in TOWNS): storms.append((float(LONu[xx]), float(LATu[yy])))
+            frames.append(dict(P=Pf, T=Tf, Cl=Cf, storms=storms[:14], s=n_, when=when, day=X['day'].format(i=min(dayn, 15), n=15), prog=(steps[i] - win[i] + k - h0) / tot_h, d=0.2,
+                               towns=[(at(Pf, tw[2], tw[3]), at(Tf, tw[2], tw[3]), Sf is not None and at(Sf, tw[2], tw[3]) >= 0.35) for tw in TOWNS], tash_t=at(Tf, tash[2], tash[3])))
         frames[-1] = dict(frames[-1], d=1.2)
         intro = [dict(frames[0], card='intro', a=1.0, fade=0.0, d=1.6)] + [dict(frames[0], card='intro', a=float(a_), fade=float(1 - a_), d=0.07) for a_ in np.linspace(1, 0, 9)[1:]]
         end = [dict(frames[-1], card='end', d=4.0)]
