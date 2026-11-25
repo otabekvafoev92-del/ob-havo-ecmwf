@@ -39,9 +39,9 @@ TOWNS = [('Ташкент', 'Toshkent', 41.31, 69.28), ('Самарканд', 'S
          ('Ургенч', 'Urganch', 41.55, 60.63), ('Наманган', 'Namangan', 41.0, 71.67), ('Андижан', 'Andijon', 40.78, 72.34), ('Фергана', 'Farg‘ona', 40.39, 71.78),
          ('Карши', 'Qarshi', 38.86, 65.79), ('Термез', 'Termiz', 37.22, 67.28), ('Навои', 'Navoiy', 40.1, 65.38), ('Джизак', 'Jizzax', 40.12, 67.84)]
 # where each town's label goes (offset in px from the dot, alignment), so the labels of the Fergana valley and of Bukhara–Navoi–Samarkand–Jizzakh do not cover each other
-OFF = {'Ташкент': (0, 30, 'center', 'bottom'), 'Самарканд': (0, -22, 'center', 'top'), 'Бухара': (-16, 0, 'right', 'center'), 'Нукус': (0, 20, 'center', 'bottom'),
-       'Ургенч': (0, -20, 'center', 'top'), 'Наманган': (8, 20, 'left', 'bottom'), 'Андижан': (16, 6, 'left', 'center'), 'Фергана': (12, -18, 'left', 'top'),
-       'Карши': (0, -20, 'center', 'top'), 'Термез': (16, 0, 'left', 'center'), 'Навои': (-6, 18, 'right', 'bottom'), 'Джизак': (6, 18, 'left', 'bottom')}
+OFF = {'Ташкент': (-30, 6, 'right', 'center'), 'Самарканд': (26, -14, 'left', 'top'), 'Бухара': (-28, 0, 'right', 'center'), 'Нукус': (0, 28, 'center', 'bottom'),
+       'Ургенч': (0, -28, 'center', 'top'), 'Наманган': (0, 30, 'center', 'bottom'), 'Андижан': (28, 6, 'left', 'center'), 'Фергана': (26, -14, 'left', 'top'),
+       'Карши': (-26, -10, 'right', 'top'), 'Термез': (28, 0, 'left', 'center'), 'Навои': (-6, 28, 'right', 'bottom'), 'Джизак': (8, 28, 'left', 'bottom')}
 TX = {'ru': dict(title='Вероятность осадков и температура · 15 дней', tz='по Ташкенту', day='день {i} из {n}', rain='дождь', snow='снег',
                  leg='Вероятность осадков (больше 0,2 мм) за период, %', models='Модели: ECMWF IFS и AIFS, NOAA GFS и GEFS, DWD ICON · {n} вариантов прогноза',
                  chart='Ташкент: вероятность осадков по периодам (столбики) и температура (линия)', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
@@ -65,6 +65,14 @@ def qr(url):
         import qrcode
         q = qrcode.QRCode(border=2); q.add_data(url); q.make(fit=True); return np.array(q.get_matrix(), bool)
     except Exception: return None
+
+
+def tcol(t):  # the colour of a temperature circle: violet in frost, blue when cold, green when cool, orange and red when warm
+    stops = [(-15, '#4b2a8f'), (-5, '#2f5fc4'), (0, '#3f8fdd'), (6, '#2a9d8f'), (12, '#7cad3a'), (18, '#e3a21a'), (25, '#e0601b'), (32, '#c0262d')]
+    for (t0, c0), (t1, c1) in zip(stops, stops[1:]):
+        if t <= t1:
+            a = np.clip((t - t0) / (t1 - t0), 0, 1); c0, c1 = np.array(matplotlib.colors.to_rgb(c0)), np.array(matplotlib.colors.to_rgb(c1)); return tuple(c0 + (c1 - c0) * a)
+    return stops[-1][1]
 
 
 def level(v, pal):
@@ -94,11 +102,12 @@ def draw(job):
     L = 0 if lang == 'ru' else 1
     for tw, (p_, t_) in zip(TOWNS, fr['towns']):
         main = tw[0] == 'Ташкент'; dx, dy, ha, va = OFF[tw[0]]
-        ax.plot(tw[3], tw[2], 'o', ms=11 if main else 7, mfc=ORANGE if main else INK, mec='white', mew=2, zorder=8)
         col = level(p_, SNOW if t_ <= 0.5 else RAIN)
-        pct = f"{p_:.0f}%"; tt = f"{t_:+.0f}°".replace('+0°', '0°').replace('-0°', '0°')
+        tt = f"{t_:+.0f}°".replace('+0°', '0°').replace('-0°', '0°')
+        ax.annotate(tt, (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
+                    bbox=dict(boxstyle='circle,pad=0.32' if not main else 'circle,pad=0.38', fc=tcol(t_), ec=ORANGE if main else 'white', lw=3 if main else 2))
         fs = 17 if main else 13.5
-        txt = f"{tw[L]}  {pct} · {tt}"
+        txt = f"{tw[L]}  {p_:.0f}%"
         an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color=INK, zorder=9,
                          bbox=dict(boxstyle='round,pad=0.32,rounding_size=0.7', fc='white', ec=ORANGE if main else (col or '#c9d2db'), lw=2.2 if main else 1.4, alpha=0.93))
     ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
@@ -206,18 +215,18 @@ def main(npz, wxp, outd, langs, only=None):
     CTX.update(LONu=LONu, LATu=LATu, sea=sea, borders=[(NB, '#a3acb6', 1.0, 3), (A1, '#b7c0ca', 0.8, 3.05), (UZ, '#1c2633', 2.6, 3.3)], lon_ext=(lc - span / 2, lc + span / 2),
                members=members, bx=bx, bw=bw, tp=tp, tt=tt, days=days, qr=qr('https://t.me/ObHavo_ECMWF_bot'), videos={})
     seq = []
-    for n_, i in enumerate(keep):
-        nxt = keep[min(n_ + 1, len(keep) - 1)]; N = 3 if win[i] <= 3 else 5
+    for n_, i in enumerate(keep):  # one frame for every hour of the window (15:00, 16:00, …), the fields eased towards the next window
+        nxt = keep[min(n_ + 1, len(keep) - 1)]; N = win[i]
         for k in range(N):
-            a = k / N; seq.append((n_, i, (1 - a) * Pk[i] + a * Pk[nxt], (1 - a) * Tk[i] + a * Tk[nxt]))
+            a = k / N; seq.append((n_, i, (1 - a) * Pk[i] + a * Pk[nxt], (1 - a) * Tk[i] + a * Tk[nxt], k))
     tot_h = (steps[keep[-1]] - h0)
     for lang in langs:
         X = TX[lang]; frames = []
-        for n_, i, Pf, Tf in seq:
-            t2 = loc(steps[i]); t1 = t2 - dt.timedelta(hours=win[i])
-            when = f"{X['wd'][t1.weekday()]} {t1:%d.%m} · {t1:%H:%M}–{(t2.strftime('%H:%M') if t2.hour else '24:00')}"
-            dayn = max(1, (t1.date() - loc(h0).date()).days + (0 if loc(h0).hour >= 12 else 1))  # day 1: the first full local day
-            frames.append(dict(P=Pf, T=Tf, s=n_, when=when, day=X['day'].format(i=min(dayn, 15), n=15), prog=(steps[i] - h0) / tot_h, d=0.2,
+        for n_, i, Pf, Tf, k in seq:
+            t2 = loc(steps[i]); t1 = t2 - dt.timedelta(hours=win[i]); th = t1 + dt.timedelta(hours=k)
+            when = f"{X['wd'][th.weekday()]} {th:%d.%m} · {th:%H}:00"
+            dayn = max(1, (th.date() - loc(h0).date()).days + (0 if loc(h0).hour >= 12 else 1))  # day 1: the first full local day
+            frames.append(dict(P=Pf, T=Tf, s=n_, when=when, day=X['day'].format(i=min(dayn, 15), n=15), prog=(steps[i] - win[i] + k - h0) / tot_h, d=0.2,
                                towns=[(at(Pf, tw[2], tw[3]), at(Tf, tw[2], tw[3])) for tw in TOWNS], tash_t=at(Tf, tash[2], tash[3])))
         frames[-1] = dict(frames[-1], d=1.2)
         intro = [dict(frames[0], card='intro', a=1.0, fade=0.0, d=1.6)] + [dict(frames[0], card='intro', a=float(a_), fade=float(1 - a_), d=0.07) for a_ in np.linspace(1, 0, 9)[1:]]
