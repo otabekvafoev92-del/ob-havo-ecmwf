@@ -362,7 +362,7 @@ function parseRange(text) {
   if (m && mon_(m[4])) { const m2 = mon_(m[4]), m1 = m[2] && mon_(m[2]) ? mon_(m[2]) : m2; return [mk(+m[1], m1), mk(+m[3], m2)]; }
   if (/(неделя|недел[юи]|hafta)\s*(\d{1,2})\b/.test(t)) { const n = +t.match(/(неделя|недел[юи]|hafta)\s*(\d{1,2})/)[2], a = dAdd(mon, 7 * (n - isoWeek(mon))); return [a, dAdd(a, 6)]; }
   if (/(\d{1,2})\s*-?\s*hafta/.test(t)) { const n = +t.match(/(\d{1,2})\s*-?\s*hafta/)[1], a = dAdd(mon, 7 * (n - isoWeek(mon))); return [a, dAdd(a, 6)]; }
-  if (/(следующ\w* недел|keyingi hafta|через неделю)/.test(t)) return [dAdd(mon, 7), dAdd(mon, 13)];
+  if (/(следующ[а-я]* недел|keyingi hafta|через неделю)/.test(t)) return [dAdd(mon, 7), dAdd(mon, 13)];
   if (/^(эта |на |погода на )?(недел[яюи]|hafta|bu hafta)$/.test(t.trim())) return [mon, dAdd(mon, 6)];
   return null;
 }

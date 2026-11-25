@@ -32,12 +32,27 @@ CTX = {}
 def fetch():
     import outlook as OL
     pts = [(la, lo) for la in LATS for lo in LONS]
-    sea, _ = OL.fetch(pts)
+    import time, requests
+    def get(url, params):  # Open-Meteo counts each point as a call (600 a minute): wait out the minute when it says so
+        for k in range(8):
+            try:
+                r = requests.get(url, params=params, headers=OL.UA, timeout=90)
+                if r.status_code == 200: return r.json()
+                print('open-meteo', r.status_code, r.text[:120], flush=True)
+            except Exception as e: print('open-meteo', e, flush=True)
+            time.sleep(65)
+        raise RuntimeError('open-meteo failed')
+    sea = []
+    for i in range(0, len(pts), 100):
+        ch = pts[i:i + 100]
+        r = get('https://seasonal-api.open-meteo.com/v1/seasonal', {'latitude': ','.join(str(p[0]) for p in ch), 'longitude': ','.join(str(p[1]) for p in ch),
+                'models': 'ecmwf_seasonal_ensemble_mean_seamless', 'weekly': 'temperature_2m_mean,temperature_2m_anomaly,precipitation_mean,precipitation_anomaly', 'timezone': 'Asia/Tashkent'})
+        sea += r if isinstance(r, list) else [r]; time.sleep(12)
     # the past ISO week (Monday–Sunday before this week): the daily analysis of the last 14 days
     past = []
     for i in range(0, len(pts), 100):
-        ch = pts[i:i + 100]
-        r = OL.get('https://api.open-meteo.com/v1/forecast', {'latitude': ','.join(str(p[0]) for p in ch), 'longitude': ','.join(str(p[1]) for p in ch),
+        ch = pts[i:i + 100]; time.sleep(12)
+        r = get('https://api.open-meteo.com/v1/forecast', {'latitude': ','.join(str(p[0]) for p in ch), 'longitude': ','.join(str(p[1]) for p in ch),
                    'daily': 'precipitation_sum,temperature_2m_mean', 'past_days': 14, 'forecast_days': 1, 'timezone': 'Asia/Tashkent'})
         past += r if isinstance(r, list) else [r]
     s0 = sea[0]; wk = s0.get('weekly', {}); wu = s0.get('weekly_units', {})
