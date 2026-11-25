@@ -10,7 +10,7 @@ on:
       iso: {required: false, default: ''}
       lang: {required: false, default: 'ru'}
       chat: {required: true}
-permissions: {contents: read, actions: read}
+permissions: {contents: write, actions: read}
 jobs:
   v:
     runs-on: ubuntu-latest
@@ -28,3 +28,7 @@ jobs:
           # fog only near Central Asia (its data box)
           if python3 -c "import sys; la,lo=float('${{ inputs.lat }}'),float('${{ inputs.lon }}'); sys.exit(0 if 32<=la<=50 and 45<=lo<=85 else 1)"; then timeout 600 python -u -W ignore tools/fog_fetch.py data/prob.npz data/fog.npz || true; fi
           timeout 1800 python -u -W ignore tools/place15.py data out --lang "${{ inputs.lang }}" --lat "${{ inputs.lat }}" --lon "${{ inputs.lon }}" --name "${{ inputs.name }}" --iso "${{ inputs.iso }}" --chat "${{ inputs.chat }}"
+          # a copy on the "ondemand" branch (the last request), also when the bot cannot send it (no TELEGRAM_BOT_TOKEN secret)
+          cd out && rm -f files.json && git init -q && git checkout -q -b ondemand && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "place ${{ inputs.name }} for ${{ inputs.chat }}"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ondemand
