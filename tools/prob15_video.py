@@ -118,7 +118,7 @@ def draw(job):
     lang, i = job; C = CTX; V = C['videos'][lang]; fr = V['frames'][i]; X = TX[lang]
     fig = plt.figure(figsize=(W / DPI, H / DPI), dpi=DPI); fig.patch.set_facecolor('white')
     # the map
-    ax = fig.add_axes(MAP); x0, x1 = C['lon_ext']; ax.set_xlim(x0, x1); ax.set_ylim(LAT0, LAT1); ax.set_aspect(1 / COSL); ax.axis('off')
+    ax = fig.add_axes(MAP); x0, x1 = C['lon_ext']; ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl']); ax.axis('off')
     for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=SEA, ec='#b9cfe3', lw=0.6, zorder=0.5)
     P, T = fr['P'], fr['T']; a_in = fr.get('fade', 1.0)
     snow = T <= 0.5
@@ -127,7 +127,7 @@ def draw(job):
     if fr.get('Cl') is not None:  # clouds: a soft grey veil under the rain, thicker where the sky is more covered
         cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = (0.6, 0.64, 0.7); cl[..., 3] = np.clip((fr['Cl'] - 0.5) / 0.5, 0, 1) ** 1.3 * 0.32 * a_in
         ax.imshow(cl, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.5)
-        ax.set_xlim(x0, x1); ax.set_ylim(LAT0, LAT1); ax.set_aspect(1 / COSL)
+        ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
     if Pr.max() >= LEVELS[0]:
         ax.contourf(LO, LA, Pr, levels=LEVELS, cmap=ListedColormap(RAIN), norm=BoundaryNorm(LEVELS, 5), zorder=2, alpha=0.92 * a_in, antialiased=True)
         ax.contour(LO, LA, Pr, levels=LEVELS[1:-1], colors=['#ffffff'], linewidths=0.5, alpha=0.55 * a_in, zorder=2.05)
@@ -142,14 +142,14 @@ def draw(job):
         ax.imshow(fg, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=2.7)
         with matplotlib.rc_context({'hatch.color': '#a39a8a', 'hatch.linewidth': 1.0}):
             ax.contourf(LO, LA, fr['Fg'], levels=[0.5, 2], colors='none', hatches=['---'], zorder=2.75)
-        ax.set_xlim(x0, x1); ax.set_ylim(LAT0, LAT1); ax.set_aspect(1 / COSL)
+        ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
     # thunderstorms: a lightning bolt where they are likely (rain likely and enough energy in the air)
     for bx_, by_ in fr.get('storms', []): bolt(ax, bx_, by_, 1500, 7.5)
     # the towns: dot, name, chance and temperature
     L = 0 if lang == 'ru' else 1
-    offs = place(ax, [(tw[3], tw[2], f"{tw[L]}  {p_:.0f}%" + (' · туман' if fg_ else ''), 17 if tw[0] == 'Ташкент' else 13.5, tw[0] == 'Ташкент', OFF[tw[0]]) for tw, (p_, t_, st_, fg_) in zip(TOWNS, fr['towns'])], fig)
-    for tw, (p_, t_, st_, fg_), (dx, dy, ha, va) in zip(TOWNS, fr['towns'], offs):
-        main = tw[0] == 'Ташкент'
+    offs = place(ax, [(tw[3], tw[2], f"{tw[L]}  {p_:.0f}%" + (' · туман' if fg_ else ''), 17 if tw[0] == C['main'] else 13.5, tw[0] == C['main'], OFF.get(tw[0], (24, 0, 'left', 'center'))) for tw, (p_, t_, st_, fg_) in zip(C['towns'], fr['towns'])], fig)
+    for tw, (p_, t_, st_, fg_), (dx, dy, ha, va) in zip(C['towns'], fr['towns'], offs):
+        main = tw[0] == C['main']
         col = level(p_, SNOW if t_ <= 0.5 else RAIN)
         tt = f"{t_:+.0f}°".replace('+0°', '0°').replace('-0°', '0°')
         ax.annotate(tt, (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
@@ -160,12 +160,13 @@ def draw(job):
         an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
                          bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#f1f3f5', ec=ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.72))
     ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
+    for lb_, lo_, la_ in C.get('names', []): ax.text(lo_, la_, lb_, fontsize=10, color='#8a96a3', ha='center', va='center', zorder=3.6, style='italic')
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=NAVY, ec='none', zorder=-1))
     fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=ORANGE, va='center')
-    fig.text(0.093, 0.953, X['title'], fontsize=22, fontweight='bold', color='white', va='center')
+    fig.text(0.093, 0.953, C['title'][lang] if C.get('title') else X['title'], fontsize=22, fontweight='bold', color='white', va='center')
     fig.text(0.984, 0.968, fr['when'], fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
-    fig.text(0.984, 0.928, X['tz'] + ' · ' + fr['day'], fontsize=14, color='#a9bdd6', ha='right', va='center')
+    fig.text(0.984, 0.928, (C['tzl'][lang] if C.get('tzl') else X['tz']) + ' · ' + fr['day'], fontsize=14, color='#a9bdd6', ha='right', va='center')
     # progress over the 15 days
     fig.patches.append(Rectangle((0, 0.903), 1, 0.004, transform=fig.transFigure, fc='#2c3e57', ec='none', zorder=0))
     fig.patches.append(Rectangle((0, 0.903), fr['prog'], 0.004, transform=fig.transFigure, fc=ORANGE, ec='none', zorder=0.1))
@@ -188,7 +189,7 @@ def draw(job):
     fig.text(0.945, 0.183, 'туман' if lang == 'ru' else 'tuman', fontsize=12, color=MUTED, va='center')
     ax.text(0.005, 0.01, X['models'].format(n=C['members']), transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=FAINT, zorder=9)
     # Tashkent: bars of the chance, the temperature line
-    fig.text(0.016, 0.152, X['chart'], fontsize=12, fontweight='bold', color=INK, va='center')
+    fig.text(0.016, 0.152, C['chart_t'][lang] if C.get('chart_t') else X['chart'], fontsize=12, fontweight='bold', color=INK, va='center')
     bx = fig.add_axes([0.035, 0.035, 0.93, 0.1]); bx.set_facecolor('none')
     Xc, Wn, Pt, Tt = C['bx'], C['bw'], C['tp'], C['tt']
     cols = [(level(p_, SNOW if t_ <= 0.5 else RAIN) or BAR_EMPTY) for p_, t_ in zip(Pt, Tt)]
@@ -234,11 +235,20 @@ def encode(lang):
     tmp.replace(out); shutil.rmtree(fd); return f'{out} {out.stat().st_size // 1024} KB'
 
 
-def main(npz, wxp, outd, langs, only=None):
+def main(npz, wxp, outd, langs, only=None, view=None):
+    """view (optional): the map of another country or place — lat (south, north), lc (centre longitude), towns [(ru, uz, lat, lon)], main (ru name),
+    borders [(rings, colour, width, z)], names [(label, lon, lat)], title/tzl/chart_t {lang: text}, off (hours from UTC), stem (file name)."""
+    view = view or {}
     D = load(npz); P, models, members = probability(D); WX = load_wx_npz(D, wxp)
     g = D['grid'].item(); lon = g['lon0'] + np.arange(g['W']) * g['d']; lat = g['lat0'] - np.arange(g['H']) * g['d']
+    towns = view.get('towns', TOWNS); la0, la1 = view.get('lat', (LAT0, LAT1)); cosl = np.cos(np.radians((la0 + la1) / 2))
+    span = (la1 - la0) / cosl * (MAP[2] * W) / (MAP[3] * H); lc = view.get('lc', 64.8); ext = (lc - span / 2, lc + span / 2)
+    # only the map's box (+ a margin) is kept: the full grid upsampled would not fit in memory
+    ci = np.flatnonzero((lon >= ext[0] - 2) & (lon <= ext[1] + 2)); ri = np.flatnonzero((lat >= la0 - 2) & (lat <= la1 + 2))
+    lon, lat = lon[ci], lat[ri]; cut3 = lambda a: a[:, ri][:, :, ci]
+    P = cut3(P); WX = {k: (cut3(v) if v is not None else None) for k, v in WX.items()}
     lat_s, P = lat[::-1], P[:, ::-1]; Tm = WX['T'][:, ::-1]
-    PAD = 16  # the map is wider than the data (50–80° E): the edge values carried on, so no patch ends in a straight line
+    PAD = 16 if (ext[0] < lon[0] + 0.5 or ext[1] > lon[-1] - 0.5) else 0  # the map wider than the data: the edge values carried on
     P = np.pad(P, ((0, 0), (0, 0), (PAD, PAD)), mode='edge'); Tm = np.pad(Tm, ((0, 0), (0, 0), (PAD, PAD)), mode='edge')
     lon = np.r_[lon[0] - g['d'] * np.arange(PAD, 0, -1), lon, lon[-1] + g['d'] * np.arange(1, PAD + 1)]
     UP = 4; up = lambda a: gaussian_filter(zoom(np.nan_to_num(a, nan=np.nanmean(a)), UP, order=1), 1.6)
@@ -264,8 +274,8 @@ def main(npz, wxp, outd, langs, only=None):
             Fk[i] = np.clip(up(f_(np.stack([LAg, LOg], -1))), 0, 1)
     # the chance of a thunderstorm, 0…1: precipitation likely, enough convective energy (GEFS CAPE) and warm enough air
     Sk = {i: (np.clip((Pk[i] - 30) / 40, 0, 1) * np.clip((up(Km[i]) - 500) / 1000, 0, 1) * (Tk[i] >= 3)) if Km is not None and np.isfinite(Km[i]).any() else None for i in keep}
-    loc = lambda h: run + dt.timedelta(hours=h + 5)
-    tash = TOWNS[0]
+    off = view.get('off', 5); loc = lambda h: run + dt.timedelta(hours=h + off)
+    tash = next(t for t in towns if t[0] == view.get('main', 'Ташкент'))
     # the chart under the map: hours from the first window's start
     h0 = steps[keep[0]] - win[keep[0]]
     bx = np.array([steps[i] - win[i] / 2 - h0 for i in keep], float); bw = np.array([win[i] for i in keep], float)
@@ -276,13 +286,16 @@ def main(npz, wxp, outd, langs, only=None):
         hh = (d - t0).total_seconds() / 3600
         days.append((hh, {l: f"{TX[l]['wd'][d.weekday()]}\n{d:%d.%m}" for l in TX})); d += dt.timedelta(days=1)
     # the frames: a few in-between frames per window, the numbers of the window
-    G = json.load(open(ROOT / 'prob' / 'geo_casia.json'))['countries']; GA = json.load(open(ROOT / 'prob' / 'geo_admin.json'))['UZ']
     WAT = json.load(open(ROOT / 'prob' / 'geo_water.json'))
     sea = [np.asarray(r) for r in WAT['ocean']] + [np.asarray(l_['r']) for l_ in WAT['lakes']]
-    UZ = [np.asarray(r) for r in G['UZ']['rings']]; NB = [np.asarray(r) for k, c in G.items() if k != 'UZ' for r in c['rings']]
-    A1 = [np.asarray(r) for a in GA['adm1'] for r in a['r']]
-    span = (LAT1 - LAT0) / COSL * (MAP[2] * W) / (MAP[3] * H); lc = 64.8
-    CTX.update(LONu=LONu, LATu=LATu, sea=sea, borders=[(NB, '#a3acb6', 1.0, 3), (A1, '#b7c0ca', 0.8, 3.05), (UZ, '#1c2633', 2.6, 3.3)], lon_ext=(lc - span / 2, lc + span / 2),
+    borders = view.get('borders')
+    if borders is None:
+        G = json.load(open(ROOT / 'prob' / 'geo_casia.json'))['countries']; GA = json.load(open(ROOT / 'prob' / 'geo_admin.json'))['UZ']
+        UZ = [np.asarray(r) for r in G['UZ']['rings']]; NB = [np.asarray(r) for k, c in G.items() if k != 'UZ' for r in c['rings']]
+        A1 = [np.asarray(r) for a in GA['adm1'] for r in a['r']]
+        borders = [(NB, '#a3acb6', 1.0, 3), (A1, '#b7c0ca', 0.8, 3.05), (UZ, '#1c2633', 2.6, 3.3)]
+    CTX.update(LONu=LONu, LATu=LATu, sea=sea, borders=borders, lon_ext=ext, la0=la0, la1=la1, cosl=cosl, towns=towns, main=tash[0], names=view.get('names', []),
+               title=view.get('title'), tzl=view.get('tzl'), chart_t=view.get('chart_t'),
                members=members, bx=bx, bw=bw, tp=tp, tt=tt, days=days, qr=qr('https://t.me/ObHavo_ECMWF_bot'), videos={})
     seq = []
     for n_, i in enumerate(keep):  # one frame for every hour of the window (15:00, 16:00, …), the fields eased towards the next window
@@ -302,13 +315,13 @@ def main(npz, wxp, outd, langs, only=None):
                 from scipy.ndimage import maximum_filter
                 mx = (maximum_filter(Sf, size=24) == Sf) & (Sf >= 0.35)
                 for yy, xx in zip(*np.nonzero(mx)):
-                    if not any(abs(LONu[xx] - tw[3]) < 0.7 and abs(LATu[yy] - tw[2]) < 0.5 for tw in TOWNS): storms.append((float(LONu[xx]), float(LATu[yy])))
+                    if not any(abs(LONu[xx] - tw[3]) < 0.7 and abs(LATu[yy] - tw[2]) < 0.5 for tw in towns): storms.append((float(LONu[xx]), float(LATu[yy])))
             frames.append(dict(P=Pf, T=Tf, Cl=Cf, Fg=Ff, storms=storms[:14], s=n_, when=when, day=X['day'].format(i=min(dayn, 15), n=15), prog=(steps[i] - win[i] + k - h0) / tot_h, d=0.2,
-                               towns=[(at(Pf, tw[2], tw[3]), at(Tf, tw[2], tw[3]), Sf is not None and at(Sf, tw[2], tw[3]) >= 0.35, Ff is not None and at(Ff, tw[2], tw[3]) >= 0.5) for tw in TOWNS], tash_t=at(Tf, tash[2], tash[3])))
+                               towns=[(at(Pf, tw[2], tw[3]), at(Tf, tw[2], tw[3]), Sf is not None and at(Sf, tw[2], tw[3]) >= 0.35, Ff is not None and at(Ff, tw[2], tw[3]) >= 0.5) for tw in towns], tash_t=at(Tf, tash[2], tash[3])))
         frames[-1] = dict(frames[-1], d=1.2)
         intro = [dict(frames[0], card='intro', a=1.0, fade=0.0, d=1.6)] + [dict(frames[0], card='intro', a=float(a_), fade=float(1 - a_), d=0.07) for a_ in np.linspace(1, 0, 9)[1:]]
         end = [dict(frames[-1], card='end', d=4.0)]
-        CTX['videos'][lang] = dict(frames=intro + frames + end, dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f'p15_{lang}.mp4'))
+        CTX['videos'][lang] = dict(frames=intro + frames + end, dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f"{view.get('stem', 'p15')}_{lang}.mp4"))
     return CTX
 
 

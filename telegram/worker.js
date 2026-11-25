@@ -1335,9 +1335,25 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   if (rid_ && chat > 0 && !(kbOver && kbOver.keyboard)) {
     const u = `${base(env)}/live.html?r=${rid_}&l=${lang}&lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}&n=${encodeURIComponent(String(nm).replace(/<[^>]+>/g, '').slice(0, 40))}`;
     // (the menu keyboard under the input field is persistent: it stays while this message carries the map button)
-    return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }]] } });
+    return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }], [pvBtn(lang, lat, lon)]] } });
   }
+  if (chat > 0) return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[pvBtn(lang, lat, lon)]] } });
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
+}
+/* ---------- 🎬 the 15-day video of a place on demand: the country's video and the place's close-up (.github/workflows/place15.yml) ---------- */
+const PVX = { ru: { btn: '🎬 Видео 15 дней по часам: страна + это место', wait: '⏳ Готовлю 2 видео: вся страна и {n} крупно — осадки и температура на 15 дней по часам. Пришлю сюда через 7–10 минут.', busy: '⏳ Видео уже готовится, пришлю, как будет готово.', fail: '😔 Не удалось запустить подготовку видео, попробуйте позже.' },
+  uz: { btn: '🎬 15 kunlik soatma-soat video: davlat + shu joy', wait: '⏳ 2 ta video tayyorlayapman: butun davlat va {n} yaqindan — 15 kunga soatma-soat yog‘in va harorat. 7–10 daqiqada shu yerga yuboraman.', busy: '⏳ Video tayyorlanmoqda, tayyor bo‘lishi bilan yuboraman.', fail: '😔 Videoni tayyorlashni boshlab bo‘lmadi, keyinroq urinib ko‘ring.' },
+  tr: { btn: '🎬 15 günlük saat saat video: ülke + bu yer', wait: '⏳ 2 video hazırlıyorum: tüm ülke ve {n} yakından. 7–10 dakikada buraya göndereceğim.', busy: '⏳ Video hazırlanıyor, hazır olunca göndereceğim.', fail: '😔 Video hazırlığı başlatılamadı, daha sonra deneyin.' } };
+const pvBtn = (lang, lat, lon) => ({ text: (PVX[lang] || PVX.ru).btn, callback_data: `PV:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}`, style: 'primary' });
+async function placeVideo(env, chat, lang, lat, lon) {
+  const X = PVX[lang] || PVX.ru, key = `pv_${chat}`, last = +(await kv(env, key) || 0);
+  if (Date.now() - last < 8 * 60e3) return tg(env, 'sendMessage', { chat_id: chat, text: X.busy });
+  const p = await nearestPlace(env, lat, lon, 25), name = p ? pname(p, lang) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const r = await ghApi(env, 'actions/workflows/place15.yml/dispatches', { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ref: 'main', inputs: { lat: String(lat), lon: String(lon), name, iso: p ? p[4] : '', lang: lang === 'uz' ? 'uz' : 'ru', chat: String(chat) } }) });
+  if (!r.ok) { console.log('place15', r.status, await r.text()); return tg(env, 'sendMessage', { chat_id: chat, text: X.fail }); }
+  await setKv(env, key, String(Date.now()));
+  return tg(env, 'sendMessage', { chat_id: chat, text: X.wait.replace('{n}', name) });
 }
 // the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
 // every morning at 09:00 (Tashkent): how many people used the bot and the site
@@ -1675,6 +1691,7 @@ async function handle(up, env) {
   if (kind === 'CY') return sendCountry(env, chat.id, lang, id);
   if (kind === 'CR' && NAMES[id]) { await saveUser(env, chat.id, { lang, region: id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id] || '🌍'} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, id) }); }
   if (kind === 'WK') return weekDays(env, chat.id, lang, id);
+  if (kind === 'PV') { const [, , la, lo] = cb.data.split(':'); return placeVideo(env, chat.id, lang, +la, +lo); }
   if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);

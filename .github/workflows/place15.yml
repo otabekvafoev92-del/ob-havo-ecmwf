@@ -1,0 +1,30 @@
+name: 15-day video for a place (on demand)
+# the bot asks for it (🎬 button under a place's forecast): the country's video and the place's close-up, hour by hour for 15 days
+# (tools/place15.py), sent straight to the chat that asked
+on:
+  workflow_dispatch:
+    inputs:
+      lat: {required: true}
+      lon: {required: true}
+      name: {required: false, default: ''}
+      iso: {required: false, default: ''}
+      lang: {required: false, default: 'ru'}
+      chat: {required: true}
+permissions: {contents: read, actions: read}
+jobs:
+  v:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - env: {GH_TOKEN: '${{ github.token }}', TELEGRAM_BOT_TOKEN: '${{ secrets.TELEGRAM_BOT_TOKEN }}'}
+        run: |
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          pip install -q numpy scipy matplotlib pyproj qrcode requests eccodes metpy pillow
+          id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
+          timeout 600 gh run download $id -n npz -D data && ls -la data
+          # fog only near Central Asia (its data box)
+          if python3 -c "import sys; la,lo=float('${{ inputs.lat }}'),float('${{ inputs.lon }}'); sys.exit(0 if 32<=la<=50 and 45<=lo<=85 else 1)"; then timeout 600 python -u -W ignore tools/fog_fetch.py data/prob.npz data/fog.npz || true; fi
+          timeout 1800 python -u -W ignore tools/place15.py data out --lang "${{ inputs.lang }}" --lat "${{ inputs.lat }}" --lon "${{ inputs.lon }}" --name "${{ inputs.name }}" --iso "${{ inputs.iso }}" --chat "${{ inputs.chat }}"
