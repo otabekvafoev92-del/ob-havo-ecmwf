@@ -54,7 +54,7 @@ TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ
                  dry='Без осадков по всей стране', spots='В городах сухо, осадки местами: до {p}% территории, до {mm} мм за 3 ч', wet='Больше всего осадков: {t} — {mm} мм', wet3='За 3 дня больше всего: {t} — {mm} мм', none3='3 дня без заметных осадков',
                  reg_t='прогноз на 12 часов', reg_wet='Больше всего за 12 ч: {t} — {mm} мм', reg_dry='Ближайшие 12 часов без заметных осадков',
                  chart='Динамика дождей: где идут осадки, % территории', chart_r='Динамика дождей в области, % территории', upto='до {mm} мм', none_='без осадков',
-                 tot='Осадки за 3 дня, мм', total='ИТОГ · 3 дня', lat='с.ш.', lon='в.д.', fog='туман', prob_leg='Вероятность осадков (≥0,2 мм за 6 ч)', day_mm='мм за сутки',
+                 tot='Осадки за 3 дня, мм', total='ИТОГ · 3 дня', lat='с.ш.', lon='в.д.', fog='туман', prob_leg='Вероятность осадков (≥0,2 мм за 6 ч)', head='ГЛАВНОЕ', hd_temp='Днём до {tx}° ({tt}), ночью до {tn}° ({tnn})', hd_fog='Возможен туман: {t}', hd_spots='Местами осадки, в городах сухо', end1='Погода в вашем районе и посёлке', end2='в Telegram-боте @ObHavo_ECMWF_bot', hd_warm7='Теплее всего: {d} — до {t}° ({tt})', day_mm='мм за сутки',
                  t7='Погода по дням: 7 дней', d7='день {i} из {n}', chart7='Осадки по дням: где пройдут, % территории', wet7='Самый дождливый день: {d} — до {mm} мм', dry7='Неделя без заметных осадков', nightc='в кружке — днём, рядом — ночью'),
       'uz': dict(fact='FAKT · meteostansiyalar', fc='ECMWF PROGNOZI', t12='Ob-havo: 6 soat fakt + 12 soat prognoz', t3='Ob-havo: 6 soat fakt + 3 kun prognoz',
                  at='{d} · Toshkent vaqti {h}', plus='+{h} soat', rain='3 soatda mm', snow='qor', src='Fakt: O‘zbekiston meteostansiyalari (JMT SYNOP) · Prognoz: ECMWF IFS · Osmon',
@@ -62,7 +62,7 @@ TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ
                  dry='Butun mamlakatda yog‘in yo‘q', spots='Shaharlarda quruq, joylarda yog‘in: hududning {p}% gacha, 3 soatda {mm} mm gacha', wet='Eng ko‘p yog‘in: {t} — {mm} mm', wet3='3 kunda eng ko‘p: {t} — {mm} mm', none3='3 kun sezilarli yog‘insiz',
                  reg_t='12 soatlik prognoz', reg_wet='12 soatda eng ko‘p: {t} — {mm} mm', reg_dry='Yaqin 12 soatda sezilarli yog‘in yo‘q',
                  chart='Yog‘in dinamikasi: yog‘in yog‘ayotgan hudud, %', chart_r='Viloyatda yog‘in dinamikasi, % hudud', upto='{mm} mm gacha', none_='yog‘insiz',
-                 tot='3 kunlik yog‘in, mm', total='JAMI · 3 kun', lat='N', lon='E', fog='tuman', prob_leg='Yog‘ingarchilik ehtimoli (6 soatda ≥0,2 mm)', day_mm='sutkada mm',
+                 tot='3 kunlik yog‘in, mm', total='JAMI · 3 kun', lat='N', lon='E', fog='tuman', prob_leg='Yog‘ingarchilik ehtimoli (6 soatda ≥0,2 mm)', head='ASOSIYSI', hd_temp='Kunduzi {tx}° gacha ({tt}), tunda {tn}° gacha ({tnn})', hd_fog='Tuman ehtimoli: {t}', hd_spots='Joylarda yog‘in, shaharlarda quruq', end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda @ObHavo_ECMWF_bot', hd_warm7='Eng issiq kun: {d} — {t}° gacha ({tt})', day_mm='sutkada mm',
                  t7='Kunlar bo‘yicha ob-havo: 7 kun', d7='{i}-kun / {n}', chart7='Kunlar bo‘yicha yog‘in: hudud, %', wet7='Eng yog‘inli kun: {d} — {mm} mm gacha', dry7='Hafta sezilarli yog‘insiz', nightc='doirada — kunduz, yonida — tun')}
 S = requests.Session(); S.headers['User-Agent'] = 'Osmon weather (github.com/otabekvafoev92-del/ob-havo-ecmwf)'
 CTX = {}  # filled by main before the workers fork: they read it, nothing is copied
@@ -137,6 +137,56 @@ def relief(E, mask_in=None, mask_hi=None):
 
 
 # ---------- one frame ----------
+def icon_for(t2, pr, tcc, fog, hour=12, daily=False):
+    """The weather symbol of a town: rain, snow, fog, cloud, partly, sun or moon."""
+    if pr is not None and pr >= (1 if daily else 0.3): return 'snow' if t2 <= 0.5 else 'rain'
+    if fog is not None and fog >= 0.5: return 'fog'
+    if tcc is not None and tcc >= 0.75: return 'cloud'
+    night = not daily and not (7 <= hour <= 18)
+    if tcc is not None and tcc >= 0.35: return 'partly_n' if night else 'partly'
+    return 'moon' if night else 'sun'
+
+
+def draw_icon(ax, x, y, kind, r=13):
+    """A small weather symbol drawn with shapes (no emoji font needed); y grows downwards."""
+    from matplotlib.patches import Circle, Ellipse
+    def cloud(cx, cy, c='#eef2f6', e='#8a96a3'):
+        for dx, dy, rr in ((-0.45, 0.1, 0.55), (0.35, 0.15, 0.6), (0, -0.25, 0.7)):
+            ax.add_patch(Circle((cx + dx * r, cy + dy * r), rr * r, fc=c, ec=e, lw=1.4, zorder=11))
+        ax.add_patch(Ellipse((cx, cy + 0.35 * r), 1.9 * r, 0.8 * r, fc=c, ec='none', zorder=11.1))
+    if kind in ('sun', 'partly'):
+        sx, sy = (x - 0.35 * r, y - 0.35 * r) if kind == 'partly' else (x, y)
+        for a in np.linspace(0, 2 * np.pi, 8, endpoint=False):
+            ax.plot([sx + 0.85 * r * np.cos(a), sx + 1.25 * r * np.cos(a)], [sy + 0.85 * r * np.sin(a), sy + 1.25 * r * np.sin(a)], color='#f5a623', lw=2, zorder=11, solid_capstyle='round')
+        ax.add_patch(Circle((sx, sy), 0.65 * r, fc='#ffc83d', ec='#f5a623', lw=1.5, zorder=11))
+        if kind == 'partly': cloud(x + 0.25 * r, y + 0.25 * r)
+    elif kind in ('moon', 'partly_n'):
+        mx, my = (x - 0.35 * r, y - 0.35 * r) if kind == 'partly_n' else (x, y)
+        ax.add_patch(Circle((mx, my), 0.75 * r, fc='#f3e3a0', ec='#c9a94a', lw=1.2, zorder=11))
+        ax.add_patch(Circle((mx + 0.38 * r, my - 0.25 * r), 0.62 * r, fc='#ffffff', ec='none', zorder=11.05))
+        if kind == 'partly_n': cloud(x + 0.25 * r, y + 0.25 * r)
+    elif kind == 'cloud': cloud(x, y, '#dde3ea', '#7d8894')
+    elif kind in ('rain', 'snow'):
+        cloud(x, y - 0.3 * r, '#cfd7e0', '#6f7b88')
+        for dx in (-0.55, 0, 0.55):
+            if kind == 'rain': ax.plot([x + dx * r, x + (dx - 0.15) * r], [y + 0.55 * r, y + 1.05 * r], color='#2f7fd1', lw=2.2, zorder=11, solid_capstyle='round')
+            else: ax.add_patch(Circle((x + dx * r, y + 0.85 * r), 0.16 * r, fc='#7b4fd0', ec='none', zorder=11))
+    elif kind == 'fog':
+        for j, w in enumerate((1.0, 0.75, 1.0)):
+            ax.plot([x - w * r, x + w * r], [y - 0.45 * r + j * 0.45 * r] * 2, color='#8a96a3', lw=2.6, zorder=11, solid_capstyle='round')
+
+
+_QR = {}
+def qr(url):
+    """The QR code of a link as a boolean matrix (None without the qrcode package)."""
+    if url in _QR: return _QR[url]
+    try:
+        import qrcode
+        q = qrcode.QRCode(border=2); q.add_data(url); q.make(fit=True); _QR[url] = np.array(q.get_matrix(), bool)
+    except Exception: _QR[url] = None
+    return _QR[url]
+
+
 def render(job):
     """job = (video key, frame index): draws the frame of that video into its folder."""
     vk, i = job; V = CTX['videos'][vk]; fr = V['frames'][i]; X = TX[V['lang']]; mode = fr['mode']
@@ -204,16 +254,37 @@ def render(job):
         x, y = proj(E, E[0], g)
         if HEAD + 40 < y < HEAD + HD - 40: a0.text(max(x, 0) + 6, y, f"{g}°{X['lat']}", ha='left', va='center', fontsize=12, color='#33475e', zorder=7, bbox=dict(boxstyle='round,pad=0.12', fc='#ffffffcc', ec='none'))
     for p in sorted(fr.get('pts', []), key=lambda q: -proj(E, q[0], q[1])[1]):  # far first
-        lon, lat, txt, col, ring, lab, big = p
+        lon, lat, txt, col, ring, lab, big = p[:7]; ico = p[7] if len(p) > 7 else None
         x, y = proj(E, lon, lat)
         if not (0 < x < W and HEAD + 10 < y < HEAD + HD): continue
         k = (0.7 + 0.3 * (y - HEAD) / HD) if TOPIN else 1.0; sz = (1500 if big else 800) * k * k
         if ring: a0.scatter(x, y, s=sz * 1.55, facecolors='none', edgecolors=ring, linewidths=4.5 * k, zorder=8)
         a0.scatter(x, y, s=sz, c=[col], edgecolors='#ffffff', linewidths=2.2, zorder=9)
+        if ico: draw_icon(a0, x + 30 * k, y - 22 * k, ico, 12 * k)
         a0.text(x, y, txt, ha='center', va='center', fontsize=(18 if big else 13) * k, fontweight='bold', color='#1f2d3d', zorder=10)
         dx, dy, ha, va = OFF.get(lab, (0, (30 if big else 22) * k, 'center', 'top')) if lab else (0, 0, 'center', 'top')
         if lab: a0.text(x + dx, y + dy, lab, ha=ha, va=va, fontsize=(15 if big else 11) * k, fontweight='bold' if big else 'normal', color='#1f2d3d', zorder=10,
                         bbox=dict(boxstyle='round,pad=0.15', fc='#ffffffdd', ec='none'))
+    if fr.get('card'):  # the main point before the map, and the bot at the end
+        import textwrap as _tw
+        a0.add_patch(plt.Rectangle((0, HEAD), W, HD, fc=NAVY, ec='none', alpha=0.94, zorder=11.2))  # over the map only: the rain dynamics stay in view
+        cy = HEAD + HD * (0.28 if fr['card'] == 'head' else 0.16)
+        if fr['card'] == 'head':
+            a0.text(W / 2, cy, X['head'], ha='center', va='center', fontsize=26, fontweight='bold', color='#f08a24', zorder=11.5); cy += 80
+            for ln in fr.get('lines', []):
+                for part in _tw.wrap(ln, 30 if W < 1500 else 52):
+                    a0.text(W / 2, cy, part, ha='center', va='center', fontsize=34, fontweight='bold', color='#ffffff', zorder=11.5); cy += 52
+                cy += 26
+        else:
+            a0.text(W / 2, cy, 'OSMON', ha='center', va='center', fontsize=48, fontweight='bold', color='#f08a24', zorder=11.5); cy += 80
+            for ln in (X['end1'], X['end2']):
+                a0.text(W / 2, cy, ln, ha='center', va='center', fontsize=30, fontweight='bold' if ln is X['end2'] else 'normal', color='#ffffff', zorder=11.5); cy += 48
+            m = qr('https://t.me/ObHavo_ECMWF_bot')
+            if m is not None:
+                sz = min(W * 0.3, HEAD + HD - cy - 70); x0, y0_ = W / 2 - sz / 2, cy + 20
+                a0.add_patch(plt.Rectangle((x0 - 14, y0_ - 14), sz + 28, sz + 28, fc='#ffffff', ec='none', zorder=11.5))
+                a0.imshow(np.where(m, 0.1, 1.0)[..., None].repeat(3, 2), extent=(x0, x0 + sz, y0_ + sz, y0_), interpolation='nearest', zorder=11.6)
+                a0.set_xlim(0, W); a0.set_ylim(H, 0)
     if fr.get('intro') is not None:  # the opening: the title over a dark veil that lifts off the map
         al = fr['intro']; a0.add_patch(plt.Rectangle((0, 0), W, H, fc=NAVY, ec='none', alpha=0.93 * al, zorder=10.5))
         sc = 1 + 0.25 * al
@@ -268,7 +339,7 @@ def render(job):
 
 
 def encode(vk):
-    V = CTX['videos'][vk]; fd = pathlib.Path(V['dir']); per = [fr['d'] * (1.5 if fr.get('intro') is not None else SLOW) for fr in V['frames']]
+    V = CTX['videos'][vk]; fd = pathlib.Path(V['dir']); per = [fr['d'] * (1.5 if fr.get('intro') is not None else 1.0 if fr.get('card') else SLOW) for fr in V['frames']]
     lst = fd / 'list.txt'; lst.write_text(''.join(f"file '{i:04d}.png'\nduration {d}\n" for i, d in enumerate(per)) + f"file '{len(per) - 1:04d}.png'\n")
     out = pathlib.Path(V['out']); tmp = out.with_name('.' + out.name + '.part.mp4')
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a', '-vf',
@@ -414,7 +485,8 @@ def main():
                 Fd = fields[fr['k']]; h_ = int((fr['t'] - now).total_seconds() // 3600); pts = []
                 for tw in TOWNS[:12]:
                     v = atu(Fd['t2'], tw[2], tw[3]); mm = atu(Fd['pr'], tw[2], tw[3])
-                    pts.append((tw[3], tw[2], f"{v:+.0f}" if round(v) != 0 else '0', TCOL(v), ('#7b4fd0' if v <= 0.5 else '#2f7fd1') if mm >= 0.3 else None, tw[L], True))
+                    pts.append((tw[3], tw[2], f"{v:+.0f}" if round(v) != 0 else '0', TCOL(v), ('#7b4fd0' if v <= 0.5 else '#2f7fd1') if mm >= 0.3 else None, tw[L], True,
+                                icon_for(v, mm, atu(Fd['tcc'], tw[2], tw[3]), atu(Fd['fog'], tw[2], tw[3]), (fr['t'] + dt.timedelta(hours=5)).hour)))
                 frames.append(dict(mode='fc', t=fr['t'], k=fr['k'], d=fr['d'], ci=fr['ci'], pts=pts, badge=X['fc'] + (' · ' + X['plus'].format(h=h_) if h_ > 0 else ''), bc=ORANGE, when=when(fr['t'], X)))
             if kind == '3d':
                 frames.append(dict(mode='total', t=None, d=3.0, ci=None, badge=X['total'], bc=ORANGE, when=None,
@@ -423,8 +495,14 @@ def main():
             line = (X['wet3' if kind == '3d' else 'wet'].format(t=wet[0][L], mm=round(wet[1])) if wet[1] >= 1
                     else X['spots'].format(p=round(pmax), mm=round(mmax) if mmax >= 1 else f'{mmax:.1f}'.replace('.', ',')) if pmax >= 1 and mmax >= 0.2  # rain away from the towns
                     else X['none3' if kind == '3d' else 'dry'])
+            # the headline: rain, the warmest day and the coldest night among the towns, fog
+            tx_ = max(((atu(fields[f_['k']]['t2'], tw[2], tw[3]), tw) for f_ in seq for tw in TOWNS[:12]), key=lambda q: q[0])
+            tn_ = min(((atu(fields[f_['k']]['t2'], tw[2], tw[3]), tw) for f_ in seq for tw in TOWNS[:12]), key=lambda q: q[0])
+            fogt = [tw[L] for tw in TOWNS[:12] if any(atu(fields[f_['k']]['fog'], tw[2], tw[3]) >= 0.5 for f_ in seq)]
+            sg = lambda v: f'{v:+.0f}'.replace('+0', '0').replace('-0', '0')
+            head = [line if wet[1] >= 1 or pmax < 1 else X['hd_spots'], X['hd_temp'].format(tx=sg(tx_[0]), tt=tx_[1][L], tn=sg(tn_[0]), tnn=tn_[1][L])] + ([X['hd_fog'].format(t=', '.join(fogt[:4]))] if fogt else [])
             vk = f'{kind}_{lang}'
-            videos[vk] = dict(lang=lang, kind=kind, ext=E0, rel='uz', borders=borders_uz, borders_c=borders_uz, wind=True, frames=frames, title=X['t12' if kind == '12h' else 't3'], line=line,
+            videos[vk] = dict(head=head, lang=lang, kind=kind, ext=E0, rel='uz', borders=borders_uz, borders_c=borders_uz, wind=True, frames=frames, title=X['t12' if kind == '12h' else 't3'], line=line,
                               chart=kind, chart_t=X['chart'], dir=tempfile.mkdtemp(), out=str(OUT / f'{vk}.mp4'))
     # by days: 7 days from the last 00/12 UTC run (it reaches 10 days; the 06/18 runs only 90 hours)
     if '7d' in KINDS:
@@ -458,13 +536,16 @@ def main():
                     fields.append(k_); kk = len(fields) - 1
                     pts = [(tw[3], tw[2], f"{atu(k_['t2'], tw[2], tw[3]):+.0f}", TCOL(atu(k_['t2'], tw[2], tw[3])),
                             ('#7b4fd0' if atu(k_['t2'], tw[2], tw[3]) <= 0.5 else '#2f7fd1') if atu(k_['pr'], tw[2], tw[3]) >= 1 else ('#8a96a3' if atu(k_['fog'], tw[2], tw[3]) > 0.5 else None),
-                            f"{tw[L]} {atu(k_['tmin'], tw[2], tw[3]):+.0f}°", True) for tw in TOWNS[:12]]
+                            f"{tw[L]} {atu(k_['tmin'], tw[2], tw[3]):+.0f}°", True,
+                            icon_for(atu(k_['t2'], tw[2], tw[3]), atu(k_['pr'], tw[2], tw[3]), atu(k_['tcc'], tw[2], tw[3]), atu(k_['fog'], tw[2], tw[3]), daily=True)) for tw in TOWNS[:12]]
                     dl = f"{X['wd'][d_.weekday()]} {d_.day} {X['mon'][d_.month - 1]}"
                     for j in range(5):
                         frames.append(dict(mode='day', t=d_, k=kk, d=(0.9 if j == 4 else 0.35), ci=dd, pts=pts, badge=f"{X['fc']} · {dl}", bc=ORANGE, when=X['d7'].format(i=dd + 1, n=len(days))))
                 frames[-1]['d'] = 2.0
                 dlw = days[wetd]; line = X['wet7'].format(d=f"{X['wd'][dlw.weekday()]} {dlw.day} {X['mon'][dlw.month - 1]}", mm=round(mx[wetd])) if mx[wetd] >= 1 else X['dry7']
-                videos[f'7d_{lang}'] = dict(lang=lang, kind='7d', ext=E0, rel='uz', borders=borders_uz, borders_c=borders_uz, wind=False, frames=frames, title=X['t7'], line=line + ' · ' + X['nightc'] if len(line) < 34 else line,
+                wm = max(((atu(k_['t2'], tw[2], tw[3]), tw, d_) for k_, d_ in zip(keys7, days) for tw in TOWNS[:12]), key=lambda q: q[0])
+                head7 = [line, X['hd_warm7'].format(d=f"{X['wd'][wm[2].weekday()]} {wm[2].day} {X['mon'][wm[2].month - 1]}", t=f'{wm[0]:+.0f}', tt=wm[1][L])]
+                videos[f'7d_{lang}'] = dict(head=head7, lang=lang, kind='7d', ext=E0, rel='uz', borders=borders_uz, borders_c=borders_uz, wind=False, frames=frames, title=X['t7'], line=line + ' · ' + X['nightc'] if len(line) < 34 else line,
                                             chart='7d', chart_t=X['chart7'], dir=tempfile.mkdtemp(), out=str(OUT / f'7d_{lang}.mp4'))
     # the regions: each one cut out whole, its districts, 12 hours
     (OUT / 'reg').mkdir(exist_ok=True); meta['regions'] = {}
@@ -503,7 +584,7 @@ def main():
                 frames.append(dict(mode='fc', t=fr['t'], k=fr['k'], d=fr['d'] * 2, ci=fr['ci'], pts=pts, badge=X['fc'] + (' · ' + X['plus'].format(h=h_) if h_ > 0 else ''), bc=ORANGE, when=when(fr['t'], X)))
             frames[-1]['d'] = 1.5
             line = X['reg_wet'].format(t=short(wet[0]['name'][lang]), mm=f"{wet[1]:.1f}".rstrip('0').rstrip('.')) if wet[1] >= 0.3 else X['reg_dry']
-            videos[f'reg/{rid}_{lang}'] = dict(lang=lang, kind='12h', ext=Er, rel=f'r{rid}', borders=bord, borders_c=borders_uz + [(rings, '#5b2a86', 3.4, (0, (6, 3, 1, 3)), 1.0, 3.4)], wind=False, clip=rings, frames=frames,
+            videos[f'reg/{rid}_{lang}'] = dict(head=[line], lang=lang, kind='12h', ext=Er, rel=f'r{rid}', borders=bord, borders_c=borders_uz + [(rings, '#5b2a86', 3.4, (0, (6, 3, 1, 3)), 1.0, 3.4)], wind=False, clip=rings, frames=frames,
                                                title=f"{a['name'][lang]} · {X['reg_t']}", line=line, chart=f'r{rid}', chart_t=X['chart_r'], dir=tempfile.mkdtemp(), out=str(OUT / 'reg' / f'{rid}_{lang}.mp4'))
     # the points for the bot: every town and every district, hour by hour for 12 hours (the caption under the video)
     def series(lo_, la_):
@@ -518,7 +599,9 @@ def main():
         for j, f_ in enumerate(fs):
             if 'zf' not in f_: f_['zf'] = 1 + 0.07 * j / max(1, nf - 1) if f_['mode'] != 'total' and not f_.get('country') and v['ext'] is not E0 else 1.0  # the country fills the width: no zoom, nothing cut
         intro = [dict(fs[0], intro=float(a_), d=0.08, zf=1.0) for a_ in np.linspace(1, 0, 10)]
-        intro[0]['d'] = 0.6; v['frames'] = intro + fs
+        intro[0]['d'] = 0.6
+        cards = [dict(fs[0], card='head', lines=v['head'], d=3.2, zf=1.0)] if v.get('head') else []
+        v['frames'] = intro + cards + fs + [dict(fs[-1], card='end', d=4.0)]
     print('relief done:', len(rel), 'maps;', sum(len(v['frames']) for v in videos.values()), 'frames to draw', flush=True)
     # draw everything in parallel (the forked workers share CTX), then encode
     CTX.update(videos=videos, fields=fields, rel=rel, relE=relE, charts=charts, acc=acc, t2end=t2end, sea=sea, LATu=LATu, LONu=LONu, ext=ext)
