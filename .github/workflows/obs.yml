@@ -17,6 +17,7 @@ jobs:
       - run: |
           (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib; pip install -q requests numpy matplotlib pillow
           python -W ignore tools/obs_video.py obs ru,uz
+          python -W ignore tools/station_days.py obs || echo 'station days failed'
           cd obs && git init -q && git checkout -q -b obs && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "obs $(date -u +%F' '%H:%M)"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" obs
