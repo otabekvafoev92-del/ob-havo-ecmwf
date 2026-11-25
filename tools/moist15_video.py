@@ -71,8 +71,7 @@ def draw(job):
         for poly in front_symbols(line, kind): ax.fill(poly[:, 0], poly[:, 1], color=col, ec='none', zorder=3.45, alpha=a_in)
     # highs and lows
     for x_, y_, hi in fr['hl']:
-        ax.text(x_, y_, X['hi'] if hi else X['lo'], fontsize=26, fontweight='bold', color=COLD if hi else WARM, ha='center', va='center', zorder=3.6, alpha=a_in,
-                path_effects=[pe.withStroke(linewidth=4, foreground='white')])
+        ax.text(x_, y_, X['hi'] if hi else X['lo'], fontsize=30, fontweight='bold', color=COLD if hi else WARM, ha='center', va='center', zorder=3.6, alpha=0.45 * a_in)  # semi-transparent: the weather under it shows through
     for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
     # the moisture's path to a town (from its source, ~2 days back)
     for p in fr['paths']:
@@ -110,7 +109,7 @@ def draw(job):
             fig.patches.append(FancyBboxPatch((x + k * (w + 0.003), y - 0.012), w, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=c, ec='#d5dbe1' if k == 0 else 'none'))
             if lab: fig.text(x + k * (w + 0.003) + w / 2, y, lab, fontsize=9.5, fontweight='bold', color='white' if k >= dark_from else PV.INK, ha='center', va='center')
         return x + len(cols) * (w + 0.003)
-    y1, y2 = 0.247, 0.212
+    y1, y2 = 0.186, 0.156
     fig.text(0.016, y1, X['moist'], fontsize=13, fontweight='bold', color=PV.INK, va='center')
     e = chips(0.105, y1, TCWV_COL[1:], ['', '', '', '', '', ''], w=0.026)
     fig.text(0.105, y1 - 0.02, X['dry'], fontsize=9.5, color=PV.MUTED, va='center'); fig.text(e - 0.003, y1 - 0.02, X['wet'], fontsize=9.5, color=PV.MUTED, va='center', ha='right')
@@ -131,9 +130,9 @@ def draw(job):
     fig.text(xx + 0.036, y2, X['path'], fontsize=12, color=PV.MUTED, va='center')
     fig.text(0.984, y2, X['wind'], fontsize=11, color=PV.FAINT, ha='right', va='center')
     # Tashkent's chart
-    fig.text(0.016, 0.178, X['chart'], fontsize=13, fontweight='bold', color=PV.INK, va='center')
-    fig.text(0.984, 0.178, X['models'], fontsize=11, color=PV.FAINT, ha='right', va='center')
-    bx = fig.add_axes([0.035, 0.05, 0.93, 0.105]); bx.set_facecolor('none')
+    fig.text(0.016, 0.126, X['chart'], fontsize=12, fontweight='bold', color=PV.INK, va='center')
+    ax.text(0.005, 0.01, X['models'], transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=PV.FAINT, zorder=9)
+    bx = fig.add_axes([0.035, 0.03, 0.93, 0.082]); bx.set_facecolor('none')
     hx, pmm, tt, sn = C['ch_h'], C['ch_pr'], C['ch_t'], C['ch_sn']
     cols = [(level(p_, PR_LV, SNOW if s_ else RAIN) or '#e7edf3') for p_, s_ in zip(pmm, sn)]
     top = max(4.0, float(np.nanmax(pmm)) * 1.15)
@@ -151,12 +150,12 @@ def draw(job):
                 path_effects=[pe.withStroke(linewidth=3, foreground='white')])
     tx.set_yticks([]); [sp.set_visible(False) for sp in tx.spines.values()]
     if fr.get('card') == 'intro':
-        a = fr['a']; fig.patches.append(Rectangle((0, 0.272), 1, 0.634, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
+        a = fr['a']; fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
         fig.text(0.5, 0.64, 'OSMON', fontsize=44, fontweight='bold', color=PV.ORANGE, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.56, X['intro1'], fontsize=40, fontweight='bold', color=PV.INK, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.49, X['intro2'], fontsize=26, color=PV.MUTED, ha='center', va='center', alpha=a, zorder=31)
     if fr.get('card') == 'end':
-        fig.patches.append(Rectangle((0, 0.272), 1, 0.634, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
+        fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
         fig.text(0.38, 0.70, 'OSMON', fontsize=44, fontweight='bold', color=PV.ORANGE, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.60, X['end1'], fontsize=30, fontweight='bold', color=PV.INK, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.53, X['end2'], fontsize=26, color=PV.MUTED, ha='center', va='center', zorder=31)
@@ -267,7 +266,7 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
                 towns.append((t_, at(g['pr'], tw[2], tw[3]), t_ <= 0.5, at(g['tcc'], tw[2], tw[3]), fog))
             ps = [dict(p, a=float(np.clip(1 - (abs(h - p['h']) - 18) / 12, 0, 1))) for p in paths if abs(h - p['h']) <= 30]
             frames.append(dict(fr, when=f"{X['wd'][t.weekday()]} {t:%d.%m} · {t:%H}:00", day=X['day'].format(i=int(np.clip((t.date() - d1).days + 1, 1, 15)), n=15),
-                               prog=(h - hours[0]) / max(1, hours[-1] - hours[0]), d=0.1, towns=towns, tash_t=at(g['t2'], tash[2], tash[3]), paths=[p for p in ps if p['a'] > 0]))
+                               prog=(h - hours[0]) / max(1, hours[-1] - hours[0]), d=0.2, towns=towns, tash_t=at(g['t2'], tash[2], tash[3]), paths=[p for p in ps if p['a'] > 0]))
         frames[-1] = dict(frames[-1], d=1.2)
         intro = [dict(frames[0], card='intro', a=1.0, fade=0.0, d=1.6)] + [dict(frames[0], card='intro', a=float(a_), fade=float(1 - a_), d=0.07) for a_ in np.linspace(1, 0, 9)[1:]]
         CTX['videos'][lang] = dict(frames=intro + frames + [dict(frames[-1], card='end', d=4.0)], dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f'moist15_{lang}.mp4'))

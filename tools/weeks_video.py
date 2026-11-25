@@ -136,18 +136,17 @@ def draw(job):
     fig.patches.append(Rectangle((0, 0.903), 1, 0.004, transform=fig.transFigure, fc='#2c3e57', ec='none', zorder=0))
     fig.patches.append(Rectangle((0, 0.903), fr['prog'], 0.004, transform=fig.transFigure, fc=PV.ORANGE, ec='none', zorder=0.1))
     # legend
-    fig.text(0.016, 0.247, X['leg'], fontsize=13, color=PV.MUTED, va='center')
+    fig.text(0.016, 0.183, X['leg'], fontsize=11.5, fontweight='bold', color=PV.INK, va='center')
     labs = ['<25', '25–50', '50–80', '80–120', '120–150', '150–200', '200–300', '>300']
     for k, (c, lab) in enumerate(zip(PCT_COL, labs)):
-        xx = 0.016 + k * 0.062
-        fig.patches.append(FancyBboxPatch((xx, 0.202), 0.058, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=c, ec='#c9d2db' if c == '#ffffff' else 'none'))
-        fig.text(xx + 0.029, 0.214, lab, fontsize=10.5, fontweight='bold', color='white' if k in (0, 6, 7) else PV.INK, ha='center', va='center')
-    fig.text(0.53, 0.214, f"{X['less']} ← · {X['norm']} · → {X['more']}", fontsize=12, color=PV.MUTED, va='center')
-    fig.text(0.984, 0.247, X['circ'], fontsize=12, color=PV.MUTED, ha='right', va='center')
-    fig.text(0.984, 0.214, X['src'], fontsize=11, color=PV.FAINT, ha='right', va='center')
+        xx = 0.215 + k * 0.047
+        fig.patches.append(FancyBboxPatch((xx, 0.171), 0.044, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=c, ec='#c9d2db' if c == '#ffffff' else 'none'))
+        fig.text(xx + 0.022, 0.183, lab, fontsize=10.5, fontweight='bold', color='white' if k in (0, 6, 7) else PV.INK, ha='center', va='center')
+    fig.text(0.984, 0.183, X['circ'], fontsize=12, color=PV.MUTED, ha='right', va='center')
+    ax.text(0.005, 0.01, X['src'], transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=PV.FAINT, zorder=9)
     # Tashkent week by week
-    fig.text(0.016, 0.178, X['chart'], fontsize=13, fontweight='bold', color=PV.INK, va='center')
-    bx = fig.add_axes([0.035, 0.05, 0.93, 0.105]); bx.set_facecolor('none')
+    fig.text(0.016, 0.152, X['chart'], fontsize=12, fontweight='bold', color=PV.INK, va='center')
+    bx = fig.add_axes([0.035, 0.035, 0.93, 0.1]); bx.set_facecolor('none')
     n = len(C['tp']); xs = np.arange(n); tp = np.array(C['tp']); tt = np.array(C['tt'])
     cols = [PCT_COL[int(np.clip(np.searchsorted(PCT_LV, v, side='right') - 1, 0, 7))] for v in tp]
     bx.bar(xs, np.minimum(tp, 300), width=0.62, color=cols, edgecolor='#c9d2db', lw=0.8, zorder=2)
@@ -164,12 +163,12 @@ def draw(job):
                                           path_effects=[pe.withStroke(linewidth=3, foreground='white')], zorder=7)
     tx.set_yticks([]); [sp.set_visible(False) for sp in tx.spines.values()]
     if fr.get('card') == 'intro':
-        a = fr['a']; fig.patches.append(Rectangle((0, 0.272), 1, 0.634, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
+        a = fr['a']; fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
         fig.text(0.5, 0.64, 'OSMON', fontsize=44, fontweight='bold', color=PV.ORANGE, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.56, X['intro1'], fontsize=40, fontweight='bold', color=PV.INK, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.49, X['intro2'], fontsize=26, color=PV.MUTED, ha='center', va='center', alpha=a, zorder=31)
     if fr.get('card') == 'end':
-        fig.patches.append(Rectangle((0, 0.272), 1, 0.634, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
+        fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
         fig.text(0.38, 0.70, 'OSMON', fontsize=44, fontweight='bold', color=PV.ORANGE, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.60, X['end1'], fontsize=30, fontweight='bold', color=PV.INK, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.53, X['end2'], fontsize=26, color=PV.MUTED, ha='center', va='center', zorder=31)

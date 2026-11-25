@@ -50,7 +50,7 @@ TX = {'ru': dict(title='Вероятность осадков и темпера�
                  leg='Davr ichida yog‘ingarchilik (0,2 mm dan ko‘p) ehtimoli, %', models='Modellar: ECMWF IFS va AIFS, NOAA GFS va GEFS, DWD ICON · {n} ta prognoz varianti',
                  chart='Toshkent: davrlar bo‘yicha yog‘in ehtimoli (ustunlar) va harorat (chiziq)', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
                  intro1='Yog‘ingarchilik va harorat', intro2='butun O‘zbekiston bo‘yicha 15 kunga', end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda: @ObHavo_ECMWF_bot')}
-MAP = (0.0, 0.272, 1.0, 0.640)  # the map: the full width, between the header and the legend
+MAP = (0.0, 0.205, 1.0, 0.701)  # the map: the full width, between the header and the legend
 LAT0, LAT1 = 36.95, 45.95
 COSL = np.cos(np.radians(41.4))
 CTX = {}
@@ -170,27 +170,26 @@ def draw(job):
     fig.patches.append(Rectangle((0, 0.903), 1, 0.004, transform=fig.transFigure, fc='#2c3e57', ec='none', zorder=0))
     fig.patches.append(Rectangle((0, 0.903), fr['prog'], 0.004, transform=fig.transFigure, fc=ORANGE, ec='none', zorder=0.1))
     # legend
-    fig.text(0.016, 0.247, X['leg'], fontsize=13, color=MUTED, va='center')
-    for j, (pal, nm) in enumerate(((RAIN, X['rain']), (SNOW, X['snow']))):
-        y = 0.214 - j * 0.0; xb = 0.016 + j * 0.30
+    for j, (pal, nm) in enumerate(((RAIN, X['rain'] + ', %'), (SNOW, X['snow'] + ', %'))):
+        y = 0.183; xb = 0.016 + j * 0.30
         fig.text(xb, y, nm, fontsize=13, fontweight='bold', color=INK, va='center')
         for k, (c, lab) in enumerate(zip(pal, ['10–30', '30–50', '50–70', '70–90', '90–100'])):
-            xx = xb + 0.052 + k * 0.047
+            xx = xb + 0.062 + k * 0.045
             fig.patches.append(FancyBboxPatch((xx, y - 0.012), 0.043, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=c, ec='none'))
             fig.text(xx + 0.0215, y, lab, fontsize=10.5, fontweight='bold', color='white' if k >= 2 else INK, ha='center', va='center')
-    fig.add_artist(matplotlib.lines.Line2D([0.62, 0.645], [0.214, 0.214], color='#3d7be0', lw=1.6, ls=(0, (4, 2.5)), transform=fig.transFigure))
-    fig.text(0.65, 0.214, '0°' + (' — дождь / снег' if lang == 'ru' else ' — yomg‘ir / qor'), fontsize=12, color=MUTED, va='center')
-    fig.patches.append(FancyBboxPatch((0.74, 0.202), 0.036, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#b9bfc7', ec='none'))
-    fig.text(0.781, 0.214, 'тучи' if lang == 'ru' else 'bulut', fontsize=12, color=MUTED, va='center')
-    lg = fig.add_axes([0.826, 0.196, 0.02, 0.036]); lg.set_xlim(-1, 1); lg.set_ylim(-1.2, 1.2); lg.axis('off'); bolt(lg, 0, 0, 600)
-    fig.text(0.848, 0.214, 'гроза' if lang == 'ru' else 'momaqaldiroq', fontsize=12, color=MUTED, va='center')
+    fig.add_artist(matplotlib.lines.Line2D([0.62, 0.645], [0.183, 0.183], color='#3d7be0', lw=1.6, ls=(0, (4, 2.5)), transform=fig.transFigure))
+    fig.text(0.65, 0.183, '0°' + (' — дождь / снег' if lang == 'ru' else ' — yomg‘ir / qor'), fontsize=12, color=MUTED, va='center')
+    fig.patches.append(FancyBboxPatch((0.74, 0.171), 0.036, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#b9bfc7', ec='none'))
+    fig.text(0.781, 0.183, 'тучи' if lang == 'ru' else 'bulut', fontsize=12, color=MUTED, va='center')
+    lg = fig.add_axes([0.826, 0.165, 0.02, 0.036]); lg.set_xlim(-1, 1); lg.set_ylim(-1.2, 1.2); lg.axis('off'); bolt(lg, 0, 0, 600)
+    fig.text(0.848, 0.183, 'гроза' if lang == 'ru' else 'momaqaldiroq', fontsize=12, color=MUTED, va='center')
     with matplotlib.rc_context({'hatch.color': '#a39a8a', 'hatch.linewidth': 1.0}):
-        fig.patches.append(FancyBboxPatch((0.918, 0.202), 0.024, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#efe8dc', ec='#cfc5b4', hatch='---', lw=0.6))
-    fig.text(0.945, 0.214, 'туман' if lang == 'ru' else 'tuman', fontsize=12, color=MUTED, va='center')
-    fig.text(0.984, 0.247, X['models'].format(n=C['members']), fontsize=11, color=FAINT, ha='right', va='center')
+        fig.patches.append(FancyBboxPatch((0.918, 0.171), 0.024, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#efe8dc', ec='#cfc5b4', hatch='---', lw=0.6))
+    fig.text(0.945, 0.183, 'туман' if lang == 'ru' else 'tuman', fontsize=12, color=MUTED, va='center')
+    ax.text(0.005, 0.01, X['models'].format(n=C['members']), transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=FAINT, zorder=9)
     # Tashkent: bars of the chance, the temperature line
-    fig.text(0.016, 0.178, X['chart'], fontsize=13, fontweight='bold', color=INK, va='center')
-    bx = fig.add_axes([0.035, 0.05, 0.93, 0.105]); bx.set_facecolor('none')
+    fig.text(0.016, 0.152, X['chart'], fontsize=12, fontweight='bold', color=INK, va='center')
+    bx = fig.add_axes([0.035, 0.035, 0.93, 0.1]); bx.set_facecolor('none')
     Xc, Wn, Pt, Tt = C['bx'], C['bw'], C['tp'], C['tt']
     cols = [(level(p_, SNOW if t_ <= 0.5 else RAIN) or BAR_EMPTY) for p_, t_ in zip(Pt, Tt)]
     bx.bar(Xc, np.maximum(Pt, 2), width=Wn * 0.8, color=cols, zorder=2)
@@ -209,12 +208,12 @@ def draw(job):
     tx.set_yticks([]); [sp.set_visible(False) for sp in tx.spines.values()]
     # the opening and the closing cards
     if fr.get('card') == 'intro':
-        a = fr['a']; fig.patches.append(Rectangle((0, 0.272), 1, 0.634, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
+        a = fr['a']; fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
         fig.text(0.5, 0.64, 'OSMON', fontsize=44, fontweight='bold', color=ORANGE, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.56, X['intro1'], fontsize=40, fontweight='bold', color=INK, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.49, X['intro2'], fontsize=26, color=MUTED, ha='center', va='center', alpha=a, zorder=31)
     if fr.get('card') == 'end':
-        fig.patches.append(Rectangle((0, 0.272), 1, 0.634, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
+        fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
         fig.text(0.38, 0.70, 'OSMON', fontsize=44, fontweight='bold', color=ORANGE, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.60, X['end1'], fontsize=30, fontweight='bold', color=INK, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.53, X['end2'], fontsize=26, color=MUTED, ha='center', va='center', zorder=31)
