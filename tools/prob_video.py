@@ -44,7 +44,9 @@ def main():
     borders = [(NB, '#68717d', 1.8, EV.DOT, 0.9, 3), (ADM1, '#7c8794', 1.3, EV.DOT, 0.8, 3.1), (UZR, '#1f2d3d', 3.0, EV.DOT, 1.0, 3.3)]
     TASH = EV.TOWNS[0]
     loc = lambda s: run + dt.timedelta(hours=steps[s] + 5)
-    lab = [(loc(s).strftime('%d.%m') if loc(s).hour <= 5 else '') for s in range(len(steps))]
+    lab, seen = [], set()  # one date per local day, every second day, so the labels do not overlap
+    for s in range(len(steps)):
+        d_ = loc(s).date(); lab.append(loc(s).strftime('%d.%m') if d_ not in seen and len(seen) % 2 == 0 and loc(s).hour <= 6 else ''); seen.add(d_)
     every = 1
     chart = dict(kind='prob', pct=[round(atu(k, TASH[2], TASH[3])) for k in keys], mx=[0] * len(keys), snow=[False] * len(keys), lab=lab, every=every)
     # fields: N in-between frames per window, blended
@@ -68,7 +70,7 @@ def main():
         frames[-1]['d'] = 1.0
         intro = [dict(frames[0], intro=float(a_), d=0.08) for a_ in np.linspace(1, 0, 10)]; intro[0]['d'] = 0.6
         videos[f'prob_{lang}'] = dict(lang=lang, kind='prob', ext=E0, rel='uz', borders=borders, borders_c=borders, wind=False, frames=intro + frames,
-                                      title=X['title'], line=X['line'].format(m=', '.join(models)), chart='tash', chart_t=X['chart'], src=X['src'],
+                                      title=X['title'], line=X['line'].format(m=str(len(models)) + (' систем' if lang == 'ru' else ' tizim')), chart='tash', chart_t=X['chart'], src=X['src'],
                                       dir=tempfile.mkdtemp(), out=str(OUT / f'prob_{lang}.mp4'))
     EV.CTX.update(videos=videos, fields=fields, rel=rel, relE=relE, charts={'tash': chart}, acc={}, t2end={}, sea=sea, LATu=LATu, LONu=LONu,
                   ext=(LON[0] - 0.125, LON[-1] + 0.125, LAT[0] - 0.125, LAT[-1] + 0.125))
