@@ -42,10 +42,14 @@ TOWNS = [('Ташкент', 'Toshkent', 41.31, 69.28), ('Самарканд', 'S
          ('Ургенч', 'Urganch', 41.55, 60.63), ('Наманган', 'Namangan', 41.0, 71.67), ('Андижан', 'Andijon', 40.78, 72.34), ('Фергана', 'Farg‘ona', 40.39, 71.78),
          ('Карши', 'Qarshi', 38.86, 65.79), ('Термез', 'Termiz', 37.22, 67.28), ('Навои', 'Navoiy', 40.1, 65.38), ('Джизак', 'Jizzax', 40.12, 67.84),
          ('Гулистан', 'Guliston', 40.49, 68.78), ('Нурафшон', 'Nurafshon', 41.04, 69.36)]
+# where a town's name goes, so the names in the Fergana valley and around Bukhara–Samarkand do not cover each other (dx, dy in px, alignment)
+_OFF = {'Ташкент': (0, -30, 'center', 'bottom'), 'Наманган': (0, -30, 'center', 'bottom'), 'Андижан': (28, 0, 'left', 'center'), 'Самарканд': (28, 0, 'left', 'center'),
+        'Бухара': (-28, 0, 'right', 'center'), 'Навои': (0, -30, 'center', 'bottom'), 'Джизак': (28, 0, 'left', 'center')}
+OFF = {**_OFF, **{tw[1]: _OFF[tw[0]] for tw in TOWNS if tw[0] in _OFF}}
 TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ ECMWF', t12='Погода: 6 ч факт + 12 ч прогноз', t3='Погода: 6 ч факт + 3 дня прогноз',
                  at='{d} · {h} по Ташкенту', plus='+{h} ч', rain='мм за 3 ч', snow='снег', src='Факт: метеостанции Узбекистана (ВМО SYNOP) · Прогноз: ECMWF IFS · Osmon',
                  wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], mon=['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
-                 dry='Без осадков по всей стране', wet='Больше всего осадков: {t} — {mm} мм', wet3='За 3 дня больше всего: {t} — {mm} мм', none3='3 дня без заметных осадков',
+                 dry='Без осадков по всей стране', spots='В городах сухо, осадки местами: до {p}% территории, до {mm} мм за 3 ч', wet='Больше всего осадков: {t} — {mm} мм', wet3='За 3 дня больше всего: {t} — {mm} мм', none3='3 дня без заметных осадков',
                  reg_t='прогноз на 12 часов', reg_wet='Больше всего за 12 ч: {t} — {mm} мм', reg_dry='Ближайшие 12 часов без заметных осадков',
                  chart='Динамика дождей: где идут осадки, % территории', chart_r='Динамика дождей в области, % территории', upto='до {mm} мм', none_='без осадков',
                  tot='Осадки за 3 дня, мм', total='ИТОГ · 3 дня', lat='с.ш.', lon='в.д.', fog='туман', day_mm='мм за сутки',
@@ -53,7 +57,7 @@ TX = {'ru': dict(fact='ФАКТ · метеостанции', fc='ПРОГНОЗ
       'uz': dict(fact='FAKT · meteostansiyalar', fc='ECMWF PROGNOZI', t12='Ob-havo: 6 soat fakt + 12 soat prognoz', t3='Ob-havo: 6 soat fakt + 3 kun prognoz',
                  at='{d} · Toshkent vaqti {h}', plus='+{h} soat', rain='3 soatda mm', snow='qor', src='Fakt: O‘zbekiston meteostansiyalari (JMT SYNOP) · Prognoz: ECMWF IFS · Osmon',
                  wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], mon=['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'],
-                 dry='Butun mamlakatda yog‘in yo‘q', wet='Eng ko‘p yog‘in: {t} — {mm} mm', wet3='3 kunda eng ko‘p: {t} — {mm} mm', none3='3 kun sezilarli yog‘insiz',
+                 dry='Butun mamlakatda yog‘in yo‘q', spots='Shaharlarda quruq, joylarda yog‘in: hududning {p}% gacha, 3 soatda {mm} mm gacha', wet='Eng ko‘p yog‘in: {t} — {mm} mm', wet3='3 kunda eng ko‘p: {t} — {mm} mm', none3='3 kun sezilarli yog‘insiz',
                  reg_t='12 soatlik prognoz', reg_wet='12 soatda eng ko‘p: {t} — {mm} mm', reg_dry='Yaqin 12 soatda sezilarli yog‘in yo‘q',
                  chart='Yog‘in dinamikasi: yog‘in yog‘ayotgan hudud, %', chart_r='Viloyatda yog‘in dinamikasi, % hudud', upto='{mm} mm gacha', none_='yog‘insiz',
                  tot='3 kunlik yog‘in, mm', total='JAMI · 3 kun', lat='N', lon='E', fog='tuman', day_mm='sutkada mm',
@@ -200,7 +204,8 @@ def render(job):
         if ring: a0.scatter(x, y, s=sz * 1.55, facecolors='none', edgecolors=ring, linewidths=4.5 * k, zorder=8)
         a0.scatter(x, y, s=sz, c=[col], edgecolors='#ffffff', linewidths=2.2, zorder=9)
         a0.text(x, y, txt, ha='center', va='center', fontsize=(18 if big else 13) * k, fontweight='bold', color='#1f2d3d', zorder=10)
-        if lab: a0.text(x, y + (30 if big else 22) * k, lab, ha='center', va='top', fontsize=(15 if big else 11) * k, fontweight='bold' if big else 'normal', color='#1f2d3d', zorder=10,
+        dx, dy, ha, va = OFF.get(lab, (0, (30 if big else 22) * k, 'center', 'top')) if lab else (0, 0, 'center', 'top')
+        if lab: a0.text(x + dx, y + dy, lab, ha=ha, va=va, fontsize=(15 if big else 11) * k, fontweight='bold' if big else 'normal', color='#1f2d3d', zorder=10,
                         bbox=dict(boxstyle='round,pad=0.15', fc='#ffffffdd', ec='none'))
     if fr.get('intro') is not None:  # the opening: the title over a dark veil that lifts off the map
         al = fr['intro']; a0.add_patch(plt.Rectangle((0, 0), W, H, fc=NAVY, ec='none', alpha=0.93 * al, zorder=10.5))
@@ -380,8 +385,12 @@ def main():
         for lang in LANGS:
             X = TX[lang]; L = 0 if lang == 'ru' else 1; frames = []
             for t in terms:
-                pts = [(st[w]['lon'], st[w]['lat'], f"{o['t']:+.0f}" if round(o['t']) != 0 else '0', TCOL(o['t']),
-                        OV.KC[OV.KI[OV.wx(o.get('ww'))]] if OV.wx(o.get('ww')) is not None else None, None, st[w]['main']) for w, o in obs[t].items()]
+                keep = []  # the main stations first, then any other at least ~40 km from those kept: no pile of bubbles in the valleys
+                for w in sorted(obs[t], key=lambda w: (not st[w]['main'], w)):
+                    if all(math.hypot(st[w]['lat'] - st[q]['lat'], (st[w]['lon'] - st[q]['lon']) * 0.76) > 0.42 for q in keep): keep.append(w)
+                pts = [(st[w]['lon'], st[w]['lat'], f"{obs[t][w]['t']:+.0f}" if round(obs[t][w]['t']) != 0 else '0', TCOL(obs[t][w]['t']),
+                        OV.KC[OV.KI[OV.wx(obs[t][w].get('ww'))]] if OV.wx(obs[t][w].get('ww')) is not None else None,
+                        (st[w]['ru'] if lang == 'ru' else st[w]['uz']) if st[w]['main'] else None, st[w]['main']) for w in keep]
                 frames.append(dict(mode='obs', t=t, d=1.3, pts=pts, badge=X['fact'], bc='#2e8b57', when=when(t, X), ci=None))
             for fr in seq:
                 Fd = fields[fr['k']]; h_ = int((fr['t'] - now).total_seconds() // 3600); pts = []
@@ -392,7 +401,10 @@ def main():
             if kind == '3d':
                 frames.append(dict(mode='total', t=None, d=3.0, ci=None, badge=X['total'], bc=ORANGE, when=None,
                                    pts=[(tw[3], tw[2], f"{tot[tw]:.0f}", '#ffffff', None, tw[L], True) for tw in TOWNS[:12]]))
-            line = (X['wet3' if kind == '3d' else 'wet'].format(t=wet[0][L], mm=round(wet[1])) if wet[1] >= 1 else X['none3' if kind == '3d' else 'dry'])
+            ch_ = charts[kind]; pmax = max(ch_['pct'], default=0); mmax = max(ch_['mx'], default=0)
+            line = (X['wet3' if kind == '3d' else 'wet'].format(t=wet[0][L], mm=round(wet[1])) if wet[1] >= 1
+                    else X['spots'].format(p=round(pmax), mm=round(mmax) if mmax >= 1 else f'{mmax:.1f}'.replace('.', ',')) if pmax >= 1 and mmax >= 0.2  # rain away from the towns
+                    else X['none3' if kind == '3d' else 'dry'])
             vk = f'{kind}_{lang}'
             videos[vk] = dict(lang=lang, kind=kind, ext=E0, rel='uz', borders=borders_uz, borders_c=borders_uz, wind=True, frames=frames, title=X['t12' if kind == '12h' else 't3'], line=line,
                               chart=kind, chart_t=X['chart'], dir=tempfile.mkdtemp(), out=str(OUT / f'{vk}.mp4'))
