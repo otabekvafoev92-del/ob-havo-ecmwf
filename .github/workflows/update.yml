@@ -130,7 +130,7 @@ jobs:
           restore-keys: verify-
       - name: Render ${{ matrix.part }}
         run: |
-          sudo apt-get install -y -qq ffmpeg >/dev/null
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg >/dev/null
           pip install numpy scipy matplotlib pyproj pillow requests
           if [ "${{ matrix.part }}" = outlook ]; then
             # weekly and monthly outlooks change once a day: draw them when the live ones are 11 h old (twice a day, the free
@@ -226,7 +226,7 @@ jobs:
           name: moistf
       - name: Moisture video ${{ matrix.part }}
         run: |
-          sudo apt-get install -y -qq ffmpeg >/dev/null
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg >/dev/null
           pip install numpy scipy matplotlib pyproj pillow requests eccodes metpy >/dev/null
           timeout 60m python prob/moisture.py prob.npz out --langs ru,uz --fields moistf.npz --winds moistf.npz ${{ matrix.args }} || echo 'moisture video failed'
       - uses: actions/upload-artifact@v4

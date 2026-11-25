@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: |
-          sudo apt-get install -y -qq ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
           pip install -q requests numpy scipy matplotlib pillow eccodes metpy opencv-python-headless
           python -W ignore tools/ecmwf_video.py ev ru,uz
           cd ev && git init -q && git checkout -q -b ev && git add -A

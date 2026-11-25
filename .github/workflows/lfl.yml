@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: |
-          sudo apt-get install -y -qq ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib; pip install -q requests numpy matplotlib openpyxl
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib; pip install -q requests numpy matplotlib openpyxl
           python tools/lfl.py lfl
           # the videos for the bot: Uzbekistan, by weeks since 1 January and this month by days
           for L in ru uz; do for M in weeks month; do python -W ignore tools/lfl_video.py lfl/lfl.json lfl/UZ_${M}_${L}.mp4 $L $M; done; done
