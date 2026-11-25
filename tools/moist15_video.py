@@ -60,9 +60,10 @@ def draw(job):
     tr = C['trails'][fr['p']].astype(np.float32); TRn = tr.shape[0]
     seg = np.stack([tr[:-1], tr[1:]], axis=2)  # (TR-1, N, 2 points, 2)
     ok = (np.abs(seg[:, :, 1] - seg[:, :, 0]).max(-1) < 0.8)
-    alph = np.repeat((np.arange(1, TRn) / (TRn - 1)) ** 1.4, seg.shape[1]).reshape(TRn - 1, -1) * 0.5 * a_in
+    sp_ = np.hypot(*(seg[:, :, 1] - seg[:, :, 0]).T).T  # degrees per half hour
+    alph = (np.arange(1, TRn) / (TRn - 1))[:, None] ** 1.6 * np.clip((sp_ - 0.03) / 0.22, 0, 1) * 0.42 * a_in
     rgba = np.zeros(alph.shape + (4,), np.float32); rgba[..., :3] = matplotlib.colors.to_rgb('#3d5a6c'); rgba[..., 3] = alph
-    ax.add_collection(LineCollection(seg[ok], colors=rgba[ok], linewidths=1.0, zorder=2.4, capstyle='round'))
+    ax.add_collection(LineCollection(seg[ok], colors=rgba[ok], linewidths=0.9, zorder=2.4, capstyle='round'))
     # fronts with their symbols on the side the front moves to
     for line, kind in C['fronts'].get(fr['fk'], []):
         col = COLD if kind == 'cold' else WARM
@@ -90,8 +91,8 @@ def draw(job):
         if pr_ >= 0.3: w = f"{X['snow'] if sn_ else X['rain']} {pr_:.1f}".replace('.', ',') + ' мм' * (lang == 'ru') + ' mm' * (lang != 'ru'); ec = SNOW[3] if sn_ else RAIN[2]
         elif fog_: w, ec = X['w_fog'], '#8a96a3'
         elif cl_ >= 0.7: w, ec = X['w_cl'], '#aab3bd'
-        else: w, ec = X['w_dry'], '#e3c48a'
-        ax.annotate(f"{tw[L]} · {w}", (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5,
+        else: w, ec = None, '#d5dbe1'
+        ax.annotate(tw[L] + (f" · {w}" if w else ''), (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5,
                     fontweight='bold' if main else 'semibold', color=PV.INK, zorder=9, bbox=dict(boxstyle='round,pad=0.32,rounding_size=0.7', fc='white', ec=PV.ORANGE if main else ec, lw=2.2 if main else 1.6, alpha=0.93))
     ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
     # header
@@ -211,7 +212,7 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
                     if (hi and Mg[y_, x_] - loc_.min() >= 3) or (not hi and loc_.max() - Mg[y_, x_] >= 3): out.append((float(LONu[x_]), float(LATu[y_]), hi))
         return out
     fields, frames0, trails = [], [], []
-    rng = np.random.default_rng(7); NP, TRn = 1300, 10
+    rng = np.random.default_rng(7); NP, TRn = 1000, 12
     spawn = lambda n: np.c_[rng.uniform(ext[0], ext[1], n), rng.uniform(LAT_A - 0.3, LAT_B + 0.3, n)]
     P = spawn(NP); age = rng.integers(0, 60, NP); life = rng.integers(45, 90, NP); hist = [P.copy() for _ in range(TRn)]
     times = [h + s for h in hours for s in (0.0, 0.5)][:-1]
