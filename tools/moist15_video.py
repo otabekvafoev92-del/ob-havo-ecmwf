@@ -60,11 +60,11 @@ def draw(job):
     tr = C['trails'][fr['p']].astype(np.float32); TRn = tr.shape[0]
     seg = np.stack([tr[:-1], tr[1:]], axis=2)  # (TR-1, N, 2 points, 2)
     ok = (np.abs(seg[:, :, 1] - seg[:, :, 0]).max(-1) < 0.8)
-    sp_ = np.hypot(*(seg[:, :, 1] - seg[:, :, 0]).T).T * 111e3 / 1800  # m/s
+    sp_ = np.hypot(*(seg[:, :, 1] - seg[:, :, 0]).T).T * 111e3 / 1100  # m/s
     age_ = (np.arange(1, TRn) / (TRn - 1))[:, None]  # 0 tail … 1 head
-    show = np.clip((sp_ - 2.5) / 6, 0, 1)  # calm air leaves no streak
-    rgba = C['wind_cmap'](np.clip(sp_ / 35, 0, 1)); rgba[..., 3] = (age_ ** 1.4 * show * 0.6 * a_in)
-    lw = np.broadcast_to(0.3 + 1.25 * age_ ** 1.5, sp_.shape)  # thin tail, a thicker head: the streak points where the air goes
+    show = np.clip((sp_ - 1.5) / 5, 0, 1)  # calm air leaves no streak
+    rgba = C['wind_cmap'](np.clip(sp_ / 35, 0, 1)); rgba[..., 3] = (np.sin(np.pi * age_) ** 0.8 * show * 0.3 * a_in)  # gentle: faint at both ends
+    lw = np.broadcast_to(0.55 + 0.35 * age_, sp_.shape)  # thin tail, a thicker head: the streak points where the air goes
     ax.add_collection(LineCollection(seg[ok], colors=rgba[ok], linewidths=lw[ok], zorder=2.4, capstyle='round', joinstyle='round'))
     # fronts with their symbols on the side the front moves to
     for line, kind in C['fronts'].get(fr['fk'], []):
@@ -217,7 +217,7 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
                     if (hi and Mg[y_, x_] - loc_.min() >= 3) or (not hi and loc_.max() - Mg[y_, x_] >= 3): out.append((float(LONu[x_]), float(LATu[y_]), hi))
         return out
     fields, frames0, trails = [], [], []
-    rng = np.random.default_rng(7); NP, TRn = 900, 18
+    rng = np.random.default_rng(7); NP, TRn = 1700, 26
     spawn = lambda n: np.c_[rng.uniform(ext[0], ext[1], n), rng.uniform(LAT_A - 0.3, LAT_B + 0.3, n)]
     P = spawn(NP); age = rng.integers(0, 60, NP); life = rng.integers(45, 90, NP); hist = [P.copy() for _ in range(TRn)]
     times = [h + s for h in hours for s in (0.0, 0.5)][:-1]
@@ -225,7 +225,7 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
         f = M.interp(F, h)
         g = dict(tcwv=up(f['tcwv'], 1.5), tcc=np.clip(up(f['tcc'], 1.5), 0, 1), pr=np.clip(up(f['pr'], 1.2), 0, None), t2=up(f['t2']), u=up(f['u']), v=up(f['v']), msl=up(f['msl']))
         iy = np.clip(np.searchsorted(LATu, P[:, 1]), 0, len(LATu) - 1); ix = np.clip(np.searchsorted(LONu, P[:, 0]), 0, len(LONu) - 1)
-        P = P + np.c_[g['u'][iy, ix] * 1800 / (111e3 * np.cos(np.radians(P[:, 1]))), g['v'][iy, ix] * 1800 / 111e3]; age += 1
+        P = P + np.c_[g['u'][iy, ix] * 1100 / (111e3 * np.cos(np.radians(P[:, 1]))), g['v'][iy, ix] * 1100 / 111e3]  # a calm drift; age += 1
         dead = (age > life) | (P[:, 0] < ext[0] - 0.5) | (P[:, 0] > ext[1] + 0.5) | (P[:, 1] < LAT_A - 0.5) | (P[:, 1] > LAT_B + 0.5)
         if dead.any():
             P[dead] = spawn(int(dead.sum())); age[dead] = 0
@@ -255,7 +255,7 @@ def setup(F, run, paths, outd, langs, now=None, only=None):
     WAT = json.load(open(ROOT / 'prob' / 'geo_water.json'))
     from matplotlib.colors import LinearSegmentedColormap
     CTX.update(LONu=LONu, LATu=LATu, fields=fields, trails=trails, fronts=fronts, lon_ext=ext,
-               wind_cmap=LinearSegmentedColormap.from_list('wind', ['#a9bccb', '#7ea3c4', '#5585c0', '#4f68b8', '#6a55b0', '#8a4aa6']),
+               wind_cmap=LinearSegmentedColormap.from_list('wind', ['#9fb1bf', '#8aa1b4', '#7590aa', '#6680a0', '#5b7196', '#52648c']),
                wv_cmap=LinearSegmentedColormap.from_list('wv', ['#ffffff', '#f4f9f5', '#e3f2e9', '#c9e9d8', '#a6d9c1', '#7cc4a8', '#52a88e', '#3a8f7a']),
                sea=[np.asarray(r) for r in WAT['ocean']] + [np.asarray(l_['r']) for l_ in WAT['lakes']],
                borders=[([np.asarray(r) for k, c in G.items() if k != 'UZ' for r in c['rings']], '#a3acb6', 1.0, 3), ([np.asarray(r) for a in GA['adm1'] for r in a['r']], '#b7c0ca', 0.8, 3.05),
