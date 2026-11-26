@@ -1,0 +1,27 @@
+name: Mountains video
+# the mountains of Uzbekistan day by day on the map (tools/mtn_video.py) after each site run; kept on the "mtn" branch
+on:
+  workflow_run: {workflows: ['Update ECMWF forecast'], types: [completed]}
+  workflow_dispatch: {}
+permissions: {contents: write, actions: read}
+concurrency: {group: mtn, cancel-in-progress: true}
+jobs:
+  v:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          pip install -q numpy scipy matplotlib pyproj qrcode requests eccodes metpy pillow
+          python prob/mountains.py data
+          id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
+          timeout 600 gh run download $id -n npz -D data || true
+          timeout 1800 python -u -W ignore tools/mtn_video.py data/mountains.json data/prob.npz mtn ru,uz
+          cd mtn && git init -q && git checkout -q -b mtn && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "mountains $(date -u +%F' '%H:%M)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" mtn

@@ -749,11 +749,15 @@ async function sendMountains(env, chat, lang) {
   if (!M || !M.spots) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   // the picture (10 days for every place) with the places as buttons under it
   if (chat < 0) {  // a group or channel: the picture and every place as text, no buttons
-    await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${MTX[lang] ? lang : 'ru'}.png?v=${fresh()}`, caption: X.title, parse_mode: 'HTML' });
+    await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${lang === 'uz' ? 'uz' : 'ru'}.png?v=${fresh()}`, caption: X.title, parse_mode: 'HTML' });
     return sendMountainText(env, chat, lang, null);
   }
   const kb = await mountainsKb(env, chat, lang, M), cap = `${X.title}\n${(MTA[lang] || MTA.ru).pick}`;
-  const r = await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${MTX[lang] ? lang : 'ru'}.png?v=${fresh()}`, caption: cap, parse_mode: 'HTML', reply_markup: kb });
+  // the video on the map first (tools/mtn_video.py, the "mtn" branch), the picture if it is not there
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+  const rv = await tg(env, 'sendVideo', { chat_id: chat, video: `${EVRAW}/mtn/mtn_${lang === 'uz' ? 'uz' : 'ru'}.mp4?v=${Math.floor(Date.now() / 3600e3)}`, caption: cap, parse_mode: 'HTML', supports_streaming: true, width: 1920, height: 1080, reply_markup: kb });
+  if (rv.ok) return rv;
+  const r = await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/mountains_${lang === 'uz' ? 'uz' : 'ru'}.png?v=${fresh()}`, caption: cap, parse_mode: 'HTML', reply_markup: kb });
   return r.ok ? r : tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
 }
 // one place (id) or all of them as text, with the same buttons
