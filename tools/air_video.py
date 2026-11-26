@@ -20,17 +20,17 @@ import prob15_video as PV
 W, H, DPI = PV.W, PV.H, PV.DPI
 MAP = PV.MAP; LA0, LA1 = PV.LAT0, PV.LAT1; LC = 64.8
 COSL = math.cos(math.radians((LA0 + LA1) / 2)); SPAN = (LA1 - LA0) / COSL * (MAP[2] * W) / (MAP[3] * H); EXT = (LC - SPAN / 2, LC + SPAN / 2)
-LATS = np.round(np.arange(36.0, 47.01, 0.75), 2); LONS = np.round(np.arange(54.0, 76.51, 0.75), 2)  # 0.75°: ~480 points, fetched in ~2 minutes (CAMS itself is 0.4°)
+LATS = np.round(np.arange(35.25, 47.76, 0.75), 2); LONS = np.round(np.arange(50.25, 80.26, 0.75), 2)  # 0.75°: ~480 points, fetched in ~2 minutes (CAMS itself is 0.4°)
 API = 'https://air-quality-api.open-meteo.com/v1/air-quality'
 VARS = ['us_aqi', 'pm2_5', 'pm10', 'dust']
 # the US AQI colours, softened: good, moderate, unhealthy for sensitive groups, unhealthy, very unhealthy, hazardous
 AST = np.array([0, 35, 50, 75, 100, 150, 200, 300, 400], float)
 ACL = np.array([matplotlib.colors.to_rgb(c) for c in ['#38b26a', '#7fc65a', '#c8d84a', '#f3d23f', '#f5a63a', '#ec6634', '#d6303c', '#8e3b9c', '#6b1532']])
 CATS = [(0, 50, '#5cbf63'), (51, 100, '#f2d23f'), (101, 150, '#f5933a'), (151, 200, '#e0463b'), (201, 300, '#8e3b9c'), (301, 500, '#6b1532')]
-TX = {'ru': dict(title='Качество воздуха · 24 часа', tz='по Ташкенту', src='CAMS (Copernicus, ECMWF) · индекс US AQI', cats=['хорошо', 'умеренно', 'вредно для чувствительных', 'вредно', 'очень вредно', 'опасно'],
+TX = {'ru': dict(title='Качество воздуха · 24 часа', tz='по Ташкенту', src='CAMS (Copernicus, ECMWF) · индекс US AQI', cats=['хорошо', 'умеренно', 'вредно чувствит.', 'вредно', 'очень вредно', 'опасно'],
                  leg='индекс качества воздуха (AQI)', chart='{n}: индекс качества воздуха по часам', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], dust='пыль',
                  intro1='Качество воздуха', intro2='на 24 часа по всему Узбекистану', end1='Воздух в вашем городе', end2='в Telegram-боте @ObHavo_ECMWF_bot'),
-      'uz': dict(title='Havo sifati · 24 soat', tz='Toshkent vaqti', src='CAMS (Copernicus, ECMWF) · US AQI indeksi', cats=['yaxshi', 'o‘rtacha', 'sezgirlar uchun zararli', 'zararli', 'juda zararli', 'xavfli'],
+      'uz': dict(title='Havo sifati · 24 soat', tz='Toshkent vaqti', src='CAMS (Copernicus, ECMWF) · US AQI indeksi', cats=['yaxshi', 'o‘rtacha', 'sezgirlarga zararli', 'zararli', 'juda zararli', 'xavfli'],
                  leg='havo sifati indeksi (AQI)', chart='{n}: soatma-soat havo sifati indeksi', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], dust='chang',
                  intro1='Havo sifati', intro2='butun O‘zbekiston bo‘yicha 24 soatga', end1='Shahringizdagi havo', end2='Telegram-botda: @ObHavo_ECMWF_bot')}
 CTX = {}
@@ -118,7 +118,7 @@ def draw(job):
     fig.text(0.016, 0.183, X['leg'] + ':', fontsize=13, fontweight='bold', color=PV.INK, va='center'); xb = 0.016 + 0.0068 * len(X['leg']) + 0.016
     for (a, b, col), nm in zip(CATS, X['cats']):
         fig.patches.append(FancyBboxPatch((xb, 0.171), 0.022, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=col, ec='none'))
-        fig.text(xb + 0.026, 0.183, f'{nm} {a}–{b}' if b < 500 else f'{nm} {a}+', fontsize=11, color=PV.MUTED, va='center'); xb += 0.034 + 0.0058 * (len(nm) + 8)
+        fig.text(xb + 0.026, 0.183, f'{nm} {a}–{b}' if b < 500 else f'{nm} {a}+', fontsize=10.5, color=PV.MUTED, va='center'); xb += 0.032 + 0.0052 * (len(nm) + 8)
     with matplotlib.rc_context({'hatch.color': '#8a6d3b', 'hatch.linewidth': 0.8}):
         fig.patches.append(FancyBboxPatch((xb, 0.171), 0.022, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#f3ead8', ec='#cfc5b4', hatch='....', lw=0.6))
     fig.text(xb + 0.026, 0.183, X['dust'], fontsize=11, color=PV.MUTED, va='center')
