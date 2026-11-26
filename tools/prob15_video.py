@@ -49,12 +49,20 @@ def precip_rgba(P, sf, a_in=1.0):
 
 
 # the temperature map's colours (like the professional weather maps): violet frost → blue → cyan around 0° → green → yellow → orange → red heat
-TST = np.array([-40, -30, -20, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 45], float)
-TCL = np.array([matplotlib.colors.to_rgb(c) for c in ['#3b0f70', '#6a3d9a', '#4150b8', '#3a8bd4', '#5db6e4', '#a9dcef', '#cdebc7', '#a5d66b', '#e5e05a', '#fdc04e', '#f7883b', '#e4462d', '#b5162b', '#6b0f1a']])
+TST = np.array([-40, -30, -24, -18, -12, -6, -2, 0, 2, 6, 10, 14, 18, 22, 26, 30, 35, 45], float)
+TCL = np.array([matplotlib.colors.to_rgb(c) for c in ['#2b0a4e', '#5b2a86', '#7d4bb8', '#4c5fd0', '#2f86d8', '#38b3e0', '#7fd3ea', '#c8ecf2', '#d9f0c4', '#a7dc84',
+                                                      '#6cc36a', '#c9dd52', '#f3dc4c', '#f9b23f', '#f27f33', '#df4a2b', '#b01d31', '#5c0b22']])
+
+
+TLV = np.arange(-50, 52, 2.0)  # 2° bands
+TBC = None
 
 
 def temp_rgb(T):
     return np.stack([np.interp(np.nan_to_num(T, nan=0), TST, TCL[:, k]) for k in range(3)], -1)
+
+
+TBC = [tuple(c) for c in np.stack([np.interp((TLV[:-1] + TLV[1:]) / 2, TST, TCL[:, k]) for k in range(3)], -1)]
 
 
 def grad_bar(fig, x, y, w, h, R):
@@ -200,11 +208,21 @@ def draw(job):
     P, T = fr['P'], fr['T']; a_in = fr.get('fade', 1.0); TM = C.get('mode') == 'temp'
     sf = np.clip((1.2 - T) / 2.6, 0, 1)  # the share of snow: rain above about +1°, wet snow around 0°, snow below about −1.5°
     LO, LA = C['LONu'], C['LATu']
-    if TM:  # the temperature map: the colour of the 2 m temperature everywhere, isotherms every 5°
-        al = np.where(np.isfinite(T), 0.88 * a_in, 0)
-        ax.imshow(np.dstack([temp_rgb(T), al]).astype(np.float32), extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.6)
-        ax.contour(LO, LA, T, levels=[l for l in range(-40, 46, 5) if l != 0], colors=['#ffffff'], linewidths=0.55, alpha=0.45 * a_in, zorder=1.7)
+    if TM:  # the temperature map, as on a forecaster's chart: 2° colour bands, the relief shaded through, labelled isotherms, the warmest and the coldest point
+        Tf_ = np.where(np.isfinite(T), T, np.nan)
+        ax.contourf(LO, LA, Tf_, levels=TLV, colors=TBC, alpha=0.93 * a_in, zorder=1.6, antialiased=True, extend='both')
+        if C.get('relief') is not None:  # the mountains seen through the colour
+            ax.imshow(C['relief'], extent=(x0, x1, C['la0'], C['la1']), origin='upper', interpolation='bilinear', aspect='auto', zorder=1.62, alpha=0.9)
+        cs = ax.contour(LO, LA, Tf_, levels=[l for l in range(-50, 51, 5) if l != 0], colors=['#1d2733'], linewidths=0.55, alpha=0.38 * a_in, zorder=1.7)
+        try: ax.clabel(cs, cs.levels, inline=True, fmt=lambda v: f'{v:+.0f}°'.replace('+0°', '0°'), fontsize=9, colors=['#1d2733'], inline_spacing=4)
+        except Exception: pass
         ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
+        m_ = np.isfinite(Tf_); ny_, nx_ = m_.shape; m_[:, :nx_ // 12] = False; m_[:, -nx_ // 12:] = False; m_[:ny_ // 8] = False; m_[-ny_ // 8:] = False  # away from the edges and the corner texts
+        if m_.any():
+            for fn, col, sym in ((np.nanargmax, '#c0262d', '▲'), (np.nanargmin, '#2350b5', '▼')):
+                k_ = fn(np.where(m_, Tf_, np.nan)); yy, xx = np.unravel_index(k_, Tf_.shape)
+                ax.annotate(f"{sym} {Tf_[yy, xx]:+.0f}°".replace('+0°', '0°'), (LO[xx], LA[yy]), ha='center', va='center', fontsize=12.5, fontweight='bold', color=col, zorder=7.5,
+                            bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.5', fc='white', ec=col, lw=1.4, alpha=0.9 * a_in))
     if fr.get('Cl') is not None and not TM:  # clouds: a soft grey veil under the rain, thicker where the sky is more covered
         cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = (0.6, 0.64, 0.7); cl[..., 3] = np.clip((fr['Cl'] - 0.5) / 0.5, 0, 1) ** 1.3 * 0.32 * a_in
         ax.imshow(cl, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.5)
@@ -215,7 +233,8 @@ def draw(job):
         if P.max() >= 50: ax.contour(LO, LA, P, levels=[50, 90], colors=['#ffffff'], linewidths=0.6, alpha=0.4 * a_in, zorder=2.05)
     if fr.get('wind') is not None:  # the wind: thin streams along it, longer and darker where it is stronger
         sg, al, lw = fr['wind']
-        if len(sg): ax.add_collection(LineCollection(sg, colors=[(0.16, 0.24, 0.34, a_ * a_in) for a_ in al], linewidths=lw, zorder=2.4, capstyle='round', joinstyle='round'))
+        wc = (1, 1, 1) if TM else (0.16, 0.24, 0.34); wk = 1.6 if TM else 1.0  # on the temperature colours: white streams
+        if len(sg): ax.add_collection(LineCollection(sg, colors=[wc + (min(1, a_ * wk) * a_in,) for a_ in al], linewidths=lw, zorder=2.4, capstyle='round', joinstyle='round'))
     # 0° line: where rain turns to snow
     if np.nanmin(T) < 0 < np.nanmax(T):
         ax.contour(LO, LA, T, levels=[0], colors=['#3d7be0'], linewidths=1.3, linestyles=[(0, (5, 3))], alpha=0.75 * a_in, zorder=2.6)
@@ -256,7 +275,7 @@ def draw(job):
     # legend
     if TM:  # the temperature scale, the isotherms, the wind
         fig.text(0.016, 0.183, X['temp'], fontsize=13, fontweight='bold', color=INK, va='center')
-        g_ = np.linspace(-30, 40, 300); bx_ = fig.add_axes([0.11, 0.171, 0.42, 0.024]); bx_.imshow(temp_rgb(g_)[None], aspect='auto', interpolation='bilinear', extent=(-30, 40, 0, 1)); bx_.axis('off')
+        g_ = np.floor(np.linspace(-30, 39.99, 350) / 2) * 2 + 1; bx_ = fig.add_axes([0.11, 0.171, 0.42, 0.024]); bx_.imshow(temp_rgb(g_)[None], aspect='auto', interpolation='nearest', extent=(-30, 40, 0, 1)); bx_.axis('off')
         for v_ in range(-30, 41, 10): fig.text(0.11 + 0.42 * (v_ + 30) / 70 + (0.008 if v_ == -30 else -0.008 if v_ == 40 else 0), 0.183, f'{v_:+d}°'.replace('+0°', '0°'), fontsize=9.5, fontweight='bold', color='white' if v_ <= -20 or v_ >= 30 else INK, ha='center', va='center')
         fig.add_artist(matplotlib.lines.Line2D([0.548, 0.568], [0.183, 0.183], color='#9aa5b1', lw=1.2, transform=fig.transFigure)); fig.text(0.573, 0.183, X['iso'], fontsize=12, color=MUTED, va='center')
         fig.add_artist(matplotlib.lines.Line2D([0.675, 0.698], [0.183, 0.183], color='#3d7be0', lw=1.6, ls=(0, (4, 2.5)), transform=fig.transFigure)); fig.text(0.703, 0.183, '0°', fontsize=12, color=MUTED, va='center')
