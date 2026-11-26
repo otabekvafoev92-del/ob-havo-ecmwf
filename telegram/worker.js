@@ -458,15 +458,15 @@ const TJX = { ru: { btn: '🧭 Откуда придут осадки', moist: '
               en: { btn: '🧭 Where the rain comes from', moist: 'Where the rain comes from, 3 days: grey — clouds, blue — rain, violet — snow, red — cyclone, yellow — strong wind, orange dashes — the moisture’s path to a city (ECMWF)', m15: '📅 15-day video', acc: '💧 How much rain and snow will fall', accCap: 'How much will fall: rain (mm) and snow (cm) adding up from the start of the forecast; totals at the cities (ECMWF, 3 days)', moist2: 'Rain, snow and wind for 2 days (the region in a window)', moist15: 'Rain, snow and wind for 15 days (ECMWF; after day 10 one ensemble scenario, approximate)', m15none: 'The 15-day video is still being prepared — check a little later.', title: 'Where the rain comes from', none: 'No precipitation expected in the big cities in the next 3 days. ☀️', foot: 'The line — the 2-day path of the air (at ~3 km) that brings the precipitation, before it starts. ECMWF model.' } };
 async function trajData(env, rid) { return fetch(`${base(env)}/prob/hr/${rid}_traj.json?v=${fresh()}`).then(r => r.ok ? r.json() : null).catch(() => null); }
 /* ---------- 🎬 all the videos in one place, in the one look (tools/prob15_video.py, moist15_video.py, weeks_video.py, place15.py) ---------- */
-const VHX = { ru: { cap: 'Вероятность осадков и температура · 15 дней по часам · тучи, туман, гроза', moist: '🧭 Откуда идёт влага · тучи и осадки · 15 дней', weeks: '📅 По неделям: осадки к норме и температура', place: '📍 Моё место крупно + страна' },
-  uz: { cap: 'Yog‘ingarchilik ehtimoli va harorat · 15 kun soatma-soat · bulut, tuman, momaqaldiroq', moist: '🧭 Namlik qayerdan keladi · bulut va yog‘in · 15 kun', weeks: '📅 Haftalar bo‘yicha: yog‘in me’yorga va harorat', place: '📍 Mening joyim yaqindan + davlat' },
-  en: { cap: 'Chance of precipitation and temperature · 15 days by the hour · clouds, fog, thunder', moist: '🧭 Where the moisture comes from · clouds and rain · 15 days', weeks: '📅 By weeks: precipitation against the normal and temperature', place: '📍 My place close up + the country' } };
+const VHX = { ru: { cap: 'Вероятность осадков и температура · 15 дней по часам · тучи, туман, гроза', moist: '🧭 Откуда идёт влага · тучи и осадки · 15 дней', weeks: '📅 По неделям: осадки к норме и температура', sat: '🛰 Спутник: снимок дня в истинных цветах (375 м)', place: '📍 Моё место крупно + страна' },
+  uz: { cap: 'Yog‘ingarchilik ehtimoli va harorat · 15 kun soatma-soat · bulut, tuman, momaqaldiroq', moist: '🧭 Namlik qayerdan keladi · bulut va yog‘in · 15 kun', weeks: '📅 Haftalar bo‘yicha: yog‘in me’yorga va harorat', sat: '🛰 Sun’iy yo‘ldosh: kun surati haqiqiy ranglarda (375 m)', place: '📍 Mening joyim yaqindan + davlat' },
+  en: { cap: 'Chance of precipitation and temperature · 15 days by the hour · clouds, fog, thunder', moist: '🧭 Where the moisture comes from · clouds and rain · 15 days', weeks: '📅 By weeks: precipitation against the normal and temperature', sat: '🛰 Satellite: today in true colour (375 m)', place: '📍 My place close up + the country' } };
 const p15url = (rid, L) => rid === 'UZ' ? `${EVRAW}/p15/p15_${L}.mp4` : `${EVRAW}/p15c-${rid}/country_${rid}_${L}.mp4`;
 async function videoHub(env, chat, lang, rid, u) {
   const X = VHX[lang] || VHX.ru, L = lang === 'uz' ? 'uz' : 'ru', url = p15url(rid, L);
   if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return handle({ callback_query: { id: '0', from: { id: chat }, data: `V:${lang}:${rid}`, message: { chat: { id: chat, type: 'private' } } } }, env);
   const pl = u && u.place ? JSON.parse(u.place) : null, rows = [];
-  if (rid === 'UZ') rows.push([{ text: X.moist, callback_data: `MV:${lang}:UZ` }], [{ text: X.weeks, callback_data: `WV:${lang}:UZ` }]);
+  if (rid === 'UZ') rows.push([{ text: X.moist, callback_data: `MV:${lang}:UZ` }], [{ text: X.weeks, callback_data: `WV:${lang}:UZ` }], [{ text: X.sat, callback_data: `ST:${lang}:UZ` }]);
   if (pl) rows.push([{ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place }]);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   return tg(env, 'sendVideo', { chat_id: chat, video: `${url}?v=${Math.floor(Date.now() / 1800e3)}`, caption: `🎬 ${FLAG[rid] || ''} <b>${NAMES[rid][lang]}</b> · ${X.cap}`, parse_mode: 'HTML', supports_streaming: true, width: 1920, height: 1080,
@@ -1773,6 +1773,11 @@ async function handle(up, env) {
   if (kind === 'CY') return sendCountry(env, chat.id, lang, id);
   if (kind === 'CR' && NAMES[id]) { await saveUser(env, chat.id, { lang, region: id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id] || '🌍'} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, id) }); }
   if (kind === 'WK') return weekDays(env, chat.id, lang, id);
+  if (kind === 'ST') {  // the satellite in true colour: the latest clear pass as a picture, the last two days' passes as a video (tools/sat_true.py)
+    const L = lang === 'uz' ? 'uz' : 'ru', v = Math.floor(Date.now() / 1800e3), cap = `🛰 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).sat}`;
+    await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_photo' });
+    await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${EVRAW}/sattrue/sattrue_${L}.jpg?v=${v}`, caption: cap, parse_mode: 'HTML' });
+    return tg(env, 'sendVideo', { chat_id: chat.id, video: `${EVRAW}/sattrue/sattrue_${L}.mp4?v=${v}`, supports_streaming: true, width: 1920, height: 1080 }); }
   if (kind === 'WV') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' }); return tg(env, 'sendVideo', { chat_id: chat.id, video: `${EVRAW}/weeks/weeks_${lang === 'uz' ? 'uz' : 'ru'}.mp4?v=${Math.floor(Date.now() / 3600e3)}`, caption: `📅 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).weeks}`, parse_mode: 'HTML', supports_streaming: true }); }
   if (kind === 'PH') { const [, , la, lo] = cb.data.split(':'); await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_photo' }); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 25), null, 'photo'); }
   if (kind === 'PV') { const [, , la, lo] = cb.data.split(':'); return placeVideo(env, chat.id, lang, +la, +lo); }
