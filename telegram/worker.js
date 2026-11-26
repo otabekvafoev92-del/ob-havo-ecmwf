@@ -406,7 +406,7 @@ const TBF = { ru: 'Температура: ночь…день, °C · ☂ — �
 const admCell = v => { if (!v) return ['—', '']; const t = `${t0(v[0])}…${t0(v[1])}`.replace(/°/g, ''); return [t, v[2] >= 20 ? `${v[3] ? '❄' : '☂'}${v[2]}%` : '—']; };
 function admTable(rows, lang, first) {
   const H = TBH[lang] || TBH.ru, short = n => n.replace(/ viloyati$| обл\.$| области$| tumani$| р-н$| region$| district$/, '');
-  let nm = rows.map(r => short(r.name)); nm = nm.map((x, i) => nm.indexOf(x) !== nm.lastIndexOf(x) ? rows[i].name.replace(/ viloyati$/, ' vil.').replace(/ области$| обл\.$/, ' обл.') : x);
+  let nm = rows.map(r => short(r.name)); nm = nm.map((x, i) => nm.some((y, j) => j !== i && (y === x || y.startsWith(x + ' '))) ? rows[i].name.replace(/ viloyati$/, ' vil.').replace(/ области$| обл\.$/, ' обл.') : x);
   const w = Math.min(17, Math.max(...nm.map(x => x.length), 6));
   const cut = x => x.length > w ? x.slice(0, w - 1) + '…' : x.padEnd(w);
   const line = (n, a, b) => `${cut(n)} ${a[0].padStart(7)} ${a[1].padEnd(5)} ${b[0].padStart(7)} ${b[1]}`;
