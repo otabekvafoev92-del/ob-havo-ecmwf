@@ -1,0 +1,14 @@
+name: Satellite sources probe
+on: {workflow_dispatch: {}}
+permissions: {contents: write}
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pip install -q requests
+          python tools/sat_probe.py probe
+          cd probe && git init -q && git checkout -q -b satprobe && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm probe
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" satprobe
