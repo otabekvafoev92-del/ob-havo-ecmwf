@@ -1327,6 +1327,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
     return `\n      ☂️ ${r}\n      🧥 ${K.wear}: ${wearText(lang, x.lo, x.hi, x.p, x.snow, x.w)}`;
   };
   const day = (x, w) => `${x.ic} <b>${w}</b> · ${wd(x.d)}\n      ${deg(x.lo)}…${deg(x.hi)} · ${pr(x)}${isFinite(x.w) && x.w >= 5 ? ` · ${K.windW} ${Math.round(x.w)} ${L.ms}` : ''}${detail(x)}`;
+  if (range === 'photo') return photo15(env, chat, lang, lat, lon, place, D);  // the 15 days as one picture
   if (range) {  // one week (or any days asked for), day by day
     const WX = WKX[lang] || WKX.ru, [a, b] = range, Dw = D.filter(x => x.d >= a && x.d <= b);
     const nm0 = place ? `${FLAG[place[4]] || '📍'} <b>${esc(pname(place, lang))}</b>` : `📍 <b>${lat.toFixed(2)}, ${lon.toFixed(2)}</b>`;
@@ -1351,10 +1352,42 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   if (rid_ && chat > 0 && !(kbOver && kbOver.keyboard)) {
     const u = `${base(env)}/live.html?r=${rid_}&l=${lang}&lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}&n=${encodeURIComponent(String(nm).replace(/<[^>]+>/g, '').slice(0, 40))}`;
     // (the menu keyboard under the input field is persistent: it stays while this message carries the map button)
-    return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }], [pvBtn(lang, lat, lon)]] } });
+    return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }], [phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)]] } });
   }
-  if (chat > 0) return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[pvBtn(lang, lat, lon)]] } });
+  if (chat > 0) return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)]] } });
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
+}
+/* ---------- 🖼 the 15 days of a place as one picture (Full HD, drawn by QuickChart from the same numbers as the text) ---------- */
+const PHX = { ru: { btn: '🖼 Фото прогноза на 15 дней', t: '{n} · прогноз на 15 дней', p: 'Вероятность осадков, %', hi: 'Днём, °C', lo: 'Ночью, °C', src: 'Osmon · модели ECMWF, NOAA, DWD · t.me/ObHavo_ECMWF_bot', fail: '😔 Не удалось нарисовать картинку, попробуйте позже.' },
+  uz: { btn: '🖼 15 kunlik prognoz rasmi', t: '{n} · 15 kunlik prognoz', p: 'Yog‘in ehtimoli, %', hi: 'Kunduzi, °C', lo: 'Kechasi, °C', src: 'Osmon · ECMWF, NOAA, DWD modellari · t.me/ObHavo_ECMWF_bot', fail: '😔 Rasmni chizib bo‘lmadi, keyinroq urinib ko‘ring.' },
+  en: { btn: '🖼 15-day forecast picture', t: '{n} · 15-day forecast', p: 'Chance of precipitation, %', hi: 'By day, °C', lo: 'At night, °C', src: 'Osmon · ECMWF, NOAA, DWD models · t.me/ObHavo_ECMWF_bot', fail: '😔 Could not draw the picture, try again later.' } };
+const phBtn = (lang, lat, lon) => ({ text: (PHX[lang] || PHX.ru).btn, callback_data: `PH:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}` });
+function chart15(X, nm, lab, D, rc, r1) {  // Chart.js 2 config as code (the label formatters are functions)
+  const F = { hi: 'function(v){return (v>0?"+":"")+v+"°"}', pc: 'function(v){return v>=10?v+"%":""}', tk: 'function(v){return v+"°"}' };
+  const cfg = { type: 'bar', data: { labels: lab, datasets: [
+      { type: 'line', label: X.hi, data: D.map(x => r1(x.hi)), yAxisID: 't', borderColor: '#e0601b', backgroundColor: '#e0601b', borderWidth: 4, pointRadius: 6, fill: false, lineTension: 0.35, datalabels: { align: 'top', color: '#c2410c', font: { size: 22, weight: 'bold' }, formatter: '@hi' } },
+      { type: 'line', label: X.lo, data: D.map(x => r1(x.lo)), yAxisID: 't', borderColor: '#3f7fd6', backgroundColor: '#3f7fd6', borderWidth: 3, pointRadius: 5, fill: false, lineTension: 0.35, datalabels: { align: 'bottom', color: '#1d4ed8', font: { size: 19, weight: 'bold' }, formatter: '@hi' } },
+      { label: X.p, data: D.map(x => x.p), yAxisID: 'p', backgroundColor: D.map(rc), barPercentage: 0.75, datalabels: { anchor: 'end', align: 'start', color: '#15202b', font: { size: 18, weight: 'bold' }, formatter: '@pc' } }] },
+    options: { layout: { padding: { left: 20, right: 30, top: 10, bottom: 10 } },
+      title: { display: true, text: [X.t.replace('{n}', nm)], fontSize: 40, fontColor: '#14233a', fontStyle: 'bold', padding: 24 },
+      legend: { position: 'bottom', labels: { fontSize: 22, fontColor: '#5b6876', padding: 26 } },
+      scales: { xAxes: [{ gridLines: { display: false }, ticks: { fontSize: 20, fontColor: '#15202b' } }],
+        yAxes: [{ id: 'p', position: 'right', ticks: { min: 0, max: 300, display: false }, gridLines: { display: false } },
+                { id: 't', position: 'left', ticks: { fontSize: 18, fontColor: '#98a3ae', callback: '@tk', min: Math.floor(Math.min(...D.map(x => x.lo)) - 8), max: Math.ceil(Math.max(...D.map(x => x.hi)) + 4) }, gridLines: { color: '#eef1f4' } }] },
+      plugins: { datalabels: { display: true } } } };
+  return JSON.stringify(cfg).replace(/"@(hi|pc|tk)"/g, (m, k) => F[k]);
+}
+async function photo15(env, chat, lang, lat, lon, place, D) {
+  const X = PHX[lang] || PHX.ru, nm = place ? `${FLAG[place[4]] || flagOf(place[4])} ${pname(place, lang)}` : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const lab = D.map(x => { const t = new Date(x.d + 'T12:00:00Z'); return [`${x.ic} ${WD[lang][t.getUTCDay()]}`, `${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`]; });
+  const rc = x => x.p < 10 ? '#e7edf3' : x.snow ? ['#eadcff', '#d3bcfa', '#b897f0', '#9b72e2', '#7a4bc8'][Math.min(4, Math.floor(x.p / 20))] : ['#d4e9f9', '#93c6ee', '#4a98e0', '#1c63c0', '#5b2fa8'][Math.min(4, Math.floor(x.p / 20))];
+  const r1 = v => Math.round(v), chart = chart15(X, nm, lab, D, rc, r1);
+  const r = await fetch('https://quickchart.io/chart/create', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chart, width: 1920, height: 1080, backgroundColor: '#ffffff', format: 'png', version: '2' }) }).then(r => r.json()).catch(() => null);
+  if (!r || !r.url) return tg(env, 'sendMessage', { chat_id: chat, text: X.fail });
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
+  const o = await tg(env, 'sendDocument', { chat_id: chat, document: r.url + '.png', caption: `🖼 ${X.t.replace('{n}', nm)}\n${X.src}`, ...(chat > 0 ? { reply_markup: { inline_keyboard: [[pvBtn(lang, lat, lon)]] } } : {}) });
+  if (!o.ok) return tg(env, 'sendPhoto', { chat_id: chat, photo: r.url, caption: `🖼 ${X.t.replace('{n}', nm)}\n${X.src}` });
+  return o;
 }
 /* ---------- 🎬 the 15-day video of a place on demand: the country's video and the place's close-up (.github/workflows/place15.yml) ---------- */
 const PVX = { ru: { btn: '🎬 Видео 15 дней по часам: страна + это место', wait: '⏳ Готовлю 2 видео: вся страна и {n} крупно — осадки и температура на 15 дней по часам. Пришлю сюда через 7–10 минут.', busy: '⏳ Видео уже готовится, пришлю, как будет готово.', fail: '😔 Не удалось запустить подготовку видео, попробуйте позже.' },
@@ -1708,6 +1741,7 @@ async function handle(up, env) {
   if (kind === 'CR' && NAMES[id]) { await saveUser(env, chat.id, { lang, region: id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id] || '🌍'} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, id) }); }
   if (kind === 'WK') return weekDays(env, chat.id, lang, id);
   if (kind === 'WV') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' }); return tg(env, 'sendVideo', { chat_id: chat.id, video: `${EVRAW}/weeks/weeks_${lang === 'uz' ? 'uz' : 'ru'}.mp4?v=${Math.floor(Date.now() / 3600e3)}`, caption: `📅 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).weeks}`, parse_mode: 'HTML', supports_streaming: true }); }
+  if (kind === 'PH') { const [, , la, lo] = cb.data.split(':'); await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_photo' }); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 25), null, 'photo'); }
   if (kind === 'PV') { const [, , la, lo] = cb.data.split(':'); return placeVideo(env, chat.id, lang, +la, +lo); }
   if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
