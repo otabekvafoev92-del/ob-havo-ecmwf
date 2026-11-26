@@ -89,7 +89,7 @@ def render(data, out, lang, view):
         list(pool.imap_unordered(PV.draw, jobs, chunksize=4))
         r = pool.apply(PV.encode, (lang,))
     print(r, flush=True)
-    return out / f"{view['stem']}{'_t' if os.environ.get('P15_MODE') == 'temp' else ''}_{lang}.mp4"
+    return out / f"{view['stem']}{ {'temp': '_t', 'cloud': '_c'}.get(os.environ.get('P15_MODE', ''), '')}_{lang}.mp4"
 
 
 def src_for(la, lo):

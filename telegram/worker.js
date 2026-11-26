@@ -462,6 +462,11 @@ const VHX = { ru: { temp: '🌡 Температура воздуха · 15 дн
   uz: { temp: '🌡 Havo harorati · 15 kun soatma-soat', tcap: 'Havo harorati · 15 kun soatma-soat · izotermalar, shamol', cap: 'Yog‘ingarchilik ehtimoli va harorat · 15 kun soatma-soat · bulut, tuman, momaqaldiroq', moist: '🧭 Namlik qayerdan keladi · bulut va yog‘in · 15 kun', weeks: '📅 Haftalar bo‘yicha: yog‘in me’yorga va harorat', sat: '🛰 Sun’iy yo‘ldosh: kunning aniq suratlari va hozirgacha bulutlar', place: '📍 Mening joyim yaqindan + davlat' },
   en: { temp: '🌡 Air temperature · 15 days by the hour', tcap: 'Air temperature · 15 days by the hour · isotherms, wind', cap: 'Chance of precipitation and temperature · 15 days by the hour · clouds, fog, thunder', moist: '🧭 Where the moisture comes from · clouds and rain · 15 days', weeks: '📅 By weeks: precipitation against the normal and temperature', sat: '🛰 Satellite: sharp passes of the day and clouds up to now', place: '📍 My place close up + the country' } };
 const p15url = (rid, L, t = '') => rid === 'UZ' ? `${EVRAW}/p15/p15${t}_${L}.mp4` : `${EVRAW}/p15c-${rid}/country_${rid}${t}_${L}.mp4`;
+async function newVids(id, lang) {  // the 15-day videos in the new look that exist for the place: chance of precipitation, temperature, clouds
+  const L = lang === 'uz' ? 'uz' : 'ru', urls = ['', '_t', '_c'].map(t => p15url(id, L, t));
+  const ok = await Promise.all(urls.map(x => fetch(x, { method: 'HEAD' }).then(r => r.ok).catch(() => false)));
+  return ok[0] ? urls.filter((x, k) => ok[k]) : [];
+}
 async function videoHub(env, chat, lang, rid, u) {
   const X = VHX[lang] || VHX.ru, L = lang === 'uz' ? 'uz' : 'ru', url = p15url(rid, L);
   if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return handle({ callback_query: { id: '0', from: { id: chat }, data: `V:${lang}:${rid}`, message: { chat: { id: chat, type: 'private' } } } }, env);
@@ -1346,7 +1351,10 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   // one icon per day: rain drops, snow, sun, clouds, and fog or thunder from the day's weather code
   for (const x of D) { const c = NW && NW.codes ? NW.codes[x.d] : null;
     x.ic = c >= 95 && x.p >= 30 ? '⛈' : (c === 45 || c === 48) && x.p < 35 ? '🌫' : x.p >= 35 ? (x.snow ? '❄️' : '💧') : x.ic; }
-  const rows = D.slice(2).map(x => `${x.ic} ${pad(wd(x.d), 9)}${pad(`${f(x.lo)}…${f(x.hi)}°`, 10)}${bar(x.p)} ${pad(x.p < 20 ? '—' : `${x.p}%`, 4)}${x.mm >= 0.5 ? ` ${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : ''}`);
+  // the columns as wide as their longest text; the icon at the end of the line (an emoji's width differs between phones and broke the columns)
+  const Dn = D.slice(2), tt = x => `${f(x.lo)}…${f(x.hi)}°`, mmT = x => x.mm >= 0.5 ? `${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : '';
+  const cw = { d: Math.max([...K.cDay].length, ...Dn.map(x => [...wd(x.d)].length)) + 2, t: Math.max([...K.cT].length, ...Dn.map(x => [...tt(x)].length)) + 2, m: Math.max(0, ...Dn.map(x => [...mmT(x)].length)) };
+  const rows = Dn.map(x => `${pad(wd(x.d), cw.d)}${pad(tt(x), cw.t)}${bar(x.p)} ${pad(x.p < 20 ? '—' : `${x.p}%`, 4)} ${pad(mmT(x), cw.m)} ${x.ic}`);
   const nm = place ? `${FLAG[place[4]] || '📍'} <b>${esc(pname(place, lang))}</b>` : `📍 <b>${lat.toFixed(2)}, ${lon.toFixed(2)}</b>`;
   const hm = t => { const l = new Date(t + off * 3600e3); return `${String(l.getUTCDate()).padStart(2, '0')}.${String(l.getUTCMonth() + 1).padStart(2, '0')} ${String(l.getUTCHours()).padStart(2, '0')}:${String(l.getUTCMinutes()).padStart(2, '0')}`; };
   const u = I.built ? `${hm(Date.parse(I.built))} · ${K.model} ${hm(run).slice(0, 5)} ${hm(run).slice(6)}` : hm(run);
@@ -1375,7 +1383,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   const text = [`${nm} · ${L.head}`, ...(isAdmin ? [`<i>${I.built ? K.upd : K.run} ${u} (UTC${off >= 0 ? '+' : ''}${off})</i>`] : []), '', ...(nowT ? [nowT, ''] : []),
     `<b>${K.brief}</b>`, ...sum.map(x => `▸ ${x}`), '',
     day(D[0], D[0].d === today ? T[lang].tdy : wd(D[0].d)), ...(D[1] ? [day(D[1], D[1].d === tmrw ? T[lang].tmw : wd(D[1].d))] : []), '',
-    ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc('   ' + pad(K.cDay, 9) + pad(K.cT, 10) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
+    ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc(pad(K.cDay, cw.d) + pad(K.cT, cw.t) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
     `<i>${K.note}</i>`].join('\n');
   let kb = kbOver && kbOver.keyboard ? kbOver : null;
   if (!kb) { const uu = await getUser(env, chat); kb = replyKb(env, lang, place && NAMES[place[4]] ? place[4] : (uu && NAMES[uu.region] ? uu.region : 'UZ')); }
@@ -1882,7 +1890,8 @@ async function handle(up, env) {
   if (kind === 'V') {
     let vids = ['prob', 'temp', 'cloud', 'wind'].map(p => items.find(i => (i.product || 'prob') === p)).filter(Boolean);
     if (!vids.length) vids = ['prob', 'temp', 'cloud', 'wind'].map(p => M.items.find(i => i.region === id && i.lang === 'ru' && (i.product || 'prob') === p)).filter(Boolean);
-    const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}?v=${fresh()}`, supports_streaming: true }));
+    const nv = await newVids(id, lang);  // the new look first: chance of precipitation, temperature, clouds
+    const media = nv.length ? nv.map(u => ({ type: 'video', media: `${u}?v=${Math.floor(Date.now() / 1800e3)}`, supports_streaming: true })) : vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}?v=${fresh()}`, supports_streaming: true }));
     media[0].caption = forecastText(days, lang, NAMES[id][lang], id, { more: 3, limit: 1000 }) || `${NAMES[id][lang]} · ${T[lang].d15}`;
     media[0].parse_mode = 'HTML';
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
@@ -2270,8 +2279,9 @@ async function post(env, M, chat, lang0, id0, bot) {
   const updated = M.run.slice(8, 10) + '.' + M.run.slice(5, 7) + ' ' + M.run.slice(11, 16) + ' UTC';
   const cap = forecastText(days, lang, NAMES[id][lang], id, { more: 3, foot: T[lang].swipe, limit: 1024 });
   if (!cap) return { ok: false, description: 'no data' };
-  if (!vids.length) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot, chat), disable_web_page_preview: true });
-  const media = vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}?v=${fresh()}`, supports_streaming: true }));
+  const nv = await newVids(id, lang);
+  if (!vids.length && !nv.length) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: postKb(env, lang, id, bot, chat), disable_web_page_preview: true });
+  const media = nv.length ? nv.map(u => ({ type: 'video', media: `${u}?v=${Math.floor(Date.now() / 1800e3)}`, supports_streaming: true })) : vids.map(v => ({ type: 'video', media: `${base(env)}/prob/${v.video}?v=${fresh()}`, supports_streaming: true }));
   media[0].caption = cap; media[0].parse_mode = 'HTML';
   let r = await tg(env, 'sendMediaGroup', { chat_id: chat, media });
   // Telegram could not take the videos by link (too big, the site slow): try the two lightest ones, then the text alone.

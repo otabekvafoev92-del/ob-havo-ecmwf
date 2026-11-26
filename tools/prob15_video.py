@@ -54,6 +54,7 @@ TCL = np.array([matplotlib.colors.to_rgb(c) for c in ['#2b0a4e', '#5b2a86', '#7d
                                                       '#6cc36a', '#c9dd52', '#f3dc4c', '#f9b23f', '#f27f33', '#df4a2b', '#b01d31', '#5c0b22']])
 
 
+LANDC, SEAC = '#c9c6ad', '#3d6d96'  # the clouds' map: earth tones under white clouds, like a picture from space
 TLV = np.arange(-50, 52, 2.0)  # 2° bands
 TBC = None
 
@@ -82,11 +83,11 @@ TOWNS = [('Ташкент', 'Toshkent', 41.31, 69.28), ('Самарканд', 'S
 OFF = {'Ташкент': (-30, 6, 'right', 'center'), 'Самарканд': (26, -14, 'left', 'top'), 'Бухара': (-28, 0, 'right', 'center'), 'Нукус': (0, 28, 'center', 'bottom'),
        'Ургенч': (0, -28, 'center', 'top'), 'Наманган': (0, 30, 'center', 'bottom'), 'Андижан': (28, 6, 'left', 'center'), 'Фергана': (26, -14, 'left', 'top'),
        'Карши': (-26, -10, 'right', 'top'), 'Термез': (28, 0, 'left', 'center'), 'Навои': (-6, 28, 'right', 'bottom'), 'Джизак': (8, 28, 'left', 'bottom')}
-TX = {'ru': dict(title='Вероятность осадков и температура · 15 дней', tz='по Ташкенту', day='день {i} из {n}', rain='дождь', snow='снег', mix='мокрый снег', wind='ветер', temp='температура', iso='изотермы через 5°', title_t='Температура воздуха · 15 дней', intro1_t='Температура воздуха',
+TX = {'ru': dict(title='Вероятность осадков и температура · 15 дней', tz='по Ташкенту', day='день {i} из {n}', rain='дождь', snow='снег', mix='мокрый снег', wind='ветер', temp='температура', iso='изотермы через 5°', cloud='облачность', clear='ясно', overcast='сплошные тучи', title_c='Тучи и осадки · 15 дней', intro1_c='Тучи и осадки', title_t='Температура воздуха · 15 дней', intro1_t='Температура воздуха',
                  leg='Вероятность осадков (больше 0,2 мм) за период, %', models='Модели: ECMWF IFS и AIFS, NOAA GFS и GEFS, DWD ICON · {n} вариантов прогноза',
                  chart='Ташкент: вероятность осадков по периодам (столбики) и температура (линия)', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
                  intro1='Осадки и температура', intro2='на 15 дней по всему Узбекистану', end1='Погода в вашем районе и посёлке', end2='в Telegram-боте @ObHavo_ECMWF_bot'),
-      'uz': dict(title='Yog‘ingarchilik ehtimoli va harorat · 15 kun', tz='Toshkent vaqti', day='{i}-kun / {n}', rain='yomg‘ir', snow='qor', mix='ho‘l qor', wind='shamol', temp='harorat', iso='har 5° izoterma', title_t='Havo harorati · 15 kun', intro1_t='Havo harorati',
+      'uz': dict(title='Yog‘ingarchilik ehtimoli va harorat · 15 kun', tz='Toshkent vaqti', day='{i}-kun / {n}', rain='yomg‘ir', snow='qor', mix='ho‘l qor', wind='shamol', temp='harorat', iso='har 5° izoterma', cloud='bulutlilik', clear='ochiq', overcast='qalin bulut', title_c='Bulut va yog‘in · 15 kun', intro1_c='Bulut va yog‘in', title_t='Havo harorati · 15 kun', intro1_t='Havo harorati',
                  leg='Davr ichida yog‘ingarchilik (0,2 mm dan ko‘p) ehtimoli, %', models='Modellar: ECMWF IFS va AIFS, NOAA GFS va GEFS, DWD ICON · {n} ta prognoz varianti',
                  chart='Toshkent: davrlar bo‘yicha yog‘in ehtimoli (ustunlar) va harorat (chiziq)', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
                  intro1='Yog‘ingarchilik va harorat', intro2='butun O‘zbekiston bo‘yicha 15 kunga', end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda: @ObHavo_ECMWF_bot')}
@@ -197,11 +198,13 @@ def draw(job):
     fig = plt.figure(figsize=(W / DPI, H / DPI), dpi=DPI); fig.patch.set_facecolor('white')
     # the map
     ax = fig.add_axes(MAP); x0, x1 = C['lon_ext']; ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl']); ax.axis('off')
+    CM = C.get('mode') == 'cloud'; SEA_ = SEAC if CM else SEA
+    if C.get('land') is None and CM: ax.add_patch(Rectangle((x0, C['la0']), x1 - x0, C['la1'] - C['la0'], fc=LANDC, ec='none', zorder=0.1))  # (the axes are off: their own face is not drawn)
     if C.get('land') is not None:  # a continent: the sea as the background, the land on it
-        ax.set_facecolor(SEA if C.get('globe') is None else 'white')
-        if C.get('globe') is not None: ax.add_patch(matplotlib.patches.Polygon(C['globe'], closed=True, fc=SEA, ec='#b9cfe3', lw=1.0, zorder=0.3))
-        ax.add_collection(PolyCollection(C['land'], facecolors='#fbfaf6', edgecolors='#b9cfe3', linewidths=0.5, zorder=0.4))
-    for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=SEA, ec='#b9cfe3', lw=0.6, zorder=0.5)
+        ax.set_facecolor(SEA_ if C.get('globe') is None else 'white')
+        if C.get('globe') is not None: ax.add_patch(matplotlib.patches.Polygon(C['globe'], closed=True, fc=SEA_, ec='#b9cfe3', lw=1.0, zorder=0.3))
+        ax.add_collection(PolyCollection(C['land'], facecolors=LANDC if CM else '#fbfaf6', edgecolors='#b9cfe3', linewidths=0.5, zorder=0.4))
+    for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=SEA_, ec='#b9cfe3', lw=0.6, zorder=0.5)
     if C.get('relief') is not None:  # the mountains, just noticeable
         ax.imshow(C['relief'], extent=(x0, x1, C['la0'], C['la1']), origin='upper', interpolation='bilinear', aspect='auto', zorder=0.6)
         ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
@@ -223,20 +226,24 @@ def draw(job):
                 k_ = fn(np.where(m_, Tf_, np.nan)); yy, xx = np.unravel_index(k_, Tf_.shape)
                 ax.annotate(f"{sym} {Tf_[yy, xx]:+.0f}°".replace('+0°', '0°'), (LO[xx], LA[yy]), ha='center', va='center', fontsize=12.5, fontweight='bold', color=col, zorder=7.5,
                             bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.5', fc='white', ec=col, lw=1.4, alpha=0.9 * a_in))
-    if fr.get('Cl') is not None and not TM:  # clouds: a soft grey veil under the rain, thicker where the sky is more covered
+    if CM and fr.get('Cl') is not None:  # the clouds' map: white clouds, thicker where the sky is more covered
+        cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = 1.0; cl[..., 3] = np.clip((fr['Cl'] - 0.08) / 0.85, 0, 1) ** 1.1 * 0.93 * a_in
+        ax.imshow(cl, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.5)
+        ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
+    elif fr.get('Cl') is not None and not TM:  # clouds: a soft grey veil under the rain, thicker where the sky is more covered
         cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = (0.6, 0.64, 0.7); cl[..., 3] = np.clip((fr['Cl'] - 0.5) / 0.5, 0, 1) ** 1.3 * 0.32 * a_in
         ax.imshow(cl, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.5)
         ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
     if P.max() >= 6 and not TM:
-        ax.imshow(precip_rgba(P, sf, a_in), extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=2)
+        ax.imshow(precip_rgba(P, sf, a_in * (0.62 if CM else 1)), extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=2)
         ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
         if P.max() >= 50: ax.contour(LO, LA, P, levels=[50, 90], colors=['#ffffff'], linewidths=0.6, alpha=0.4 * a_in, zorder=2.05)
     if fr.get('wind') is not None:  # the wind: thin streams along it, longer and darker where it is stronger
         sg, al, lw = fr['wind']
-        wc = (1, 1, 1) if TM else (0.16, 0.24, 0.34); wk = 1.6 if TM else 1.0  # on the temperature colours: white streams
+        wc = (1, 1, 1) if TM or CM else (0.16, 0.24, 0.34); wk = 1.6 if TM else 1.0  # on the temperature colours: white streams
         if len(sg): ax.add_collection(LineCollection(sg, colors=[wc + (min(1, a_ * wk) * a_in,) for a_ in al], linewidths=lw, zorder=2.4, capstyle='round', joinstyle='round'))
     # 0° line: where rain turns to snow
-    if np.nanmin(T) < 0 < np.nanmax(T):
+    if not CM and np.nanmin(T) < 0 < np.nanmax(T):
         ax.contour(LO, LA, T, levels=[0], colors=['#3d7be0'], linewidths=1.3, linestyles=[(0, (5, 3))], alpha=0.75 * a_in, zorder=2.6)
     for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
     if fr.get('Fg') is not None and not TM and fr['Fg'].max() >= 0.35:  # fog: a pale haze with fine horizontal lines, like on a weather chart
@@ -249,7 +256,10 @@ def draw(job):
     for bx_, by_ in ([] if TM else fr.get('storms', [])): bolt(ax, bx_, by_, 1500, 7.5)
     # the towns: dot, name, chance and temperature
     L = 0 if lang == 'ru' else 1
-    offs = place(ax, [(tw[3], tw[2],  (tw[L] if TM else f"{tw[L]}  {p_:.0f}%") + (' · туман' if fg_ else ''), 17 if tw[0] == C['main'] else 13.5, tw[0] == C['main'], OFF.get(tw[0], (24, 0, 'left', 'center'))) for tw, (p_, t_, st_, fg_) in zip(C['towns'], fr['towns'])], fig)
+    cc_ = {}
+    if CM and fr.get('Cl') is not None:  # the towns show the cloud cover
+        cc_ = {tw[0]: float(fr['Cl'][np.abs(LA - tw[2]).argmin(), np.abs(LO - tw[3]).argmin()]) * 100 for tw in C['towns']}
+    offs = place(ax, [(tw[3], tw[2],  (tw[L] if TM else f"{tw[L]} · {cc_.get(tw[0], 0):.0f}%" if CM else f"{tw[L]}  {p_:.0f}%") + (' · туман' if fg_ else ''), 17 if tw[0] == C['main'] else 13.5, tw[0] == C['main'], OFF.get(tw[0], (24, 0, 'left', 'center'))) for tw, (p_, t_, st_, fg_) in zip(C['towns'], fr['towns'])], fig)
     for tw, (p_, t_, st_, fg_), (dx, dy, ha, va) in zip(C['towns'], fr['towns'], offs):
         main = tw[0] == C['main']
         col = level(p_, SNOW if t_ <= 0.5 else RAIN)
@@ -258,7 +268,7 @@ def draw(job):
                     bbox=dict(boxstyle='circle,pad=0.32' if not main else 'circle,pad=0.38', fc=tcol(t_), ec=ORANGE if main else 'white', lw=3 if main else 2))
         if st_ and not TM: bolt(ax, tw[3] + 0.36 * C['deg'], tw[2] + 0.32 * C['deg'], 1100 if main else 850, 9.7)
         fs = 17 if main else 13.5
-        txt =  (tw[L] if TM else f"{tw[L]}  {p_:.0f}%") + ((' · туман' if lang == 'ru' else ' · tuman') if fg_ else '')
+        txt =  (tw[L] if TM else f"{tw[L]} · {cc_.get(tw[0], 0):.0f}%" if CM else f"{tw[L]}  {p_:.0f}%") + ((' · туман' if lang == 'ru' else ' · tuman') if fg_ else '')
         an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
                          bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#f1f3f5', ec=ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.72))
     ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
@@ -266,14 +276,26 @@ def draw(job):
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=NAVY, ec='none', zorder=-1))
     fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=ORANGE, va='center')
-    fig.text(0.093, 0.953, (C['title'][lang] if C.get('title') else X['title']).replace(X['title'], X['title_t'] if TM else X['title']), fontsize=22, fontweight='bold', color='white', va='center')
+    fig.text(0.093, 0.953, (C['title'][lang] if C.get('title') else X['title']).replace(X['title'], X['title_t'] if TM else X['title_c'] if CM else X['title']), fontsize=22, fontweight='bold', color='white', va='center')
     fig.text(0.984, 0.968, fr['when'], fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
     fig.text(0.984, 0.928, (C['tzl'][lang] if C.get('tzl') else X['tz']) + ' · ' + fr['day'], fontsize=14, color='#a9bdd6', ha='right', va='center')
     # progress over the 15 days
     fig.patches.append(Rectangle((0, 0.903), 1, 0.004, transform=fig.transFigure, fc='#2c3e57', ec='none', zorder=0))
     fig.patches.append(Rectangle((0, 0.903), fr['prog'], 0.004, transform=fig.transFigure, fc=ORANGE, ec='none', zorder=0.1))
     # legend
-    if TM:  # the temperature scale, the isotherms, the wind
+    if CM:  # the cloud cover, the precipitation under the clouds, the wind
+        fig.text(0.016, 0.183, X['cloud'], fontsize=13, fontweight='bold', color=INK, va='center')
+        g_ = np.linspace(0, 1, 200); cb_ = np.array(matplotlib.colors.to_rgb(LANDC)) * (1 - g_[:, None] ** 1.1 * 0.93) + g_[:, None] ** 1.1 * 0.93
+        bx_ = fig.add_axes([0.11, 0.171, 0.24, 0.024]); bx_.imshow(cb_[None], aspect='auto', interpolation='bilinear'); bx_.axis('off')
+        for v_, t_ in ((0.02, X['clear']), (0.98, X['overcast'])): fig.text(0.11 + 0.24 * v_, 0.183, t_, fontsize=9.5, fontweight='bold', color=INK, ha='left' if v_ < 0.5 else 'right', va='center')
+        xb = 0.37
+        for R_, nm in ((RR, X['rain']), (MR, X['mix']), (SR, X['snow'])):
+            fig.patches.append(FancyBboxPatch((xb, 0.171), 0.022, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=tuple(R_[3]), ec='none'))
+            fig.text(xb + 0.026, 0.183, nm, fontsize=12, color=MUTED, va='center'); xb += 0.034 + 0.0062 * len(nm)
+        fig.add_artist(matplotlib.lines.Line2D([xb, xb + 0.008, xb + 0.016, xb + 0.024], [0.178, 0.186, 0.181, 0.188], color='#2a3d57', lw=1.3, alpha=0.6, transform=fig.transFigure)); fig.text(xb + 0.03, 0.183, X['wind'], fontsize=12, color=MUTED, va='center')
+        lg = fig.add_axes([xb + 0.075, 0.165, 0.02, 0.036]); lg.set_xlim(-1, 1); lg.set_ylim(-1.2, 1.2); lg.axis('off'); bolt(lg, 0, 0, 600)
+        fig.text(xb + 0.097, 0.183, 'гроза' if lang == 'ru' else 'momaqaldiroq', fontsize=12, color=MUTED, va='center')
+    elif TM:  # the temperature scale, the isotherms, the wind
         fig.text(0.016, 0.183, X['temp'], fontsize=13, fontweight='bold', color=INK, va='center')
         g_ = np.floor(np.linspace(-30, 39.99, 350) / 2) * 2 + 1; bx_ = fig.add_axes([0.11, 0.171, 0.42, 0.024]); bx_.imshow(temp_rgb(g_)[None], aspect='auto', interpolation='nearest', extent=(-30, 40, 0, 1)); bx_.axis('off')
         for v_ in range(-30, 41, 10): fig.text(0.11 + 0.42 * (v_ + 30) / 70 + (0.008 if v_ == -30 else -0.008 if v_ == 40 else 0), 0.183, f'{v_:+d}°'.replace('+0°', '0°'), fontsize=9.5, fontweight='bold', color='white' if v_ <= -20 or v_ >= 30 else INK, ha='center', va='center')
@@ -325,7 +347,7 @@ def draw(job):
     if fr.get('card') == 'intro':
         a = fr['a']; fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
         fig.text(0.5, 0.64, 'OSMON', fontsize=44, fontweight='bold', color=ORANGE, ha='center', va='center', alpha=a, zorder=31)
-        fig.text(0.5, 0.56, X['intro1_t' if TM else 'intro1'], fontsize=40, fontweight='bold', color=INK, ha='center', va='center', alpha=a, zorder=31)
+        fig.text(0.5, 0.56, X['intro1_t' if TM else 'intro1_c' if CM else 'intro1'], fontsize=40, fontweight='bold', color=INK, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.49, (C.get('intro2') or {}).get(lang) or X['intro2'], fontsize=26, color=MUTED, ha='center', va='center', alpha=a, zorder=31)
     if fr.get('card') == 'end':
         fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
@@ -344,7 +366,7 @@ def encode(lang):
     lst = fd / 'list.txt'; lst.write_text(''.join(f"file '{i:04d}.png'\nduration {fr['d']}\n" for i, fr in enumerate(V['frames'])) + f"file '{len(V['frames']) - 1:04d}.png'\n")
     out = pathlib.Path(V['out']); tmp = out.with_name('.' + out.name + '.part.mp4')
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a',
-                    '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-maxrate', '1900k', '-bufsize', '3800k',
+                    '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-maxrate', '1600k', '-bufsize', '3200k',
                     '-preset', 'slow', '-tune', 'animation', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(tmp)], check=True)
     tmp.replace(out); shutil.rmtree(fd); return f'{out} {out.stat().st_size // 1024} KB'
 
@@ -523,7 +545,7 @@ def main(npz, wxp, outd, langs, only=None, view=None):
         frames[-1] = dict(frames[-1], d=1.2)
         intro = [dict(frames[0], card='intro', a=1.0, fade=0.0, d=1.6)] + [dict(frames[0], card='intro', a=float(a_), fade=float(1 - a_), d=0.07) for a_ in np.linspace(1, 0, 9)[1:]]
         end = [dict(frames[-1], card='end', d=4.0)]
-        CTX['videos'][lang] = dict(frames=intro + frames + end, dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f"{view.get('stem', 'p15')}{'_t' if mode == 'temp' else ''}_{lang}.mp4"))
+        CTX['videos'][lang] = dict(frames=intro + frames + end, dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f"{view.get('stem', 'p15')}{ {'temp': '_t', 'cloud': '_c'}.get(mode, '')}_{lang}.mp4"))
     return CTX
 
 

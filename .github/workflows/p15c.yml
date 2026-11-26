@@ -9,7 +9,7 @@ jobs:
   c:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix: {iso: [KZ, KG, TJ, TM, AZ, AM, BY, MD, RU, TR, EU, AS, AF, NA, SA, OC, world]}
@@ -24,7 +24,7 @@ jobs:
           id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
           timeout 600 gh run download $id -n npz -D data
           case ${{ matrix.iso }} in EU|AS|AF|NA|SA|OC|world) A="--cont ${{ matrix.iso }}";; *) A="--iso ${{ matrix.iso }} --only country";; esac
-          for m in prob temp; do for l in ru uz; do P15_MODE=$m timeout 1500 python -u -W ignore tools/place15.py data out --lang $l $A; done; done
+          for m in prob temp cloud; do for l in ru uz; do P15_MODE=$m timeout 1500 python -u -W ignore tools/place15.py data out --lang $l $A; done; done
           cd out && rm -f files.json && git init -q && git checkout -q -b p15c-${{ matrix.iso }} && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "15 days ${{ matrix.iso }} $(date -u +%F' '%H:%M)"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" p15c-${{ matrix.iso }}
