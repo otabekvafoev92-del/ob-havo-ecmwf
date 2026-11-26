@@ -368,7 +368,17 @@ def encode(lang):
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a',
                     '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-maxrate', '1600k', '-bufsize', '3200k',
                     '-preset', 'slow', '-tune', 'animation', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(tmp)], check=True)
-    tmp.replace(out); shutil.rmtree(fd); return f'{out} {out.stat().st_size // 1024} KB'
+    tmp.replace(out); shutil.rmtree(fd)
+    try:  # the weather's sound (prob/sound.py): rain, snow and thunder of the main town for the precipitation video, a calm pad for the temperature, soft air for the clouds
+        import sound
+        C = CTX; mi = next((k for k, tw in enumerate(C['towns']) if tw[0] == C['main']), 0); lv = []
+        for fr in V['frames']:
+            p_, t_, st_, _f = fr['towns'][mi]; l_ = sound.from_series([p_], [t_], [3.0])[0]; l_['storm'] = 1.0 if st_ else 0.0
+            if fr.get('Cl') is not None: tw = C['towns'][mi]; l_['cloud'] = float(np.clip(fr['Cl'][np.abs(C['LATu'] - tw[2]).argmin(), np.abs(C['LONu'] - tw[3]).argmin()], 0, 1))
+            lv += [l_] * max(1, int(round(fr['d'] / 0.1)))
+        wav = str(out) + '.wav'; sound.track(lv, 0.1, wav, mode={'temp': 'temp', 'cloud': 'cloud'}.get(C.get('mode'), 'precip')); sound.mux(out, wav)
+    except Exception as e: print('sound', e, flush=True)
+    return f'{out} {out.stat().st_size // 1024} KB'
 
 
 def wind_streams(seq, WX, lat_s, lon0, dg, ext, la0, la1, cosl, TF=None, TI=None, NP=None, TR=7):
