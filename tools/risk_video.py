@@ -20,7 +20,7 @@ import prob15_video as PV
 W, H, DPI = PV.W, PV.H, PV.DPI
 MAP = PV.MAP; LA0, LA1 = PV.LAT0, PV.LAT1; LC = 64.8
 COSL = math.cos(math.radians((LA0 + LA1) / 2)); SPAN = (LA1 - LA0) / COSL * (MAP[2] * W) / (MAP[3] * H); EXT = (LC - SPAN / 2, LC + SPAN / 2)
-GRID = dict(lon0=50.0, lat0=48.0, d=0.25, W=129, H=53)  # 50–82° E, 35–48° N
+GRID = dict(lon0=44.0, lat0=48.5, d=0.25, W=161, H=55)  # 44–84° E, 35–48.5° N
 ECM = 'https://storage.googleapis.com/ecmwf-open-data'
 PARAMS = ['10fgg15', '10fgg25', 'tpg5', 'tpg10', 'tpg20']
 # the risks: key, colour, threshold of the probability shown (%)
@@ -153,6 +153,7 @@ def draw(job):
     bx.bar(xs, [max(p, 2) for _, p in tk], width=0.7, color=[dict(RISK).get(k, '#cfd8e3') if p >= 20 else '#dfe5ec' for k, p in tk], zorder=2)
     for x_, (k, p) in zip(xs, tk):
         if p >= 20: bx.text(x_, p + 4, f"{p:.0f}%", ha='center', va='bottom', fontsize=10.5, fontweight='bold', color=PV.INK)
+        else: bx.text(x_, 6, X['short']['calm'], ha='center', va='bottom', fontsize=9.5, color=PV.FAINT, rotation=0)
     s = fr['s']; bx.add_patch(Rectangle((s - 0.48, 0), 0.96, 118, fill=False, ec=PV.ORANGE, lw=2, zorder=5))
     bx.set_ylim(0, 125); bx.set_xlim(-0.6, len(tk) - 0.4); bx.set_yticks([]); bx.tick_params(length=0)
     bx.set_xticks(xs); bx.set_xticklabels(C['dl'][lang], fontsize=10, color=PV.MUTED)
@@ -207,7 +208,9 @@ def main():
             best = max(((key, at(R[key], tw[2], tw[3])) for key, _ in RISK), key=lambda q: q[1]); towns.append(best if best[1] >= 20 else ('calm', best[1]))
         st = (maximum_filter(R['storm'], size=20) == R['storm']) & (R['storm'] >= 30)
         storms = [(float(lon_u[x]), float(lat_u[y])) for y, x in zip(*np.nonzero(st))][:12]
-        days.append(dict(R=R, towns=towns, storms=storms, date=(run + dt.timedelta(days=k)).date()))
+        date_ = (run + dt.timedelta(days=k)).date()
+        if date_ < (dt.datetime.utcnow() + dt.timedelta(hours=5)).date(): continue  # the days already gone are left out
+        days.append(dict(R=R, towns=towns, storms=storms, date=date_))
     WAT = json.load(open(ROOT / 'prob' / 'geo_water.json')); G = json.load(open(ROOT / 'prob' / 'geo_casia.json'))['countries']; GA = json.load(open(ROOT / 'prob' / 'geo_admin.json'))['UZ']
     CTX.update(sea=[np.asarray(r) for r in WAT['ocean']] + [np.asarray(l_['r']) for l_ in WAT['lakes']], lon=lon_u, lat=lat_u, relief=PV.relief_layer(EXT[0], EXT[1], LA0, LA1),
                borders=[([np.asarray(r) for k, c in G.items() if k != 'UZ' for r in c['rings']], '#a3acb6', 1.0, 3), ([np.asarray(r) for a in GA['adm1'] for r in a['r']], '#b7c0ca', 0.8, 3.05),
