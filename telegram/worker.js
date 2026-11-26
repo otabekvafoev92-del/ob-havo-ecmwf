@@ -339,20 +339,29 @@ function outlookKb(its, lang, cur) {
 const WKX = {
   ru: { btn: '📆 Неделя {n} · {a}–{b} по дням', head: 'неделя {n} · {a}–{b}', temp: 'Температура за неделю: от {lo} ночью до {hi} днём', wet: 'Осадки вероятны {n} дн.: {d}', mm: ', всего ~{mm} мм', dry: 'Неделя без заметных осадков',
         part: 'Прогноз по дням есть до {last}; дальше — в «📅 Недели и месяцы» (осадки и температура к норме).', far: 'Прогноз по дням пока есть только до {last}. Для этой недели смотрите «📅 Недели и месяцы».', pick: '📆 Выберите неделю — пришлю погоду по дням:' },
-  uz: { btn: '📆 {n}-hafta · {a}–{b} kunma-kun', head: '{n}-hafta · {a}–{b}', temp: 'Hafta harorati: kechasi {lo} dan kunduzi {hi} gacha', wet: 'Yog‘in ehtimoli {n} kun: {d}', mm: ', jami ~{mm} mm', dry: 'Hafta sezilarli yog‘insiz',
+  uz: { btn: '📆 Hafta {n} · {a}–{b} kunma-kun', head: '{n}-hafta · {a}–{b}', temp: 'Hafta harorati: kechasi {lo} dan kunduzi {hi} gacha', wet: 'Yog‘in ehtimoli {n} kun: {d}', mm: ', jami ~{mm} mm', dry: 'Hafta sezilarli yog‘insiz',
         part: 'Kunma-kun prognoz {last} gacha bor; keyingisi — «📅 Haftalar va oylar»da (yog‘in va harorat me’yorga nisbatan).', far: 'Kunma-kun prognoz hozircha {last} gacha. Bu hafta uchun «📅 Haftalar va oylar»ni ko‘ring.', pick: '📆 Haftani tanlang — kunma-kun ob-havoni yuboraman:' },
   en: { btn: '📆 Week {n} · {a}–{b} day by day', head: 'week {n} · {a}–{b}', temp: 'Temperature this week: from {lo} at night to {hi} by day', wet: 'Precipitation likely on {n} days: {d}', mm: ', about {mm} mm in all', dry: 'A week without notable precipitation',
         part: 'The day-by-day forecast goes up to {last}; after that — «📅 Weeks and months» (precipitation and temperature against the normal).', far: 'The day-by-day forecast only goes up to {last} so far. For this week see «📅 Weeks and months».', pick: '📆 Choose a week — I will send the weather day by day:' } };
 const WDL = { uz: ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'], ru: ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'], en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] };
 function isoWeek(d) { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); const y0 = Date.UTC(t.getUTCFullYear(), 0, 1); return Math.ceil(((t - y0) / 864e5 + 1) / 7); }
+const isoKey = d => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); return `${isoWeek(d)}-${t.getUTCFullYear()}`; };  // «49-2026»: the week and its ISO year
 const dAdd = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 function weeksKb(lang, cur) {  // this ISO week and the next two (the forecast reaches ~15 days)
   const X = WKX[lang] || WKX.ru, today = new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10), dow = new Date(today + 'T12:00:00Z').getUTCDay() || 7, mon = dAdd(today, 1 - dow);
-  return { inline_keyboard: [0, 1, 2].map(k => { const a = dAdd(mon, 7 * k), b = dAdd(a, 6);
-    return [{ text: `${cur === a ? '✅ ' : ''}${X.btn.replace('{n}', isoWeek(a)).replace('{a}', ddm(a)).replace('{b}', ddm(b))}`, callback_data: `WK:${lang}:${a}`, ...(cur === a ? {} : { style: 'success' }) }]; }) };
+  return { inline_keyboard: [0, 1, 2, 3, 4, 5].map(k => { const a = dAdd(mon, 7 * k), b = dAdd(a, 6);  // six weeks: the first two from the 15-day forecast, then ECMWF EC46
+    return [{ text: `${cur === a ? '✅ ' : ''}${X.btn.replace('{n}', isoKey(a)).replace('{a}', ddm(a)).replace('{b}', ddm(b))}`, callback_data: `WK:${lang}:${a}`, ...(cur === a ? {} : { style: 'success' }) }]; }) };
 }
-async function weekDays(env, chat, lang, a, b) {  // the user's saved place, else Tashkent
+async function weekDays(env, chat, lang, a, b) {  // the week's video day by day (Uzbekistan), then the user's place (saved, else Tashkent) day by day
   const u = await getUser(env, chat), pl = u && u.place ? JSON.parse(u.place) : [41.311, 69.279];
+  const today = new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10), dow = new Date(a + 'T12:00:00Z').getUTCDay() || 7, mon = dAdd(a, 1 - dow);
+  const L = lang === 'uz' ? 'uz' : 'ru', vu = `${EVRAW}/weeks/wk_${isoKey(mon)}_${L}.mp4`;
+  if (!b && await fetch(vu, { method: 'HEAD' }).then(r => r.ok).catch(() => false)) {
+    await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+    await tg(env, 'sendVideo', { chat_id: chat, video: `${vu}?v=${Math.floor(Date.now() / 3600e3)}`, supports_streaming: true, width: 1920, height: 1080, parse_mode: 'HTML',
+      caption: `📆 ${FLAG.UZ} <b>${(WKX[lang] || WKX.ru).head.replace('{n}', isoKey(mon)).replace('{a}', ddm(mon)).replace('{b}', ddm(dAdd(mon, 6)))}</b>` });
+    if (a > dAdd(today, 13)) return true;  // beyond the 15-day forecast: the video (EC46) is the answer
+  }
   return pointForecast(env, chat, lang, +pl[0], +pl[1], await nearestPlace(env, +pl[0], +pl[1], 8), null, [a, b || dAdd(a, 6)]);
 }
 // "30.11–06.12", "с 30 ноября по 6 декабря", "30 noyabr – 6 dekabr", "неделя", "следующая неделя", "неделя 49"
@@ -726,7 +735,11 @@ async function sendAir(env, chat, lang, rid) {
     `🟢 ≤50 · 🟡 ≤100 · 🟠 ≤150 · 🔴 ≤200 · 🟣 ≤300 · 🟤 >300`, `<i>${X.src}</i>`];
   const kb = chat > 0 ? { inline_keyboard: [[notifBtn(lang, 'air')]] } : undefined;
   // in Uzbekistan the dust map of today goes first (prob/outlook.py, dust0)
-  if (rid === 'UZ') {
+  const av = `${EVRAW}/air/air24_${lang === 'uz' ? 'uz' : 'ru'}.mp4`;
+  if (rid === 'UZ' && await fetch(av, { method: 'HEAD' }).then(r => r.ok).catch(() => false)) {  // the 24-hour air video (CAMS, made every hour) instead of the picture
+    await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+    await tg(env, 'sendVideo', { chat_id: chat, video: `${av}?v=${Math.floor(Date.now() / 1800e3)}`, supports_streaming: true, width: 1920, height: 1080, caption: `🌫 ${X.title} · 24 ${lang === 'uz' ? 'soat' : lang === 'en' ? 'hours' : 'часа'} · CAMS (Copernicus)` });
+  } else if (rid === 'UZ') {
     const I = await (await fetch(`${base(env)}/prob/outlook/index.json?t=${fresh()}`)).json().catch(() => null), it = I && (I.items.find(i => i.key === 'dust' && i.lang === lang) || I.items.find(i => i.key === 'dust'));
     if (it) await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/${(it.imgs || [it.img])[0]}?v=${encodeURIComponent(I.made || '')}`, caption: `🌫 ${X.map}` });
   }
@@ -1943,6 +1956,7 @@ async function handle(up, env) {
     await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${EVRAW}/sattrue/sattrue_${L}.jpg?v=${v}`, caption: cap, parse_mode: 'HTML' });
     return tg(env, 'sendVideo', { chat_id: chat.id, video: `${EVRAW}/sattrue/sattrue_${L}.mp4?v=${v}`, supports_streaming: true, width: 1920, height: 1080 }); }
   if (kind === 'VP' && NAMES[id]) return videoHub(env, chat.id, lang, id, null);
+  if (kind === 'AQV') return sendAir(env, chat.id, lang, 'UZ');
   if (kind === 'CV' && NAMES[id]) {  // the 15-day clouds-and-precipitation video
     const L = lang === 'uz' ? 'uz' : 'ru', url = p15url(id, L, '_c'), X = VMX[lang] || VMX.ru;
     if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: lang === 'uz' ? 'Video tayyorlanmoqda, birozdan keyin qayta urinib ko‘ring.' : lang === 'en' ? 'The video is being made, try again a little later.' : 'Видео готовится, попробуйте чуть позже.' });

@@ -17,11 +17,11 @@ from scipy.ndimage import gaussian_filter
 LONS = np.round(np.arange(55.5, 73.51, 0.75), 2); LATS = np.round(np.arange(36.75, 46.01, 0.75), 2)
 PCT_LV = [0, 25, 50, 80, 120, 150, 200, 300, 2000]
 PCT_COL = ['#a0632c', '#cf9a5c', '#ead2a8', '#ffffff', '#cfe6f7', '#93c6ee', '#4a98e0', '#1c58b0']
-TX = {'ru': dict(title='Погода по неделям', week='Неделя {n}', past='прошедшая неделя · факт', fc='прогноз ECMWF EC46', leg='Осадки за неделю, % от нормы',
+TX = {'ru': dict(title='Погода по неделям', week='Неделя {n}', dtitle='Неделя по дням', dleg='Осадки за сутки, мм', dchart='Ташкент: осадки по дням (мм) и средняя температура', past='прошедшая неделя · факт', fc='прогноз ECMWF EC46', leg='Осадки за неделю, % от нормы',
                  less='меньше нормы', norm='около нормы', more='больше нормы', circ='в кружке — средняя температура недели, °C', chart='Ташкент: осадки по неделям (% от нормы) и средняя температура',
                  dtn='{d:+.0f}° к норме', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], intro1='Погода по неделям', intro2='осадки к норме и температура на 6 недель',
                  end1='Погода в вашем районе и посёлке', end2='в Telegram-боте @ObHavo_ECMWF_bot', src='Данные: Open-Meteo (ECMWF EC46, анализ моделей)'),
-      'uz': dict(title='Haftalar bo‘yicha ob-havo', week='{n}-hafta', past='o‘tgan hafta · fakt', fc='ECMWF EC46 prognozi', leg='Haftalik yog‘in, me’yorga nisbatan %',
+      'uz': dict(title='Haftalar bo‘yicha ob-havo', week='Hafta {n}', dtitle='Hafta kunma-kun', dleg='Sutkalik yog‘in, mm', dchart='Toshkent: kunlar bo‘yicha yog‘in (mm) va o‘rtacha harorat', past='o‘tgan hafta · fakt', fc='ECMWF EC46 prognozi', leg='Haftalik yog‘in, me’yorga nisbatan %',
                  less='me’yordan kam', norm='me’yor atrofida', more='me’yordan ko‘p', circ='doirada — haftaning o‘rtacha harorati, °C', chart='Toshkent: haftalar bo‘yicha yog‘in (me’yorga %) va o‘rtacha harorat',
                  dtn='me’yorga {d:+.0f}°', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], intro1='Haftalar bo‘yicha ob-havo', intro2='6 haftaga yog‘in (me’yorga) va harorat',
                  end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda: @ObHavo_ECMWF_bot', src='Ma’lumotlar: Open-Meteo (ECMWF EC46, modellar tahlili)')}
@@ -46,7 +46,8 @@ def fetch():
     for i in range(0, len(pts), 100):
         ch = pts[i:i + 100]
         r = get('https://seasonal-api.open-meteo.com/v1/seasonal', {'latitude': ','.join(str(p[0]) for p in ch), 'longitude': ','.join(str(p[1]) for p in ch),
-                'models': 'ecmwf_seasonal_ensemble_mean_seamless', 'weekly': 'temperature_2m_mean,temperature_2m_anomaly,precipitation_mean,precipitation_anomaly', 'timezone': 'Asia/Tashkent'})
+                'models': 'ecmwf_seasonal_ensemble_mean_seamless', 'weekly': 'temperature_2m_mean,temperature_2m_anomaly,precipitation_mean,precipitation_anomaly',
+                'daily': 'temperature_2m_mean,precipitation_sum', 'timezone': 'Asia/Tashkent'})
         sea += r if isinstance(r, list) else [r]; time.sleep(12)
     # the past ISO week (Monday–Sunday before this week): the daily analysis of the last 14 days
     past = []
@@ -72,7 +73,17 @@ def fetch():
         prm, pa, tmn, ta = G('precipitation_mean', i), G('precipitation_anomaly', i), G('temperature_2m_mean', i), G('temperature_2m_anomaly', i)
         if all(v is None for v in prm): continue
         weeks.append(dict(kind='fc', start=s.isoformat(), pr=[None if v is None else v * f for v in prm], pa=[None if v is None else v * f for v in pa], t=tmn, ta=ta))
-    return dict(made=dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), lats=LATS.tolist(), lons=LONS.tolist(), weeks=weeks[:7])
+    dd = s0.get('daily', {}); days = []  # each day of the coming weeks (EC46 ensemble mean): the week-by-day videos
+    for i, t in enumerate(dd.get('time', [])):
+        d_ = dt.date.fromisoformat(t[:10])
+        if d_ < today: continue
+        g_ = lambda key: [None if x.get('daily', {}).get(key) is None or x['daily'][key][i] is None else float(x['daily'][key][i]) for x in sea]
+        days.append(dict(d=d_.isoformat(), pr=g_('precipitation_sum'), t=g_('temperature_2m_mean')))
+    return dict(made=dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), lats=LATS.tolist(), lons=LONS.tolist(), weeks=weeks[:7], days=days[:49])
+
+
+def wk(s):  # the ISO week and its year, as on a calendar: «49-2026» (ISO 8601: the week of its Thursday; 2026 has 53 weeks, as it starts on a Thursday)
+    y, n, _ = (s + dt.timedelta(days=3)).isocalendar(); return f'{n}-{y}'
 
 
 def deg(v):
@@ -187,7 +198,7 @@ def setup(D, outd, langs):
     A1 = [np.asarray(r) for a in GA['adm1'] for r in a['r']]
     span = (LAT_B - LAT_A) / PV.COSL * (PV.MAP[2] * W) / (PV.MAP[3] * H); lc = 64.8
     tash = PV.TOWNS[0]; starts = [dt.date.fromisoformat(w['start']) for w in D['weeks']]
-    wlab = {l: [(f"{TX[l]['week'].format(n=(s + dt.timedelta(days=3)).isocalendar()[1])}\n{s:%d.%m}–{s + dt.timedelta(days=6):%d.%m}") for s in starts] for l in TX}
+    wlab = {l: [(f"{TX[l]['week'].format(n=wk(s))}\n{s:%d.%m}–{s + dt.timedelta(days=6):%d.%m}") for s in starts] for l in TX}
     CTX.update(LONu=LONu, LATu=LATu, sea=sea, borders=[(NB, '#a3acb6', 1.0, 3), (A1, '#b7c0ca', 0.8, 3.05), (UZ, '#1c2633', 2.6, 3.3)], lon_ext=(lc - span / 2, lc + span / 2),
                tp=[at(g['pct'], tash[2], tash[3]) for g in G_], tt=[at(g['t'], tash[2], tash[3]) for g in G_], wlab=wlab, qr=PV.qr('https://t.me/ObHavo_ECMWF_bot'), videos={})
     n = len(G_)
@@ -195,7 +206,7 @@ def setup(D, outd, langs):
         X = TX[lang]; frames = []
         for k, (w, g, s) in enumerate(zip(D['weeks'], G_, starts)):
             e = s + dt.timedelta(days=6); iso = (s + dt.timedelta(days=3)).isocalendar()  # the ISO week of the week's middle day
-            when = f"{X['week'].format(n=iso[1])} · {s:%d.%m}–{e:%d.%m}"
+            when = f"{X['week'].format(n=wk(s))} · {s:%d.%m}–{e:%d.%m}"
             sub = X['past'] if w['kind'] == 'past' else X['fc']
             towns = lambda gg: [(at(gg['pct'], tw[2], tw[3]), at(gg['t'], tw[2], tw[3]), at(gg['ta'], tw[2], tw[3]) if gg['ta'] is not None else None) for tw in PV.TOWNS]
             frames.append(dict(pct=g['pct'], s=k, when=when, sub=sub, prog=(k + 1) / n, towns=towns(g), d=3.0))
@@ -212,6 +223,95 @@ def setup(D, outd, langs):
         CTX['videos'][lang] = dict(frames=intro + frames + [dict(frames[-1], card='end', d=4.0)], dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f'weeks_{lang}.mp4'))
 
 
+MM_LV = [0.5, 1, 3, 5, 10, 20, 500]
+MM_COL = ['#d4e9f9', '#93c6ee', '#4a98e0', '#1c63c0', '#173f97', '#5b2fa8']
+
+
+def draw_day(job):
+    """One frame of a week-by-day video: the day's precipitation (mm) on the map, the day's mean temperature at the towns."""
+    lang, i = job; C = CTX; V = C['dvideos'][lang]; fr = V['frames'][i]; X = TX[lang]
+    fig = plt.figure(figsize=(W / PV.DPI, H / PV.DPI), dpi=PV.DPI); fig.patch.set_facecolor('white')
+    ax = fig.add_axes(PV.MAP); x0, x1 = C['lon_ext']; ax.set_xlim(x0, x1); ax.set_ylim(LAT_A, LAT_B); ax.set_aspect(1 / PV.COSL); ax.axis('off')
+    for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=PV.SEA, ec='#b9cfe3', lw=0.6, zorder=0.5)
+    if np.nanmax(fr['mm']) >= MM_LV[0]:
+        ax.contourf(C['LONu'], C['LATu'], fr['mm'], levels=MM_LV, colors=MM_COL, zorder=2, alpha=0.9, antialiased=True)
+    for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
+    L = 0 if lang == 'ru' else 1
+    labs = [f"{tw[L]}  {m_:.0f} mm" if m_ >= 0.5 else tw[L] for tw, (m_, t_) in zip(PV.TOWNS, fr['towns'])]
+    offs = PV.place(ax, [(tw[3], tw[2], lb, 17 if tw[0] == 'Ташкент' else 13.5, tw[0] == 'Ташкент', PV.OFF[tw[0]]) for tw, lb in zip(PV.TOWNS, labs)], fig)
+    for tw, (m_, t_), (dx, dy, ha, va), lb in zip(PV.TOWNS, fr['towns'], offs, labs):
+        main = tw[0] == 'Ташкент'
+        ax.annotate(deg(t_), (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
+                    bbox=dict(boxstyle='circle,pad=0.38' if main else 'circle,pad=0.32', fc=PV.tcol(t_), ec=PV.ORANGE if main else 'white', lw=3 if main else 2))
+        ax.annotate(lb, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5, fontweight='bold' if main else 'semibold', color='#1f2933', zorder=9,
+                    bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#eef1f4', ec=PV.ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.7))
+    ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
+    ax.text(0.005, 0.01, X['src'], transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=PV.FAINT, zorder=9)
+    fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
+    fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=PV.ORANGE, va='center')
+    fig.text(0.093, 0.953, f"{X['dtitle']} · {V['wname']}", fontsize=22, fontweight='bold', color='white', va='center')
+    fig.text(0.984, 0.968, fr['when'], fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
+    fig.text(0.984, 0.928, X['fc'], fontsize=14, color='#a9bdd6', ha='right', va='center')
+    fig.patches.append(Rectangle((0, 0.903), 1, 0.004, transform=fig.transFigure, fc='#2c3e57', ec='none', zorder=0))
+    fig.patches.append(Rectangle((0, 0.903), fr['prog'], 0.004, transform=fig.transFigure, fc=PV.ORANGE, ec='none', zorder=0.1))
+    fig.text(0.016, 0.183, X['dleg'], fontsize=12, fontweight='bold', color=PV.INK, va='center')
+    for k, (c, lab) in enumerate(zip(MM_COL, ['0,5–1', '1–3', '3–5', '5–10', '10–20', '>20'])):
+        xx = 0.14 + k * 0.05
+        fig.patches.append(FancyBboxPatch((xx, 0.171), 0.047, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=c, ec='none'))
+        fig.text(xx + 0.0235, 0.183, lab, fontsize=10.5, fontweight='bold', color='white' if k >= 2 else PV.INK, ha='center', va='center')
+    fig.text(0.984, 0.183, X['circ'].replace('недели', 'дня').replace('haftaning', 'kunning'), fontsize=12, color=PV.MUTED, ha='right', va='center')
+    fig.text(0.016, 0.152, X['dchart'], fontsize=12, fontweight='bold', color=PV.INK, va='center')
+    bx = fig.add_axes([0.035, 0.035, 0.93, 0.1]); bx.set_facecolor('none')
+    tp, tt = np.array(V['tp']), np.array(V['tt']); xs = np.arange(len(tp))
+    bx.bar(xs, np.maximum(tp, 0.15), width=0.62, color=[MM_COL[int(np.clip(np.searchsorted(MM_LV, v, side='right') - 1, 0, 5))] if v >= 0.5 else PV.BAR_EMPTY for v in tp], zorder=2)
+    for x_, v in zip(xs, tp): bx.text(x_, v + max(tp.max(), 2) * 0.04, f'{v:.0f} mm' if v >= 0.5 else '—', ha='center', va='bottom', fontsize=11, fontweight='bold', color=PV.INK, zorder=4)
+    s = fr['s']; bx.add_patch(Rectangle((s - 0.45, 0), 0.9, max(tp.max(), 2) * 1.5, fill=False, ec=PV.ORANGE, lw=2, zorder=5))
+    bx.set_ylim(0, max(tp.max(), 2) * 1.6); bx.set_xlim(-0.6, len(tp) - 0.4); bx.set_yticks([]); bx.tick_params(length=0)
+    bx.set_xticks(xs); bx.set_xticklabels(V['dlab'], fontsize=11, color=PV.MUTED)
+    for sp in bx.spines.values(): sp.set_visible(False)
+    tx = bx.twinx(); lo, hi = np.nanmin(tt), np.nanmax(tt); pad = max(2, (hi - lo) * 0.3)
+    tx.plot(xs, tt, color=PV.TEMP, lw=2.4, marker='o', ms=7, mfc='white', mew=2, zorder=6); tx.set_ylim(lo - pad - 1.3 * (hi - lo + 2 * pad), hi + pad)
+    for x_, v in zip(xs, tt): tx.annotate(deg(v), (x_, v), xytext=(16, 0), textcoords='offset points', fontsize=12, fontweight='bold', color=PV.TEMP, va='center', path_effects=[pe.withStroke(linewidth=3, foreground='white')], zorder=7)
+    tx.set_yticks([]); [sp.set_visible(False) for sp in tx.spines.values()]
+    fig.savefig(pathlib.Path(V['dir']) / f'{i:04d}.png', dpi=PV.DPI, facecolor='white'); plt.close(fig)
+
+
+def setup_days(D, outd, langs):
+    """One video per coming ISO week: its seven days one after another (the bot sends it when that week is chosen)."""
+    if not D.get('days'): return []
+    tash = PV.TOWNS[0]; nl, no = len(LATS), len(LONS); LO, LA = np.meshgrid(CTX['LONu'], CTX['LATu'])
+    def up(v):
+        A = np.array([np.nan if x is None else x for x in v], float).reshape(nl, no)
+        if np.isnan(A).all(): return np.zeros(LO.shape)
+        A = np.where(np.isnan(A), np.nanmean(A), A); f = RegularGridInterpolator((LATS, LONS), A, bounds_error=False, fill_value=None)
+        return gaussian_filter(f(np.stack([np.clip(LA, LATS[0], LATS[-1]), np.clip(LO, LONS[0], LONS[-1])], -1)), 2.0)
+    at = lambda a, la, lo: float(a[np.abs(CTX['LATu'] - la).argmin(), np.abs(CTX['LONu'] - lo).argmin()])
+    byd = {dt.date.fromisoformat(x['d']): x for x in D['days']}; mon = min(byd); mon -= dt.timedelta(days=mon.weekday()); jobs = []; CTX['dvideos'] = {}
+    while mon in byd or mon + dt.timedelta(days=6) in byd:
+        ds = [mon + dt.timedelta(days=k) for k in range(7) if mon + dt.timedelta(days=k) in byd]
+        if len(ds) >= 4:
+            G_ = [(up(byd[d]['pr']), up(byd[d]['t'])) for d in ds]; key = wk(mon)
+            for lang in langs:
+                X = TX[lang]; frames = []
+                for k, (d, (mm, t)) in enumerate(zip(ds, G_)):
+                    tw_ = lambda m_, t__: [(at(m_, tw[2], tw[3]), at(t__, tw[2], tw[3])) for tw in PV.TOWNS]
+                    frames.append(dict(mm=np.clip(mm, 0, None), s=k, when=f"{X['wd'][d.weekday()]} {d:%d.%m}", prog=(k + 1) / len(ds), towns=tw_(mm, t), d=1.8))
+                    if k + 1 < len(ds):
+                        m2, t2 = G_[k + 1]
+                        for a in np.linspace(0, 1, 7)[1:-1]: frames.append(dict(frames[-1], mm=np.clip((1 - a) * mm + a * m2, 0, None), towns=tw_((1 - a) * mm + a * m2, (1 - a) * t + a * t2), d=0.06))
+                frames[-1] = dict(frames[-1], d=3.0)
+                vid = f'{lang}_{key}'
+                CTX['dvideos'][vid] = dict(frames=frames, dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f'wk_{key}_{lang}.mp4'), wname=f"{X['week'].format(n=key)} · {ds[0]:%d.%m}–{mon + dt.timedelta(days=6):%d.%m}",
+                                           tp=[at(mm, tash[2], tash[3]) for mm, _ in G_], tt=[at(t, tash[2], tash[3]) for _, t in G_], dlab=[f"{X['wd'][d.weekday()]}\n{d:%d.%m}" for d in ds])
+                jobs += [(vid, i) for i in range(len(frames))]
+        mon += dt.timedelta(days=7)
+    return jobs
+
+
+def draw_day_job(job):
+    vid, i = job; lang = vid.split('_')[0]; CTX['dvideos'][lang] = CTX['dvideos'][vid]; draw_day((lang, i))
+
+
 if __name__ == '__main__':
     outd = pathlib.Path(sys.argv[1]); langs = (sys.argv[2] if len(sys.argv) > 2 else 'ru,uz').split(','); outd.mkdir(parents=True, exist_ok=True)
     cache = sys.argv[sys.argv.index('--cache') + 1] if '--cache' in sys.argv else None
@@ -224,3 +324,9 @@ if __name__ == '__main__':
     with mp.get_context('fork').Pool(max(1, os.cpu_count() or 1)) as pool:
         list(pool.imap_unordered(draw, jobs, chunksize=4))
         for r in pool.imap_unordered(PV.encode, langs): print(r, flush=True)
+    # the week-by-day videos (each coming ISO week)
+    dj = setup_days(D, outd, langs)
+    PV.CTX.update(videos=CTX['dvideos'])
+    with mp.get_context('fork').Pool(max(1, os.cpu_count() or 1)) as pool:
+        list(pool.imap_unordered(draw_day_job, dj, chunksize=4))
+        for r in pool.imap_unordered(PV.encode, sorted({v for v, _ in dj})): print(r, flush=True)
