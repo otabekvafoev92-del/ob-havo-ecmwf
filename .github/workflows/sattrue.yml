@@ -2,7 +2,7 @@ name: Satellite in true colour
 # the NASA GIBS passes (VIIRS 375 m, MODIS 250 m) of the last two days over Uzbekistan as a picture and a video (tools/sat_true.py); kept on the "sattrue" branch
 on:
   schedule:
-    - cron: '41 7,10,13,16 * * *'
+    - cron: '41 * * * *'
   workflow_dispatch: {}
 permissions: {contents: write}
 concurrency: {group: sattrue, cancel-in-progress: true}

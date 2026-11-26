@@ -4,7 +4,7 @@ picture — in the Osmon look: navy header, borders, the towns in translucent gr
 Usage: python tools/sat_true.py out ru,uz  →  out/sattrue_{lang}.mp4, out/sattrue_{lang}.jpg, out/meta.json"""
 import io, os, sys, json, math, pathlib, shutil, subprocess, tempfile, datetime as dt, concurrent.futures as cf
 import numpy as np, requests
-from PIL import Image
+from PIL import Image, ImageFilter
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -29,9 +29,9 @@ PASSES = [('MODIS_Terra_CorrectedReflectance_TrueColor', 'Terra · MODIS 250 м'
           ('VIIRS_NOAA20_CorrectedReflectance_TrueColor', 'NOAA-20 · VIIRS 375 м', 'NOAA-20 · VIIRS 375 m', 13.3),
           ]  # (Aqua's MODIS is past its prime: striped swath edges, so it is left out)
 TX = {'ru': dict(title='Спутник · Узбекистан в истинных цветах', when='{d} · около {h}:00', tz='по Ташкенту', morning='утро', day='день',
-                 leg='белое — облака и снег в горах · серое — дымка, пыль · бурое — пустыня · тёмное — вода', src='NASA GIBS · {s}', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
+                 leg='белое — облака и снег в горах · серое — дымка, пыль · бурое — пустыня · тёмное — вода', src='NASA GIBS · {s}', live='снимок {t} по Ташкенту', leg2='облака — Meteosat (каждые 30 мин, днём и ночью) · синее — осадки · земля — чистый снимок VIIRS', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
       'uz': dict(title='Sun’iy yo‘ldosh · O‘zbekiston haqiqiy ranglarda', when='{d} · taxminan {h}:00', tz='Toshkent vaqti', morning='ertalab', day='kunduzi',
-                 leg='oq — bulut va tog‘dagi qor · kulrang — tuman, chang · jigarrang — cho‘l · to‘q — suv', src='NASA GIBS · {s}', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'])}
+                 leg='oq — bulut va tog‘dagi qor · kulrang — tuman, chang · jigarrang — cho‘l · to‘q — suv', src='NASA GIBS · {s}', live='surat {t} Toshkent vaqti', leg2='bulut — Meteosat (har 30 daqiqa, kechayu kunduz) · ko‘k — yog‘in · yer — toza VIIRS surati', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'])}
 
 
 def fetch(layer, day, px=3000):
@@ -111,16 +111,79 @@ def draw(job):
         ax.plot(tw[3], tw[2], 'o', ms=6, mfc='#ffffff', mec='#14233a', mew=1.5, zorder=8)
         ax.annotate(tw[L], (tw[3], tw[2]), xytext=(9, 6), textcoords='offset pixels', fontsize=14, fontweight='semibold', color='#14233a', zorder=9,
                     bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.6', fc='#f1f3f5', ec='none', alpha=0.72))
-    ax.text(0.006, 0.012, X['leg'], transform=ax.transAxes, fontsize=13, color='white', zorder=9, bbox=dict(boxstyle='round,pad=0.4', fc='#0b1220', ec='none', alpha=0.55))
+    live = len(meta) > 5 and meta[5] is not None
+    ax.text(0.006, 0.012, X['leg2' if live else 'leg'], transform=ax.transAxes, fontsize=13, color='white', zorder=9, bbox=dict(boxstyle='round,pad=0.4', fc='#0b1220', ec='none', alpha=0.55))
     ax.text(0.994, 0.012, X['src'].format(s=meta[2 if lang != 'ru' else 1]) + ' · t.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', fontsize=12, color='white', zorder=9,
             bbox=dict(boxstyle='round,pad=0.4', fc='#0b1220', ec='none', alpha=0.55))
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
     fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=PV.ORANGE, va='center')
     fig.text(0.093, 0.953, X['title'], fontsize=22, fontweight='bold', color='white', va='center')
     d = meta[0]; h = meta[3]
+    if live:
+        lt = meta[5]
+        fig.text(0.984, 0.968, f"{X['wd'][lt.weekday()]} {lt:%d.%m} · {lt:%H:%M}", fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
+        fig.text(0.984, 0.928, X['live'].format(t=f'{lt:%H:%M}'), fontsize=14, color='#a9bdd6', ha='right', va='center')
+        fig.savefig(out, dpi=DPI, facecolor=fig.get_facecolor()); plt.close(fig); return
     fig.text(0.984, 0.968, f"{X['wd'][d.weekday()]} {d:%d.%m} · {X['morning'] if h < 12 else X['day']}", fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
     fig.text(0.984, 0.928, f"{X['when'].format(d=f'{d:%d.%m}', h=int(round(h + 5 - LC / 15)))} {X['tz']}", fontsize=14, color='#a9bdd6', ha='right', va='center')
     fig.savefig(out, dpi=DPI, facecolor=fig.get_facecolor()); plt.close(fig)
+
+
+EUM = 'https://view.eumetsat.int/geoserver'
+
+
+def eum_latest(layer):
+    import re
+    t = requests.get(f"{EUM}/{layer.replace(':', '/')}/wms", params=dict(service='WMS', request='GetCapabilities', version='1.3.0'), timeout=90).text
+    return dt.datetime.fromisoformat(re.search(r'<Dimension[^>]*name="time"[^>]*default="([^"]+)"', t).group(1).replace('Z', '+00:00')).replace(tzinfo=None)
+
+
+def eum(layer, t, fmt, w, h):
+    for _ in range(3):
+        try:
+            r = requests.get(f'{EUM}/wms', params=dict(service='WMS', version='1.3.0', request='GetMap', layers=layer, styles='', crs='EPSG:4326', bbox=f'{LA0},{EXT[0]},{LA1},{EXT[1]}',
+                                                       width=w, height=h, format=fmt, transparent='true', time=t.strftime('%Y-%m-%dT%H:%M:%SZ')), timeout=120)
+            if r.ok and r.headers.get('content-type', '').startswith('image'): return Image.open(io.BytesIO(r.content)).convert('RGBA')
+        except Exception as e: print('eum', layer, t, e, flush=True)
+    return None
+
+
+def clear_ground(today, n=10):
+    """A cloud-free picture of the ground: the last n days of VIIRS, per point a darker-than-middle one (clouds are bright; the snow that stays, stays)."""
+    days = [today - dt.timedelta(days=k) for k in range(n)]
+    with cf.ThreadPoolExecutor(5) as ex: ims = [a for a in ex.map(lambda d: fetch('VIIRS_NOAA20_CorrectedReflectance_TrueColor', d), days) if a is not None]
+    S_ = np.stack(ims).astype(np.float32); L = S_.mean(-1); L[S_.max(-1) < 8] = 1e9  # swath gaps never win
+    k = np.argsort(L, axis=0)[min(2, len(ims) - 1)]  # the third darkest: shadows and dark gaps are left out too
+    return np.take_along_axis(S_, k[None, ..., None].repeat(3, -1), 0)[0]
+
+
+def live_frames(ground, hours=12):
+    """Meteosat over the Indian Ocean every 30 minutes up to its latest picture: its clouds (cloud mask + infrared, day and night)
+    and the rain (H SAF) laid on the clear ground — so the video goes on from the sharp passes to now."""
+    _a = sys.argv; sys.argv = [_a[0], tempfile.mkdtemp(), tempfile.mkdtemp()]
+    import sat_videos as SV
+    sys.argv = _a
+    end = eum_latest('msg_iodc:ir108'); endp = eum_latest('msg_iodc:h63'); end = end.replace(minute=end.minute - end.minute % 30)
+    times = [end - dt.timedelta(minutes=30 * k) for k in range(hours * 2, -1, -1)]
+    H_, W_ = ground.shape[:2]; w = 1600; h = int(w * H_ / W_)
+    with cf.ThreadPoolExecutor(8) as ex:
+        irs = list(ex.map(lambda t: eum('msg_iodc:ir108', t, 'image/jpeg', w, h), times))
+        cms = list(ex.map(lambda t: eum('msg_iodc:clm', t, 'image/png', w // 2, h // 2), times))
+        prs = list(ex.map(lambda t: eum('msg_iodc:h63', min(t, endp), 'image/png', w // 3, h // 3), times))
+    M = SV.smooth_masks([SV.mask_of(c_, (w, h)) if c_ is not None else None for c_ in cms])
+    gs = [np.median(np.asarray(ir.convert('L'), float)[m_ < 0.1]) / 255 for ir, m_ in zip(irs, M) if ir is not None and m_ is not None and (m_ < 0.1).sum() > 500]
+    G0 = float(np.median(gs)) if gs else 0.4; out = []; lastp = None
+    for t, ir, m_, pr in zip(times, irs, M, prs):
+        if pr is not None: lastp = pr
+        if ir is None or m_ is None: continue
+        cl, sh = SV.clouds_real(ir, m_, G0)
+        a = ground.copy()
+        for lay in (sh, cl) + ((SV.rain_only(lastp.resize((w, h), Image.BICUBIC).filter(ImageFilter.GaussianBlur(2))),) if lastp is not None else ()):
+            L_ = np.asarray(lay.resize((W_, H_), Image.BICUBIC), np.float32) / 255; al = L_[..., 3:4] * (0.6 if lay is not sh and lay is not cl else 1)
+            a = a * (1 - al) + L_[..., :3] * 255 * al
+        out.append((t, a.astype(np.uint8)))
+    print('live frames', len(out), times[0], end, flush=True)
+    return out
 
 
 CTX = {}
@@ -177,29 +240,42 @@ def main():
     print('clean passes', len(clean), 'of', len(good), flush=True)
     shots = clean if len(clean) >= 2 else [(m, a) for m, a, b in sorted(good, key=lambda g: g[2])[:max(2, len(clean))]]
     shots.sort(key=lambda s: (s[0][0], s[0][3]))
-    tmp = pathlib.Path(tempfile.mkdtemp()); meta = []
+    # the video goes on to now: Meteosat every 30 minutes after the last sharp pass
+    LIVE = []
+    try:
+        ground = clear_ground(today)
+        t_last = max(dt.datetime.combine(m[0], dt.time()) + dt.timedelta(hours=m[3] - LC / 15) for m, _ in shots)
+        LIVE = [(t, a) for t, a in live_frames(ground) if t > t_last + dt.timedelta(minutes=20)]
+    except Exception as e: print('live', e, flush=True)
+    tmp = pathlib.Path(tempfile.mkdtemp())
     for lang in langs:
-        files = []
+        files = []; kinds = []
         for k, (m, a) in enumerate(shots):
-            f = tmp / f'{lang}_{k:02d}.png'; draw((lang, k, a, m, f)); files.append(f)
-        # the picture: the latest clear pass
-        best = max((k for k, (m, _) in enumerate(shots) if 'VIIRS' in m[1]), key=lambda k: (shots[k][0][0], -k), default=len(files) - 1)  # the latest day's VIIRS pass: the sharpest
+            f = tmp / f'{lang}_{k:02d}.png'; draw((lang, k, a, m, f)); files.append(f); kinds.append('pass')
+        # the picture: the latest day's VIIRS pass, the sharpest
+        best = max((k for k, (m, _) in enumerate(shots) if 'VIIRS' in m[1]), key=lambda k: (shots[k][0][0], -k), default=len(files) - 1)
         Image.open(files[best]).convert('RGB').save(out / f'sattrue_{lang}.jpg', quality=92)
-        # the video: each pass held 2.5 s, eased into the next over 1 s (blended frames)
+        for k, (t, a) in enumerate(LIVE):
+            lt = t + dt.timedelta(hours=5); f = tmp / f'{lang}_L{k:02d}.png'
+            draw((lang, k, a, (lt.date(), 'Meteosat · EUMETSAT', 'Meteosat · EUMETSAT', lt.hour, 'live', lt), f)); files.append(f); kinds.append('live')
+        # the video: a sharp pass held 2.5 s and eased into the next over 1 s; the Meteosat half-hours run on, 0.5 s each, blended
         fr = tmp / f'v_{lang}'; fr.mkdir(); n = 0; lst = []
-        ims = [np.asarray(Image.open(f).convert('RGB'), np.float32) for f in files]
-        for k, im in enumerate(ims):
-            Image.fromarray(im.astype(np.uint8)).save(fr / f'{n:04d}.jpg', quality=93); lst.append((n, 2.5)); n += 1
-            if k + 1 < len(ims):
-                for q in range(1, 12):
-                    a = q / 12; Image.fromarray(((1 - a) * im + a * ims[k + 1]).astype(np.uint8)).save(fr / f'{n:04d}.jpg', quality=93); lst.append((n, 1 / 12)); n += 1
+        prev = None
+        for k, f in enumerate(files):
+            im = np.asarray(Image.open(f).convert('RGB'), np.float32)
+            if prev is not None:
+                nb = 12 if kinds[k] == 'pass' or kinds[k - 1] == 'pass' else 6
+                for q in range(1, nb):
+                    w_ = q / nb; Image.fromarray(((1 - w_) * prev + w_ * im).astype(np.uint8)).save(fr / f'{n:04d}.jpg', quality=93); lst.append((n, 1 / 30 * (2.5 if nb == 12 else 1.5))); n += 1
+            Image.fromarray(im.astype(np.uint8)).save(fr / f'{n:04d}.jpg', quality=93); lst.append((n, 2.5 if kinds[k] == 'pass' else 0.3)); n += 1
+            prev = im
         lst[-1] = (lst[-1][0], 3.5)
         (fr / 'list.txt').write_text(''.join(f"file '{i:04d}.jpg'\nduration {d_}\n" for i, d_ in lst) + f"file '{lst[-1][0]:04d}.jpg'\n")
         part = out / f'.sattrue_{lang}.part.mp4'
         subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(fr / 'list.txt'), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a',
-                        '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '19', '-maxrate', '4000k', '-bufsize', '8000k', '-preset', 'slow', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(part)], check=True)
+                        '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '21', '-maxrate', '4000k', '-bufsize', '8000k', '-preset', 'slow', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(part)], check=True)
         part.replace(out / f'sattrue_{lang}.mp4'); print(out / f'sattrue_{lang}.mp4', (out / f'sattrue_{lang}.mp4').stat().st_size // 1024, 'KB', flush=True)
-    json.dump(dict(made=dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), passes=[[m[0].isoformat(), m[2], m[3]] for m, _ in shots]), open(out / 'meta.json', 'w'))
+    json.dump(dict(made=dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), passes=[[m[0].isoformat(), m[2], m[3]] for m, _ in shots], live=[LIVE[0][0].isoformat(), LIVE[-1][0].isoformat()] if LIVE else None), open(out / 'meta.json', 'w'))
     shutil.rmtree(tmp)
 
 
