@@ -400,6 +400,19 @@ const RGX = {
 const t0 = v => v == null ? '—' : `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace('+0°', '0°').replace('-0°', '0°');
 const admLine = v => !v ? '—' : `${t0(v[0])}…${t0(v[1])} ${v[2] >= 20 ? `${v[3] ? '❄' : '☂'}${v[2]}%` : '☀'}`;
 const admName = (a, lang) => (a.name[lang] || a.name.ru);
+// a neat table in a fixed-width font: the name, today's night…day °C and precipitation, tomorrow's
+const TBH = { ru: ['Регион', 'Сегодня', 'Завтра', 'Район'], uz: ['Hudud', 'Bugun', 'Ertaga', 'Tuman'], en: ['Region', 'Today', 'Tomorrow', 'District'] };
+const TBF = { ru: 'Температура: ночь…день, °C · ☂ — вероятность дождя, ❄ — снега, — без осадков', uz: 'Harorat: tun…kun, °C · ☂ — yomg‘ir ehtimoli, ❄ — qor, — yog‘insiz', en: 'Temperature: night…day, °C · ☂ — chance of rain, ❄ — snow, — dry' };
+const admCell = v => { if (!v) return ['—', '']; const t = `${t0(v[0])}…${t0(v[1])}`.replace(/°/g, ''); return [t, v[2] >= 20 ? `${v[3] ? '❄' : '☂'}${v[2]}%` : '—']; };
+function admTable(rows, lang, first) {
+  const H = TBH[lang] || TBH.ru, short = n => n.replace(/ viloyati$| обл\.$| области$| tumani$| р-н$| region$| district$/, '');
+  let nm = rows.map(r => short(r.name)); nm = nm.map((x, i) => nm.indexOf(x) !== nm.lastIndexOf(x) ? rows[i].name.replace(/ viloyati$/, ' vil.').replace(/ области$| обл\.$/, ' обл.') : x);
+  const w = Math.min(17, Math.max(...nm.map(x => x.length), 6));
+  const cut = x => x.length > w ? x.slice(0, w - 1) + '…' : x.padEnd(w);
+  const line = (n, a, b) => `${cut(n)} ${a[0].padStart(7)} ${a[1].padEnd(5)} ${b[0].padStart(7)} ${b[1]}`;
+  const head = `${(first || H[0]).padEnd(w)} ${H[1].padStart(7)}       ${H[2].padStart(7)}`;
+  return `<pre>${esc([head, '─'.repeat(w + 30), ...rows.map((r, i) => line(nm[i], admCell(r.v[0]), admCell(r.v[1])))].join('\n'))}</pre>`;
+}
 async function adminData(env, rid) { return fetch(`${base(env)}/prob/hr/${rid}_admin.json?v=${fresh()}`).then(r => r.ok ? r.json() : null).catch(() => null); }
 function regionsKb(A, lang, rid, cur) {
   const b = [...A.adm1].sort((x, y) => admName(x, lang).localeCompare(admName(y, lang))).map(a => ({ text: `${cur === a.id ? '✅ ' : ''}${admName(a, lang).replace(/ обл\.$| viloyati$/, '')}`, callback_data: `RD:${lang}:${rid}:${a.id}` }));
@@ -416,9 +429,8 @@ async function sendRegions(env, chat, lang, rid) {
   return tg(env, 'sendMessage', regionsList(A, lang, rid, chat));
 }
 function regionsList(A, lang, rid, chat) {
-  const X = RGX[lang] || RGX.ru, lines = [...A.adm1].sort((x, y) => admName(x, lang).localeCompare(admName(y, lang)))
-    .map(a => `<b>${esc(admName(a, lang))}</b>\n   ${X.today} ${admLine(a.v[0])} · ${X.tomorrow} ${admLine(a.v[1])}`);
-  return { chat_id: chat, text: [`${FLAG[rid]} <b>${NAMES[rid][lang]} — ${X.title}</b>`, '', ...lines, '', `<i>${X.foot}</i>`, '', X.pick].join('\n').slice(0, 4000), parse_mode: 'HTML', reply_markup: regionsKb(A, lang, rid) };
+  const X = RGX[lang] || RGX.ru, rows = [...A.adm1].sort((x, y) => admName(x, lang).localeCompare(admName(y, lang))).map(a => ({ name: admName(a, lang), v: a.v }));
+  return { chat_id: chat, text: [`${FLAG[rid]} <b>${NAMES[rid][lang]} · ${X.title}</b>`, admTable(rows, lang), `<i>${TBF[lang] || TBF.ru}</i>`, '', X.pick].join('\n').slice(0, 4000), parse_mode: 'HTML', reply_markup: regionsKb(A, lang, rid) };
 }
 // one region: its districts, today and tomorrow (the message changes in place when another region is pressed)
 async function sendDistricts(env, chat, lang, rid, id, msgId) {
@@ -427,8 +439,8 @@ async function sendDistricts(env, chat, lang, rid, id, msgId) {
   const r = A.adm1.find(a => a.id === id); if (!r) return sendRegions(env, chat, lang, rid);
   if (!msgId) { const mv = await moist2Url(env, lang, rid, 0, id); if (mv) await tg(env, 'sendVideo', { chat_id: chat, video: mv, caption: `💧 ${esc(admName(r, lang))} · ${(TJX[lang] || TJX.ru).moist2}`, parse_mode: 'HTML', supports_streaming: true }); }
   const ds = A.adm2.map((d, i) => ({ ...d, i })).filter(d => d.p === id).sort((x, y) => admName(x, lang).localeCompare(admName(y, lang)));
-  const text = [`🗺 <b>${esc(admName(r, lang))}</b> — ${X.dists}`, `${X.today} ${admLine(r.v[0])} · ${X.tomorrow} ${admLine(r.v[1])}`, `<i>${X.detail}</i>`, '',
-    ...ds.map(d => `• ${esc(admName(d, lang))}: ${admLine(d.v[0])} · ${X.tomorrow} ${admLine(d.v[1])}`), '', `<i>${X.foot}</i>`].join('\n').slice(0, 4000);
+  const text = [`🗺 <b>${esc(admName(r, lang))}</b> · ${X.dists}`, `${X.today}: ${admLine(r.v[0])} · ${X.tomorrow}: ${admLine(r.v[1])}`,
+    admTable(ds.map(d => ({ name: admName(d, lang), v: d.v })), lang, (TBH[lang] || TBH.ru)[3]), `<i>${TBF[lang] || TBF.ru}</i>`, '', `<i>${X.detail}</i>`].join('\n').slice(0, 4000);
   // a button per district: its detailed forecast (by hours, 15 days) at the district's centre
   const btn = ds.map(d => ({ text: admName(d, lang).replace(/ р-н$| tumani$/, ''), callback_data: `RX:${lang}:${rid}:${d.i}` })), rows = [];
   for (let i = 0; i < btn.length; i += 3) rows.push(btn.slice(i, i + 3));
