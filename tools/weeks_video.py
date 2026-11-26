@@ -17,11 +17,11 @@ from scipy.ndimage import gaussian_filter
 LONS = np.round(np.arange(55.5, 73.51, 0.75), 2); LATS = np.round(np.arange(36.75, 46.01, 0.75), 2)
 PCT_LV = [0, 25, 50, 80, 120, 150, 200, 300, 2000]
 PCT_COL = ['#a0632c', '#cf9a5c', '#ead2a8', '#ffffff', '#cfe6f7', '#93c6ee', '#4a98e0', '#1c58b0']
-TX = {'ru': dict(title='Погода по неделям', week='Неделя {n}', dtitle='Неделя по дням', dleg='Осадки за сутки, мм', dchart='Ташкент: осадки по дням (мм) и средняя температура', past='прошедшая неделя · факт', fc='прогноз ECMWF EC46', leg='Осадки за неделю, % от нормы',
+TX = {'ru': dict(title='Погода по неделям', week='Неделя {n}', dtitle='Неделя по дням', dleg='Дождь, мм', sleg='Снег, см', clouds='тучи', dchart='Ташкент: дождь (мм) и снег (см) по дням, температура днём и ночью', past='прошедшая неделя · факт', fc='прогноз ECMWF EC46', leg='Осадки за неделю, % от нормы',
                  less='меньше нормы', norm='около нормы', more='больше нормы', circ='в кружке — средняя температура недели, °C', chart='Ташкент: осадки по неделям (% от нормы) и средняя температура',
                  dtn='{d:+.0f}° к норме', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], intro1='Погода по неделям', intro2='осадки к норме и температура на 6 недель',
                  end1='Погода в вашем районе и посёлке', end2='в Telegram-боте @ObHavo_ECMWF_bot', src='Данные: Open-Meteo (ECMWF EC46, анализ моделей)'),
-      'uz': dict(title='Haftalar bo‘yicha ob-havo', week='Hafta {n}', dtitle='Hafta kunma-kun', dleg='Sutkalik yog‘in, mm', dchart='Toshkent: kunlar bo‘yicha yog‘in (mm) va o‘rtacha harorat', past='o‘tgan hafta · fakt', fc='ECMWF EC46 prognozi', leg='Haftalik yog‘in, me’yorga nisbatan %',
+      'uz': dict(title='Haftalar bo‘yicha ob-havo', week='Hafta {n}', dtitle='Hafta kunma-kun', dleg='Yomg‘ir, mm', sleg='Qor, sm', clouds='bulut', dchart='Toshkent: kunlar bo‘yicha yomg‘ir (mm) va qor (sm), kunduzgi va tungi harorat', past='o‘tgan hafta · fakt', fc='ECMWF EC46 prognozi', leg='Haftalik yog‘in, me’yorga nisbatan %',
                  less='me’yordan kam', norm='me’yor atrofida', more='me’yordan ko‘p', circ='doirada — haftaning o‘rtacha harorati, °C', chart='Toshkent: haftalar bo‘yicha yog‘in (me’yorga %) va o‘rtacha harorat',
                  dtn='me’yorga {d:+.0f}°', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], intro1='Haftalar bo‘yicha ob-havo', intro2='6 haftaga yog‘in (me’yorga) va harorat',
                  end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda: @ObHavo_ECMWF_bot', src='Ma’lumotlar: Open-Meteo (ECMWF EC46, modellar tahlili)')}
@@ -47,7 +47,7 @@ def fetch():
         ch = pts[i:i + 100]
         r = get('https://seasonal-api.open-meteo.com/v1/seasonal', {'latitude': ','.join(str(p[0]) for p in ch), 'longitude': ','.join(str(p[1]) for p in ch),
                 'models': 'ecmwf_seasonal_ensemble_mean_seamless', 'weekly': 'temperature_2m_mean,temperature_2m_anomaly,precipitation_mean,precipitation_anomaly',
-                'daily': 'temperature_2m_mean,precipitation_sum', 'timezone': 'Asia/Tashkent'})
+                'daily': 'temperature_2m_mean,precipitation_sum,snowfall_sum,cloud_cover_mean,temperature_2m_max,temperature_2m_min', 'timezone': 'Asia/Tashkent'})
         sea += r if isinstance(r, list) else [r]; time.sleep(12)
     # the past ISO week (Monday–Sunday before this week): the daily analysis of the last 14 days
     past = []
@@ -78,12 +78,30 @@ def fetch():
         d_ = dt.date.fromisoformat(t[:10])
         if d_ < today: continue
         g_ = lambda key: [None if x.get('daily', {}).get(key) is None or x['daily'][key][i] is None else float(x['daily'][key][i]) for x in sea]
-        days.append(dict(d=d_.isoformat(), pr=g_('precipitation_sum'), t=g_('temperature_2m_mean')))
+        days.append(dict(d=d_.isoformat(), pr=g_('precipitation_sum'), t=g_('temperature_2m_mean'), sn=g_('snowfall_sum'), cc=g_('cloud_cover_mean'), tx=g_('temperature_2m_max'), tn=g_('temperature_2m_min')))
+    for w in weeks:  # each week's snow (cm) and mean cloud cover (%) from its days, where the days are known
+        s_ = dt.date.fromisoformat(w['start']); dd_ = [x for x in days if s_ <= dt.date.fromisoformat(x['d']) <= s_ + dt.timedelta(days=6)]
+        if dd_:
+            w['sn'] = [float(np.nansum([x['sn'][i] or 0 for x in dd_])) for i in range(len(pts))]
+            w['cc'] = [float(np.nanmean([x['cc'][i] if x['cc'][i] is not None else np.nan for x in dd_])) for i in range(len(pts))]
     return dict(made=dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), lats=LATS.tolist(), lons=LONS.tolist(), weeks=weeks[:7], days=days[:49])
 
 
 def wk(s):  # the ISO week and its year, as on a calendar: «49-2026» (ISO 8601: the week of its Thursday; 2026 has 53 weeks, as it starts on a Thursday)
     y, n, _ = (s + dt.timedelta(days=3)).isocalendar(); return f'{n}-{y}'
+
+
+def amounts(mm, sn, lang):  # « · 12 мм · снег 5 см»: how much falls (rain in mm, snow in cm)
+    out = ''
+    if mm is not None and np.isfinite(mm) and mm >= 0.5: out += f" · {mm:.0f} {'мм' if lang == 'ru' else 'mm'}"
+    if sn is not None and np.isfinite(sn) and sn >= 0.5: out += f" · {'снег' if lang == 'ru' else 'qor'} {sn:.0f} {'см' if lang == 'ru' else 'sm'}"
+    return out
+
+
+def cloud_veil(ax, C, cc, a_in=1.0):  # the cloud cover (%) as a soft grey veil, thicker where the sky is more covered
+    v = np.zeros(cc.shape + (4,), np.float32); v[..., :3] = (0.58, 0.62, 0.68); v[..., 3] = np.clip((cc - 45) / 55, 0, 1) ** 1.2 * 0.3 * a_in
+    ax.imshow(v, extent=(C['LONu'][0], C['LONu'][-1], C['LATu'][0], C['LATu'][-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=2.5)
+    ax.set_xlim(*C['lon_ext']); ax.set_ylim(LAT_A, LAT_B); ax.set_aspect(1 / PV.COSL)
 
 
 def deg(v):
@@ -108,7 +126,7 @@ def grids(D):
     for w in D['weeks']:
         pr = up(w['pr']); nm = up([None if a is None or b is None else a - b for a, b in zip(w['pr'], w['pa'])] if w['pa'] else norm0 or w['pr'])
         pct = np.where(nm >= 1.0, 100 * pr / np.maximum(nm, 1e-3), np.where(pr >= 2, 200, 100))  # deserts with ~0 mm normal: around the normal unless it rains
-        out.append(dict(pct=np.clip(pct, 0, 1000), t=up(w['t']), ta=up(w['ta']) if w['ta'] else None, pr=pr, nm=nm))
+        out.append(dict(pct=np.clip(pct, 0, 1000), t=up(w['t']), ta=up(w['ta']) if w['ta'] else None, pr=pr, nm=nm, sn=up(w['sn']) if w.get('sn') else None, cc=up(w['cc']) if w.get('cc') else None))
     return out, LONu, LATu
 
 
@@ -123,18 +141,19 @@ def draw(job):
     a_in = fr.get('fade', 1.0)
     ax.contourf(C['LONu'], C['LATu'], fr['pct'], levels=PCT_LV, cmap=ListedColormap(PCT_COL), norm=BoundaryNorm(PCT_LV, len(PCT_COL)), zorder=2, alpha=0.9 * a_in, antialiased=True)
     ax.contour(C['LONu'], C['LATu'], fr['pct'], levels=[80, 120], colors=['#c9a77a', '#8fb6dc'], linewidths=0.8, alpha=0.8 * a_in, zorder=2.05)
+    if fr.get('cc') is not None: cloud_veil(ax, C, fr['cc'], a_in)
     for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
     L = 0 if lang == 'ru' else 1
-    labs = [f"{tw[L]}  {p_:.0f}%" + ('' if d_ is None or not np.isfinite(d_) else f" ({deg(d_)})") for tw, (p_, t_, d_) in zip(PV.TOWNS, fr['towns'])]
+    labs = [f"{tw[L]}  {p_:.0f}%" + ('' if d_ is None or not np.isfinite(d_) else f" ({deg(d_)})") + amounts(m_, s_, lang) for tw, (p_, t_, d_, m_, s_) in zip(PV.TOWNS, fr['towns'])]
     offs = PV.place(ax, [(tw[3], tw[2], lb, 17 if tw[0] == 'Ташкент' else 13.5, tw[0] == 'Ташкент', PV.OFF[tw[0]]) for tw, lb in zip(PV.TOWNS, labs)], fig)
-    for tw, (p_, t_, d_), (dx, dy, ha, va) in zip(PV.TOWNS, fr['towns'], offs):
+    for tw, (p_, t_, d_, m_, s_), (dx, dy, ha, va), lab_ in zip(PV.TOWNS, fr['towns'], offs, labs):
         main = tw[0] == 'Ташкент'
         tt = deg(t_)
         ax.annotate(tt, (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
                     bbox=dict(boxstyle='circle,pad=0.38' if main else 'circle,pad=0.32', fc=PV.tcol(t_), ec=PV.ORANGE if main else 'white', lw=3 if main else 2))
         ec = '#a0632c' if p_ < 80 else '#1c63c0' if p_ > 120 else '#c9d2db'
         sub = '' if d_ is None or not np.isfinite(d_) else f" ({deg(d_)})"
-        ax.annotate(f"{tw[L]}  {p_:.0f}%" + sub, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5,
+        ax.annotate(lab_, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5,
                     fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
                     bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#eef1f4', ec=PV.ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.62))
     ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
@@ -208,13 +227,15 @@ def setup(D, outd, langs):
             e = s + dt.timedelta(days=6); iso = (s + dt.timedelta(days=3)).isocalendar()  # the ISO week of the week's middle day
             when = f"{X['week'].format(n=wk(s))} · {s:%d.%m}–{e:%d.%m}"
             sub = X['past'] if w['kind'] == 'past' else X['fc']
-            towns = lambda gg: [(at(gg['pct'], tw[2], tw[3]), at(gg['t'], tw[2], tw[3]), at(gg['ta'], tw[2], tw[3]) if gg['ta'] is not None else None) for tw in PV.TOWNS]
-            frames.append(dict(pct=g['pct'], s=k, when=when, sub=sub, prog=(k + 1) / n, towns=towns(g), d=3.0))
+            towns = lambda gg: [(at(gg['pct'], tw[2], tw[3]), at(gg['t'], tw[2], tw[3]), at(gg['ta'], tw[2], tw[3]) if gg['ta'] is not None else None,
+                                 at(gg['pr'], tw[2], tw[3]) if gg.get('pr') is not None else None, at(gg['sn'], tw[2], tw[3]) if gg.get('sn') is not None else None) for tw in PV.TOWNS]
+            frames.append(dict(pct=g['pct'], cc=g.get('cc'), s=k, when=when, sub=sub, prog=(k + 1) / n, towns=towns(g), d=3.0))
             if k + 1 < n:  # the move to the next week: the map blends, the numbers follow
                 g2 = G_[k + 1]
                 for a in np.linspace(0, 1, 9)[1:-1]:
-                    gm = dict(pct=(1 - a) * g['pct'] + a * g2['pct'], t=(1 - a) * g['t'] + a * g2['t'], ta=None if g['ta'] is None or g2['ta'] is None else (1 - a) * g['ta'] + a * g2['ta'])
-                    frames.append(dict(frames[-1] if a < 0.5 else dict(pct=None), pct=gm['pct'], towns=towns(gm), d=0.06, s=k if a < 0.5 else k + 1,
+                    gm = dict(pct=(1 - a) * g['pct'] + a * g2['pct'], t=(1 - a) * g['t'] + a * g2['t'], ta=None if g['ta'] is None or g2['ta'] is None else (1 - a) * g['ta'] + a * g2['ta'],
+                              pr=(1 - a) * g['pr'] + a * g2['pr'], sn=None if g.get('sn') is None or g2.get('sn') is None else (1 - a) * g['sn'] + a * g2['sn'], cc=None if g.get('cc') is None or g2.get('cc') is None else (1 - a) * g['cc'] + a * g2['cc'])
+                    frames.append(dict(frames[-1] if a < 0.5 else dict(pct=None), pct=gm['pct'], cc=gm['cc'], towns=towns(gm), d=0.06, s=k if a < 0.5 else k + 1,
                                        when=when if a < 0.5 else None, sub=sub, prog=(k + 1 + a) / n))
         for j, f_ in enumerate(frames):  # fill the header of the second half of each move from the next week
             if f_.get('when') is None: nx = next(f2 for f2 in frames[j:] if f2.get('when') is not None and f2['d'] >= 1); f_.update(when=nx['when'], sub=nx['sub'])
@@ -223,6 +244,8 @@ def setup(D, outd, langs):
         CTX['videos'][lang] = dict(frames=intro + frames + [dict(frames[-1], card='end', d=4.0)], dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f'weeks_{lang}.mp4'))
 
 
+SN_LV = [0.5, 2, 5, 10, 20, 500]
+SN_COL = ['#f1e3f5', '#dfb6ea', '#c486da', '#a055c2', '#6c2795']
 MM_LV = [0.5, 1, 3, 5, 10, 20, 500]
 MM_COL = ['#d4e9f9', '#93c6ee', '#4a98e0', '#1c63c0', '#173f97', '#5b2fa8']
 
@@ -235,11 +258,14 @@ def draw_day(job):
     for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=PV.SEA, ec='#b9cfe3', lw=0.6, zorder=0.5)
     if np.nanmax(fr['mm']) >= MM_LV[0]:
         ax.contourf(C['LONu'], C['LATu'], fr['mm'], levels=MM_LV, colors=MM_COL, zorder=2, alpha=0.9, antialiased=True)
+    if fr.get('sn') is not None and np.nanmax(fr['sn']) >= SN_LV[0]:  # the snow (cm) in violet over the rain
+        ax.contourf(C['LONu'], C['LATu'], fr['sn'], levels=SN_LV, colors=SN_COL, zorder=2.1, alpha=0.9, antialiased=True)
+    if fr.get('cc') is not None: cloud_veil(ax, C, fr['cc'])
     for rings, col, lw, z in C['borders']: ax.add_collection(LineCollection(rings, colors=col, linewidths=lw, zorder=z, capstyle='round', joinstyle='round'))
     L = 0 if lang == 'ru' else 1
-    labs = [f"{tw[L]}  {m_:.0f} mm" if m_ >= 0.5 else tw[L] for tw, (m_, t_) in zip(PV.TOWNS, fr['towns'])]
+    labs = [tw[L] + amounts(m_, s_, lang) + (f" · {deg(x_)}/{deg(n_)}" if x_ is not None and n_ is not None else '') for tw, (m_, t_, s_, x_, n_) in zip(PV.TOWNS, fr['towns'])]
     offs = PV.place(ax, [(tw[3], tw[2], lb, 17 if tw[0] == 'Ташкент' else 13.5, tw[0] == 'Ташкент', PV.OFF[tw[0]]) for tw, lb in zip(PV.TOWNS, labs)], fig)
-    for tw, (m_, t_), (dx, dy, ha, va), lb in zip(PV.TOWNS, fr['towns'], offs, labs):
+    for tw, (m_, t_, s_, x_, n_), (dx, dy, ha, va), lb in zip(PV.TOWNS, fr['towns'], offs, labs):
         main = tw[0] == 'Ташкент'
         ax.annotate(deg(t_), (tw[3], tw[2]), ha='center', va='center', fontsize=15 if main else 11.5, fontweight='bold', color='white', zorder=8.5,
                     bbox=dict(boxstyle='circle,pad=0.38' if main else 'circle,pad=0.32', fc=PV.tcol(t_), ec=PV.ORANGE if main else 'white', lw=3 if main else 2))
@@ -255,23 +281,40 @@ def draw_day(job):
     fig.patches.append(Rectangle((0, 0.903), 1, 0.004, transform=fig.transFigure, fc='#2c3e57', ec='none', zorder=0))
     fig.patches.append(Rectangle((0, 0.903), fr['prog'], 0.004, transform=fig.transFigure, fc=PV.ORANGE, ec='none', zorder=0.1))
     fig.text(0.016, 0.183, X['dleg'], fontsize=12, fontweight='bold', color=PV.INK, va='center')
+    xs_ = 0.14 + 6 * 0.05 + 0.01; fig.text(xs_, 0.183, X['sleg'], fontsize=12, fontweight='bold', color=PV.INK, va='center')
+    for k, (c, lab) in enumerate(zip(SN_COL, ['0,5–2', '2–5', '5–10', '10–20', '>20'])):
+        xx = xs_ + 0.07 + k * 0.045
+        fig.patches.append(FancyBboxPatch((xx, 0.171), 0.042, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=c, ec='none'))
+        fig.text(xx + 0.021, 0.183, lab, fontsize=10.5, fontweight='bold', color='white' if k >= 2 else PV.INK, ha='center', va='center')
+    fig.patches.append(FancyBboxPatch((0.86, 0.171), 0.022, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc='#b9bfc7', ec='none'))
+    fig.text(0.886, 0.183, X['clouds'], fontsize=12, color=PV.MUTED, va='center')
     for k, (c, lab) in enumerate(zip(MM_COL, ['0,5–1', '1–3', '3–5', '5–10', '10–20', '>20'])):
         xx = 0.14 + k * 0.05
         fig.patches.append(FancyBboxPatch((xx, 0.171), 0.047, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=c, ec='none'))
         fig.text(xx + 0.0235, 0.183, lab, fontsize=10.5, fontweight='bold', color='white' if k >= 2 else PV.INK, ha='center', va='center')
-    fig.text(0.984, 0.183, X['circ'].replace('недели', 'дня').replace('haftaning', 'kunning'), fontsize=12, color=PV.MUTED, ha='right', va='center')
     fig.text(0.016, 0.152, X['dchart'], fontsize=12, fontweight='bold', color=PV.INK, va='center')
     bx = fig.add_axes([0.035, 0.035, 0.93, 0.1]); bx.set_facecolor('none')
-    tp, tt = np.array(V['tp']), np.array(V['tt']); xs = np.arange(len(tp))
-    bx.bar(xs, np.maximum(tp, 0.15), width=0.62, color=[MM_COL[int(np.clip(np.searchsorted(MM_LV, v, side='right') - 1, 0, 5))] if v >= 0.5 else PV.BAR_EMPTY for v in tp], zorder=2)
-    for x_, v in zip(xs, tp): bx.text(x_, v + max(tp.max(), 2) * 0.04, f'{v:.0f} mm' if v >= 0.5 else '—', ha='center', va='bottom', fontsize=11, fontweight='bold', color=PV.INK, zorder=4)
-    s = fr['s']; bx.add_patch(Rectangle((s - 0.45, 0), 0.9, max(tp.max(), 2) * 1.5, fill=False, ec=PV.ORANGE, lw=2, zorder=5))
-    bx.set_ylim(0, max(tp.max(), 2) * 1.6); bx.set_xlim(-0.6, len(tp) - 0.4); bx.set_yticks([]); bx.tick_params(length=0)
+    tp, tt, ts = np.array(V['tp']), np.array(V['tt']), np.array(V['ts']); xs = np.arange(len(tp)); top = max((tp + ts).max(), 2)
+    bx.bar(xs, np.maximum(tp, 0.15), width=0.62, color='#4a98e0', zorder=2)
+    bx.bar(xs, ts, bottom=tp, width=0.62, color='#a055c2', zorder=2)
+    for x_, v, sv, cv in zip(xs, tp, ts, V['tc']):
+        t_ = ' · '.join([x for x in [f"{v:.0f} {'мм' if lang == 'ru' else 'mm'}" if v >= 0.5 else '', f"{'снег' if lang == 'ru' else 'qor'} {sv:.0f} {'см' if lang == 'ru' else 'sm'}" if sv >= 0.5 else ''] if x]) or '—'
+        bx.text(x_, v + sv + top * 0.04, t_ + (f"\n☁ {cv:.0f}%" if cv is not None and False else ''), ha='center', va='bottom', fontsize=10.5, fontweight='bold', color=PV.INK, zorder=4)
+    s = fr['s']; bx.add_patch(Rectangle((s - 0.45, 0), 0.9, top * 1.5, fill=False, ec=PV.ORANGE, lw=2, zorder=5))
+    bx.set_ylim(0, top * 2.4); bx.set_xlim(-0.6, len(tp) - 0.4); bx.set_yticks([]); bx.tick_params(length=0)
     bx.set_xticks(xs); bx.set_xticklabels(V['dlab'], fontsize=11, color=PV.MUTED)
     for sp in bx.spines.values(): sp.set_visible(False)
     tx = bx.twinx(); lo, hi = np.nanmin(tt), np.nanmax(tt); pad = max(2, (hi - lo) * 0.3)
-    tx.plot(xs, tt, color=PV.TEMP, lw=2.4, marker='o', ms=7, mfc='white', mew=2, zorder=6); tx.set_ylim(lo - pad - 1.3 * (hi - lo + 2 * pad), hi + pad)
-    for x_, v in zip(xs, tt): tx.annotate(deg(v), (x_, v), xytext=(16, 0), textcoords='offset points', fontsize=12, fontweight='bold', color=PV.TEMP, va='center', path_effects=[pe.withStroke(linewidth=3, foreground='white')], zorder=7)
+    TX_ = np.array([v if v is not None else np.nan for v in V['tx']]); TN_ = np.array([v if v is not None else np.nan for v in V['tn']])
+    if np.isfinite(TX_).any(): lo, hi = np.nanmin(TN_), np.nanmax(TX_); pad = max(2, (hi - lo) * 0.3)
+    tx.set_ylim(lo - pad - 1.3 * (hi - lo + 2 * pad), hi + pad)
+    if np.isfinite(TX_).any():  # by day (orange) and at night (blue)
+        tx.plot(xs, TX_, color=PV.TEMP, lw=2.4, marker='o', ms=7, mfc='white', mew=2, zorder=6); tx.plot(xs, TN_, color='#3f7fd6', lw=2.0, marker='o', ms=6, mfc='white', mew=2, zorder=6)
+        for x_, a_, b_ in zip(xs, TX_, TN_):
+            tx.annotate(deg(a_), (x_, a_), xytext=(14, 2), textcoords='offset points', fontsize=11.5, fontweight='bold', color=PV.TEMP, va='center', path_effects=[pe.withStroke(linewidth=3, foreground='white')], zorder=7)
+            tx.annotate(deg(b_), (x_, b_), xytext=(14, -2), textcoords='offset points', fontsize=11, fontweight='bold', color='#3f7fd6', va='center', path_effects=[pe.withStroke(linewidth=3, foreground='white')], zorder=7)
+    else:
+        tx.plot(xs, tt, color=PV.TEMP, lw=2.4, marker='o', ms=7, mfc='white', mew=2, zorder=6)
     tx.set_yticks([]); [sp.set_visible(False) for sp in tx.spines.values()]
     fig.savefig(pathlib.Path(V['dir']) / f'{i:04d}.png', dpi=PV.DPI, facecolor='white'); plt.close(fig)
 
@@ -290,19 +333,26 @@ def setup_days(D, outd, langs):
     while mon in byd or mon + dt.timedelta(days=6) in byd:
         ds = [mon + dt.timedelta(days=k) for k in range(7) if mon + dt.timedelta(days=k) in byd]
         if len(ds) >= 4:
-            G_ = [(up(byd[d]['pr']), up(byd[d]['t'])) for d in ds]; key = wk(mon)
+            gf = lambda d, k_: up(byd[d][k_]) if byd[d].get(k_) else None
+            G_ = [(up(byd[d]['pr']), up(byd[d]['t']), gf(d, 'sn'), gf(d, 'cc'), gf(d, 'tx'), gf(d, 'tn')) for d in ds]; key = wk(mon)
             for lang in langs:
                 X = TX[lang]; frames = []
-                for k, (d, (mm, t)) in enumerate(zip(ds, G_)):
-                    tw_ = lambda m_, t__: [(at(m_, tw[2], tw[3]), at(t__, tw[2], tw[3])) for tw in PV.TOWNS]
-                    frames.append(dict(mm=np.clip(mm, 0, None), s=k, when=f"{X['wd'][d.weekday()]} {d:%d.%m}", prog=(k + 1) / len(ds), towns=tw_(mm, t), d=1.8))
+                mix = lambda A, B, a: None if A is None or B is None else (1 - a) * A + a * B
+                tv = lambda f, tw: at(f, tw[2], tw[3]) if f is not None else None
+                for k, (d, g) in enumerate(zip(ds, G_)):
+                    def fr_(g, **kw):
+                        mm, t, sn, cc, tx, tn = g; rain = np.clip(mm - (sn if sn is not None else 0) / 0.7, 0, None)  # snow (cm) ≈ 0.7 × its water (mm)
+                        return dict(mm=rain, sn=None if sn is None else np.clip(sn, 0, None), cc=cc, towns=[(tv(rain, tw), tv(t, tw), tv(sn, tw), tv(tx, tw), tv(tn, tw)) for tw in PV.TOWNS], **kw)
+                    frames.append(fr_(g, s=k, when=f"{X['wd'][d.weekday()]} {d:%d.%m}", prog=(k + 1) / len(ds), d=1.8))
                     if k + 1 < len(ds):
-                        m2, t2 = G_[k + 1]
-                        for a in np.linspace(0, 1, 7)[1:-1]: frames.append(dict(frames[-1], mm=np.clip((1 - a) * mm + a * m2, 0, None), towns=tw_((1 - a) * mm + a * m2, (1 - a) * t + a * t2), d=0.06))
+                        g2 = G_[k + 1]
+                        for a in np.linspace(0, 1, 7)[1:-1]: frames.append(dict(frames[-1], **{kk: vv for kk, vv in fr_(tuple(mix(A, B, a) for A, B in zip(g, g2))).items()}, d=0.06))
                 frames[-1] = dict(frames[-1], d=3.0)
                 vid = f'{lang}_{key}'
                 CTX['dvideos'][vid] = dict(frames=frames, dir=tempfile.mkdtemp(), out=str(pathlib.Path(outd) / f'wk_{key}_{lang}.mp4'), wname=f"{X['week'].format(n=key)} · {ds[0]:%d.%m}–{mon + dt.timedelta(days=6):%d.%m}",
-                                           tp=[at(mm, tash[2], tash[3]) for mm, _ in G_], tt=[at(t, tash[2], tash[3]) for _, t in G_], dlab=[f"{X['wd'][d.weekday()]}\n{d:%d.%m}" for d in ds])
+                                           tp=[max(0.0, at(g[0], tash[2], tash[3]) - (at(g[2], tash[2], tash[3]) / 0.7 if g[2] is not None else 0)) for g in G_], tt=[at(g[1], tash[2], tash[3]) for g in G_],
+                                           ts=[at(g[2], tash[2], tash[3]) if g[2] is not None else 0 for g in G_], tx=[at(g[4], tash[2], tash[3]) if g[4] is not None else None for g in G_],
+                                           tn=[at(g[5], tash[2], tash[3]) if g[5] is not None else None for g in G_], tc=[at(g[3], tash[2], tash[3]) if g[3] is not None else None for g in G_], dlab=[f"{X['wd'][d.weekday()]}\n{d:%d.%m}" for d in ds])
                 jobs += [(vid, i) for i in range(len(frames))]
         mon += dt.timedelta(days=7)
     return jobs

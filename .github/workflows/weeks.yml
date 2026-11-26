@@ -2,7 +2,7 @@ name: Weather by ISO weeks (video)
 # precipitation as % of the normal and the mean temperature, week by week (past week + ECMWF EC46), tools/weeks_video.py; kept on the "weeks" branch
 on:
   schedule:
-    - cron: '17 4 * * *'
+    - cron: '17 4,16 * * *'
   workflow_dispatch: {}
 permissions: {contents: write}
 concurrency: {group: weeks, cancel-in-progress: true}
