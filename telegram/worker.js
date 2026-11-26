@@ -350,7 +350,7 @@ async function weekDays(env, chat, lang, a, b) {  // the user's saved place, els
   return pointForecast(env, chat, lang, +pl[0], +pl[1], await nearestPlace(env, +pl[0], +pl[1], 8), null, [a, b || dAdd(a, 6)]);
 }
 // "30.11–06.12", "с 30 ноября по 6 декабря", "30 noyabr – 6 dekabr", "неделя", "следующая неделя", "неделя 49"
-const MON_RX = [['янв', 'yanv', 'oca'], ['фев', 'fev', 'şub'], ['мар', 'mart', 'mar'], ['апр', 'apr', 'nis'], ['ма[йя]', 'may', 'mayıs'], ['июн', 'iyun', 'haz'], ['июл', 'iyul', 'tem'], ['авг', 'avg', 'ağu'], ['сен', 'sen', 'eyl'], ['окт', 'okt', 'eki'], ['ноя', 'noy', 'kas'], ['дек', 'dek', 'ara']];
+const MON_RX = [['янв', 'yanv', 'oca', 'jan'], ['фев', 'fev', 'şub', 'feb'], ['мар', 'mart', 'mar', 'mar'], ['апр', 'apr', 'nis', 'apr'], ['ма[йя]', 'may', 'mayıs', 'may'], ['июн', 'iyun', 'haz', 'jun'], ['июл', 'iyul', 'tem', 'jul'], ['авг', 'avg', 'ağu', 'aug'], ['сен', 'sen', 'eyl', 'sep'], ['окт', 'okt', 'eki', 'oct'], ['ноя', 'noy', 'kas', 'nov'], ['дек', 'dek', 'ara', 'dec']];
 function parseRange(text) {
   const t = text.toLowerCase().replace(/ё/g, 'е'), today = new Date(Date.now() + TZ * 3600e3).toISOString().slice(0, 10), Y = +today.slice(0, 4);
   const dow = new Date(today + 'T12:00:00Z').getUTCDay() || 7, mon = dAdd(today, 1 - dow);
@@ -360,10 +360,10 @@ function parseRange(text) {
   const mon_ = w => MON_RX.findIndex(v => v.some(x => new RegExp('^' + x).test(w))) + 1;
   m = t.match(/(\d{1,2})\s*([a-zа-яʻ‘'ğışçöü]+)?\s*(?:-|–|—|по|до|gacha|dan|\.\.)\s*(\d{1,2})\s+([a-zа-яʻ‘'ğışçöü]+)/);
   if (m && mon_(m[4])) { const m2 = mon_(m[4]), m1 = m[2] && mon_(m[2]) ? mon_(m[2]) : m2; return [mk(+m[1], m1), mk(+m[3], m2)]; }
-  if (/(неделя|недел[юи]|hafta)\s*(\d{1,2})\b/.test(t)) { const n = +t.match(/(неделя|недел[юи]|hafta)\s*(\d{1,2})/)[2], a = dAdd(mon, 7 * (n - isoWeek(mon))); return [a, dAdd(a, 6)]; }
+  if (/(неделя|недел[юи]|hafta|week)\s*(\d{1,2})\b/.test(t)) { const n = +t.match(/(неделя|недел[юи]|hafta|week)\s*(\d{1,2})/)[2], a = dAdd(mon, 7 * (n - isoWeek(mon))); return [a, dAdd(a, 6)]; }
   if (/(\d{1,2})\s*-?\s*hafta/.test(t)) { const n = +t.match(/(\d{1,2})\s*-?\s*hafta/)[1], a = dAdd(mon, 7 * (n - isoWeek(mon))); return [a, dAdd(a, 6)]; }
-  if (/(следующ[а-я]* недел|keyingi hafta|через неделю)/.test(t)) return [dAdd(mon, 7), dAdd(mon, 13)];
-  if (/^(эта |на |погода на )?(недел[яюи]|hafta|bu hafta)$/.test(t.trim())) return [mon, dAdd(mon, 6)];
+  if (/(следующ[а-я]* недел|keyingi hafta|через неделю|next week)/.test(t)) return [dAdd(mon, 7), dAdd(mon, 13)];
+  if (/^(эта |на |погода на )?(недел[яюи]|hafta|bu hafta|this week|week)$/.test(t.trim())) return [mon, dAdd(mon, 6)];
   return null;
 }
 async function sendOutlook(env, chat, lang) {
@@ -932,20 +932,20 @@ const MOREM = { ru: '⚙️ <b>Ещё</b>', uz: '⚙️ <b>Yana</b>', en: '⚙�
 function moreMenu(env, chat, lang, rid) {
   const R = RKL[lang] || RKL.ru, a = k => ({ text: R[k], callback_data: `MA:${lang}:${k}` });
   return tg(env, 'sendMessage', { chat_id: chat, text: MOREM[lang] || MOREM.ru, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
-    [a('brief'), a('cities')], [a('countries'), a('daily')], [a('accuracy')], [{ text: lang === 'uz' ? '📊 Ob-havo o‘tgan yilga nisbatan' : '📊 Погода против прошлого года', web_app: { url: site(env, `lfl.html?lang=${lang}`) } }], [{ text: R.site, web_app: { url: site(env, `prob/${rid}/${lang}/prob`) } }],
+    [a('air'), a('alerts')], ...(rid === 'UZ' ? [[a('mtn'), a('dyn')]] : []), [a('notif'), a('daily')], [a('brief'), a('cities')], [a('accuracy')], [{ text: lang === 'uz' ? '📊 Ob-havo o‘tgan yilga nisbatan' : '📊 Погода против прошлого года', web_app: { url: site(env, `lfl.html?lang=${lang}`) } }], [{ text: R.site, web_app: { url: site(env, `prob/${rid}/${lang}/prob`) } }],
     ...(TRJ.has(rid) ? [] : []), [a('help'), a('reset')]] } });
 }
-const rkAct = text => { for (const L of [...Object.values(RKL), ...Object.values(RKL_OLD)]) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
+const rkAct = text => { for (const L of [...Object.values(RKS), ...Object.values(RKL), ...Object.values(RKL_OLD)]) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
+const RKS = {  // the main keyboard: few, short buttons; the rest is in «⚙️ More»
+  ru: { now: '🌡 Сейчас', days: '🗓 15 дней', video: '🎬 Видео', outlook: '📅 По неделям', regions: '🗺 Регионы', countries: '🌍 Страны', loc: '📍 Моё место', more: '⚙️ Ещё' },
+  uz: { now: '🌡 Hozir', days: '🗓 15 kun', video: '🎬 Video', outlook: '📅 Haftalar', regions: '🗺 Viloyatlar', countries: '🌍 Davlatlar', loc: '📍 Mening joyim', more: '⚙️ Yana' },
+  en: { now: '🌡 Now', days: '🗓 15 days', video: '🎬 Video', outlook: '📅 By weeks', regions: '🗺 Regions', countries: '🌍 Countries', loc: '📍 My place', more: '⚙️ More' } };
 function replyKb(env, lang, id) {
-  const X = RKL[lang] || RKL.ru, b = t => ({ text: t });
-  // two buttons a row, the everyday ones on top; the rare ones live in «⚙️ More» (the old labels still work)
+  const X = RKS[lang] || RKS.ru, b = t => ({ text: t });
   return { keyboard: [
     [b(X.now), b(X.days)],
-    [b(X.video)],  // one video button: the 15-day hourly video, the moisture, the weeks and the place close up (the old video buttons lead here too)
-    ...(id === 'UZ' ? [[b(X.dyn)]] : []),  // weather against last year (LFL): one wide button, the people who plan by it look for it first
-    [...(ADM.has(id) ? [b(X.regions)] : []), b(X.air)],
-    ...(id === 'UZ' ? [[b(X.outlook), b(X.mtn)]] : []),
-    [b(X.alerts), b(X.notif)],
+    [b(X.video), b(X.outlook)],
+    [b(ADM.has(id) ? X.regions : X.countries), ...(ADM.has(id) ? [b(X.countries)] : [])],
     [{ text: X.loc, request_location: true }, b(X.more)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', en: 'City name…' }[lang] };
 }
 // countries and cities are keyboards too: the chosen one is marked with ✅
@@ -1990,7 +1990,7 @@ async function privateMsg(msg, env) {
     }
     if (act === 'reset') return cbk(`RS:${lang}`);
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
-    if (act === 'outlook') return sendOutlook(env, chat.id, lang);
+    if (act === 'outlook') return rid === 'UZ' ? sendOutlook(env, chat.id, lang) : tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     if (act === 'evv') return evMenu(env, chat.id, lang);
     if (act === 'dyn') return sendDyn(env, chat.id, lang);
     if (act === 'brief') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'typing' }); return sendBrief(env, chat.id, lang, rid); }
