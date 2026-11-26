@@ -23,7 +23,7 @@ EXT = (LC - SPAN / 2, LC + SPAN / 2)
 GIBS = 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi'
 NORAD = {'Terra': 25994, 'NOAA-20': 43013, 'NOAA-21': 54234}
 HALF = {'VIIRS': 1500.0, 'MODIS': 1160.0}  # half the swath, km
-RULE = os.environ.get('SAT_RULE', 'late')  # which orbit the daily mosaic keeps where two orbits overlap
+RULE = os.environ.get('SAT_RULE', 'near')  # which orbit the daily mosaic keeps where two orbits overlap
 PASSES = [('MODIS_Terra_CorrectedReflectance_TrueColor', 'Terra · MODIS 250 м', 'Terra · MODIS 250 m', 10.5),
           ('VIIRS_NOAA21_CorrectedReflectance_TrueColor', 'NOAA-21 · VIIRS 375 м', 'NOAA-21 · VIIRS 375 m', 12.8),
           ('VIIRS_NOAA20_CorrectedReflectance_TrueColor', 'NOAA-20 · VIIRS 375 м', 'NOAA-20 · VIIRS 375 m', 13.3),
@@ -128,7 +128,7 @@ CTX = {}
 
 def main():
     out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True); langs = (sys.argv[2] if len(sys.argv) > 2 else 'ru,uz').split(',')
-    today = dt.datetime.utcnow().date(); days = [today - dt.timedelta(days=1), today]
+    today = dt.datetime.utcnow().date(); days = [today - dt.timedelta(days=2), today - dt.timedelta(days=1), today]
     jobs = [(lay, d) for d in days for lay in PASSES]
     with cf.ThreadPoolExecutor(6) as ex: imgs = list(ex.map(lambda j: fetch(j[0][0], j[1]), jobs))
     shots = []
@@ -152,7 +152,7 @@ def main():
         if 'uz' not in CTX:
             pts = np.c_[glo.ravel(), gla.ravel()]; uz = np.zeros(len(pts), bool)
             for r in G['UZ']['rings']: uz |= MPath(np.asarray(r)).contains_points(pts)
-            CTX['uz'] = binary_dilation(uz.reshape(gla.shape), iterations=4)
+            CTX['uz'] = binary_dilation(uz.reshape(gla.shape), iterations=2)
         lay = m[4]; sat = 'Terra' if 'Terra' in lay else ('NOAA-21' if 'NOAA21' in lay else 'NOAA-20'); kind = 'MODIS' if 'MODIS' in lay else 'VIIRS'
         try:
             A, ob, D = assign(sat, kind, m[0], gla, glo)
