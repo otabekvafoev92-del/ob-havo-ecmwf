@@ -18,6 +18,10 @@ GC = json.load(open(ROOT / 'prob' / 'geo_casia.json'))['countries']; GA = json.l
 TZC = {'UZ': 5, 'KZ': 5, 'KG': 6, 'TJ': 5, 'TM': 5, 'AZ': 4, 'AM': 4, 'GE': 4, 'TR': 3, 'BY': 3, 'MD': 2, 'UA': 2, 'AF': 4.5, 'IR': 3.5, 'CN': 8, 'IN': 5.5, 'RU': 3}
 TZN = {'UZ': {'ru': 'по Ташкенту', 'uz': 'Toshkent vaqti'}}
 AR = (PV.MAP[2] * PV.W) / (PV.MAP[3] * PV.H)  # the map's width : height
+# the continents of the bot: the box to show and the centre of the equal-area map (Lambert azimuthal)
+CONT = {'EU': dict(b=(-24, 45, 34, 71), c=(10, 52), ru='Европа', uz='Yevropa', tz=1), 'AS': dict(b=(26, 150, -10, 77), c=(90, 40), ru='Азия', uz='Osiyo', tz=6),
+        'AF': dict(b=(-19, 52, -36, 38), c=(17, 2), ru='Африка', uz='Afrika', tz=2), 'NA': dict(b=(-168, -52, 8, 72), c=(-100, 45), ru='Северная Америка', uz='Shimoliy Amerika', tz=-6),
+        'SA': dict(b=(-82, -34, -56, 13), c=(-60, -20), ru='Южная Америка', uz='Janubiy Amerika', tz=-4), 'OC': dict(b=(112, 179, -47, -9), c=(142, -28), ru='Австралия и Океания', uz='Avstraliya va Okeaniya', tz=10)}
 
 
 def rings_of(iso):
@@ -91,11 +95,25 @@ def src_for(la, lo):
     return 'prob' if 22 <= lo[0] and lo[1] <= 188 and 27 <= la[0] and la[1] <= 80 else 'glob'
 
 
+def continent(data, out, code, lang):
+    """The 15-day hourly video of a continent: the world data (0.5°), so the precipitation fills the whole map; an equal-area map."""
+    C = CONT[code]; X = PV.TX[lang]; b = C['b']
+    big = sorted([p for p in GW['places'] if b[0] < p['lon'] < b[1] and b[2] < p['lat'] < b[3]], key=lambda p: (-(p.get('cap') or 0), -p.get('pop', 0)))
+    towns = spread([(p.get('ru') or p['en'], p['en'], p['lat'], p['lon']) for p in big], (b[3] - b[2]) / 9)[:14]
+    nb = [np.asarray(r, float) for c in GW['countries'].values() for r in c['rings']]
+    view = dict(proj=f"+proj=laea +lat_0={C['c'][1]} +lon_0={C['c'][0]} +datum=WGS84 +units=m", bounds=b, towns=towns, main=towns[0][0], borders=[(nb, '#7d8995', 0.7, 3)],
+                off=C['tz'], stem=f'country_{code}', src='glob', intro2={lang: {'ru': f"на 15 дней: {C['ru']}", 'uz': f"15 kunga: {C['uz']}"}[lang]}, sig=1.3, title={lang: f"{C[lang]} · {X['title']}"}, tzl={lang: {'ru': f"UTC{C['tz']:+d}", 'uz': f"UTC{C['tz']:+d}"}[lang]},
+                chart_t={lang: X['chart'].replace('Ташкент', towns[0][0]).replace('Toshkent', towns[0][1])})
+    PV.FOG = None
+    f = render(data, out, lang, view); print('continent', code, f, flush=True); return f
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('data'); ap.add_argument('out'); ap.add_argument('--lang', default='ru')
     ap.add_argument('--lat', type=float); ap.add_argument('--lon', type=float); ap.add_argument('--name', default=''); ap.add_argument('--iso', default='')
-    ap.add_argument('--chat', default=''); ap.add_argument('--only', default='')
+    ap.add_argument('--chat', default=''); ap.add_argument('--only', default=''); ap.add_argument('--cont', default='')
     a = ap.parse_args(); data, out = pathlib.Path(a.data), pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True); lang = a.lang
+    if a.cont: return continent(data, out, a.cont, lang)
     iso = a.iso or (country_at(a.lat, a.lon) if a.lat is not None else 'UZ') or 'UZ'
     X = PV.TX[lang]; cn = cname(iso, lang); off = TZC.get(iso, round((a.lon if a.lon is not None else 64) / 15))
     tz = TZN.get(iso, {}).get(lang) or ({'ru': 'местное время', 'uz': 'mahalliy vaqt'}[lang])
@@ -110,7 +128,7 @@ def main():
         towns = spread(towns_of(iso, (lo0, lo1, la0, la1), 24), (lat[1] - lat[0]) / 14)[:12]
         if iso == 'UZ': towns = PV.TOWNS
         if towns:
-            view = dict(lat=lat, lc=lc, towns=towns, main=towns[0][0], borders=borders(iso), off=off, stem=f'country_{iso}', src=src_for(lat, (lc - span / 2, lc + span / 2)),
+            view = dict(lat=lat, lc=lc, towns=towns, main=towns[0][0], borders=borders(iso), off=off, intro2={lang: {'ru': f'на 15 дней: {cn}', 'uz': f'15 kunga: {cn}'}[lang]}, stem=f'country_{iso}', src=src_for(lat, (lc - span / 2, lc + span / 2)),
                         title={lang: f"{cn} · {X['title']}"}, tzl={lang: tz}, chart_t={lang: X['chart'].replace('Ташкент', towns[0][0 if lang == 'ru' else 1]).replace('Toshkent', towns[0][1])})
             files.append(('country', render(data, out, lang, view)))
     # 2) the place, close: its region and districts
@@ -126,7 +144,7 @@ def main():
         near += [t for t in towns_of(iso, box, 30)]
         near.sort(key=lambda t: math.hypot((t[3] - a.lon) * cl, t[2] - a.lat))  # the nearest first
         towns = spread([me] + near, 0.11)[:10]
-        view = dict(lat=lat, lc=lc, up=6, sig=5.0, towns=towns, main=nm, borders=borders(iso, adm2=True), off=off, stem='place', src=src_for(lat, (lc - span / 2, lc + span / 2)),
+        view = dict(lat=lat, lc=lc, up=6, sig=5.0, towns=towns, main=nm, intro2={lang: {'ru': f'на 15 дней: {nm}', 'uz': f'15 kunga: {nm}'}[lang]}, borders=borders(iso, adm2=True), off=off, stem='place', src=src_for(lat, (lc - span / 2, lc + span / 2)),
                     title={lang: f"{nm} · {X['title']}"}, tzl={lang: tz}, chart_t={lang: X['chart'].replace('Ташкент', nm).replace('Toshkent', nm)})
         files.append(('place', render(data, out, lang, view)))
     json.dump([[k, str(f)] for k, f in files], open(out / 'files.json', 'w'))

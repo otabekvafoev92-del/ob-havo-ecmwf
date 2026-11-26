@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      matrix: {iso: [KZ, KG, TJ, TM, AZ, AM, BY, MD, RU, TR]}
+      matrix: {iso: [KZ, KG, TJ, TM, AZ, AM, BY, MD, RU, TR, EU, AS, AF, NA, SA, OC]}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,7 +23,8 @@ jobs:
           pip install -q numpy scipy matplotlib pyproj qrcode requests pillow
           id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
           timeout 600 gh run download $id -n npz -D data
-          for l in ru uz; do timeout 1500 python -u -W ignore tools/place15.py data out --lang $l --iso ${{ matrix.iso }} --only country; done
+          case ${{ matrix.iso }} in EU|AS|AF|NA|SA|OC) A="--cont ${{ matrix.iso }}";; *) A="--iso ${{ matrix.iso }} --only country";; esac
+          for l in ru uz; do timeout 1500 python -u -W ignore tools/place15.py data out --lang $l $A; done
           cd out && rm -f files.json && git init -q && git checkout -q -b p15c-${{ matrix.iso }} && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "15 days ${{ matrix.iso }} $(date -u +%F' '%H:%M)"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" p15c-${{ matrix.iso }}
