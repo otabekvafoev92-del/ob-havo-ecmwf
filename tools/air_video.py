@@ -47,17 +47,23 @@ def cat(v):
 def fetch_points(lats, lons, hours=72):
     """The CAMS forecast at many points, ~100 a request (the API's rate limit respected); → {var: (points, hours)}, times."""
     out = {v: [] for v in VARS}; times = None
-    for i in range(0, len(lats), 100):
-        for tr in range(6):
-            r = requests.get(API, params=dict(latitude=','.join(f'{x:.2f}' for x in lats[i:i + 100]), longitude=','.join(f'{x:.2f}' for x in lons[i:i + 100]),
-                                              hourly=','.join(VARS), forecast_hours=hours, past_hours=1, timezone='GMT', domains='cams_global'), timeout=120)
-            if r.status_code == 429: print('rate limit, waiting', flush=True); time.sleep(65); continue
-            r.raise_for_status(); break
+    B = 50
+    for i in range(0, len(lats), B):
+        r = None
+        for tr in range(8):  # a slow answer or the rate limit: wait and ask again
+            try:
+                r = requests.get(API, params=dict(latitude=','.join(f'{x:.2f}' for x in lats[i:i + B]), longitude=','.join(f'{x:.2f}' for x in lons[i:i + B]),
+                                                  hourly=','.join(VARS), forecast_hours=hours, past_hours=1, timezone='GMT', domains='cams_global'), timeout=240)
+                if r.status_code == 200: break
+                print('air api', r.status_code, r.text[:120], flush=True)
+            except Exception as e: print('air api', e, flush=True)
+            time.sleep(65 if r is not None and r.status_code == 429 else 20)
+        if r is None or r.status_code != 200: raise RuntimeError('air api failed')
         J = r.json(); J = J if isinstance(J, list) else [J]
         for j in J:
             times = times or j['hourly']['time']
             for v in VARS: out[v].append([np.nan if x is None else x for x in j['hourly'][v]])
-        time.sleep(4)
+        time.sleep(3)
     return {v: np.array(a, np.float32) for v, a in out.items()}, times
 
 
