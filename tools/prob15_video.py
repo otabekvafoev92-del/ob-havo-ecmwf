@@ -102,6 +102,44 @@ def place(ax, items, fig):
     return out
 
 
+def relief_layer(x0, x1, la0, la1, w=1600, h=640):
+    """Mountains, just noticeable: a soft hillshade (shadows grey, sunny slopes white) from the open terrain tiles (AWS Terrain Tiles,
+    Mapzen terrarium); None when the tiles cannot be reached."""
+    import io, math, concurrent.futures as cf_
+    try:
+        import requests
+        from PIL import Image
+        from matplotlib.colors import LightSource
+    except Exception: return None
+    z = int(np.clip(round(math.log2(360 / ((x1 - x0) / w * 256))), 4, 9)); n = 2 ** z
+    tx = lambda lo: (lo + 180) / 360 * n; ty = lambda la: (1 - math.asinh(math.tan(math.radians(la))) / math.pi) / 2 * n
+    X0, X1, Y0, Y1 = int(tx(x0)), int(tx(x1)), int(ty(la1)), int(ty(la0))
+    if (X1 - X0 + 1) * (Y1 - Y0 + 1) > 400: return None
+    def tile(xy):
+        x, y = xy
+        for _ in range(3):
+            try:
+                r = requests.get(f'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x % n}/{y}.png', timeout=30)
+                if r.ok:
+                    a = np.asarray(Image.open(io.BytesIO(r.content)).convert('RGB'), float); return xy, a[..., 0] * 256 + a[..., 1] + a[..., 2] / 256 - 32768
+            except Exception: pass
+        return xy, None
+    big = np.zeros(((Y1 - Y0 + 1) * 256, (X1 - X0 + 1) * 256)); got = 0
+    with cf_.ThreadPoolExecutor(16) as ex:
+        for (x, y), e in ex.map(tile, [(x, y) for x in range(X0, X1 + 1) for y in range(Y0, Y1 + 1)]):
+            if e is not None: big[(y - Y0) * 256:(y - Y0 + 1) * 256, (x - X0) * 256:(x - X0 + 1) * 256] = e; got += 1
+    if not got: return None
+    lon = np.linspace(x0, x1, w); lat = np.linspace(la1, la0, h)
+    px = ((lon + 180) / 360 * n - X0) * 256; py = np.array([((1 - math.asinh(math.tan(math.radians(la))) / math.pi) / 2 * n - Y0) * 256 for la in lat])
+    el = np.maximum(big[np.ix_(np.clip(py.astype(int), 0, big.shape[0] - 1), np.clip(px.astype(int), 0, big.shape[1] - 1))], 0)
+    mpp = (x1 - x0) * 111e3 * math.cos(math.radians((la0 + la1) / 2)) / w
+    hs = LightSource(azdeg=315, altdeg=40).hillshade(el, vert_exag=2.0, dx=mpp, dy=mpp) - math.sin(math.radians(40))
+    out = np.zeros((h, w, 4), np.float32)
+    shade = np.clip(-hs, 0, 1) * 0.22 + np.clip((el - 1500) / 3000, 0, 1) * 0.05  # the shaded slopes and the high mountains a little grey
+    out[..., :3] = 0.35; out[..., 3] = np.clip(shade * 1.6, 0, 0.26)
+    return out
+
+
 def tcol(t):  # the colour of a temperature circle: violet in frost, blue when cold, green when cool, orange and red when warm
     stops = [(-15, '#4b2a8f'), (-5, '#2f5fc4'), (0, '#3f8fdd'), (6, '#2a9d8f'), (12, '#7cad3a'), (18, '#e3a21a'), (25, '#e0601b'), (32, '#c0262d')]
     for (t0, c0), (t1, c1) in zip(stops, stops[1:]):
@@ -120,6 +158,9 @@ def draw(job):
     # the map
     ax = fig.add_axes(MAP); x0, x1 = C['lon_ext']; ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl']); ax.axis('off')
     for r in C['sea']: ax.fill(r[:, 0], r[:, 1], fc=SEA, ec='#b9cfe3', lw=0.6, zorder=0.5)
+    if C.get('relief') is not None:  # the mountains, just noticeable
+        ax.imshow(C['relief'], extent=(x0, x1, C['la0'], C['la1']), origin='upper', interpolation='bilinear', aspect='auto', zorder=0.6)
+        ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
     P, T = fr['P'], fr['T']; a_in = fr.get('fade', 1.0)
     sf = np.clip((1.5 - T) / 2.0, 0, 1)  # the share of snow: a soft edge between rain and snow, not the model grid's steps
     Pr, Ps = np.where(sf < 0.5, P, 0) * np.clip(1.6 - 2 * sf, 0, 1) ** 0.5, np.where(sf >= 0.5, P, 0) * np.clip(2 * sf - 0.4, 0, 1) ** 0.5
@@ -297,7 +338,9 @@ def main(npz, wxp, outd, langs, only=None, view=None):
         UZ = [np.asarray(r) for r in G['UZ']['rings']]; NB = [np.asarray(r) for k, c in G.items() if k != 'UZ' for r in c['rings']]
         A1 = [np.asarray(r) for a in GA['adm1'] for r in a['r']]
         borders = [(NB, '#a3acb6', 1.0, 3), (A1, '#b7c0ca', 0.8, 3.05), (UZ, '#1c2633', 2.6, 3.3)]
-    CTX.update(LONu=LONu, LATu=LATu, sea=sea, borders=borders, lon_ext=ext, la0=la0, la1=la1, cosl=cosl, towns=towns, main=tash[0], names=view.get('names', []),
+    rl = relief_layer(ext[0], ext[1], la0, la1) if os.environ.get('P15_RELIEF', '1') == '1' else None
+    print('relief', None if rl is None else rl.shape, flush=True)
+    CTX.update(relief=rl, LONu=LONu, LATu=LATu, sea=sea, borders=borders, lon_ext=ext, la0=la0, la1=la1, cosl=cosl, towns=towns, main=tash[0], names=view.get('names', []),
                title=view.get('title'), tzl=view.get('tzl'), chart_t=view.get('chart_t'),
                members=members, bx=bx, bw=bw, tp=tp, tt=tt, days=days, qr=qr('https://t.me/ObHavo_ECMWF_bot'), videos={})
     seq = []
