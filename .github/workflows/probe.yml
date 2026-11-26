@@ -1,0 +1,13 @@
+name: Data probe
+on: {workflow_dispatch: {inputs: {script: {default: tools/ecm_probe.py}}}}
+permissions: {contents: write}
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          pip install -q requests
+          mkdir pr && cd pr && python ../${{ inputs.script }}
+          git init -q && git checkout -q -b probe && git add -A && git -c user.name=bot -c user.email=bot@x commit -qm probe
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe
