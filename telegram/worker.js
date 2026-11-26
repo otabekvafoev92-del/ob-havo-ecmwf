@@ -444,7 +444,8 @@ async function sendDistricts(env, chat, lang, rid, id, msgId) {
   // a button per district: its detailed forecast (by hours, 15 days) at the district's centre
   const btn = ds.map(d => ({ text: admName(d, lang).replace(/ р-н$| tumani$/, ''), callback_data: `RX:${lang}:${rid}:${d.i}` })), rows = [];
   for (let i = 0; i < btn.length; i += 3) rows.push(btn.slice(i, i + 3));
-  const kb = { inline_keyboard: [...rows, [{ text: X.back, callback_data: `RB:${lang}:${rid}` }]] };
+  const cc = r.c || (ds[0] && ds[0].c);  // the region's 15 days as a chart, at its centre
+  const kb = { inline_keyboard: [...(cc ? [[{ ...phBtn(lang, +cc[1], +cc[0]), text: `${(PHX[lang] || PHX.ru).btn}: ${admName(r, lang)}` }]] : []), ...rows, [{ text: X.back, callback_data: `RB:${lang}:${rid}` }]] };
   const body = { chat_id: chat, text, parse_mode: 'HTML', reply_markup: kb };
   if (msgId) { const e = await tg(env, 'editMessageText', { ...body, message_id: msgId }); if (e.ok || /not modified/.test(e.description || '')) return e; }
   return tg(env, 'sendMessage', body);
