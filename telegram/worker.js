@@ -1478,6 +1478,14 @@ function wrapT(s, maxw, size, bold, maxl) {  // the lines of a text in a width (
 const tColor = t => { const S = [[-25, [110, 64, 190]], [-10, [70, 110, 220]], [0, [90, 180, 235]], [8, [110, 200, 140]], [16, [235, 210, 70]], [25, [245, 140, 50]], [35, [220, 60, 45]]];
   if (t <= S[0][0]) return `rgb(${S[0][1]})`; const i = S.findIndex(q => t <= q[0]); if (i < 0) return `rgb(${S[S.length - 1][1]})`;
   const a = (t - S[i - 1][0]) / (S[i][0] - S[i - 1][0]); return `rgb(${[0, 1, 2].map(k => Math.round(S[i - 1][1][k] + (S[i][1][k] - S[i - 1][1][k]) * a))})`; };
+function fxSvg(fx, W) {  // the season and the weather on the real photo: a colour grade, falling snow or rain
+  let s = fx.tint ? `<rect width="${W}" height="1080" fill="${fx.tint}" fill-opacity="${fx.op || 0.18}"/>` : '';
+  let r = 12345; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  if (fx.snow) for (let i = 0; i < 260; i++) { const x = rnd() * W, y = rnd() * 1000, rr = 1.5 + rnd() * 4; s += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${rr.toFixed(1)}" fill="#ffffff" fill-opacity="${(0.45 + rnd() * 0.5).toFixed(2)}"/>`; }
+  if (fx.rain) for (let i = 0; i < 220; i++) { const x = rnd() * W, y = rnd() * 1000, l = 18 + rnd() * 26; s += `<line x1="${x.toFixed(0)}" y1="${y.toFixed(0)}" x2="${(x - l * 0.25).toFixed(0)}" y2="${(y + l).toFixed(0)}" stroke="#dfeaf5" stroke-opacity="${(0.25 + rnd() * 0.35).toFixed(2)}" stroke-width="1.6"/>`; }
+  if (fx.night) s += `<rect width="${W}" height="1080" fill="#0a1430" fill-opacity="0.38"/>`;
+  return s;
+}
 function cardSvg(d, bg) {
   const W = 1080, F = 'font-family="DejaVu Sans, Verdana, sans-serif"', T = (s, x, y, sz, col, o = {}) => `<text x="${x}" y="${y}" ${F} font-size="${sz}" font-weight="${o.b ? 700 : 400}" fill="${col}"${o.a ? ` text-anchor="${o.a}"` : ''}${o.op ? ` fill-opacity="${o.op}"` : ''}${o.sh ? ' filter="url(#sh)"' : ''}>${xe(s)}</text>`;
   const br = d.brief.map(b => wrapT(b, W - 160, 31, false, 2)), nb = br.reduce((s, l) => s + l.length, 0);
@@ -1514,12 +1522,42 @@ function cardSvg(d, bg) {
 <linearGradient id="gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c1626" stop-opacity="0"/><stop offset="0.55" stop-color="#0c1626" stop-opacity="0.82"/><stop offset="1" stop-color="#0c1626"/></linearGradient></defs>
 <rect width="${W}" height="${H}" fill="#0c1626"/>
 ${bg ? `<image x="0" y="0" width="${W}" height="1080" preserveAspectRatio="xMidYMid slice" href="data:image/jpeg;base64,${bg}" xlink:href="data:image/jpeg;base64,${bg}"/>` : `<rect width="${W}" height="1080" fill="#26476b"/>`}
+${fxSvg(d.fx || {}, W)}
 <rect width="${W}" height="320" fill="url(#gt)"/><rect y="420" width="${W}" height="480" fill="url(#gb)"/><rect y="899" width="${W}" height="${H - 899}" fill="#0c1626"/>
 ${head}${body}</svg>`;
 }
-async function cardBg(env, q) {  // the city's picture for this season, weather and time of day: made once, kept in the database
+const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
+async function realPhoto(env, q) {  // a real photo of the place (Wikipedia's picture of its article), cut to a square by wsrv.nl; '' when there is none
+  const key = `real:${(q.city + '-' + q.country).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  const row = await env.DB.prepare('SELECT b FROM bgimg WHERE k = ?1').bind(key).first();
+  if (row) return row.b;
+  let b = '';
+  try {
+    const UA = { 'user-agent': 'OsmonWeatherBot/1.0 (https://t.me/ObHavo_ECMWF_bot)' };
+    const W_ = 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&piprop=thumbnail|name&pithumbsize=1600';
+    for (const u of [`${W_}&redirects=1&titles=${encodeURIComponent(q.city)}`, `${W_}&generator=search&gsrlimit=5&gsrsearch=${encodeURIComponent(`${q.city} ${q.country} city`)}`]) {  // the town's own article first
+      const j = await fetch(u, { headers: UA }).then(r => r.ok ? r.json() : null).catch(() => null);
+      const pages = j && j.query && j.query.pages ? Object.values(j.query.pages).sort((a, c) => (a.index || 0) - (c.index || 0)) : [];
+      const p = pages.find(x => x.thumbnail && /\.jpe?g$/i.test(x.pageimage || '') && !/flag|coat|map|locator|emblem|seal|logo|location|airways|boeing|airbus|bombard|russian_|aircraft/i.test(x.pageimage || '')
+        && !/airport|airways|battle|invasion|front|ghost|district|region|province|fc$|pfk|club|university/i.test(x.title || ''));
+      if (!p) continue;
+      const r = await fetch(`https://wsrv.nl/?url=${encodeURIComponent(p.thumbnail.source)}&w=1080&h=1080&fit=cover&a=attention&output=jpg&q=78`);
+      if (r.ok) { b = b64(await r.arrayBuffer()); break; }
+    }
+  } catch (e) { console.log('photo', e && e.message); }
+  await env.DB.prepare('INSERT OR REPLACE INTO bgimg (k, b, t) VALUES (?1, ?2, ?3)').bind(key, b, Date.now()).run();
+  return b;
+}
+async function cardBg(env, q) {  // the place's real photo with the season and weather laid on it; when there is none, a picture made by Workers AI
   if (!env.DB) return null;
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS bgimg (k TEXT PRIMARY KEY, b TEXT, t INTEGER)').run();
+  {
+    const north = q.lat >= 0, idx0 = Math.floor((((north ? q.month : (q.month + 5) % 12 + 1)) % 12) / 3), wx0 = wmoKey(q.code, 1);
+    q.fx = { tint: ['#9fc4ff', '#bff0b0', '#ffe2a0', '#ff9a3c'][idx0], op: [0.2, 0.08, 0.06, 0.14][idx0], snow: wx0 === 'snow' || (idx0 === 0 && q.t <= -2 && wx0 !== 'sun'), rain: wx0 === 'rain' || wx0 === 'storm', night: !q.day };
+    const real = await realPhoto(env, q);
+    if (real) return real;
+    q.fx = { night: false };
+  }
   const north = q.lat >= 0, m = q.month, idx = Math.floor(((north ? m : (m + 5) % 12 + 1) % 12) / 3);  // 0 winter, 1 spring, 2 summer, 3 autumn
   let season = Math.abs(q.lat) < 23 ? 'tropical' : ['winter', 'spring', 'summer', 'autumn'][idx];
   const SE = { winter: q.t <= 2 ? 'winter, snow on roofs, streets and trees' : 'mild winter, bare trees, no snow', spring: 'spring, fresh green trees and blossoms', summer: 'summer, lush green trees',
@@ -1542,7 +1580,7 @@ async function sendCard(env, chat, d, q, caption, markup) {  // → the Telegram
     await env.DB.prepare('CREATE TABLE IF NOT EXISTS cards (id TEXT PRIMARY KEY, s TEXT, t INTEGER)').run();
     const id = [...crypto.getRandomValues(new Uint8Array(9))].map(v => v.toString(16).padStart(2, '0')).join('');
     await env.DB.prepare('DELETE FROM cards WHERE t < ?1').bind(Date.now() - 6 * 3600e3).run();
-    await env.DB.prepare('INSERT INTO cards (id, s, t) VALUES (?1, ?2, ?3)').bind(id, cardSvg(d, bg), Date.now()).run();
+    await env.DB.prepare('INSERT INTO cards (id, s, t) VALUES (?1, ?2, ?3)').bind(id, cardSvg({ ...d, fx: q.fx }, bg), Date.now()).run();
     const url = `https://wsrv.nl/?url=${encodeURIComponent(`${BOT_ORIGIN}/card/${id}.svg`)}&output=jpg&q=88`;
     const r = await tg(env, 'sendPhoto', { chat_id: chat, photo: url, caption: caption.slice(0, 1024), parse_mode: 'HTML', ...(markup ? { reply_markup: markup } : {}) });
     if (!r.ok) console.log('card', r.description);
