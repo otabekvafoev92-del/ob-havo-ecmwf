@@ -24,7 +24,7 @@ GIBS = 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi'
 PASSES = [('MODIS_Terra_CorrectedReflectance_TrueColor', 'Terra · MODIS 250 м', 'Terra · MODIS 250 m', 10.5),
           ('VIIRS_NOAA21_CorrectedReflectance_TrueColor', 'NOAA-21 · VIIRS 375 м', 'NOAA-21 · VIIRS 375 m', 12.8),
           ('VIIRS_NOAA20_CorrectedReflectance_TrueColor', 'NOAA-20 · VIIRS 375 м', 'NOAA-20 · VIIRS 375 m', 13.3),
-          ('MODIS_Aqua_CorrectedReflectance_TrueColor', 'Aqua · MODIS 250 м', 'Aqua · MODIS 250 m', 13.6)]
+          ]  # (Aqua's MODIS is past its prime: striped swath edges, so it is left out)
 TX = {'ru': dict(title='Спутник · Узбекистан в истинных цветах', when='{d} · около {h}:00', tz='по Ташкенту', morning='утро', day='день',
                  leg='белое — облака и снег в горах · серое — дымка, пыль · бурое — пустыня · тёмное — вода', src='NASA GIBS · {s}', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
       'uz': dict(title='Sun’iy yo‘ldosh · O‘zbekiston haqiqiy ranglarda', when='{d} · taxminan {h}:00', tz='Toshkent vaqti', morning='ertalab', day='kunduzi',
@@ -46,7 +46,7 @@ def fetch(layer, day, px=3000):
 
 def coverage(a):
     """The share of the map (Uzbekistan's box) the pass really covers (no black swath gaps)."""
-    return float((a.max(axis=2) > 12).mean())
+    return float((a.max(axis=2) > 8).mean())
 
 
 def draw(job):
@@ -96,7 +96,8 @@ def main():
         for k, (m, a) in enumerate(shots):
             f = tmp / f'{lang}_{k:02d}.png'; draw((lang, k, a, m, f)); files.append(f)
         # the picture: the latest clear pass
-        Image.open(files[-1]).convert('RGB').save(out / f'sattrue_{lang}.jpg', quality=92)
+        best = max((k for k, (m, _) in enumerate(shots) if 'VIIRS' in m[1]), key=lambda k: (shots[k][0][0], -k), default=len(files) - 1)  # the latest day's VIIRS pass: the sharpest
+        Image.open(files[best]).convert('RGB').save(out / f'sattrue_{lang}.jpg', quality=92)
         # the video: each pass held 2.5 s, eased into the next over 1 s (blended frames)
         fr = tmp / f'v_{lang}'; fr.mkdir(); n = 0; lst = []
         ims = [np.asarray(Image.open(f).convert('RGB'), np.float32) for f in files]
