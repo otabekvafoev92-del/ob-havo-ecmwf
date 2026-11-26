@@ -3,7 +3,7 @@
 //  • Groups and channels: add the bot (as admin in a channel) and it posts the forecast by itself after every update
 //    every day at the hour the group picked (default 07:00 Tashkent). An admin picks the language, one or several
 //    countries and the hour with /sozla (/settings). Each post: 3 videos + today/tomorrow/next days + weather by city.
-//  • /help: instructions in Uzbek, Russian and Turkish.
+//  • /help: instructions in Uzbek, Russian and English.
 //  • /hit and /stats: anonymous visit counter for the website (daily totals per country and city).
 // Everything is read from the website built by GitHub Actions (SITE_URL/prob/manifest.json and the .mp4 files).
 // Settings (Workers → Settings): BOT_TOKEN (secret), SITE_URL (variable), D1 database bound as DB,
@@ -11,15 +11,15 @@
 // Connect once: open <worker URL>/setup in a browser (webhook, command menus, bot description).
 
 const NAMES = {
-  world: { uz: 'Butun dunyo', ru: 'Весь мир', tr: 'Tüm dünya' }, EU: { uz: 'Yevropa', ru: 'Европа', tr: 'Avrupa' }, AS: { uz: 'Osiyo', ru: 'Азия', tr: 'Asya' },
-  AF: { uz: 'Afrika', ru: 'Африка', tr: 'Afrika' }, NA: { uz: 'Shimoliy Amerika', ru: 'Северная Америка', tr: 'Kuzey Amerika' },
-  SA: { uz: 'Janubiy Amerika', ru: 'Южная Америка', tr: 'Güney Amerika' }, OC: { uz: 'Okeaniya', ru: 'Океания', tr: 'Okyanusya' },
-  cis: { uz: 'MDH va Turkiya', ru: 'СНГ и Турция', tr: 'BDT ve Türkiye' }, UZ: { uz: 'O‘zbekiston', ru: 'Узбекистан', tr: 'Özbekistan' },
-  KZ: { uz: 'Qozog‘iston', ru: 'Казахстан', tr: 'Kazakistan' }, KG: { uz: 'Qirg‘iziston', ru: 'Кыргызстан', tr: 'Kırgızistan' },
-  TJ: { uz: 'Tojikiston', ru: 'Таджикистан', tr: 'Tacikistan' }, TM: { uz: 'Turkmaniston', ru: 'Туркменистан', tr: 'Türkmenistan' },
-  AZ: { uz: 'Ozarbayjon', ru: 'Азербайджан', tr: 'Azerbaycan' }, AM: { uz: 'Armaniston', ru: 'Армения', tr: 'Ermenistan' },
-  BY: { uz: 'Belarus', ru: 'Беларусь', tr: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', tr: 'Moldova' },
-  RU: { uz: 'Rossiya', ru: 'Россия', tr: 'Rusya' }, TR: { uz: 'Turkiya', ru: 'Турция', tr: 'Türkiye' },
+  world: { uz: 'Butun dunyo', ru: 'Весь мир', en: 'Whole world' }, EU: { uz: 'Yevropa', ru: 'Европа', en: 'Europe' }, AS: { uz: 'Osiyo', ru: 'Азия', en: 'Asia' },
+  AF: { uz: 'Afrika', ru: 'Африка', en: 'Africa' }, NA: { uz: 'Shimoliy Amerika', ru: 'Северная Америка', en: 'North America' },
+  SA: { uz: 'Janubiy Amerika', ru: 'Южная Америка', en: 'South America' }, OC: { uz: 'Okeaniya', ru: 'Океания', en: 'Oceania' },
+  cis: { uz: 'MDH va Turkiya', ru: 'СНГ и Турция', en: 'CIS and Türkiye' }, UZ: { uz: 'O‘zbekiston', ru: 'Узбекистан', en: 'Uzbekistan' },
+  KZ: { uz: 'Qozog‘iston', ru: 'Казахстан', en: 'Kazakhstan' }, KG: { uz: 'Qirg‘iziston', ru: 'Кыргызстан', en: 'Kyrgyzstan' },
+  TJ: { uz: 'Tojikiston', ru: 'Таджикистан', en: 'Tajikistan' }, TM: { uz: 'Turkmaniston', ru: 'Туркменистан', en: 'Turkmenistan' },
+  AZ: { uz: 'Ozarbayjon', ru: 'Азербайджан', en: 'Azerbaijan' }, AM: { uz: 'Armaniston', ru: 'Армения', en: 'Armenia' },
+  BY: { uz: 'Belarus', ru: 'Беларусь', en: 'Belarus' }, MD: { uz: 'Moldova', ru: 'Молдова', en: 'Moldova' },
+  RU: { uz: 'Rossiya', ru: 'Россия', en: 'Russia' }, TR: { uz: 'Turkiya', ru: 'Турция', en: 'Türkiye' },
 };
 const FLAG = { world: '🌍', EU: '🌍', AF: '🌍', AS: '🌏', OC: '🌏', NA: '🌎', SA: '🌎', cis: '🗺', UZ: '🇺🇿', KZ: '🇰🇿', KG: '🇰🇬', TJ: '🇹🇯', TM: '🇹🇲', AZ: '🇦🇿', AM: '🇦🇲', BY: '🇧🇾', MD: '🇲🇩', RU: '🇷🇺', TR: '🇹🇷' };
 const GROUPS = [['UZ', 'KZ', 'KG'], ['TJ', 'TM', 'AZ'], ['AM', 'BY', 'MD'], ['RU', 'TR', 'cis'], ['world', 'EU', 'AS'], ['AF', 'NA', 'SA'], ['OC']];
@@ -46,16 +46,16 @@ const T = {
     pdf: '📄 Инструкция (PDF)', adm: '✉️ Написать админу', admAsk: '✍️ Напишите сообщение администратору бота (текст, фото или голосовое) — я передам.\nОтмена: /cancel', admSent: '✅ Сообщение отправлено администратору. Ответ придёт в этот чат.', admAns: '💬 Ответ администратора:', admOff: 'Администратор бота ещё не подключён, попробуйте позже.', cancel: 'Отменено.', guideCap: '📄 Бот Osmon — полная инструкция',
     sub: '🔔 Каждый день', unsub: '🔕 Отключить', subAsk: '🔔 Во сколько каждый день присылать прогноз: {name}? (по Ташкенту)', subOk: '✅ Каждый день в {time} сюда будет приходить прогноз: {name}.\nОтключить — кнопка 🔔 в меню.', subOff: '🔕 Ежедневная рассылка отключена.',
   },
-  tr: {
-    cities: '🏙 Şehirler', cPick: '🏙 Şehir seçin:', cTitle: '🏙 Bugün şehirlerde', time: '⏰ Tahmin gruba saat kaçta gönderilsin? (Taşkent saati)', help: 'ℹ️ Yardım',
-    d15: '15 günlük tahmin', hi: '☀️ <b>Osmon</b> — hava tahmini\n6 modele göre 15 günlük (ECMWF, NOAA).\n\nDil seçin:', pick: '📍 Ülke veya kıta seçin:',
-    menu: 'Ne göstereyim?', today: '⏱ Bugün ve yarın saat saat', all: '🎬 15 günlük video', days: '🗓 15 gün', site: '🗺 Site ve küre', rep: '📊 Rapor', menuHint: '⌨️ Tüm bölümler — alttaki düğmelerde.\n📍 Konum gönderin veya şehir adı yazın, örneğin: Antalya', locAsk: '📍 Alttaki düğmeye basın — konumunuz gönderilir.',
-    back: '↩️ Ülkeler', none: '⏳ Veriler henüz hazır değil, biraz sonra deneyin.', tdy: 'Bugün', tmw: 'Yarın', next: 'Sonraki günler',
-    upd: 'Güncellendi', swipe: '🎬 Videoları kaydırın: 🌧 yağış · 🌡 sıcaklık · ☁️ bulutlar · 💨 rüzgâr', bot: '🤖 Bot',
-    gHi: '👋 Merhaba! Her gün buraya videolu hava tahmini göndereceğim.\nGrup yöneticisi: dil, ülke ve saati seçin 👇 (/settings)',
-    gSet: '✅ Hazır! Her gün {time}’da (Taşkent saati) bu sohbete tahmin gönderilecek: <b>{name}</b> ({lang}).\nDeğiştirmek için: /settings', gMulti: '📍 Ülkeleri işaretleyin (birden fazla olabilir) ve «Tamam»a basın:', done: '✅ Tamam', gNone: 'En az bir ülke seçin.', gAdm: '⚙️ Ayarları yalnızca bu grubun yöneticisi değiştirebilir. Ondan /settings yazmasını isteyin.', gLang: 'Dil seçin:', lang: 'Türkçe',
-    pdf: '📄 Kılavuz (PDF)', adm: '✉️ Yöneticiye yaz', admAsk: '✍️ Bot yöneticisine mesajınızı yazın (metin, fotoğraf veya sesli mesaj), ileteceğim.\nİptal: /cancel', admSent: '✅ Mesajınız yöneticiye gönderildi. Cevap bu sohbete gelecek.', admAns: '💬 Yönetici cevabı:', admOff: 'Bot yöneticisi henüz bağlanmadı, daha sonra deneyin.', cancel: 'İptal edildi.', guideCap: '📄 Osmon botu — tam kılavuz',
-    sub: '🔔 Her gün', unsub: '🔕 Kapat', subAsk: '🔔 {name} tahminini her gün saat kaçta göndereyim? (Taşkent saati)', subOk: '✅ Her gün {time}’da buraya tahmin gelecek: {name}.\nKapatmak için menüdeki 🔔 düğmesi.', subOff: '🔕 Günlük gönderim kapatıldı.',
+  en: {
+    cities: '🏙 Cities', cPick: '🏙 Choose a city:', cTitle: '🏙 Today in the cities', time: '⏰ At what time should the group get the forecast? (Tashkent time)', help: 'ℹ️ Help',
+    d15: '15-day forecast', hi: '☀️ <b>Osmon</b> — weather forecast\nfor 15 days from 6 models (ECMWF, NOAA).\n\nChoose a language:', pick: '📍 Choose a country or continent:',
+    menu: 'What shall I show?', today: '⏱ Today and tomorrow by the hour', all: '🎬 15-day video', days: '🗓 15 days', site: '🗺 Website and globe', rep: '📊 Report', menuHint: '⌨️ All sections are on the buttons below.\n📍 Send your location or type a city name, e.g.: London', locAsk: '📍 Press the button below — your location will be sent.',
+    back: '↩️ Countries', none: '⏳ The data is not ready yet, try again a little later.', tdy: 'Today', tmw: 'Tomorrow', next: 'Next days',
+    upd: 'Updated', swipe: '🎬 Swipe the videos: 🌧 precipitation · 🌡 temperature · ☁️ clouds · 💨 wind', bot: '🤖 Bot',
+    gHi: '👋 Hello! Every day I will send a weather forecast with videos here.\nGroup admin: choose the language, country and time 👇 (/settings)',
+    gSet: '✅ Done! Every day at {time} (Tashkent time) this chat will get the forecast: <b>{name}</b> ({lang}).\nTo change: /settings', gMulti: '📍 Tick the countries (you can pick several) and press «Done»:', done: '✅ Done', gNone: 'Choose at least one country.', gAdm: '⚙️ Only an admin of this group can change the settings. Ask them to type /settings.', gLang: 'Choose a language:', lang: 'English',
+    pdf: '📄 Guide (PDF)', adm: '✉️ Write to the admin', admAsk: '✍️ Write your message to the bot admin (text, photo or voice), I will pass it on.\nCancel: /cancel', admSent: '✅ Your message has been sent to the admin. The answer will come to this chat.', admAns: '💬 Answer from the admin:', admOff: 'The bot admin is not connected yet, try later.', cancel: 'Cancelled.', guideCap: '📄 Osmon bot — the full guide',
+    sub: '🔔 Every day', unsub: '🔕 Turn off', subAsk: '🔔 At what time shall I send the forecast for {name} every day? (Tashkent time)', subOk: '✅ Every day at {time} the forecast for {name} will come here.\nTo turn it off: the 🔔 button in the menu.', subOff: '🔕 Daily sending is turned off.',
   },
 };
 const HELP = {
@@ -123,39 +123,39 @@ Ma’lumot: ECMWF, NOAA, DWD modellari; havo sifati — CAMS. Har 3 soatda yangi
 📄 /guide — инструкция в PDF
 
 Данные: модели ECMWF, NOAA, DWD; качество воздуха — CAMS. Обновление каждые 3 часа.`,
-  tr: `ℹ️ <b>Osmon — nasıl kullanılır</b>
+  en: `ℹ️ <b>Osmon — how to use it</b>
 
-<b>Alttaki düğmeler</b>
-⏱ <b>Bugün ve yarın saat saat</b> — 48 saatlik sesli video ve «🗺 Etkileşimli harita»: haritaya dokunun — o yerin havası; alttaki saat şeridini kaydırın; ▶ — oynat, 🔈 — hava sesi, ⛶ — tam ekran
-🗓 <b>15 günlük tahmin</b> — şehri seçin, günlere göre tahmin gelir
-🎬 <b>15 günlük video tahmin</b> — şehriniz veya ülke için yağış ve sıcaklık videosu
-📅 <b>Haftalar ve aylar</b> — dönemi düğmeyle seçin: geçen hafta, gelecek haftalar, aylar, toz
-🏔 <b>Dağlar: kar ve gezi</b> — 10 günlük resim (kar, yağmur, iyi günler); yer adlı düğme — ayrıntı; 🔔 — kar bildirimi
-🌡 <b>Şu anki hava</b> — bulunduğunuz yerde şimdi
-🌫 <b>Bugün hava kalitesi</b> — toz ve hava kalitesi saat saat
-🏙 <b>Şehir seç</b> · 🌍 <b>Ülke değiştir</b>
-📍 <b>Konumumu gönder</b> — tam olarak sizin noktanız için tahmin (veya şehir adını yazın)
-🔔 <b>Her sabah tahmin</b> — seçtiğiniz saatte günlük tahmin
-⏰ <b>Bildirimlerim</b> — ne ve saat kaçta gelsin: saat saat, haftalar, dağlar, hava kalitesi
-⚠️ <b>Tehlikeli hava</b> — kuvvetli yağış, toz
-🎯 <b>Tahmin doğruluğu</b> — tahminler gerçekle karşılaştırılır
-🗺 <b>Harita-site ve küre</b> — site Telegram içinde açılır
+<b>The buttons below</b>
+⏱ <b>Today and tomorrow by the hour</b> — a 48-hour video with sound and «🗺 Interactive map»: tap the map — the weather at that spot; swipe the hours strip; ▶ — play, 🔈 — weather sounds, ⛶ — full screen
+🗓 <b>15-day forecast</b> — choose a city, get the forecast by days
+🎬 <b>15-day video forecast</b> — precipitation and temperature video for your city or country
+📅 <b>Weeks and months</b> — pick a period with a button: last week, next weeks, months, dust
+🏔 <b>Mountains: snow and trips</b> — a 10-day picture (snow, rain, good days); a place button — details; 🔔 — snow alerts
+🌡 <b>Weather now</b> — right now where you are
+🌫 <b>Air quality today</b> — dust and air quality by the hour
+🏙 <b>Choose a city</b> · 🌍 <b>Change country</b>
+📍 <b>Send my location</b> — the forecast exactly for your spot (or type a city name)
+🔔 <b>Forecast every morning</b> — a daily forecast at the time you choose
+⏰ <b>My notifications</b> — what comes and when: by the hour, weeks, mountains, air quality
+⚠️ <b>Dangerous weather</b> — heavy precipitation, dust
+🎯 <b>Forecast accuracy</b> — forecasts compared with what happened
+🗺 <b>Map website and globe</b> — the website opens inside Telegram
 
-<b>Otomatik gönderim</b>
-Bölümlerin altında «⏰ Otomatik gönder» düğmesi var: saati seçin — bölüm kendiliğinden gelir. Kapatmak — aynı yerde veya «⏰ Bildirimlerim». Saat — Taşkent saati.
+<b>Automatic sending</b>
+Under the sections there is a «⏰ Send automatically» button: choose the time — the section comes by itself. To turn it off — the same place or «⏰ My notifications». Time — Tashkent time.
 
-<b>Grupta veya kanalda</b>
-1. Botu gruba ekleyin (kanalda yönetici olarak, gönderme izniyle).
-2. Yönetici /settings yazar: dil → ülkeler (birden fazla) → «Tamam» → gönderme saati.
-3. Her gün seçilen saatte her ülke için gönderi gelir.
-4. Ardından «⏰ Bu sohbete ne gönderilsin» çıkar: saat saat, haftalar, dağlar, hava kalitesi, kar bildirimi — her birine saat ya da «✅ Hepsini aç». Sonra: /notify
+<b>In a group or channel</b>
+1. Add the bot to the group (in a channel as an admin allowed to post).
+2. An admin types /settings: language → countries (several) → «Done» → sending time.
+3. Every day at the chosen time a post comes for each country.
+4. Then «⏰ What to send to this chat» appears: by the hour, weeks, mountains, air quality, snow alerts — a time for each or «✅ Turn all on». Later: /notify
 
-✉️ Soru veya öneri — /admin, cevap buraya gelir
-📄 /guide — PDF kılavuz
+✉️ Questions or ideas — /admin, the answer comes here
+📄 /guide — the PDF guide
 
-Veri: ECMWF, NOAA, DWD modelleri; hava kalitesi — CAMS. Her 3 saatte güncellenir.`,
+Data: ECMWF, NOAA, DWD models; air quality — CAMS. Updated every 3 hours.`,
 };
-const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], tr: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] };
+const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
 const PER_TICK = 4;      // groups per cron run (Workers free plan: 50 subrequests per run; a group may want several countries)
 const POST_HOUR = 7, TZ = 5;  // default daily post at 07:00 Tashkent; each group can pick its hour (hourly cron)
 const HOURS = [6, 7, 8, 9, 10, 12, 15, 18, 20, 21];
@@ -304,14 +304,14 @@ const link = (env, view) => `${base(env)}/?view=${encodeURIComponent(view)}`;
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /* ---------- keyboards ---------- */
-const langKb = (p = 'L') => ({ inline_keyboard: [[{ text: '🇺🇿 O‘zbekcha', callback_data: `${p}:uz` }, { text: '🇷🇺 Русский', callback_data: `${p}:ru` }, { text: '🇹🇷 Türkçe', callback_data: `${p}:tr` }]] });
+const langKb = (p = 'L') => ({ inline_keyboard: [[{ text: '🇺🇿 O‘zbekcha', callback_data: `${p}:uz` }, { text: '🇷🇺 Русский', callback_data: `${p}:ru` }, { text: '🇬🇧 English', callback_data: `${p}:en` }]] });
 const countryKb = (lang, p = 'C') => ({ inline_keyboard: GROUPS.map(row => row.map(id => ({ text: `${FLAG[id]} ${NAMES[id][lang]}`, callback_data: `${p}:${lang}:${id}` }))) });
-const OLK = { uz: '📅 Haftalar va oylar', ru: '📅 Недели и месяцы', tr: '📅 Haftalar ve aylar' };
+const OLK = { uz: '📅 Haftalar va oylar', ru: '📅 Недели и месяцы', en: '📅 Weeks and months' };
 // Uzbekistan: the past week, the next two weeks, this and next month and the dust (prob/outlook.py), in segments:
 // first a menu of periods, then each period's maps on their own with the same buttons under the last one
 const OLA = { ru: { pick: 'Выберите период — пришлю его карты:', all: '📤 Все карты сразу', dust: '🌫' },
               uz: { pick: 'Davrni tanlang — xaritalarini yuboraman:', all: '📤 Barcha xaritalar', dust: '🌫' },
-              tr: { pick: 'Dönemi seçin — haritalarını göndereyim:', all: '📤 Tüm haritalar', dust: '🌫' } };
+              en: { pick: 'Choose a period — I will send its maps:', all: '📤 All maps', dust: '🌫' } };
 const OL_ICON = { past: '⏪', w1: '📆', w2: '📆', m0: '🗓', m1: '🗓', dust: '🌫' };
 async function outlookItems(env, lang) {
   const I = await (await fetch(`${base(env)}/prob/outlook/index.json?t=${Date.now()}`)).json().catch(() => null);
@@ -335,9 +335,9 @@ const WKX = {
         part: 'Прогноз по дням есть до {last}; дальше — в «📅 Недели и месяцы» (осадки и температура к норме).', far: 'Прогноз по дням пока есть только до {last}. Для этой недели смотрите «📅 Недели и месяцы».', pick: '📆 Выберите неделю — пришлю погоду по дням:' },
   uz: { btn: '📆 {n}-hafta · {a}–{b} kunma-kun', head: '{n}-hafta · {a}–{b}', temp: 'Hafta harorati: kechasi {lo} dan kunduzi {hi} gacha', wet: 'Yog‘in ehtimoli {n} kun: {d}', mm: ', jami ~{mm} mm', dry: 'Hafta sezilarli yog‘insiz',
         part: 'Kunma-kun prognoz {last} gacha bor; keyingisi — «📅 Haftalar va oylar»da (yog‘in va harorat me’yorga nisbatan).', far: 'Kunma-kun prognoz hozircha {last} gacha. Bu hafta uchun «📅 Haftalar va oylar»ni ko‘ring.', pick: '📆 Haftani tanlang — kunma-kun ob-havoni yuboraman:' },
-  tr: { btn: '📆 {n}. hafta · {a}–{b} gün gün', head: '{n}. hafta · {a}–{b}', temp: 'Hafta sıcaklığı: gece {lo}, gündüz {hi}', wet: 'Yağış olası {n} gün: {d}', mm: ', toplam ~{mm} mm', dry: 'Kayda değer yağış yok',
-        part: 'Gün gün tahmin {last} tarihine kadar var.', far: 'Gün gün tahmin şimdilik {last} tarihine kadar.', pick: '📆 Haftayı seçin — gün gün hava göndereyim:' } };
-const WDL = { uz: ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'], ru: ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'], tr: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'] };
+  en: { btn: '📆 Week {n} · {a}–{b} day by day', head: 'week {n} · {a}–{b}', temp: 'Temperature this week: from {lo} at night to {hi} by day', wet: 'Precipitation likely on {n} days: {d}', mm: ', about {mm} mm in all', dry: 'A week without notable precipitation',
+        part: 'The day-by-day forecast goes up to {last}; after that — «📅 Weeks and months» (precipitation and temperature against the normal).', far: 'The day-by-day forecast only goes up to {last} so far. For this week see «📅 Weeks and months».', pick: '📆 Choose a week — I will send the weather day by day:' } };
+const WDL = { uz: ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'], ru: ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'], en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] };
 function isoWeek(d) { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); const y0 = Date.UTC(t.getUTCFullYear(), 0, 1); return Math.ceil(((t - y0) / 864e5 + 1) / 7); }
 const dAdd = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 function weeksKb(lang, cur) {  // this ISO week and the next two (the forecast reaches ~15 days)
@@ -396,7 +396,7 @@ const ADM = new Set(['UZ', 'KZ', 'KG']);
 const RGX = {
   ru: { btn: '🗺 Погода по регионам и районам', detail: 'Нажмите район — пришлю подробный прогноз: по часам и на 15 дней.', title: 'Погода по регионам', pick: 'Нажмите регион — покажу погоду по его районам:', today: 'сегодня', tomorrow: 'завтра', none: 'Погода по регионам ещё готовится, попробуйте чуть позже.', back: '⬅️ Все регионы', dists: 'по районам', foot: 'Температура: ночь…день. ☂ — вероятность дождя, ❄ — снега, ☀ — без осадков.' },
   uz: { btn: '🗺 Viloyat va tumanlar bo‘yicha', detail: 'Tumanni bosing — batafsil prognoz yuboraman: soatma-soat va 15 kunga.', title: 'Viloyatlar bo‘yicha ob-havo', pick: 'Viloyatni bosing — tumanlari bo‘yicha ob-havoni ko‘rsataman:', today: 'bugun', tomorrow: 'ertaga', none: 'Viloyatlar bo‘yicha ma’lumot tayyorlanmoqda, birozdan keyin urinib ko‘ring.', back: '⬅️ Barcha viloyatlar', dists: 'tumanlar bo‘yicha', foot: 'Harorat: tun…kun. ☂ — yomg‘ir ehtimoli, ❄ — qor, ☀ — yog‘insiz.' },
-  tr: { btn: '🗺 Bölge ve ilçelere göre', detail: 'İlçeye dokunun — ayrıntılı tahmin göndereyim: saat saat ve 15 gün.', title: 'Bölgelere göre hava', pick: 'Bölgeye dokunun — ilçelerine göre havayı göstereyim:', today: 'bugün', tomorrow: 'yarın', none: 'Bölge verileri hazırlanıyor, biraz sonra deneyin.', back: '⬅️ Tüm bölgeler', dists: 'ilçelere göre', foot: 'Sıcaklık: gece…gündüz. ☂ — yağmur olasılığı, ❄ — kar, ☀ — yağışsız.' } };
+  en: { btn: '🗺 By regions and districts', detail: 'Tap a district — I will send the detailed forecast: by the hour and for 15 days.', title: 'Weather by regions', pick: 'Tap a region — I will show the weather in its districts:', today: 'today', tomorrow: 'tomorrow', none: 'The regions’ data is being prepared, try again a little later.', back: '⬅️ All regions', dists: 'by districts', foot: 'Temperature: night…day. ☂ — chance of rain, ❄ — snow, ☀ — dry.' } };
 const t0 = v => v == null ? '—' : `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace('+0°', '0°').replace('-0°', '0°');
 const admLine = v => !v ? '—' : `${t0(v[0])}…${t0(v[1])} ${v[2] >= 20 ? `${v[3] ? '❄' : '☂'}${v[2]}%` : '☀'}`;
 const admName = (a, lang) => (a.name[lang] || a.name.ru);
@@ -410,7 +410,7 @@ function regionsKb(A, lang, rid, cur) {
 async function sendRegions(env, chat, lang, rid) {
   const X = RGX[lang] || RGX.ru, A = await adminData(env, rid);
   if (!A) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
-  const L = lang === 'tr' ? 'ru' : lang, v = encodeURIComponent(A.run);
+  const L = lang === 'en' ? 'ru' : lang, v = encodeURIComponent(A.run);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
   await tg(env, 'sendMediaGroup', { chat_id: chat, media: [0, 1].map(k => ({ type: 'photo', media: `${base(env)}/prob/hr/${rid}_adm_${L}_${k}.png?v=${v}`, ...(k ? {} : { caption: `${FLAG[rid]} ${NAMES[rid][lang]} · ${X.title}` }) })) });
   return tg(env, 'sendMessage', regionsList(A, lang, rid, chat));
@@ -442,10 +442,25 @@ async function sendDistricts(env, chat, lang, rid, id, msgId) {
 const TRJ = new Set(['UZ', 'KZ', 'KG']);
 const TJX = { ru: { btn: '🧭 Откуда придут осадки', moist: 'Откуда идёт дождь, 3 дня: серое — тучи, синее — дождь, фиолетовое — снег, красное — циклон, жёлтое — сильный ветер, оранжевый пунктир — путь влаги к городу (ECMWF)', m15: '📅 Видео на 15 дней', acc: '💧 Сколько выпадет дождя и снега', accCap: 'Сколько выпадет: дождь (мм) и снег (см) нарастают с начала прогноза; у городов — сумма (ECMWF, 3 дня)', moist2: 'дождь, снег и ветер на 2 дня (область — в окне)', moist15: 'Дождь, снег и ветер на 15 дней (ECMWF; после 10-го дня — один из сценариев ансамбля, это ориентир)', m15none: 'Видео на 15 дней ещё готовится — загляните чуть позже.', title: 'Откуда придут осадки', none: 'В ближайшие 3 дня осадков в крупных городах не ожидается — показывать нечего. ☀️', foot: 'Линия — путь воздуха (на высоте ~3 км), который принесёт осадки, за 2 суток до их начала. Модель ECMWF.' },
               uz: { btn: '🧭 Yog‘in qayerdan keladi', moist: 'Yomg‘ir qayerdan keladi, 3 kun: kulrang — bulut, ko‘k — yomg‘ir, binafsha — qor, qizil — siklon, sariq — kuchli shamol, to‘q sariq punktir — namlikning shaharga yo‘li (ECMWF)', m15: '📅 15 kunlik video', acc: '💧 Qancha yomg‘ir va qor yog‘adi', accCap: 'Qancha yog‘adi: yomg‘ir (mm) va qor (sm) prognoz boshidan yig‘iladi; shaharlarda — jami (ECMWF, 3 kun)', moist2: 'yomg‘ir, qor va shamol 2 kunga (viloyat — oynada)', moist15: 'Yomg‘ir, qor va shamol 15 kunga (ECMWF; 10-kundan keyin — ansamblning bir ssenariysi, taxminiy)', m15none: '15 kunlik video hali tayyorlanmoqda — birozdan keyin qarang.', title: 'Yog‘in qayerdan keladi', none: 'Yaqin 3 kunda yirik shaharlarda yog‘in kutilmaydi — ko‘rsatadigan narsa yo‘q. ☀️', foot: 'Chiziq — yog‘in olib keladigan havoning (~3 km balandlikda) boshlanishidan 2 kun oldingi yo‘li. ECMWF modeli.' },
-              tr: { btn: '🧭 Yağış nereden gelecek', moist: 'Yağmur nereden geliyor, 3 gün: gri — bulut, mavi — yağmur, mor — kar, kırmızı — siklon, sarı — kuvvetli rüzgâr, turuncu kesikli — nemin şehre yolu (ECMWF)', m15: '📅 15 günlük video', acc: '💧 Ne kadar yağmur ve kar yağacak', accCap: 'Ne kadar yağacak: yağmur (mm) ve kar (cm) tahmin başından birikir; şehirlerde toplam (ECMWF, 3 gün)', moist2: '2 günlük yağmur, kar ve rüzgâr (bölge pencerede)', moist15: 'Yağmur, kar ve rüzgâr 15 gün (ECMWF; 10. günden sonra ensemble senaryolarından biri, yaklaşık)', m15none: '15 günlük video henüz hazırlanıyor — biraz sonra bakın.', title: 'Yağış nereden gelecek', none: 'Önümüzdeki 3 günde büyük şehirlerde yağış beklenmiyor. ☀️', foot: 'Çizgi — yağışı getirecek havanın (~3 km yükseklikte) başlamadan önceki 2 günlük yolu. ECMWF modeli.' } };
+              en: { btn: '🧭 Where the rain comes from', moist: 'Where the rain comes from, 3 days: grey — clouds, blue — rain, violet — snow, red — cyclone, yellow — strong wind, orange dashes — the moisture’s path to a city (ECMWF)', m15: '📅 15-day video', acc: '💧 How much rain and snow will fall', accCap: 'How much will fall: rain (mm) and snow (cm) adding up from the start of the forecast; totals at the cities (ECMWF, 3 days)', moist2: 'Rain, snow and wind for 2 days (the region in a window)', moist15: 'Rain, snow and wind for 15 days (ECMWF; after day 10 one ensemble scenario, approximate)', m15none: 'The 15-day video is still being prepared — check a little later.', title: 'Where the rain comes from', none: 'No precipitation expected in the big cities in the next 3 days. ☀️', foot: 'The line — the 2-day path of the air (at ~3 km) that brings the precipitation, before it starts. ECMWF model.' } };
 async function trajData(env, rid) { return fetch(`${base(env)}/prob/hr/${rid}_traj.json?v=${fresh()}`).then(r => r.ok ? r.json() : null).catch(() => null); }
-async function sendMoist15(env, chat, lang, rid) {  // the long video: 15 days of rain, snow and wind (prob/moisture.py --days 15)
-  const X = TJX[lang] || TJX.ru, L = lang === 'tr' ? 'ru' : lang, url = `${base(env)}/prob/hr/${rid}_moist15_${L}.mp4`;
+/* ---------- 🎬 all the videos in one place, in the one look (tools/prob15_video.py, moist15_video.py, weeks_video.py, place15.py) ---------- */
+const VHX = { ru: { cap: 'Вероятность осадков и температура · 15 дней по часам · тучи, туман, гроза', moist: '🧭 Откуда идёт влага · тучи и осадки · 15 дней', weeks: '📅 По неделям: осадки к норме и температура', place: '📍 Моё место крупно + страна' },
+  uz: { cap: 'Yog‘ingarchilik ehtimoli va harorat · 15 kun soatma-soat · bulut, tuman, momaqaldiroq', moist: '🧭 Namlik qayerdan keladi · bulut va yog‘in · 15 kun', weeks: '📅 Haftalar bo‘yicha: yog‘in me’yorga va harorat', place: '📍 Mening joyim yaqindan + davlat' },
+  en: { cap: 'Chance of precipitation and temperature · 15 days by the hour · clouds, fog, thunder', moist: '🧭 Where the moisture comes from · clouds and rain · 15 days', weeks: '📅 By weeks: precipitation against the normal and temperature', place: '📍 My place close up + the country' } };
+const p15url = (rid, L) => rid === 'UZ' ? `${EVRAW}/p15/p15_${L}.mp4` : `${EVRAW}/p15c-${rid}/country_${rid}_${L}.mp4`;
+async function videoHub(env, chat, lang, rid, u) {
+  const X = VHX[lang] || VHX.ru, L = lang === 'uz' ? 'uz' : 'ru', url = p15url(rid, L);
+  if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return handle({ callback_query: { id: '0', from: { id: chat }, data: `V:${lang}:${rid}`, message: { chat: { id: chat, type: 'private' } } } }, env);
+  const pl = u && u.place ? JSON.parse(u.place) : null, rows = [];
+  if (rid === 'UZ') rows.push([{ text: X.moist, callback_data: `MV:${lang}:UZ` }], [{ text: X.weeks, callback_data: `WV:${lang}:UZ` }]);
+  if (pl) rows.push([{ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place }]);
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+  return tg(env, 'sendVideo', { chat_id: chat, video: `${url}?v=${Math.floor(Date.now() / 1800e3)}`, caption: `🎬 ${FLAG[rid] || ''} <b>${NAMES[rid][lang]}</b> · ${X.cap}`, parse_mode: 'HTML', supports_streaming: true, width: 1920, height: 1080,
+    ...(rows.length ? { reply_markup: { inline_keyboard: rows } } : {}) });
+}
+async function sendMoist15(env, chat, lang, rid) {  // the long video: 15 days of rain, snow and wind (Uzbekistan: tools/moist15_video.py; elsewhere prob/moisture.py --days 15)
+  const X = TJX[lang] || TJX.ru, L = lang === 'en' ? 'ru' : lang, url = rid === 'UZ' ? `${EVRAW}/m15/moist15_${L}.mp4` : `${base(env)}/prob/hr/${rid}_moist15_${L}.mp4`;
   const ok = await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false);
   if (!ok) return tg(env, 'sendMessage', { chat_id: chat, text: X.m15none });
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
@@ -453,7 +468,8 @@ async function sendMoist15(env, chat, lang, rid) {  // the long video: 15 days o
 }
 let TJ_CACHE = null;
 async function sendTrajLite(env, chat, lang, rid) {  // the morning 🧭: only the video, with buttons for the rest
-  const X = TJX[lang] || TJX.ru, L = lang === 'tr' ? 'ru' : lang;
+  if (rid === 'UZ') return sendMoist15(env, chat, lang, rid);  // the new look
+  const X = TJX[lang] || TJX.ru, L = lang === 'en' ? 'ru' : lang;
   if (!TJ_CACHE || TJ_CACHE.t < Date.now() - 600e3) TJ_CACHE = { t: Date.now(), J: {} };
   if (!(rid in TJ_CACHE.J)) TJ_CACHE.J[rid] = await trajData(env, rid);
   const J = TJ_CACHE.J[rid], v = encodeURIComponent(J ? J.run : fresh());
@@ -461,11 +477,12 @@ async function sendTrajLite(env, chat, lang, rid) {  // the morning 🧭: only t
     reply_markup: { inline_keyboard: [[{ text: X.btn, callback_data: `TJ:${lang}:${rid}` }], [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }], ...moistBtns(env, lang, rid, chat)] } });
 }
 async function sendTraj(env, chat, lang, rid) {
+  if (rid === 'UZ') return sendMoist15(env, chat, lang, rid);  // the new look
   const X = TJX[lang] || TJX.ru, J = await trajData(env, rid);
   if (!J || !J.items.length) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   // first the moving picture of the moisture coming in (prob/moisture.py), then the map of the air's paths
-  const L = lang === 'tr' ? 'ru' : lang, v = encodeURIComponent(J.run);
+  const L = lang === 'en' ? 'ru' : lang, v = encodeURIComponent(J.run);
   // the 3-day video, then the 15-day one (the old map of the paths is gone: the videos show them)
   await tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `💧 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true,
     reply_markup: { inline_keyboard: [[{ text: X.acc, callback_data: `AV:${lang}:${rid}` }], ...moistBtns(env, lang, rid, chat)] } });
@@ -489,10 +506,10 @@ const WX = {
     onOk: '🔔 Ob-havoni kuzataman: <b>{p}</b>\nYomg‘ir yoki qor boshlansa, momaqaldiroq, kuchli issiq, sovuq yoki kuchli shamol bo‘lsa xabar beraman. Oddiy ob-havoda va kechasi — jimlik.', offOk: '🔕 Yaxshi, ogohlantirmayman. Qayta yoqish — 📍 joyingizni yuboring.', here: 'joyingiz',
     rainSoon: '🌧 <b>{p}</b>: taxminan {m} daqiqadan keyin yomg‘ir boshlanadi', snowSoon: '🌨 <b>{p}</b>: taxminan {m} daqiqadan keyin qor boshlanadi', rainNow: '🌧 <b>{p}</b>: yomg‘ir boshlandi', snowNow: '🌨 <b>{p}</b>: qor yog‘a boshladi',
     storm: '⛈ <b>{p}</b>: yaqin bir soatda momaqaldiroq — xonada bo‘lgan ma’qul', heat: '🥵 <b>{p}</b>: juda issiq — {t}, {f} kabi seziladi. Suv iching, tushda soyada bo‘ling', cold: '🥶 <b>{p}</b>: qattiq sovuq — {t}, {f} kabi seziladi. Issiq kiyining', wind: '💨 <b>{p}</b>: kuchli shamol, {w} m/s gacha' },
-  tr: { ask: '📍 <b>Şu an neredesiniz?</b>\nKonumunuzu gönderin — yağmur veya kar başlarsa, fırtına, aşırı sıcak, don veya rüzgâr olursa haber veririm. Normal havada yazmam.', send: '📍 Konumumu gönder', sameP: '✅ Aynı yerdeyim: ', off: '🔕 Uyarma',
-    onOk: '🔔 Havayı izliyorum: <b>{p}</b>\nYağmur veya kar başlarsa, fırtına, aşırı sıcak, don veya kuvvetli rüzgâr olursa haber veririm. Normal havada ve gece — sessizlik.', offOk: '🔕 Tamam, uyarmayacağım. Tekrar açmak için 📍 konumunuzu gönderin.', here: 'konumunuz',
-    rainSoon: '🌧 <b>{p}</b>: yaklaşık {m} dk sonra yağmur başlayacak', snowSoon: '🌨 <b>{p}</b>: yaklaşık {m} dk sonra kar başlayacak', rainNow: '🌧 <b>{p}</b>: yağmur başladı', snowNow: '🌨 <b>{p}</b>: kar yağmaya başladı',
-    storm: '⛈ <b>{p}</b>: bir saat içinde gök gürültülü fırtına — içeride olun', heat: '🥵 <b>{p}</b>: çok sıcak — {t}, hissedilen {f}. Su için, öğlen gölgede kalın', cold: '🥶 <b>{p}</b>: sert ayaz — {t}, hissedilen {f}. Sıkı giyinin', wind: '💨 <b>{p}</b>: kuvvetli rüzgâr, {w} m/s’ye kadar' } };
+  en: { ask: '📍 <b>Where are you now?</b>\nSend your location — I will tell you if rain or snow starts, or there is a thunderstorm, great heat, frost or wind. In normal weather I stay quiet.', send: '📍 Send my location', sameP: '✅ I am in the same place: ', off: '🔕 Do not warn me',
+    onOk: '🔔 Watching the weather: <b>{p}</b>\nI will tell you if rain or snow starts, or there is a thunderstorm, great heat, frost or strong wind. In normal weather and at night — silence.', offOk: '🔕 OK, I will not warn you. To turn it on again, send your 📍 location.', here: 'your location',
+    rainSoon: '🌧 <b>{p}</b>: rain will start in about {m} min', snowSoon: '🌨 <b>{p}</b>: snow will start in about {m} min', rainNow: '🌧 <b>{p}</b>: rain has started', snowNow: '🌨 <b>{p}</b>: snow has started',
+    storm: '⛈ <b>{p}</b>: a thunderstorm within the hour — stay indoors', heat: '🥵 <b>{p}</b>: very hot — {t}, feels like {f}. Drink water, stay in the shade at midday', cold: '🥶 <b>{p}</b>: hard frost — {t}, feels like {f}. Dress warmly', wind: '💨 <b>{p}</b>: strong wind, up to {w} m/s' } };
 async function watchGet(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM watch WHERE chat_id = ?1').bind(chat).first(); }
 async function watchSet(env, chat, f) {
   if (!env.DB) return; await db(env);
@@ -543,7 +560,7 @@ async function watchTick(env) {
 const NX_ = {
   ru: { btn: '⏰ Присылать автоматически', ask: '⏰ Во сколько присылать «{s}»? Время — по Ташкенту.', weekly: ' (по понедельникам)', off: '🔕 Не присылать', on: '✅ «{s}» будет приходить каждый день в {h}.', onW: '✅ «{s}» будет приходить по понедельникам в {h}.', offT: '🔕 «{s}» больше не присылаю.', list: '⏰ <b>Мои уведомления</b>', none: 'Пока ничего не приходит автоматически. Нажмите раздел ниже и выберите время:', at: 'в', edit: 'Нажмите раздел, чтобы поменять время или выключить:', daily: '🔔 Прогноз каждое утро — включается кнопкой «🔔 Прогноз каждое утро»' },
   uz: { btn: '⏰ Avtomatik yuborish', ask: '⏰ «{s}» soat nechada kelsin? Vaqt — Toshkent bo‘yicha.', weekly: ' (dushanba kunlari)', off: '🔕 Yubormaslik', on: '✅ «{s}» har kuni soat {h} da keladi.', onW: '✅ «{s}» har dushanba soat {h} da keladi.', offT: '🔕 «{s}» endi yuborilmaydi.', list: '⏰ <b>Bildirishnomalarim</b>', none: 'Hozircha hech narsa avtomatik kelmaydi. Quyidagi bo‘limni bosing va vaqtni tanlang:', at: 'soat', edit: 'Vaqtni o‘zgartirish yoki o‘chirish uchun bo‘limni bosing:', daily: '🔔 Har tongi prognoz — «🔔 Har tongi prognoz» tugmasi bilan yoqiladi' },
-  tr: { btn: '⏰ Otomatik gönder', ask: '⏰ «{s}» saat kaçta gelsin? Saat — Taşkent saati.', weekly: ' (pazartesi günleri)', off: '🔕 Gönderme', on: '✅ «{s}» her gün saat {h} gelecek.', onW: '✅ «{s}» her pazartesi saat {h} gelecek.', offT: '🔕 «{s}» artık gönderilmeyecek.', list: '⏰ <b>Bildirimlerim</b>', none: 'Şu anda otomatik bir şey gelmiyor. Aşağıdan bölüm seçip saati belirleyin:', at: 'saat', edit: 'Saati değiştirmek veya kapatmak için bölüme dokunun:', daily: '🔔 Her sabah tahmin — «🔔 Her sabah tahmin» düğmesiyle açılır' } };
+  en: { btn: '⏰ Send automatically', ask: '⏰ At what time should «{s}» come? Time — Tashkent time.', weekly: ' (on Mondays)', off: '🔕 Do not send', on: '✅ «{s}» will come every day at {h}.', onW: '✅ «{s}» will come every Monday at {h}.', offT: '🔕 «{s}» will no longer be sent.', list: '⏰ <b>My notifications</b>', none: 'Nothing comes automatically now. Choose a section below and set the time:', at: 'at', edit: 'Tap a section to change its time or turn it off:', daily: '🔔 Forecast every morning — turned on with the «🔔 Forecast every morning» button' } };
 const NSEC = ['brief', 'dyn', 'hourly', 'outlook', 'mtn', 'air', 'traj'];  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
 const NWEEKLY = { outlook: true, dyn: true };  // «📊 against last year» on Mondays: the summary and the Excel report                   // the weeks and months change slowly: once a week is enough
 const secName = (sec, lang) => ((RKL[lang] || RKL.ru)[sec] || sec).replace(/^\S+\s/, '');
@@ -579,7 +596,7 @@ async function notifList(env, chat, lang) {
 const GNX = {
   ru: { head: '⏰ <b>Что присылать в этот чат</b>', main: '🗓 Ежедневный прогноз (главный пост) — в {h}, страны: {c}. Изменить: /settings', snow: '❄️ Сигнал о снеге в горах', tip: 'Нажмите раздел, чтобы выбрать время или выключить. Время — по Ташкенту. Менять могут только администраторы.', all: '✅ Включить всё', allOff: '🔕 Выключить всё', allOn: '✅ Включено всё: разделы будут приходить в {h} (недели и месяцы — по понедельникам).', offAll: '🔕 Дополнительные разделы выключены. Ежедневный прогноз остаётся.' },
   uz: { head: '⏰ <b>Bu chatga nima yuborilsin</b>', main: '🗓 Kunlik prognoz (asosiy post) — soat {h}, davlatlar: {c}. O‘zgartirish: /sozla', snow: '❄️ Tog‘larda qor haqida xabar', tip: 'Vaqtni tanlash yoki o‘chirish uchun bo‘limni bosing. Vaqt — Toshkent bo‘yicha. Faqat adminlar o‘zgartira oladi.', all: '✅ Hammasini yoqish', allOff: '🔕 Hammasini o‘chirish', allOn: '✅ Hammasi yoqildi: bo‘limlar soat {h} da keladi (haftalar va oylar — dushanba kunlari).', offAll: '🔕 Qo‘shimcha bo‘limlar o‘chirildi. Kunlik prognoz qoladi.' },
-  tr: { head: '⏰ <b>Bu sohbete ne gönderilsin</b>', main: '🗓 Günlük tahmin (ana gönderi) — saat {h}, ülkeler: {c}. Değiştirmek: /settings', snow: '❄️ Dağlarda kar bildirimi', tip: 'Saati seçmek veya kapatmak için bölüme dokunun. Saat — Taşkent saati. Yalnızca yöneticiler değiştirebilir.', all: '✅ Hepsini aç', allOff: '🔕 Hepsini kapat', allOn: '✅ Hepsi açıldı: bölümler saat {h} gelecek (haftalar ve aylar — pazartesi günleri).', offAll: '🔕 Ek bölümler kapatıldı. Günlük tahmin devam ediyor.' } };
+  en: { head: '⏰ <b>What to send to this chat</b>', main: '🗓 Daily forecast (the main post) — at {h}, countries: {c}. To change: /settings', snow: '❄️ Snow alerts in the mountains', tip: 'Tap a section to choose its time or turn it off. Time — Tashkent time. Only admins can change it.', all: '✅ Turn all on', allOff: '🔕 Turn all off', allOn: '✅ All on: the sections will come at {h} (weeks and months — on Mondays).', offAll: '🔕 The extra sections are off. The daily forecast goes on.' } };
 async function groupNotif(env, chat, lang, msgId, note) {
   if (!env.DB) return; await db(env);
   const G = GNX[lang] || GNX.ru, s0 = await sub(env, chat), regs = regionsOf(s0), uz = !regs.length || regs.includes('UZ');
@@ -650,10 +667,10 @@ const AQX = {
     bands: ['yaxshi', 'o‘rtacha', 'sezgirlar uchun zararli', 'zararli', 'juda zararli', 'xavfli'],
     tips: ['', '', '🙂 Astmasi borlar va bolalar ko‘chada kamroq bo‘lgani yaxshi', '😷 Ko‘chada kamroq bo‘ling, derazalarni yoping', '😷 N95 niqob, keraksiz chiqmang', '⛔ Uyda qoling, derazalarni yoping'],
     src: 'CAMS prognozi (ECMWF Copernicus) · Open-Meteo', none: 'Havo ma’lumotlarini olib bo‘lmadi, keyinroq urinib ko‘ring.', map: 'O‘zbekiston bo‘yicha chang xaritasi' },
-  tr: { title: '🌫 <b>Bugün hava kalitesi</b>', now: 'Şimdi', max: 'Bugün en kötü', hours: 'Saat saat (AQI endeksi)', pm: 'PM10 {a} · PM2.5 {b} µg/m³', dust: 'toz {d} µg/m³',
-    bands: ['iyi', 'orta', 'hassaslar için zararlı', 'zararlı', 'çok zararlı', 'tehlikeli'],
-    tips: ['', '', '🙂 Astımlılar ve çocuklar dışarıda daha az kalsın', '😷 Dışarıda daha az kalın, pencereleri kapatın', '😷 N95 maske, gereksiz çıkmayın', '⛔ Evde kalın, pencereleri kapatın'],
-    src: 'CAMS tahmini (ECMWF Copernicus) · Open-Meteo', none: 'Hava verisi alınamadı, sonra tekrar deneyin.', map: 'Özbekistan toz haritası' } };
+  en: { title: '🌫 <b>Air quality today</b>', now: 'Now', max: 'Worst today', hours: 'By the hour (AQI)', pm: 'PM10 {a} · PM2.5 {b} µg/m³', dust: 'dust {d} µg/m³',
+    bands: ['good', 'moderate', 'unhealthy for sensitive groups', 'unhealthy', 'very unhealthy', 'hazardous'],
+    tips: ['', '', '🙂 People with asthma and children should stay outside less', '😷 Stay outside less, close the windows', '😷 N95 mask, do not go out without need', '⛔ Stay at home, close the windows'],
+    src: 'CAMS forecast (ECMWF Copernicus) · Open-Meteo', none: 'Could not get the air data, try again later.', map: 'Dust map of Uzbekistan' } };
 const aqBand = v => v == null ? 0 : v <= 50 ? 0 : v <= 100 ? 1 : v <= 150 ? 2 : v <= 200 ? 3 : v <= 300 ? 4 : 5;
 const AQ_DOT = ['🟢', '🟡', '🟠', '🔴', '🟣', '🟤'];
 async function sendAir(env, chat, lang, rid) {
@@ -688,8 +705,8 @@ const MTX = {
     foot: 'Прогноз на 16 дней с поправкой на высоту · ECMWF, DWD, NOAA (Open-Meteo). Снегопад — от 2 см за сутки; хороший день — сухо, солнечно, без сильного ветра.', sub: '🔔 Сигнал о снеге в горах', unsub: '🔕 Выключить сигнал о снеге', on: '🔔 Сигнал включён: напишу, как только в горах ожидается снег, и подскажу, в какой день лучше ехать.', off: '🔕 Сигнал о снеге выключен.', alert: '❄️ <b>В горах ожидается снег!</b>', fresh: (n, cm) => `ожидается ~${n} ${cm} снега`, all: '🏔 Все горы', none: 'Данные по горам ещё готовятся, попробуйте чуть позже.' },
   uz: { title: '🏔 <b>O‘zbekiston tog‘lari: qor va sayohat</b>', rain: '🌧 Yomg‘ir', mm: 'mm', m: 'm', snow: '❄️ Qor kutilmoqda', noSnow: '❄️ Yaqin 16 kunda qor yog‘ishi kutilmayapti', cm: 'sm', cover: '⛄ Qor qoplami', go: '🥾 Qachon borish kerak', noGo: '🥾 Hozircha sayohat uchun yaxshi kun ko‘rinmayapti', after: '👉 Qordan keyin eng yaxshi kun', wind: 'shamol', ms: 'm/s',
     foot: '16 kunlik prognoz, balandlikka moslangan · ECMWF, DWD, NOAA (Open-Meteo). Qor yog‘ishi — sutkada 2 sm dan; yaxshi kun — quruq, quyoshli, kuchli shamolsiz.', sub: '🔔 Tog‘da qor haqida xabar', unsub: '🔕 Qor xabarini o‘chirish', on: '🔔 Xabar yoqildi: tog‘larda qor kutilishi bilan yozaman va qaysi kuni borish yaxshiligini aytaman.', off: '🔕 Qor xabari o‘chirildi.', alert: '❄️ <b>Tog‘larda qor kutilmoqda!</b>', fresh: (n, cm) => `~${n} ${cm} qor kutilmoqda`, all: '🏔 Barcha tog‘lar', none: 'Tog‘lar ma’lumoti hali tayyorlanmoqda, birozdan keyin urinib ko‘ring.' },
-  tr: { title: '🏔 <b>Özbekistan dağları: kar ve gezi</b>', rain: '🌧 Yağmur', mm: 'mm', m: 'm', snow: '❄️ Kar bekleniyor', noSnow: '❄️ Önümüzdeki 16 günde kar yağışı görünmüyor', cm: 'cm', cover: '⛄ Kar örtüsü', go: '🥾 Ne zaman gidilir', noGo: '🥾 Şimdilik gezi için iyi gün görünmüyor', after: '👉 Kardan sonra en iyi gün', wind: 'rüzgâr', ms: 'm/s',
-    foot: 'Yüksekliğe göre düzeltilmiş 16 günlük tahmin · ECMWF, DWD, NOAA (Open-Meteo). Kar yağışı — günde 2 cm’den; iyi gün — kuru, güneşli, sert rüzgârsız.', sub: '🔔 Dağlarda kar bildirimi', unsub: '🔕 Kar bildirimini kapat', on: '🔔 Bildirim açık: dağlarda kar beklendiğinde yazacağım ve hangi gün gitmenin iyi olduğunu söyleyeceğim.', off: '🔕 Kar bildirimi kapatıldı.', alert: '❄️ <b>Dağlarda kar bekleniyor!</b>', fresh: (n, cm) => `~${n} ${cm} kar bekleniyor`, all: '🏔 Tüm dağlar', none: 'Dağ verileri henüz hazırlanıyor, biraz sonra deneyin.' },
+  en: { title: '🏔 <b>Mountains of Uzbekistan: snow and trips</b>', rain: '🌧 Rain', mm: 'mm', m: 'm', snow: '❄️ Snow expected', noSnow: '❄️ No snowfall in sight in the next 16 days', cm: 'cm', cover: '⛄ Snow cover', go: '🥾 When to go', noGo: '🥾 No good day for a trip in sight yet', after: '👉 The best day after the snow', wind: 'wind', ms: 'm/s',
+    foot: 'A 16-day forecast corrected for height · ECMWF, DWD, NOAA (Open-Meteo). Snowfall — from 2 cm a day; a good day — dry, sunny, no hard wind.', sub: '🔔 Snow alerts in the mountains', unsub: '🔕 Turn snow alerts off', on: '🔔 Alerts on: I will write when snow is expected in the mountains and say which day is good to go.', off: '🔕 Snow alerts are off.', alert: '❄️ <b>Snow expected in the mountains!</b>', fresh: (n, cm) => `~${n} ${cm} of snow expected`, all: '🏔 All mountains', none: 'The mountains’ data is being prepared, try again a little later.' },
 };
 const wIcon = c => c == null ? '' : c <= 1 ? '☀️' : c === 2 ? '🌤' : c === 3 ? '☁️' : c <= 48 ? '🌫' : c <= 67 ? '🌧' : c <= 77 ? '🌨' : c <= 82 ? '🌦' : c <= 86 ? '🌨' : '⛈';
 const sgn = t => `${t > 0 ? '+' : t < 0 ? '−' : ''}${Math.abs(Math.round(t))}°`;
@@ -703,7 +720,7 @@ const afterSnow = (sp, d) => sp.days.find(x => x.d > d && x.good > 0 && (new Dat
 async function mtnSub(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM mtn WHERE chat_id = ?1').bind(chat).first(); }
 const MTA = { ru: { pick: 'Выберите место — расскажу про снег и лучшие дни:', all: '📋 Все горы текстом' },
               uz: { pick: 'Joyni tanlang — qor va eng yaxshi kunlarni aytaman:', all: '📋 Barcha tog‘lar matnda' },
-              tr: { pick: 'Yeri seçin — karı ve en iyi günleri anlatayım:', all: '📋 Tüm dağlar metin olarak' } };
+              en: { pick: 'Choose a place — I will tell you about the snow and the best days:', all: '📋 All mountains as text' } };
 function spotLines(sp, M, lang) {
   const X = MTX[lang] || MTX.ru, today = todayTZ(), days = sp.days.filter(d => d.d >= today), snow = days.filter(d => d.sn >= (M.snow_cm || 2)), out = [];
   out.push(`<b>${esc(sp.name[lang] || sp.name.ru)}</b> · ${sp.elev} ${X.m} · ${esc(sp.area[lang] || sp.area.ru)}`);
@@ -783,15 +800,15 @@ async function mtnTick(env) {
 const RKL = {
   ru: { evv: '🎬 Видео: тучи 12 ч и 3 дня', brief: '☀️ Утренний брифинг', dyn: '📊 Динамика к прошлому году', rain: '🌧 Осадки и тучи', more: '⚙️ Ещё', traj: '🧭 Откуда придут осадки', hourly: '⏱ Сегодня и завтра по часам', regions: '🗺 Погода по регионам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
   uz: { evv: '🎬 Video: bulutlar 12 soat va 3 kun', brief: '☀️ Ertalabki brifing', dyn: '📊 O‘tgan yilga nisbatan dinamika', rain: '🌧 Yog‘in va bulutlar', more: '⚙️ Yana', traj: '🧭 Yog‘in qayerdan keladi', hourly: '⏱ Bugun va ertaga soatma-soat', regions: '🗺 Viloyatlar bo‘yicha', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
-  tr: { evv: '🎬 Video: bulutlar 12 saat ve 3 gün', brief: '☀️ Sabah özeti', dyn: '📊 Geçen yıla göre', rain: '🌧 Yağış ve bulutlar', more: '⚙️ Daha fazla', traj: '🧭 Yağış nereden gelecek', hourly: '⏱ Bugün ve yarın saat saat', regions: '🗺 Bölgelere göre', days: '🗓 15 günlük tahmin', video: '🎬 15 günlük video tahmin', outlook: '📅 Haftalar ve aylar (haritalar)', mtn: '🏔 Dağlar: kar ve gezi', now: '🌡 Şu anki hava', air: '🌫 Bugün hava kalitesi', cities: '🏙 Şehir seç', loc: '📍 Konumumu gönder', countries: '🌍 Ülke değiştir', daily: '🔔 Her sabah tahmin', notif: '⏰ Bildirimlerim', accuracy: '🎯 Tahmin doğruluğu', alerts: '⚠️ Tehlikeli hava', site: '🗺 Harita-site ve küre', home: '🏠 Ana menü', reset: '🔄 Baştan başla', back: '⬅️ Geri', help: 'ℹ️ Kılavuz' } };
+  en: { evv: '🎬 Video: clouds 12 hours and 3 days', brief: '☀️ Morning summary', dyn: '📊 Compared with last year', rain: '🌧 Precipitation and clouds', more: '⚙️ More', traj: '🧭 Where the rain comes from', hourly: '⏱ Today and tomorrow by the hour', regions: '🗺 By regions', days: '🗓 15-day forecast', video: '🎬 15-day video forecast', outlook: '📅 Weeks and months (maps)', mtn: '🏔 Mountains: snow and trips', now: '🌡 Weather now', air: '🌫 Air quality today', cities: '🏙 Choose a city', loc: '📍 Send my location', countries: '🌍 Change country', daily: '🔔 Forecast every morning', notif: '⏰ My notifications', accuracy: '🎯 Forecast accuracy', alerts: '⚠️ Dangerous weather', site: '🗺 Map website and globe', home: '🏠 Main menu', reset: '🔄 Start over', back: '⬅️ Back', help: 'ℹ️ Guide' } };
 // the labels the keyboard had before (people may still have the old keyboard on their phone): they keep working
 const RKL_OLD = {
   ru: { days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', mtn: '🏔 Горы и снег', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', help: 'ℹ️ Помощь' },
   uz: { days: '🗓 15 kun', video: '🎬 15 kunlik video', outlook: '📅 Haftalar va oylar', mtn: '🏔 Tog‘lar va qor', now: '🌡 Hozir', cities: '🏙 Shaharlar', loc: '📍 Mening joyim', countries: '🌍 Davlatlar', daily: '🔔 Har kuni', accuracy: '🎯 Aniqlik', alerts: '⚠️ Ogohlantirishlar', site: '🗺 Sayt va globus', reset: '🔄 Qayta boshlash', help: 'ℹ️ Yordam' },
-  tr: { days: '🗓 15 gün', video: '🎬 15 günlük video', outlook: '📅 Haftalar ve aylar', mtn: '🏔 Dağlar ve kar', now: '🌡 Şimdi', cities: '🏙 Şehirler', loc: '📍 Konumum', countries: '🌍 Ülkeler', daily: '🔔 Her gün', accuracy: '🎯 Doğruluk', alerts: '⚠️ Uyarılar', site: '🗺 Site ve küre', reset: '🔄 Sıfırla', help: 'ℹ️ Yardım' } };
+  en: { days: '🗓 15 days', video: '🎬 15-day video', outlook: '📅 Weeks and months', mtn: '🏔 Mountains and snow', now: '🌡 Now', cities: '🏙 Cities', loc: '📍 My location', countries: '🌍 Countries', daily: '🔔 Every day', accuracy: '🎯 Accuracy', alerts: '⚠️ Alerts', site: '🗺 Website and globe', reset: '🔄 Reset', help: 'ℹ️ Help' } };
 // «🌧 Rain and clouds»: everything about rain and snow in one place; «⚙️ More»: the rare things
 const RAINM = { ru: { t: '🌧 <b>Осадки и тучи</b> — выберите:', now: '⏱ Сегодня и завтра (видео)', pr: '🎬 Вероятность осадков, 15 дней' }, uz: { t: '🌧 <b>Yog‘in va bulutlar</b> — tanlang:', now: '⏱ Bugun va ertaga (video)', pr: '🎬 Yog‘in ehtimoli, 15 kun' },
-  tr: { t: '🌧 <b>Yağış ve bulutlar</b> — seçin:', now: '⏱ Bugün ve yarın (video)', pr: '🎬 Yağış olasılığı, 15 gün' } };
+  en: { t: '🌧 <b>Precipitation and clouds</b> — choose:', now: '⏱ Today and tomorrow (video)', pr: '🎬 Chance of precipitation, 15 days' } };
 function rainMenu(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, M = RAINM[lang] || RAINM.ru, R = RKL[lang] || RKL.ru;
   const rows = [[{ text: R.traj, callback_data: `TJ:${lang}:${rid}` }], [{ text: M.now, callback_data: `MA:${lang}:hourly` }],
@@ -839,7 +856,7 @@ const BRX = {
   uz: { hi: '☀️ <b>Xayrli tong! {d} uchun brifing</b>', day: 'Kunduzi', night: 'kechasi', ly: '📊 O‘tgan yilga nisbatan ({d}): <b>{x}°</b> — {w}', warmer: 'iliqroq', colder: 'sovuqroq', same: 'xuddi shunday',
     rain: '🌧 Yog‘in: {p}%, ~{mm} mm{h}', hrs: ', {a}:00–{b}:00', dry: '🌤 Yog‘insiz', gust: '💨 Shamol shiddati {g} m/s gacha', tom: '➡️ Ertaga: {i} {a}…{b}°, yog‘in {p}% · o‘tgan yilga {x}°',
     big: '‼️ Ertaga o‘tgan yildan sezilarli {w}', hourly: '⏱ Soatma-soat', sat: '🛰 Sun’iy yo‘ldosh', dyn: '📊 Dinamika', src: 'ECMWF · ERA5', mon: ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'], wd: ['ya', 'du', 'se', 'ch', 'pa', 'ju', 'sh'] } };
-BRX.tr = BRX.ru;
+BRX.en = BRX.ru;
 const BRC = { UZ: [41.31, 69.28], KZ: [51.17, 71.45], KG: [42.87, 74.59], TJ: [38.56, 68.79], TM: [37.95, 58.38] };
 async function sendBrief(env, chat, lang, rid) {
   const X = BRX[lang] || BRX.ru, u = chat > 0 ? await getUser(env, chat) : null, pl = u && u.place ? JSON.parse(u.place) : null;
@@ -911,7 +928,7 @@ async function sendDynVideo(env, chat, lang, kind) {
   fd.append('video', new Blob([v], { type: 'video/mp4' }), `UZ_${kind}.mp4`);
   return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
 }
-const MOREM = { ru: '⚙️ <b>Ещё</b>', uz: '⚙️ <b>Yana</b>', tr: '⚙️ <b>Daha fazla</b>' };
+const MOREM = { ru: '⚙️ <b>Ещё</b>', uz: '⚙️ <b>Yana</b>', en: '⚙️ <b>More</b>' };
 function moreMenu(env, chat, lang, rid) {
   const R = RKL[lang] || RKL.ru, a = k => ({ text: R[k], callback_data: `MA:${lang}:${k}` });
   return tg(env, 'sendMessage', { chat_id: chat, text: MOREM[lang] || MOREM.ru, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
@@ -923,33 +940,32 @@ function replyKb(env, lang, id) {
   const X = RKL[lang] || RKL.ru, b = t => ({ text: t });
   // two buttons a row, the everyday ones on top; the rare ones live in «⚙️ More» (the old labels still work)
   return { keyboard: [
-    [b(X.now), b(X.hourly)],
-    ...(id === 'UZ' ? [[b(X.evv)]] : []),  // the ECMWF phone videos: clouds and rain moving, 12 hours and 3 days
+    [b(X.now), b(X.days)],
+    [b(X.video)],  // one video button: the 15-day hourly video, the moisture, the weeks and the place close up (the old video buttons lead here too)
     ...(id === 'UZ' ? [[b(X.dyn)]] : []),  // weather against last year (LFL): one wide button, the people who plan by it look for it first
-    [...(TRJ.has(id) ? [b(X.rain)] : [b(X.video)]), b(X.days)],
     [...(ADM.has(id) ? [b(X.regions)] : []), b(X.air)],
     ...(id === 'UZ' ? [[b(X.outlook), b(X.mtn)]] : []),
     [b(X.alerts), b(X.notif)],
-    [{ text: X.loc, request_location: true }, b(X.more)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', tr: 'Şehir adı…' }[lang] };
+    [{ text: X.loc, request_location: true }, b(X.more)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', en: 'City name…' }[lang] };
 }
 // countries and cities are keyboards too: the chosen one is marked with ✅
 function countryRk(lang, cur) {  // the continents first (then the countries, the towns, the regions and districts), the current country as a shortcut
   const X = RKL[lang] || RKL.ru, C = CONT[lang] || CONT.ru;
-  const rows = [[{ text: C.AU }, { text: C.AN }], [{ text: C.AF }, { text: C.EA }], [{ text: C.NA }, { text: C.SA }]];
+  const rows = [[{ text: C.AS }, { text: C.EU }], [{ text: C.AF }, { text: C.AU }], [{ text: C.NA }, { text: C.SA }], [{ text: C.AN }]];
   if (cur && NAMES[cur] && FLAG[cur]) rows.unshift([{ text: `✅ ${FLAG[cur]} ${NAMES[cur][lang]}` }]);
   rows.push([{ text: X.home }]);
   return { keyboard: rows, resize_keyboard: true };
 }
 /* ---------- continents → countries → towns, regions and districts ---------- */
-const WORLD = [["ID","Индонезия","Indonesia","Endonezya","EA"],["MY","Малайзия","Malaysia","Malezya","EA"],["CL","Чили","Chile","Şili","SA"],["BO","Боливия","Bolivia","Bolivya","SA"],["PE","Перу","Peru","Peru","SA"],["AR","Аргентина","Argentina","Arjantin","SA"],["CY","Кипр","Cyprus","Kıbrıs Cumhuriyeti","EA"],["IN","Индия","India","Hindistan","EA"],["CN","Китайская Народная Республика","People's Republic of China","Çin Halk Cumhuriyeti","EA"],["IL","Израиль","Israel","İsrail","EA"],["PS","Палестина","Palestine","Filistin","EA"],["LB","Ливан","Lebanon","Lübnan","EA"],["ET","Эфиопия","Ethiopia","Etiyopya","AF"],["SS","Южный Судан","South Sudan","Güney Sudan","AF"],["SO","Сомали","Somalia","Somali","AF"],["KE","Кения","Kenya","Kenya","AF"],["MW","Малави","Malawi","Malavi","AF"],["TZ","Танзания","Tanzania","Tanzanya","AF"],["SY","Сирия","Syria","Suriye","EA"],["FR","Франция","France","Fransa","EA"],["SR","Суринам","Suriname","Surinam","SA"],["GY","Гайана","Guyana","Guyana","SA"],["KR","Республика Корея","South Korea","Güney Kore","EA"],["KP","КНДР","North Korea","Kuzey Kore","EA"],["MA","Марокко","Morocco","Fas","AF"],["EH","Западная Сахара","Western Sahara","Batı Sahra","AF"],["CR","Коста-Рика","Costa Rica","Kosta Rika","NA"],["NI","Никарагуа","Nicaragua","Nikaragua","NA"],["CG","Республика Конго","Republic of the Congo","Kongo Cumhuriyeti","AF"],["CD","Демократическая Республика Конго","Democratic Republic of the Congo","Demokratik Kongo Cumhuriyeti","AF"],["BT","Бутан","Bhutan","Bhutan","EA"],["UA","Украина","Ukraine","Ukrayna","EA"],["BY","Белоруссия","Belarus","Beyaz Rusya","EA"],["NA","Намибия","Namibia","Namibya","AF"],["ZA","ЮАР","South Africa","Güney Afrika Cumhuriyeti","AF"],["MF","Сен-Мартен","Saint Martin","Saint Martin","NA"],["SX","Синт-Мартен","Sint Maarten","Sint Maarten","NA"],["OM","Оман","Oman","Umman","EA"],["UZ","Узбекистан","Uzbekistan","Özbekistan","EA"],["KZ","Казахстан","Kazakhstan","Kazakistan","EA"],["TJ","Таджикистан","Tajikistan","Tacikistan","EA"],["LT","Литва","Lithuania","Litvanya","EA"],["BR","Бразилия","Brazil","Brezilya","SA"],["UY","Уругвай","Uruguay","Uruguay","SA"],["MN","Монголия","Mongolia","Moğolistan","EA"],["RU","Россия","Russia","Rusya","EA"],["CZ","Чехия","Czech Republic","Çek Cumhuriyeti","EA"],["DE","Германия","Germany","Almanya","EA"],["EE","Эстония","Estonia","Estonya","EA"],["LV","Латвия","Latvia","Letonya","EA"],["NO","Норвегия","Norway","Norveç","EA"],["SE","Швеция","Sweden","İsveç","EA"],["FI","Финляндия","Finland","Finlandiya","EA"],["VN","Вьетнам","Vietnam","Vietnam","EA"],["KH","Камбоджа","Cambodia","Kamboçya","EA"],["LU","Люксембург","Luxembourg","Lüksemburg","EA"],["AE","Объединённые Арабские Эмираты","United Arab Emirates","Birleşik Arap Emirlikleri","EA"],["BE","Бельгия","Belgium","Belçika","EA"],["GE","Грузия","Georgia","Gürcistan","EA"],["MK","Северная Македония","North Macedonia","Kuzey Makedonya","EA"],["AL","Албания","Albania","Arnavutluk","EA"],["AZ","Азербайджан","Azerbaijan","Azerbaycan","EA"],["XK","Республика Косово","Kosovo","Kosova","EA"],["TR","Турция","Turkey","Türkiye","EA"],["ES","Испания","Spain","İspanya","EA"],["LA","Лаос","Laos","Laos","EA"],["KG","Киргизия","Kyrgyzstan","Kırgızistan","EA"],["AM","Армения","Armenia","Ermenistan","EA"],["DK","Дания","Denmark","Danimarka","EA"],["LY","Ливия","Libya","Libya","AF"],["TN","Тунис","Tunisia","Tunus","AF"],["RO","Румыния","Romania","Romanya","EA"],["HU","Венгрия","Hungary","Macaristan","EA"],["SK","Словакия","Slovakia","Slovakya","EA"],["PL","Польша","Poland","Polonya","EA"],["IE","Ирландия","Ireland","İrlanda","EA"],["GB","Великобритания","United Kingdom","Birleşik Krallık","EA"],["GR","Греция","Greece","Yunanistan","EA"],["ZM","Замбия","Zambia","Zambiya","AF"],["SL","Сьерра-Леоне","Sierra Leone","Sierra Leone","AF"],["GN","Гвинея","Guinea","Gine","AF"],["LR","Либерия","Liberia","Liberya","AF"],["CF","Центральноафриканская Республика","Central African Republic","Orta Afrika Cumhuriyeti","AF"],["SD","Судан","Sudan","Sudan","AF"],["DJ","Джибути","Djibouti","Cibuti","AF"],["ER","Эритрея","Eritrea","Eritre","AF"],["AT","Австрия","Austria","Avusturya","EA"],["IQ","Ирак","Iraq","Irak","EA"],["IT","Италия","Italy","İtalya","EA"],["CH","Швейцария","Switzerland","İsviçre","EA"],["IR","Иран","Iran","İran","EA"],["NL","Нидерланды","Netherlands","Hollanda","EA"],["LI","Лихтенштейн","Liechtenstein","Lihtenştayn","EA"],["CI","Кот-д’Ивуар","Ivory Coast","Fildişi Sahili","AF"],["RS","Сербия","Serbia","Sırbistan","EA"],["ML","Мали","Mali","Mali","AF"],["SN","Сенегал","Senegal","Senegal","AF"],["NG","Нигерия","Nigeria","Nijerya","AF"],["BJ","Бенин","Benin","Benin","AF"],["AO","Ангола","Angola","Angola","AF"],["HR","Хорватия","Croatia","Hırvatistan","EA"],["SI","Словения","Slovenia","Slovenya","EA"],["QA","Катар","Qatar","Katar","EA"],["SA","Саудовская Аравия","Saudi Arabia","Suudi Arabistan","EA"],["BW","Ботсвана","Botswana","Botsvana","AF"],["ZW","Зимбабве","Zimbabwe","Zimbabve","AF"],["PK","Пакистан","Pakistan","Pakistan","EA"],["BG","Болгария","Bulgaria","Bulgaristan","EA"],["TH","Таиланд","Thailand","Tayland","EA"],["SM","Сан-Марино","San Marino","San Marino","EA"],["HT","Республика Гаити","Haiti","Haiti","NA"],["DO","Доминиканская Республика","Dominican Republic","Dominik Cumhuriyeti","NA"],["TD","Чад","Chad","Çad","AF"],["KW","Кувейт","Kuwait","Kuveyt","EA"],["SV","Сальвадор","El Salvador","El Salvador","NA"],["GT","Гватемала","Guatemala","Guatemala","NA"],["TL","Восточный Тимор","East Timor","Doğu Timor","EA"],["BN","Бруней","Brunei","Brunei","EA"],["MC","Монако","Monaco","Monako","EA"],["DZ","Алжир","Algeria","Cezayir","AF"],["MZ","Мозамбик","Mozambique","Mozambik","AF"],["SZ","Эсватини","Eswatini","Esvatini","AF"],["BI","Бурунди","Burundi","Burundi","AF"],["RW","Руанда","Rwanda","Ruanda","AF"],["MM","Мьянма","Myanmar","Myanmar","EA"],["BD","Бангладеш","Bangladesh","Bangladeş","EA"],["AD","Андорра","Andorra","Andorra","EA"],["AF","Афганистан","Afghanistan","Afganistan","EA"],["ME","Черногория","Montenegro","Karadağ","EA"],["BA","Босния и Герцеговина","Bosnia and Herzegovina","Bosna-Hersek","EA"],["UG","Уганда","Uganda","Uganda","AF"],["CU","Куба","Cuba","Küba","NA"],["HN","Гондурас","Honduras","Honduras","NA"],["EC","Эквадор","Ecuador","Ekvador","SA"],["CO","Колумбия","Colombia","Kolombiya","SA"],["PY","Парагвай","Paraguay","Paraguay","SA"],["PT","Португалия","Portugal","Portekiz","EA"],["MD","Молдавия","Moldova","Moldova","EA"],["TM","Туркмения","Turkmenistan","Türkmenistan","EA"],["JO","Иордания","Jordan","Ürdün","EA"],["NP","Непал","Nepal","Nepal","EA"],["LS","Лесото","Lesotho","Lesotho","AF"],["CM","Камерун","Cameroon","Kamerun","AF"],["GA","Габон","Gabon","Gabon","AF"],["NE","Нигер","Niger","Nijer","AF"],["BF","Буркина-Фасо","Burkina Faso","Burkina Faso","AF"],["TG","Того","Togo","Togo","AF"],["GH","Гана","Ghana","Gana","AF"],["GW","Гвинея-Бисау","Guinea-Bissau","Gine-Bissau","AF"],["GI","Гибралтар","Gibraltar","Cebelitarık","EA"],["US","США","United States of America","Amerika Birleşik Devletleri","NA"],["CA","Канада","Canada","Kanada","NA"],["MX","Мексика","Mexico","Meksika","NA"],["BZ","Белиз","Belize","Belize","NA"],["PA","Панама","Panama","Panama","NA"],["VE","Венесуэла","Venezuela","Venezuela","SA"],["PG","Папуа — Новая Гвинея","Papua New Guinea","Papua Yeni Gine","AU"],["EG","Египет","Egypt","Mısır","AF"],["YE","Йемен","Yemen","Yemen","EA"],["MR","Мавритания","Mauritania","Moritanya","AF"],["GQ","Экваториальная Гвинея","Equatorial Guinea","Ekvator Ginesi","AF"],["GM","Гамбия","The Gambia","Gambiya","AF"],["HK","Гонконг","Hong Kong","Hong Kong","EA"],["VA","Ватикан","Vatican City","Vatikan","EA"],["AQ","Антарктида","Antarctica","Antarktika","AN"],["AU","Австралия","Australia","Avustralya","AU"],["GL","Гренландия","Greenland","Grönland","NA"],["FJ","Фиджи","Fiji","Fiji","AU"],["NZ","Новая Зеландия","New Zealand","Yeni Zelanda","AU"],["NC","Новая Каледония","New Caledonia","Yeni Kaledonya","AU"],["MG","Мадагаскар","Madagascar","Madagaskar","AF"],["PH","Филиппины","Philippines","Filipinler","EA"],["LK","Шри-Ланка","Sri Lanka","Sri Lanka","EA"],["CW","Кюрасао","Curaçao","Curaçao","NA"],["AW","Аруба","Aruba","Aruba","NA"],["BS","Багамские Острова","The Bahamas","Bahamalar","NA"],["TC","Тёркс и Кайкос","Turks and Caicos Islands","Turks ve Caicos Adaları","NA"],["TW","Тайвань","Taiwan","Çin Cumhuriyeti","EA"],["JP","Япония","Japan","Japonya","EA"],["PM","Сен-Пьер и Микелон","Saint Pierre and Miquelon","Saint Pierre ve Miquelon","NA"],["IS","Исландия","Iceland","İzlanda","EA"],["PN","Острова Питкэрн","Pitcairn Islands","Pitcairn Adaları","AU"],["PF","Французская Полинезия","French Polynesia","Fransız Polinezyası","AU"],["KI","Кирибати","Kiribati","Kiribati","AU"],["MH","Маршалловы Острова","Marshall Islands","Marshall Adaları","AU"],["TT","Тринидад и Тобаго","Trinidad and Tobago","Trinidad ve Tobago","NA"],["GD","Гренада","Grenada","Grenada","NA"],["VC","Сент-Винсент и Гренадины","Saint Vincent and the Grenadines","Saint Vincent ve Grenadinler","NA"],["BB","Барбадос","Barbados","Barbados","NA"],["LC","Сент-Люсия","Saint Lucia","Saint Lucia","NA"],["DM","Доминика","Dominica","Dominika","NA"],["UM","Внешние малые острова США","United States Minor Outlying Islands","United States Minor Outlying Islands","NA"],["MS","Монтсеррат","Montserrat","Montserrat","NA"],["AG","Антигуа и Барбуда","Antigua and Barbuda","Antigua ve Barbuda","NA"],["KN","Сент-Китс и Невис","Saint Kitts and Nevis","Saint Kitts ve Nevis","NA"],["VI","Американские Виргинские острова","United States Virgin Islands","ABD Virjin Adaları","NA"],["BL","Сен-Бартелеми","Saint Barthélemy","Saint Barthélemy","NA"],["PR","Пуэрто-Рико","Puerto Rico","Porto Riko","NA"],["AI","Ангилья","Anguilla","Anguilla","NA"],["VG","Британские Виргинские острова","British Virgin Islands","Britanya Virjin Adaları","NA"],["JM","Ямайка","Jamaica","Jamaika","NA"],["KY","острова Кайман","Cayman Islands","Cayman Adaları","NA"],["BM","Бермудские Острова","Bermuda","Bermuda","NA"],["KM","Коморы","Comoros","Komorlar","AF"],["ST","Сан-Томе и Принсипи","São Tomé and Príncipe","São Tomé ve Príncipe","AF"],["CV","Кабо-Верде","Cape Verde","Yeşil Burun Adaları","AF"],["MT","Мальта","Malta","Malta","EA"],["JE","Джерси","Jersey","Jersey","EA"],["GG","Гернси","Guernsey","Guernsey","EA"],["IM","остров Мэн","Isle of Man","Man Adası","EA"],["AX","Аландские острова","Åland","Åland","EA"],["FO","Фарерские острова","Faroe Islands","Faroe Adaları","EA"],["SG","Сингапур","Singapore","Singapur","EA"],["NF","Норфолк","Norfolk Island","Norfolk Adası","AU"],["CK","Острова Кука","Cook Islands","Cook Adaları","AU"],["TO","Тонга","Tonga","Tonga","AU"],["WF","Уоллис и Футуна","Wallis and Futuna","Wallis ve Futuna Adaları","AU"],["WS","Самоа","Samoa","Samoa","AU"],["SB","Соломоновы Острова","Solomon Islands","Solomon Adaları","AU"],["TV","Тувалу","Tuvalu","Tuvalu","AU"],["NR","Науру","Nauru","Nauru","AU"],["FM","Микронезия","Federated States of Micronesia","Mikronezya","AU"],["FK","Фолклендские острова","Falkland Islands","Falkland Adaları","SA"],["VU","Вануату","Vanuatu","Vanuatu","AU"],["NU","Ниуэ","Niue","Niue","AU"],["AS","Американское Самоа","American Samoa","Amerikan Samoası","AU"],["PW","Палау","Palau","Palau","AU"],["GU","Гуам","Guam","Guam","AU"],["MP","Северные Марианские острова","Northern Mariana Islands","Kuzey Mariana Adaları","AU"],["BH","Бахрейн","Bahrain","Bahreyn","EA"],["MO","Макао","Macau","Makao","EA"]];  // [ISO, ru, en, tr, continent]: Natural Earth countries
+const WORLD = [["ID","Индонезия","Indonesia","Endonezya","AS"],["MY","Малайзия","Malaysia","Malezya","AS"],["CL","Чили","Chile","Şili","SA"],["BO","Боливия","Bolivia","Bolivya","SA"],["PE","Перу","Peru","Peru","SA"],["AR","Аргентина","Argentina","Arjantin","SA"],["CY","Кипр","Cyprus","Kıbrıs Cumhuriyeti","AS"],["IN","Индия","India","Hindistan","AS"],["CN","Китайская Народная Республика","People's Republic of China","Çin Halk Cumhuriyeti","AS"],["IL","Израиль","Israel","İsrail","AS"],["PS","Палестина","Palestine","Filistin","AS"],["LB","Ливан","Lebanon","Lübnan","AS"],["ET","Эфиопия","Ethiopia","Etiyopya","AF"],["SS","Южный Судан","South Sudan","Güney Sudan","AF"],["SO","Сомали","Somalia","Somali","AF"],["KE","Кения","Kenya","Kenya","AF"],["MW","Малави","Malawi","Malavi","AF"],["TZ","Танзания","Tanzania","Tanzanya","AF"],["SY","Сирия","Syria","Suriye","AS"],["FR","Франция","France","Fransa","EU"],["SR","Суринам","Suriname","Surinam","SA"],["GY","Гайана","Guyana","Guyana","SA"],["KR","Республика Корея","South Korea","Güney Kore","AS"],["KP","КНДР","North Korea","Kuzey Kore","AS"],["MA","Марокко","Morocco","Fas","AF"],["EH","Западная Сахара","Western Sahara","Batı Sahra","AF"],["CR","Коста-Рика","Costa Rica","Kosta Rika","NA"],["NI","Никарагуа","Nicaragua","Nikaragua","NA"],["CG","Республика Конго","Republic of the Congo","Kongo Cumhuriyeti","AF"],["CD","Демократическая Республика Конго","Democratic Republic of the Congo","Demokratik Kongo Cumhuriyeti","AF"],["BT","Бутан","Bhutan","Bhutan","AS"],["UA","Украина","Ukraine","Ukrayna","EU"],["BY","Белоруссия","Belarus","Beyaz Rusya","EU"],["NA","Намибия","Namibia","Namibya","AF"],["ZA","ЮАР","South Africa","Güney Afrika Cumhuriyeti","AF"],["MF","Сен-Мартен","Saint Martin","Saint Martin","NA"],["SX","Синт-Мартен","Sint Maarten","Sint Maarten","NA"],["OM","Оман","Oman","Umman","AS"],["UZ","Узбекистан","Uzbekistan","Özbekistan","AS"],["KZ","Казахстан","Kazakhstan","Kazakistan","AS"],["TJ","Таджикистан","Tajikistan","Tacikistan","AS"],["LT","Литва","Lithuania","Litvanya","EU"],["BR","Бразилия","Brazil","Brezilya","SA"],["UY","Уругвай","Uruguay","Uruguay","SA"],["MN","Монголия","Mongolia","Moğolistan","AS"],["RU","Россия","Russia","Rusya","EU"],["CZ","Чехия","Czech Republic","Çek Cumhuriyeti","EU"],["DE","Германия","Germany","Almanya","EU"],["EE","Эстония","Estonia","Estonya","EU"],["LV","Латвия","Latvia","Letonya","EU"],["NO","Норвегия","Norway","Norveç","EU"],["SE","Швеция","Sweden","İsveç","EU"],["FI","Финляндия","Finland","Finlandiya","EU"],["VN","Вьетнам","Vietnam","Vietnam","AS"],["KH","Камбоджа","Cambodia","Kamboçya","AS"],["LU","Люксембург","Luxembourg","Lüksemburg","EU"],["AE","Объединённые Арабские Эмираты","United Arab Emirates","Birleşik Arap Emirlikleri","AS"],["BE","Бельгия","Belgium","Belçika","EU"],["GE","Грузия","Georgia","Gürcistan","AS"],["MK","Северная Македония","North Macedonia","Kuzey Makedonya","EU"],["AL","Албания","Albania","Arnavutluk","EU"],["AZ","Азербайджан","Azerbaijan","Azerbaycan","AS"],["XK","Республика Косово","Kosovo","Kosova","EU"],["TR","Турция","Turkey","Türkiye","AS"],["ES","Испания","Spain","İspanya","EU"],["LA","Лаос","Laos","Laos","AS"],["KG","Киргизия","Kyrgyzstan","Kırgızistan","AS"],["AM","Армения","Armenia","Ermenistan","AS"],["DK","Дания","Denmark","Danimarka","EU"],["LY","Ливия","Libya","Libya","AF"],["TN","Тунис","Tunisia","Tunus","AF"],["RO","Румыния","Romania","Romanya","EU"],["HU","Венгрия","Hungary","Macaristan","EU"],["SK","Словакия","Slovakia","Slovakya","EU"],["PL","Польша","Poland","Polonya","EU"],["IE","Ирландия","Ireland","İrlanda","EU"],["GB","Великобритания","United Kingdom","Birleşik Krallık","EU"],["GR","Греция","Greece","Yunanistan","EU"],["ZM","Замбия","Zambia","Zambiya","AF"],["SL","Сьерра-Леоне","Sierra Leone","Sierra Leone","AF"],["GN","Гвинея","Guinea","Gine","AF"],["LR","Либерия","Liberia","Liberya","AF"],["CF","Центральноафриканская Республика","Central African Republic","Orta Afrika Cumhuriyeti","AF"],["SD","Судан","Sudan","Sudan","AF"],["DJ","Джибути","Djibouti","Cibuti","AF"],["ER","Эритрея","Eritrea","Eritre","AF"],["AT","Австрия","Austria","Avusturya","EU"],["IQ","Ирак","Iraq","Irak","AS"],["IT","Италия","Italy","İtalya","EU"],["CH","Швейцария","Switzerland","İsviçre","EU"],["IR","Иран","Iran","İran","AS"],["NL","Нидерланды","Netherlands","Hollanda","EU"],["LI","Лихтенштейн","Liechtenstein","Lihtenştayn","EU"],["CI","Кот-д’Ивуар","Ivory Coast","Fildişi Sahili","AF"],["RS","Сербия","Serbia","Sırbistan","EU"],["ML","Мали","Mali","Mali","AF"],["SN","Сенегал","Senegal","Senegal","AF"],["NG","Нигерия","Nigeria","Nijerya","AF"],["BJ","Бенин","Benin","Benin","AF"],["AO","Ангола","Angola","Angola","AF"],["HR","Хорватия","Croatia","Hırvatistan","EU"],["SI","Словения","Slovenia","Slovenya","EU"],["QA","Катар","Qatar","Katar","AS"],["SA","Саудовская Аравия","Saudi Arabia","Suudi Arabistan","AS"],["BW","Ботсвана","Botswana","Botsvana","AF"],["ZW","Зимбабве","Zimbabwe","Zimbabve","AF"],["PK","Пакистан","Pakistan","Pakistan","AS"],["BG","Болгария","Bulgaria","Bulgaristan","EU"],["TH","Таиланд","Thailand","Tayland","AS"],["SM","Сан-Марино","San Marino","San Marino","EU"],["HT","Республика Гаити","Haiti","Haiti","NA"],["DO","Доминиканская Республика","Dominican Republic","Dominik Cumhuriyeti","NA"],["TD","Чад","Chad","Çad","AF"],["KW","Кувейт","Kuwait","Kuveyt","AS"],["SV","Сальвадор","El Salvador","El Salvador","NA"],["GT","Гватемала","Guatemala","Guatemala","NA"],["TL","Восточный Тимор","East Timor","Doğu Timor","AS"],["BN","Бруней","Brunei","Brunei","AS"],["MC","Монако","Monaco","Monako","EU"],["DZ","Алжир","Algeria","Cezayir","AF"],["MZ","Мозамбик","Mozambique","Mozambik","AF"],["SZ","Эсватини","Eswatini","Esvatini","AF"],["BI","Бурунди","Burundi","Burundi","AF"],["RW","Руанда","Rwanda","Ruanda","AF"],["MM","Мьянма","Myanmar","Myanmar","AS"],["BD","Бангладеш","Bangladesh","Bangladeş","AS"],["AD","Андорра","Andorra","Andorra","EU"],["AF","Афганистан","Afghanistan","Afganistan","AS"],["ME","Черногория","Montenegro","Karadağ","EU"],["BA","Босния и Герцеговина","Bosnia and Herzegovina","Bosna-Hersek","EU"],["UG","Уганда","Uganda","Uganda","AF"],["CU","Куба","Cuba","Küba","NA"],["HN","Гондурас","Honduras","Honduras","NA"],["EC","Эквадор","Ecuador","Ekvador","SA"],["CO","Колумбия","Colombia","Kolombiya","SA"],["PY","Парагвай","Paraguay","Paraguay","SA"],["PT","Португалия","Portugal","Portekiz","EU"],["MD","Молдавия","Moldova","Moldova","EU"],["TM","Туркмения","Turkmenistan","Türkmenistan","AS"],["JO","Иордания","Jordan","Ürdün","AS"],["NP","Непал","Nepal","Nepal","AS"],["LS","Лесото","Lesotho","Lesotho","AF"],["CM","Камерун","Cameroon","Kamerun","AF"],["GA","Габон","Gabon","Gabon","AF"],["NE","Нигер","Niger","Nijer","AF"],["BF","Буркина-Фасо","Burkina Faso","Burkina Faso","AF"],["TG","Того","Togo","Togo","AF"],["GH","Гана","Ghana","Gana","AF"],["GW","Гвинея-Бисау","Guinea-Bissau","Gine-Bissau","AF"],["GI","Гибралтар","Gibraltar","Cebelitarık","EU"],["US","США","United States of America","Amerika Birleşik Devletleri","NA"],["CA","Канада","Canada","Kanada","NA"],["MX","Мексика","Mexico","Meksika","NA"],["BZ","Белиз","Belize","Belize","NA"],["PA","Панама","Panama","Panama","NA"],["VE","Венесуэла","Venezuela","Venezuela","SA"],["PG","Папуа — Новая Гвинея","Papua New Guinea","Papua Yeni Gine","AU"],["EG","Египет","Egypt","Mısır","AF"],["YE","Йемен","Yemen","Yemen","AS"],["MR","Мавритания","Mauritania","Moritanya","AF"],["GQ","Экваториальная Гвинея","Equatorial Guinea","Ekvator Ginesi","AF"],["GM","Гамбия","The Gambia","Gambiya","AF"],["HK","Гонконг","Hong Kong","Hong Kong","AS"],["VA","Ватикан","Vatican City","Vatikan","EU"],["AQ","Антарктида","Antarctica","Antarktika","AN"],["AU","Австралия","Australia","Avustralya","AU"],["GL","Гренландия","Greenland","Grönland","NA"],["FJ","Фиджи","Fiji","Fiji","AU"],["NZ","Новая Зеландия","New Zealand","Yeni Zelanda","AU"],["NC","Новая Каледония","New Caledonia","Yeni Kaledonya","AU"],["MG","Мадагаскар","Madagascar","Madagaskar","AF"],["PH","Филиппины","Philippines","Filipinler","AS"],["LK","Шри-Ланка","Sri Lanka","Sri Lanka","AS"],["CW","Кюрасао","Curaçao","Curaçao","NA"],["AW","Аруба","Aruba","Aruba","NA"],["BS","Багамские Острова","The Bahamas","Bahamalar","NA"],["TC","Тёркс и Кайкос","Turks and Caicos Islands","Turks ve Caicos Adaları","NA"],["TW","Тайвань","Taiwan","Çin Cumhuriyeti","AS"],["JP","Япония","Japan","Japonya","AS"],["PM","Сен-Пьер и Микелон","Saint Pierre and Miquelon","Saint Pierre ve Miquelon","NA"],["IS","Исландия","Iceland","İzlanda","EU"],["PN","Острова Питкэрн","Pitcairn Islands","Pitcairn Adaları","AU"],["PF","Французская Полинезия","French Polynesia","Fransız Polinezyası","AU"],["KI","Кирибати","Kiribati","Kiribati","AU"],["MH","Маршалловы Острова","Marshall Islands","Marshall Adaları","AU"],["TT","Тринидад и Тобаго","Trinidad and Tobago","Trinidad ve Tobago","NA"],["GD","Гренада","Grenada","Grenada","NA"],["VC","Сент-Винсент и Гренадины","Saint Vincent and the Grenadines","Saint Vincent ve Grenadinler","NA"],["BB","Барбадос","Barbados","Barbados","NA"],["LC","Сент-Люсия","Saint Lucia","Saint Lucia","NA"],["DM","Доминика","Dominica","Dominika","NA"],["UM","Внешние малые острова США","United States Minor Outlying Islands","United States Minor Outlying Islands","NA"],["MS","Монтсеррат","Montserrat","Montserrat","NA"],["AG","Антигуа и Барбуда","Antigua and Barbuda","Antigua ve Barbuda","NA"],["KN","Сент-Китс и Невис","Saint Kitts and Nevis","Saint Kitts ve Nevis","NA"],["VI","Американские Виргинские острова","United States Virgin Islands","ABD Virjin Adaları","NA"],["BL","Сен-Бартелеми","Saint Barthélemy","Saint Barthélemy","NA"],["PR","Пуэрто-Рико","Puerto Rico","Porto Riko","NA"],["AI","Ангилья","Anguilla","Anguilla","NA"],["VG","Британские Виргинские острова","British Virgin Islands","Britanya Virjin Adaları","NA"],["JM","Ямайка","Jamaica","Jamaika","NA"],["KY","острова Кайман","Cayman Islands","Cayman Adaları","NA"],["BM","Бермудские Острова","Bermuda","Bermuda","NA"],["KM","Коморы","Comoros","Komorlar","AF"],["ST","Сан-Томе и Принсипи","São Tomé and Príncipe","São Tomé ve Príncipe","AF"],["CV","Кабо-Верде","Cape Verde","Yeşil Burun Adaları","AF"],["MT","Мальта","Malta","Malta","EU"],["JE","Джерси","Jersey","Jersey","EU"],["GG","Гернси","Guernsey","Guernsey","EU"],["IM","остров Мэн","Isle of Man","Man Adası","EU"],["AX","Аландские острова","Åland","Åland","EU"],["FO","Фарерские острова","Faroe Islands","Faroe Adaları","EU"],["SG","Сингапур","Singapore","Singapur","AS"],["NF","Норфолк","Norfolk Island","Norfolk Adası","AU"],["CK","Острова Кука","Cook Islands","Cook Adaları","AU"],["TO","Тонга","Tonga","Tonga","AU"],["WF","Уоллис и Футуна","Wallis and Futuna","Wallis ve Futuna Adaları","AU"],["WS","Самоа","Samoa","Samoa","AU"],["SB","Соломоновы Острова","Solomon Islands","Solomon Adaları","AU"],["TV","Тувалу","Tuvalu","Tuvalu","AU"],["NR","Науру","Nauru","Nauru","AU"],["FM","Микронезия","Federated States of Micronesia","Mikronezya","AU"],["FK","Фолклендские острова","Falkland Islands","Falkland Adaları","SA"],["VU","Вануату","Vanuatu","Vanuatu","AU"],["NU","Ниуэ","Niue","Niue","AU"],["AS","Американское Самоа","American Samoa","Amerikan Samoası","AU"],["PW","Палау","Palau","Palau","AU"],["GU","Гуам","Guam","Guam","AU"],["MP","Северные Марианские острова","Northern Mariana Islands","Kuzey Mariana Adaları","AU"],["BH","Бахрейн","Bahrain","Bahreyn","AS"],["MO","Макао","Macau","Makao","AS"]];  // [ISO, ru, en, tr, continent]: Natural Earth countries
 const CONT = {
-  ru: { AU: '🦘 Австралия', AN: '🧊 Антарктида', AF: '🌍 Африка', EA: '🌏 Евразия', NA: '🌎 Северная Америка', SA: '🌎 Южная Америка', pick: '{c} — выберите страну:', whole: '🗺 Весь регион: {n}', towns: '🏙 Города — нажмите, пришлю прогноз:', regs: '🗺 Регионы и районы', noTowns: 'Городов в списке нет — напишите название места или отправьте геолокацию 📍.', back: '⬅️ Континенты', more: 'Ещё ▶', prev: '◀ Назад', menu: '📋 Все разделы страны', page: 'стр. {i}/{n}' },
-  uz: { AU: '🦘 Avstraliya', AN: '🧊 Antarktida', AF: '🌍 Afrika', EA: '🌏 Yevrosiyo', NA: '🌎 Shimoliy Amerika', SA: '🌎 Janubiy Amerika', pick: '{c} — davlatni tanlang:', whole: '🗺 Butun hudud: {n}', towns: '🏙 Shaharlar — bosing, prognoz yuboraman:', regs: '🗺 Viloyat va tumanlar', noTowns: 'Ro‘yxatda shahar yo‘q — joy nomini yozing yoki joylashuvni yuboring 📍.', back: '⬅️ Qit’alar', more: 'Yana ▶', prev: '◀ Orqaga', menu: '📋 Davlatning barcha bo‘limlari', page: '{i}/{n}-bet' },
-  tr: { AU: '🦘 Avustralya', AN: '🧊 Antarktika', AF: '🌍 Afrika', EA: '🌏 Avrasya', NA: '🌎 Kuzey Amerika', SA: '🌎 Güney Amerika', pick: '{c} — ülke seçin:', whole: '🗺 Tüm bölge: {n}', towns: '🏙 Şehirler — dokunun, tahmini göndereyim:', regs: '🗺 Bölge ve ilçeler', noTowns: 'Listede şehir yok — yer adını yazın veya konum gönderin 📍.', back: '⬅️ Kıtalar', more: 'Daha ▶', prev: '◀ Geri', menu: '📋 Ülkenin tüm bölümleri', page: 'sayfa {i}/{n}' } };
-const CONT_REG = { AU: ['OC'], AN: [], AF: ['AF'], EA: ['EU', 'AS', 'cis'], NA: ['NA'], SA: ['SA'] };  // the bot's own maps of a continent
+  ru: { AU: '🦘 Австралия', AN: '🧊 Антарктида', AF: '🌍 Африка', AS: '🌏 Азия', EU: '🌍 Европа', NA: '🌎 Северная Америка', SA: '🌎 Южная Америка', pick: '{c} — выберите страну:', whole: '🗺 Весь регион: {n}', towns: '🏙 Города — нажмите, пришлю прогноз:', regs: '🗺 Регионы и районы', noTowns: 'Городов в списке нет — напишите название места или отправьте геолокацию 📍.', back: '⬅️ Континенты', more: 'Ещё ▶', prev: '◀ Назад', menu: '📋 Все разделы страны', page: 'стр. {i}/{n}' },
+  uz: { AU: '🦘 Avstraliya', AN: '🧊 Antarktida', AF: '🌍 Afrika', AS: '🌏 Osiyo', EU: '🌍 Yevropa', NA: '🌎 Shimoliy Amerika', SA: '🌎 Janubiy Amerika', pick: '{c} — davlatni tanlang:', whole: '🗺 Butun hudud: {n}', towns: '🏙 Shaharlar — bosing, prognoz yuboraman:', regs: '🗺 Viloyat va tumanlar', noTowns: 'Ro‘yxatda shahar yo‘q — joy nomini yozing yoki joylashuvni yuboring 📍.', back: '⬅️ Qit’alar', more: 'Yana ▶', prev: '◀ Orqaga', menu: '📋 Davlatning barcha bo‘limlari', page: '{i}/{n}-bet' },
+  en: { AU: '🦘 Australia', AN: '🧊 Antarctica', AF: '🌍 Africa', AS: '🌏 Asia', EU: '🌍 Europe', NA: '🌎 North America', SA: '🌎 South America', pick: '{c} — choose a country:', whole: '🗺 The whole region: {n}', towns: '🏙 Cities — tap one, I will send the forecast:', regs: '🗺 Regions and districts', noTowns: 'No cities on the list — type the name of a place or send your location 📍.', back: '⬅️ Continents', more: 'More ▶', prev: '◀ Back', menu: '📋 All sections of the country', page: 'page {i}/{n}' } };
+const CONT_REG = { AU: ['OC'], AN: [], AF: ['AF'], AS: ['AS', 'cis'], EU: ['EU'], NA: ['NA'], SA: ['SA'] };  // the bot's own maps of a continent
 const flagOf = iso => /^[A-Z]{2}$/.test(iso) ? String.fromCodePoint(...[...iso].map(c => 127397 + c.charCodeAt(0))) : '🏳';
-const wname = (r, lang) => lang === 'ru' ? r[1] : lang === 'tr' ? r[3] : r[2];
-const contOf = (text, lang) => { const t = text.trim(); for (const l of [lang, 'ru', 'uz', 'tr']) for (const [k, v] of Object.entries(CONT[l])) if (['AU', 'AN', 'AF', 'EA', 'NA', 'SA'].includes(k) && v === t) return k; return null; };
+const wname = (r, lang) => lang === 'ru' ? r[1] : r[2];
+const contOf = (text, lang) => { const t = text.trim(); for (const l of [lang, 'ru', 'uz', 'en']) for (const [k, v] of Object.entries(CONT[l])) if (['AU', 'AN', 'AF', 'AS', 'EU', 'NA', 'SA'].includes(k) && v === t) return k; return null; };
 async function sendCountries(env, chat, lang, code, page = 0, edit) {
   const C = CONT[lang] || CONT.ru, PER = 30;
   const list = WORLD.filter(r => r[4] === code).sort((a, b) => wname(a, lang).localeCompare(wname(b, lang), lang));
@@ -973,7 +989,7 @@ async function sendCountry(env, chat, lang, iso) {
   rows.push([{ text: C.back, callback_data: `CT:${lang}:${r[4]}:0` }]);
   return tg(env, 'sendMessage', { chat_id: chat, text: `${flagOf(iso)} <b>${esc(wname(r, lang))}</b>\n${towns.length ? C.towns : C.noTowns}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
 }
-const countryOf = text => { const t = text.replace(/^✅ /, ''); for (const id of Object.keys(NAMES)) for (const l of ['uz', 'ru', 'tr']) if (t === `${FLAG[id]} ${NAMES[id][l]}`) return id; return null; };
+const countryOf = text => { const t = text.replace(/^✅ /, ''); for (const id of Object.keys(NAMES)) for (const l of ['uz', 'ru', 'en']) if (t === `${FLAG[id]} ${NAMES[id][l]}`) return id; return null; };
 async function cityPicker(env, chat, lang, id, u) {
   const X = RKL[lang] || RKL.ru, C = (await cities(env, id, lang)) || (await cities(env, id, 'ru'));
   const rows = [[{ text: X.loc, request_location: true }]];
@@ -984,7 +1000,7 @@ async function cityPicker(env, chat, lang, id, u) {
   }
   names.forEach((n, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: n }); });
   rows.push([{ text: X.countries }, { text: X.home }]);
-  return tg(env, 'sendMessage', { chat_id: chat, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { keyboard: rows, resize_keyboard: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', tr: 'Şehir adı…' }[lang] } });
+  return tg(env, 'sendMessage', { chat_id: chat, text: `${FLAG[id]} <b>${NAMES[id][lang]}</b> · ${DK[lang].ask}`, parse_mode: 'HTML', reply_markup: { keyboard: rows, resize_keyboard: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', en: 'City name…' }[lang] } });
 }
 function menuKb(env, lang, id) { return replyKb(env, lang, id); }
 function menuKbInline(env, lang, id) {
@@ -1001,12 +1017,12 @@ function menuKbInline(env, lang, id) {
 const HK = {
   uz: { home: '🏠 Bosh menyu', reset: '🔄 Qayta boshlash', ask: 'Sozlamalarni o‘chirib, boshidan boshlaymizmi?\nDavlat, saqlangan joy va kunlik prognoz obunasi o‘chiriladi.', yes: '✅ Ha, qayta boshlash', no: '❌ Yo‘q', done: '🔄 Sozlamalar tozalandi. Tilni tanlang:' },
   ru: { home: '🏠 Главная', reset: '🔄 Сбросить', ask: 'Сбросить настройки и начать заново?\nБудут удалены: выбранная страна, сохранённое место и подписка на ежедневный прогноз.', yes: '✅ Да, сбросить', no: '❌ Нет', done: '🔄 Настройки сброшены. Выберите язык:' },
-  tr: { home: '🏠 Ana menü', reset: '🔄 Sıfırla', ask: 'Ayarlar sıfırlanıp baştan başlansın mı?\nSeçili ülke, kayıtlı konum ve günlük tahmin aboneliği silinir.', yes: '✅ Evet, sıfırla', no: '❌ Hayır', done: '🔄 Ayarlar sıfırlandı. Dil seçin:' } };
+  en: { home: '🏠 Main menu', reset: '🔄 Reset', ask: 'Reset the settings and start over?\nThe chosen country, the saved location and the daily forecast subscription will be deleted.', yes: '✅ Yes, reset', no: '❌ No', done: '🔄 The settings are reset. Choose a language:' } };
 const homeRow = lang => [{ text: (HK[lang] || HK.ru).home, callback_data: `HM:${lang}` }, { text: (HK[lang] || HK.ru).reset, callback_data: `RS:${lang}` }];
 const DK = {
   uz: { ask: '15 kunlik prognoz: shaharni tanlang yoki dunyodagi istalgan shahar nomini yozing (masalan: Parij, Dubay)', mine: 'Mening joyim', loc: '📍 Joylashuvni yuborish', other: '🌍 Boshqa davlat', vid: '🎬 Shu shahar videosi', vidC: '🎬 Video 15 kun', more: '🏙 Boshqa shahar', globe: '🌍 Globusda ochish' },
   ru: { ask: 'Прогноз на 15 дней: выберите город или напишите название любого города мира (например: Париж, Дубай)', mine: 'Моё место', loc: '📍 Отправить геолокацию', other: '🌍 Другая страна', vid: '🎬 Видео этого города', vidC: '🎬 Видео на 15 дней', more: '🏙 Другой город', globe: '🌍 Открыть на глобусе' },
-  tr: { ask: '15 günlük tahmin: şehir seçin ya da dünyadaki herhangi bir şehrin adını yazın (ör. Paris, Dubai)', mine: 'Konumum', loc: '📍 Konum gönder', other: '🌍 Başka ülke', vid: '🎬 Bu şehrin videosu', vidC: '🎬 15 günlük video', more: '🏙 Başka şehir', globe: '🌍 Kürede aç' } };
+  en: { ask: '15-day forecast: choose a city or type the name of any city in the world (e.g. Paris, Dubai)', mine: 'My location', loc: '📍 Send location', other: '🌍 Another country', vid: '🎬 This city’s video', vidC: '🎬 15-day video', more: '🏙 Another city', globe: '🌍 Open on the globe' } };
 // under a 15-day text: the matching video (this city's own, or the country's), another city, the countries
 function dayKb(lang, rid, cityVideo) {
   const X = DK[lang] || DK.ru;
@@ -1016,13 +1032,13 @@ function dayKb(lang, rid, cityVideo) {
 }
 const helpKb = lang => ({ inline_keyboard: [[{ text: T[lang].pdf, callback_data: `P:${lang}` }, { text: T[lang].adm, callback_data: `M:${lang}` }]] });
 // groups and channels cannot open Mini Apps from buttons: plain links
-const LIVE = { ru: '🗺 Интерактивная карта по часам', uz: '🗺 Interaktiv xarita soatma-soat', tr: '🗺 Saat saat etkileşimli harita' };
+const LIVE = { ru: '🗺 Интерактивная карта по часам', uz: '🗺 Interaktiv xarita soatma-soat', en: '🗺 Interactive map by the hour' };
 // the interactive map: inside Telegram in a private chat (mini app), a plain link in groups (Telegram allows mini-app buttons only in private chats)
-const LIVE15 = { ru: '🗺 Интерактивная карта на 15 дней', uz: '🗺 15 kunlik interaktiv xarita', tr: '🗺 15 günlük etkileşimli harita' };
+const LIVE15 = { ru: '🗺 Интерактивная карта на 15 дней', uz: '🗺 15 kunlik interaktiv xarita', en: '🗺 Interactive 15-day map' };
 const liveBtn = (env, lang, id, chat, d15) => { const u = `${base(env)}/live.html?r=${id}&l=${lang}${d15 ? '&m=15' : ''}`;
   return { text: (d15 ? LIVE15 : LIVE)[lang] || (d15 ? LIVE15 : LIVE).ru, ...(chat > 0 ? { web_app: { url: u } } : { url: u }) }; };
 // the interactive «where the rain comes from» map and the satellite now (site/moist.html; Uzbekistan, Kazakhstan, Kyrgyzstan)
-const MBTN = { ru: ['🗺 Интерактивная карта осадков', '🛰 Онлайн: тучи со спутника'], uz: ['🗺 Interaktiv yog‘in xaritasi', '🛰 Onlayn: sun’iy yo‘ldoshdan bulutlar'], tr: ['🗺 Etkileşimli yağış haritası', '🛰 Canlı: uydudan bulutlar'] };
+const MBTN = { ru: ['🗺 Интерактивная карта осадков', '🛰 Онлайн: тучи со спутника'], uz: ['🗺 Interaktiv yog‘in xaritasi', '🛰 Onlayn: sun’iy yo‘ldoshdan bulutlar'], en: ['🗺 Interactive precipitation map', '🛰 Live: clouds from the satellite'] };
 const moistBtns = (env, lang, id, chat) => !TRJ.has(id) ? [] : [0, 1].map(k => { const u = `${base(env)}/moist.html?r=${id}&l=${lang === 'uz' ? 'uz' : 'ru'}${k ? '&m=sat' : ''}`;
   return [{ text: (MBTN[lang] || MBTN.ru)[k], ...(chat > 0 ? { web_app: { url: u } } : { url: u }) }]; });
 const postKb = (env, lang, id, bot, chat) => ({ inline_keyboard: [...(chat ? [[liveBtn(env, lang, id, chat)], [liveBtn(env, lang, id, chat, true)]] : []), [{ text: T[lang].rep, url: link(env, `prob/${id}/${lang}/prob`) }, { text: T[lang].site, url: link(env, 'map') }], ...(bot ? [[{ text: T[lang].bot, url: `https://t.me/${bot}` }]] : [])] });
@@ -1042,12 +1058,12 @@ function icon(txt) {
 const AX = {  // more kinds of warnings
   uz: { heat: 'kuchli issiq, kunduzi', frost: 'kuchli sovuq, tunda', ice: 'yaxmalak xavfi (muzlagan yo‘llar)', wind: 'kuchli shamol, o‘rtacha', storm: 'momaqaldiroq, jala', dust: 'chang bo‘roni / havo ifloslanishi', ms: 'm/s', title: '⚠️ <b>Ogohlantirish: xavfli ob-havo</b>' },
   ru: { heat: 'сильная жара, днём', frost: 'сильный мороз, ночью', ice: 'гололёд (обледенение дорог)', wind: 'сильный ветер, в среднем', storm: 'гроза, ливень', dust: 'пыльная буря / загрязнение воздуха', ms: 'м/с', title: '⚠️ <b>Предупреждение: опасная погода</b>' },
-  tr: { heat: 'aşırı sıcak, gündüz', frost: 'şiddetli soğuk, gece', ice: 'buzlanma (yollarda don)', wind: 'kuvvetli rüzgâr, ortalama', storm: 'gök gürültülü sağanak', dust: 'toz fırtınası / hava kirliliği', ms: 'm/s', title: '⚠️ <b>Uyarı: tehlikeli hava</b>' },
+  en: { heat: 'great heat, by day', frost: 'hard frost, at night', ice: 'ice (frost on the roads)', wind: 'strong wind, mean', storm: 'thunderstorm with heavy rain', dust: 'dust storm / air pollution', ms: 'm/s', title: '⚠️ <b>Warning: dangerous weather</b>' },
 };
 const AL = {
   uz: { title: '⚠️ <b>Ogohlantirish: kuchli yog‘in</b>', r1: 'kuchli yomg‘ir', r2: 'juda kuchli yomg‘ir', s1: 'kuchli qor', s2: 'juda kuchli qor', mm: 'mm', peak: 'eng kuchli', foot: 'ECMWF, NOAA, DWD modellari ansambli bo‘yicha. Ehtiyot bo‘ling!', none: '✅ Yaqin 3 kunda kuchli yog‘in kutilmayapti.' },
   ru: { title: '⚠️ <b>Предупреждение: сильные осадки</b>', r1: 'сильный дождь', r2: 'очень сильный дождь', s1: 'сильный снег', s2: 'очень сильный снег', mm: 'мм', peak: 'пик', foot: 'По ансамблю моделей ECMWF, NOAA, DWD. Будьте осторожны!', none: '✅ В ближайшие 3 дня сильных осадков не ожидается.' },
-  tr: { title: '⚠️ <b>Uyarı: kuvvetli yağış</b>', r1: 'kuvvetli yağmur', r2: 'çok kuvvetli yağmur', s1: 'yoğun kar', s2: 'çok yoğun kar', mm: 'mm', peak: 'en yoğun', foot: 'ECMWF, NOAA, DWD model topluluğuna göre. Dikkatli olun!', none: '✅ Önümüzdeki 3 günde kuvvetli yağış beklenmiyor.' },
+  en: { title: '⚠️ <b>Warning: heavy precipitation</b>', r1: 'heavy rain', r2: 'very heavy rain', s1: 'heavy snow', s2: 'very heavy snow', mm: 'mm', peak: 'heaviest', foot: 'From the ECMWF, NOAA, DWD model ensemble. Take care!', none: '✅ No heavy precipitation expected in the next 3 days.' },
 };
 async function alertsData(env) {
   const r = await fetch(`${base(env)}/prob/alerts.json?t=${Date.now()}`, { cf: { cacheTtl: 0 } });
@@ -1102,7 +1118,7 @@ async function alertTick(env) {
 const PT = {
   uz: { locBtn: '📍 Mening joyimdagi ob-havo', locHint: '📍 Pastdagi tugmani bosing — joylashuvingiz bo‘yicha 15 kunlik prognoz.\nYoki shahar nomini yozing, masalan: <i>Namangan</i>', nf: '🔎 Bunday shahar topilmadi. Boshqacha yozib ko‘ring yoki 📍 joylashuvni yuboring.', pick: '🔎 Qaysi biri?', head: '15 kunlik prognoz', none: 'yog‘insiz', rain: 'yomg‘ir', snow: 'qor', ms: 'm/s', mm: 'mm', vid: '🎬 Davlat videosi', src: 'ECMWF, NOAA, DWD ansambli · ~50 km to‘r', far: 'Bu nuqta uchun ma’lumot yo‘q.' },
   ru: { locBtn: '📍 Погода у меня', locHint: '📍 Нажмите кнопку внизу — прогноз на 15 дней для вашего места.\nИли напишите название города, например: <i>Наманган</i>', nf: '🔎 Не нашла такой город. Попробуйте написать иначе или отправьте 📍 геолокацию.', pick: '🔎 Какой из них?', head: 'Прогноз на 15 дней', none: 'без осадков', rain: 'дождь', snow: 'снег', ms: 'м/с', mm: 'мм', vid: '🎬 Видео страны', src: 'Ансамбль ECMWF, NOAA, DWD · сетка ~50 км', far: 'Для этой точки нет данных.' },
-  tr: { locBtn: '📍 Bulunduğum yerde hava', locHint: '📍 Alttaki düğmeye basın — konumunuz için 15 günlük tahmin.\nYa da şehir adı yazın, örneğin: <i>Antalya</i>', nf: '🔎 Şehir bulunamadı. Farklı yazmayı deneyin veya 📍 konum gönderin.', pick: '🔎 Hangisi?', head: '15 günlük tahmin', none: 'yağışsız', rain: 'yağmur', snow: 'kar', ms: 'm/s', mm: 'mm', vid: '🎬 Ülke videosu', src: 'ECMWF, NOAA, DWD topluluğu · ~50 km ızgara', far: 'Bu nokta için veri yok.' },
+  en: { locBtn: '📍 Weather where I am', locHint: '📍 Press the button below — the 15-day forecast for your location.\nOr type a city name, e.g.: <i>London</i>', nf: '🔎 City not found. Try writing it differently or send your 📍 location.', pick: '🔎 Which one?', head: '15-day forecast', none: 'dry', rain: 'rain', snow: 'snow', ms: 'm/s', mm: 'mm', vid: '🎬 Country video', src: 'ECMWF, NOAA, DWD ensemble · ~50 km grid', far: 'No data for this point.' },
 };
 const PK = {  // words of the point forecast
   ru: { brief: 'Коротко', allDry: 'Все 15 дней без существенных осадков', wetNow: 'Осадки возможны уже сегодня', dryUntil: 'Сухо до {d} включительно',
@@ -1115,16 +1131,16 @@ const PK = {  // words of the point forecast
     steady: 'Harorat keskin o‘zgarmaydi: kunduzi {a} … {b}', frost: 'Sovuq {t} gacha ({d})', wind: 'Kuchli shamol {w} m/s gacha ({d})', windW: 'shamol',
     dry: 'yog‘insiz', rain: 'yomg‘ir', snow: 'qor', next: 'Keyingi kunlar', cDay: 'Kun', cT: 'Harorat', cP: 'Yog‘in', run: 'Hisob', upd: 'Yangilandi', model: 'modellar hisobi',
     note: 'Yog‘in: sutkalik ehtimol va modellar ansamblining o‘rtacha miqdori.', noRain: 'Soyabon kerak bo‘lmaydi', rainAt: '{w} ehtimoli {a}–{b} soatlarda ({p} % gacha)', wear: 'Kiyim' },
-  tr: { brief: 'Özet', allDry: '15 gün boyunca kayda değer yağış yok', wetNow: 'Bugünden itibaren yağış olası', dryUntil: '{d} dahil kuru',
-    wetDays: 'Yağışlı gün: {n}; en kuvvetlisi {peak}', snowOn: 'Kar: {d}', cooler: 'Soğuma: gündüz {a} → {b}', warmer: 'Isınma: gündüz {a} → {b}',
-    steady: 'Sıcaklıkta sert değişim yok: gündüz {a} … {b}', frost: 'Don {t} ({d})', wind: 'Kuvvetli rüzgâr {w} m/s ({d})', windW: 'rüzgâr',
-    dry: 'yağışsız', rain: 'yağmur', snow: 'kar', next: 'Sonraki günler', cDay: 'Gün', cT: 'Sıcaklık', cP: 'Yağış', run: 'Hesaplama', upd: 'Güncellendi', model: 'model çalıştırması',
-    note: 'Yağış: günlük olasılık ve model topluluğunun ortalama miktarı.', noRain: 'Şemsiye gerekmez', rainAt: '{w} {a}–{b} saatlerinde olası (%{p} e kadar)', wear: 'Giyim' },
+  en: { brief: 'Summary', allDry: 'No notable precipitation for 15 days', wetNow: 'Precipitation likely from today', dryUntil: 'Dry up to and including {d}',
+    wetDays: 'Days with precipitation: {n}; the heaviest {peak}', snowOn: 'Snow: {d}', cooler: 'Cooling: by day {a} → {b}', warmer: 'Warming: by day {a} → {b}',
+    steady: 'No sharp change in temperature: by day {a} … {b}', frost: 'Frost {t} ({d})', wind: 'Strong wind {w} m/s ({d})', windW: 'wind',
+    dry: 'dry', rain: 'rain', snow: 'snow', next: 'Next days', cDay: 'Day', cT: 'Temperature', cP: 'Precipitation', run: 'Run', upd: 'Updated', model: 'model run',
+    note: 'Precipitation: the daily chance and the mean amount of the model ensemble.', noRain: 'No umbrella needed', rainAt: '{w} likely {a}–{b} (up to {p}%)', wear: 'What to wear' },
 };
 const WEAR = {
   ru: { c: ['зимняя куртка, шапка, перчатки', 'тёплая куртка и шапка', 'куртка или пальто, шарф', 'лёгкая куртка или свитер', 'кофта, вечером лёгкая куртка', 'футболка и лёгкая одежда', 'лёгкая одежда, головной убор, вода'], u: 'зонт', b: 'непромокаемая обувь', w: 'ветровка' },
   uz: { c: ['qishki kurtka, telpak, qo‘lqop', 'issiq kurtka va telpak', 'kurtka yoki palto, sharf', 'yengil kurtka yoki sviter', 'kofta, kechqurun yengil kurtka', 'futbolka, yengil kiyim', 'yengil kiyim, bosh kiyim, suv'], u: 'soyabon', b: 'suv o‘tkazmaydigan poyabzal', w: 'shamoldan himoya kurtka' },
-  tr: { c: ['kışlık mont, bere, eldiven', 'kalın mont ve bere', 'mont veya kaban, atkı', 'ince ceket veya kazak', 'hırka, akşam ince ceket', 'tişört ve hafif giysiler', 'hafif giysiler, şapka, su'], u: 'şemsiye', b: 'su geçirmez ayakkabı', w: 'rüzgârlık' },
+  en: { c: ['winter coat, hat, gloves', 'warm coat and hat', 'coat or jacket, scarf', 'light jacket or sweater', 'cardigan, a light jacket in the evening', 'T-shirt and light clothes', 'light clothes, a hat, water'], u: 'umbrella', b: 'waterproof shoes', w: 'windbreaker' },
 };
 function wearText(lang, lo, hi, p, snow, w) {
   const W = WEAR[lang] || WEAR.ru, t = (lo + 2 * hi) / 3, k = t <= -10 ? 0 : t <= 0 ? 1 : t <= 8 ? 2 : t <= 15 ? 3 : t <= 22 ? 4 : t <= 28 ? 5 : 6;
@@ -1133,7 +1149,7 @@ function wearText(lang, lo, hi, p, snow, w) {
 const MK = {  // the main keyboard under the chat: four buttons for everything
   ru: { today: '📅 Сегодня и завтра', d15: '🗓 15 дней', video: '🎬 Видео', more: '⚙️ Меню' },
   uz: { today: '📅 Bugun va ertaga', d15: '🗓 15 kun', video: '🎬 Video', more: '⚙️ Menyu' },
-  tr: { today: '📅 Bugün ve yarın', d15: '🗓 15 gün', video: '🎬 Video', more: '⚙️ Menü' },
+  en: { today: '📅 Today and tomorrow', d15: '🗓 15 days', video: '🎬 Video', more: '⚙️ Menu' },
 };
 const mainKb = () => ({ remove_keyboard: true });  // (kept for old callers)
 const locOnce = lang => ({ keyboard: [[{ text: PT[lang].locBtn, request_location: true }]], resize_keyboard: true, one_time_keyboard: true });
@@ -1148,13 +1164,13 @@ function reaction(d, lang, which) {
   const sg = v => (v > 0 ? '+' : '') + v, rng = a => a ? (a[0] === a[1] ? `${sg(a[0])}°` : `${sg(a[0])}…${sg(a[1])}°`) : '';
   const W = { uz: { today: 'bugun', tomorrow: 'ertaga', p: x => x >= 10 ? `${x}% yog‘in ehtimoli bor` : 'yog‘ingarchilik kutilmayapti', t: (w, dd, nn) => `${w} harorat kunduzi ${dd}${nn ? ` kechasi ${nn}` : ''} kutilyapti` },
     ru: { today: 'сегодня', tomorrow: 'завтра', p: x => x >= 10 ? `вероятность осадков ${x}%` : 'осадков не ожидается', t: (w, dd, nn) => `${w} днём ${dd}${nn ? `, ночью ${nn}` : ''}` },
-    tr: { today: 'bugün', tomorrow: 'yarın', p: x => x >= 10 ? `yağış olasılığı %${x}` : 'yağış beklenmiyor', t: (w, dd, nn) => `${w} gündüz ${dd}${nn ? `, gece ${nn}` : ''}` } }[lang] || null;
+    en: { today: 'today', tomorrow: 'tomorrow', p: x => x >= 10 ? `chance of precipitation ${x}%` : 'no precipitation expected', t: (w, dd, nn) => `${w} by day ${dd}${nn ? `, at night ${nn}` : ''}` } }[lang] || null;
   if (!W) return '';
   return `${emo} ${W.p(p)} · ${W.t(W[which], rng(d.day) || d.range, rng(d.night))}`;
 }
 // the 2-day video «where the rain comes from», with a window on the person's region when we know it (prob/moisture.py --days 2)
 async function moist2Url(env, lang, id, chat, k = null) {
-  const L = lang === 'tr' ? 'ru' : lang, head = u => fetch(u, { method: 'HEAD' }).then(r => r.ok).catch(() => false);
+  const L = lang === 'en' ? 'ru' : lang, head = u => fetch(u, { method: 'HEAD' }).then(r => r.ok).catch(() => false);
   if (k == null && chat > 0) {
     const u = await getUser(env, chat), pl = u && u.place ? JSON.parse(u.place) : null;
     if (pl) { const A = await adminData(env, id); if (A) { let best = null, bd = 9e9; for (const a of A.adm1) { const d = (a.c[1] - pl[0]) ** 2 + ((a.c[0] - pl[1]) * Math.cos(pl[0] / 57.3)) ** 2; if (d < bd) { bd = d; best = a.id; } } if (bd < 9) k = best; } }
@@ -1166,7 +1182,7 @@ async function sendHourly(env, chat, lang, id) {
   let H = null;
   for (const l of [lang, 'ru', 'uz']) { const r = await fetch(`${base(env)}/prob/hr/${id}_${l}.json`, { cf: { cacheTtl: 600 } }); if (r.ok) { H = await r.json(); break; } }
   if (!H) return sendToday(env, chat, lang, id);
-  const K = PK[lang], X = { ru: ['Сегодня', 'Завтра', 'по часам'], uz: ['Bugun', 'Ertaga', 'soatma-soat'], tr: ['Bugün', 'Yarın', 'saat saat'] }[lang];
+  const K = PK[lang], X = { ru: ['Сегодня', 'Завтра', 'по часам'], uz: ['Bugun', 'Ertaga', 'soatma-soat'], en: ['Today', 'Tomorrow', 'by the hour'] }[lang];
   const part = (lbl, d) => d ? `<b>${lbl}</b> ${d.range}\n☂️ ${d.rain}\n🧥 ${K.wear}: ${d.wear}` : '';
   // where the coming rain or snow of the main city comes from (Uzbekistan, Kazakhstan; prob/trajectory.py)
   const TJ = TRJ.has(id) ? await trajData(env, id) : null, ti = TJ && TJ.items.filter(it => it.city[lang] === H.city || it.city.ru === H.city).sort((a, b) => a.k - b.k)[0];
@@ -1190,7 +1206,7 @@ const MEMO = new Map();  // per-isolate cache: answers stay fast between message
 async function memo(key, ttl, fn) { const m = MEMO.get(key); if (m && Date.now() - m.t < ttl) return m.v; const v = await fn(); if (v) MEMO.set(key, { t: Date.now(), v }); return v; }
 async function places(env) { return (await memo('places', 3600e3, async () => { const r = await fetch(`${base(env)}/prob/places.json`, { cf: { cacheTtl: 3600 } }); return r.ok ? r.json() : null; })) || []; }
 const norm = t => String(t || '').toLowerCase().replace(/[‘’ʻʼ`´']/g, "'").replace(/ё/g, 'е').replace(/[^\p{L}\p{N}' -]/gu, '').trim();
-const pname = (p, lang) => (lang === 'uz' ? p[1] || p[2] : lang === 'tr' ? p[3] || p[2] : p[0] || p[2]);
+const pname = (p, lang) => (lang === 'uz' ? p[1] || p[2] : lang === 'en' ? p[2] || p[0] : p[0] || p[2]);
 async function searchPlaces(env, q) {
   q = norm(q); if (q.length < 2) return [];
   const P = await places(env), hit = [], part = [];
@@ -1209,8 +1225,8 @@ async function nearestPlace(env, lat, lon, km = 35) {
 const WMO = {
   uz: { 0: 'ochiq osmon', 1: 'asosan ochiq', 2: 'qisman bulutli', 3: 'bulutli', 45: 'tuman', 48: 'qirovli tuman', 51: 'mayda yomg‘ir', 53: 'mayda yomg‘ir', 55: 'mayda yomg‘ir', 56: 'muzlovchi yomg‘ir', 57: 'muzlovchi yomg‘ir', 61: 'yengil yomg‘ir', 63: 'yomg‘ir', 65: 'kuchli yomg‘ir', 66: 'muzlovchi yomg‘ir', 67: 'muzlovchi yomg‘ir', 71: 'yengil qor', 73: 'qor', 75: 'kuchli qor', 77: 'qor donalari', 80: 'jala', 81: 'jala', 82: 'kuchli jala', 85: 'qor', 86: 'kuchli qor', 95: 'momaqaldiroq', 96: 'do‘lli momaqaldiroq', 99: 'do‘lli momaqaldiroq' },
   ru: { 0: 'ясно', 1: 'преимущественно ясно', 2: 'переменная облачность', 3: 'пасмурно', 45: 'туман', 48: 'изморозь, туман', 51: 'морось', 53: 'морось', 55: 'сильная морось', 56: 'ледяная морось', 57: 'ледяная морось', 61: 'небольшой дождь', 63: 'дождь', 65: 'сильный дождь', 66: 'ледяной дождь', 67: 'ледяной дождь', 71: 'небольшой снег', 73: 'снег', 75: 'сильный снег', 77: 'снежная крупа', 80: 'ливень', 81: 'ливень', 82: 'сильный ливень', 85: 'снегопад', 86: 'сильный снегопад', 95: 'гроза', 96: 'гроза с градом', 99: 'гроза с градом' },
-  tr: { 0: 'açık', 1: 'çoğunlukla açık', 2: 'parçalı bulutlu', 3: 'kapalı', 45: 'sis', 48: 'kırağılı sis', 51: 'çisenti', 53: 'çisenti', 55: 'yoğun çisenti', 56: 'dondurucu çisenti', 57: 'dondurucu çisenti', 61: 'hafif yağmur', 63: 'yağmur', 65: 'kuvvetli yağmur', 66: 'dondurucu yağmur', 67: 'dondurucu yağmur', 71: 'hafif kar', 73: 'kar', 75: 'yoğun kar', 77: 'kar taneleri', 80: 'sağanak', 81: 'sağanak', 82: 'kuvvetli sağanak', 85: 'kar sağanağı', 86: 'yoğun kar sağanağı', 95: 'gök gürültülü fırtına', 96: 'dolu ile fırtına', 99: 'dolu ile fırtına' } };
-const NOWX = { uz: { now: 'Hozir', feels: 'his qilinadi', hum: 'namlik', wind: 'shamol', gust: 'shiddat', ms: 'm/s' }, ru: { now: 'Сейчас', feels: 'ощущается', hum: 'влажность', wind: 'ветер', gust: 'порывы', ms: 'м/с' }, tr: { now: 'Şimdi', feels: 'hissedilen', hum: 'nem', wind: 'rüzgâr', gust: 'hamle', ms: 'm/s' } };
+  en: { 0: 'clear', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast', 45: 'fog', 48: 'rime fog', 51: 'drizzle', 53: 'drizzle', 55: 'heavy drizzle', 56: 'freezing drizzle', 57: 'freezing drizzle', 61: 'light rain', 63: 'rain', 65: 'heavy rain', 66: 'freezing rain', 67: 'freezing rain', 71: 'light snow', 73: 'snow', 75: 'heavy snow', 77: 'snow grains', 80: 'showers', 81: 'showers', 82: 'heavy showers', 85: 'snow showers', 86: 'heavy snow showers', 95: 'thunderstorm', 96: 'thunderstorm with hail', 99: 'thunderstorm with hail' } };
+const NOWX = { uz: { now: 'Hozir', feels: 'his qilinadi', hum: 'namlik', wind: 'shamol', gust: 'shiddat', ms: 'm/s' }, ru: { now: 'Сейчас', feels: 'ощущается', hum: 'влажность', wind: 'ветер', gust: 'порывы', ms: 'м/с' }, en: { now: 'Now', feels: 'feels like', hum: 'humidity', wind: 'wind', gust: 'gusts', ms: 'm/s' } };
 const wmoIcon = (c, day) => c >= 95 ? '⛈' : c >= 85 || (c >= 71 && c <= 77) ? '🌨' : c >= 80 ? '🌦' : c >= 51 ? '🌧' : c >= 45 ? '🌫' : c === 3 ? '☁️' : c === 2 ? '⛅' : day ? '☀️' : '🌙';
 async function nowWeather(lat, lon) {
   const k = `now:${lat.toFixed(2)},${lon.toFixed(2)}`;
@@ -1227,7 +1243,7 @@ function nowLine(c, lang) {
   const w = (WMO[lang] || WMO.ru)[c.weather_code] || '';
   return `${wmoIcon(c.weather_code, c.is_day)} <b>${X.now}: ${f(c.temperature_2m)}</b>${w ? `, ${w}` : ''}\n      ${X.feels} ${f(c.apparent_temperature)} · ${X.hum} ${Math.round(c.relative_humidity_2m)}% · ${X.wind} ${Math.round(c.wind_speed_10m)} ${X.ms}${c.wind_gusts_10m >= 10 ? ` (${X.gust} ${Math.round(c.wind_gusts_10m)})` : ''}`;
 }
-const MAPB = { ru: '🗺 Показать на карте (район выделен)', uz: '🗺 Xaritada ko‘rsatish (tuman ajratilgan)', tr: '🗺 Haritada göster (ilçe işaretli)' };
+const MAPB = { ru: '🗺 Показать на карте (район выделен)', uz: '🗺 Xaritada ko‘rsatish (tuman ajratilgan)', en: '🗺 Show on the map (district marked)' };
 async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   const L = PT[lang];
   await saveUser(env, chat, { place: JSON.stringify([lat, lon]) });
@@ -1343,7 +1359,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
 /* ---------- 🎬 the 15-day video of a place on demand: the country's video and the place's close-up (.github/workflows/place15.yml) ---------- */
 const PVX = { ru: { btn: '🎬 Видео 15 дней по часам: страна + это место', wait: '⏳ Готовлю 2 видео: вся страна и {n} крупно — осадки и температура на 15 дней по часам. Пришлю сюда через 7–10 минут.', busy: '⏳ Видео уже готовится, пришлю, как будет готово.', fail: '😔 Не удалось запустить подготовку видео, попробуйте позже.' },
   uz: { btn: '🎬 15 kunlik soatma-soat video: davlat + shu joy', wait: '⏳ 2 ta video tayyorlayapman: butun davlat va {n} yaqindan — 15 kunga soatma-soat yog‘in va harorat. 7–10 daqiqada shu yerga yuboraman.', busy: '⏳ Video tayyorlanmoqda, tayyor bo‘lishi bilan yuboraman.', fail: '😔 Videoni tayyorlashni boshlab bo‘lmadi, keyinroq urinib ko‘ring.' },
-  tr: { btn: '🎬 15 günlük saat saat video: ülke + bu yer', wait: '⏳ 2 video hazırlıyorum: tüm ülke ve {n} yakından. 7–10 dakikada buraya göndereceğim.', busy: '⏳ Video hazırlanıyor, hazır olunca göndereceğim.', fail: '😔 Video hazırlığı başlatılamadı, daha sonra deneyin.' } };
+  en: { btn: '🎬 15-day hourly video: country + this place', wait: '⏳ Preparing 2 videos: the whole country and {n} close up — precipitation and temperature for 15 days by the hour. I will send them here in 7–10 minutes.', busy: '⏳ The video is being prepared, I will send it when it is ready.', fail: '😔 Could not start the video, try again later.' } };
 const pvBtn = (lang, lat, lon) => ({ text: (PVX[lang] || PVX.ru).btn, callback_data: `PV:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}`, style: 'primary' });
 async function placeVideo(env, chat, lang, lat, lon) {
   const X = PVX[lang] || PVX.ru, key = `pv_${chat}`, last = +(await kv(env, key) || 0);
@@ -1622,7 +1638,7 @@ async function handle(up, env) {
     }
   }
   if (!cb) return;
-  const chat = cb.message.chat, [kind, lang, id] = cb.data.split(':');
+  const chat = cb.message.chat, [kind, lang0, id] = cb.data.split(':'), lang = lang0 === 'tr' ? 'en' : lang0;
   if (kind === 'MA' && RKL[lang] && RKL[lang][id]) { await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id }); return handle({ message: { chat, from: cb.from, text: RKL[lang][id], message_id: cb.message.message_id } }, env); }  // a menu button = its keyboard button
   if (kind[0] === 'G') {  // group settings: GL language → GT toggle countries → GD done → GH hour
     if (!(await isAdmin(env, chat, cb.from))) return tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: T[lang].gAdm, show_alert: true });
@@ -1644,7 +1660,7 @@ async function handle(up, env) {
     return groupNotif(env, chat.id, lang);  // next: what else to send here (hourly, weeks, mountains, air) — or everything at once
   }
   if (kind === 'Y' || kind === 'Z') {  // cities of a country: Y list, Z:lang:id:index one city
-    await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(kind === 'Z' ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', tr: '⏳ Hazırlanıyor…' })[lang] || '⏳' } : {}) });
+    await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(kind === 'Z' ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', en: '⏳ Preparing…' })[lang] || '⏳' } : {}) });
     const [, , rid, ci] = cb.data.split(':'), C = await cities(env, rid, lang);
     if (!C || !C.cities.length) return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].none });
     if (kind === 'Y' && chat.type === 'private') return cityPicker(env, chat.id, lang, rid);
@@ -1674,7 +1690,7 @@ async function handle(up, env) {
     }
     return tg(env, 'sendMessage', { chat_id: chat.id, text, parse_mode: 'HTML', reply_markup: kb });
   }
-  await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(['T', 'V', 'DC', 'Q', 'O', 'OP', 'OA'].includes(kind) ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', tr: '⏳ Hazırlanıyor…' })[lang] || '⏳' } : {}) });
+  await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, ...(['T', 'V', 'DC', 'Q', 'O', 'OP', 'OA'].includes(kind) ? { text: ({ uz: '⏳ Tayyorlanmoqda…', ru: '⏳ Готовлю…', en: '⏳ Preparing…' })[lang] || '⏳' } : {}) });
   if (chat.type === 'private') await saveUser(env, chat.id, who(cb.from));
   if (kind === 'S') {  // first language choice after /start: the guide, then the countries
     await saveUser(env, chat.id, { lang });
@@ -1684,13 +1700,14 @@ async function handle(up, env) {
   if (kind === 'AC' && chat.type === 'private' && String(chat.id) === (await kv(env, 'admin'))) return sendChanges(env, chat.id);
   if (kind === 'AD' && chat.type === 'private' && String(chat.id) === (await kv(env, 'admin'))) return sendDynamics(env, chat.id, +(id || 14));
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
-  if (kind === 'EV') { await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: ({ uz: '⏳ Video yuklanmoqda…', ru: '⏳ Загружаю видео…', tr: '⏳ Video yükleniyor…' })[lang] || '⏳' }); return sendEv(env, chat.id, lang, id); }
+  if (kind === 'EV') { await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: ({ uz: '⏳ Video yuklanmoqda…', ru: '⏳ Загружаю видео…', en: '⏳ Loading the video…' })[lang] || '⏳' }); return sendEv(env, chat.id, lang, id); }
   if (kind === 'O') return sendOutlook(env, chat.id, lang);
   if (kind === 'OP') return sendOutlookPart(env, chat.id, lang, id);
   if (kind === 'CT') return sendCountries(env, chat.id, lang, id, +(cb.data.split(':')[3] || 0), cb.message && cb.message.message_id && cb.id !== '0' ? cb.message.message_id : null);
   if (kind === 'CY') return sendCountry(env, chat.id, lang, id);
   if (kind === 'CR' && NAMES[id]) { await saveUser(env, chat.id, { lang, region: id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id] || '🌍'} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, id) }); }
   if (kind === 'WK') return weekDays(env, chat.id, lang, id);
+  if (kind === 'WV') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' }); return tg(env, 'sendVideo', { chat_id: chat.id, video: `${EVRAW}/weeks/weeks_${lang === 'uz' ? 'uz' : 'ru'}.mp4?v=${Math.floor(Date.now() / 3600e3)}`, caption: `📅 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).weeks}`, parse_mode: 'HTML', supports_streaming: true }); }
   if (kind === 'PV') { const [, , la, lo] = cb.data.split(':'); return placeVideo(env, chat.id, lang, +la, +lo); }
   if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
@@ -1700,7 +1717,7 @@ async function handle(up, env) {
   if (kind === 'DV') return id === 'xlsx' || id === 'pdf' ? sendDynXlsx(env, chat.id, lang, id) : sendDynVideo(env, chat.id, lang, id === 'weeks' ? 'weeks' : 'month');
   if (kind === 'SV' && TRJ.has(id)) return sendSat(env, chat.id, lang, id, 'clouds');  // one video: clouds and rain together (old "rain" buttons get it too)
   if (kind === 'AV' && TRJ.has(id)) {  // how much rain and snow falls (prob/moisture.py accum_video)
-    const X = TJX[lang] || TJX.ru, url = `${base(env)}/prob/hr/${id}_accum_${lang === 'tr' ? 'ru' : lang}.mp4`;
+    const X = TJX[lang] || TJX.ru, url = `${base(env)}/prob/hr/${id}_accum_${lang === 'en' ? 'ru' : lang}.mp4`;
     if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: X.m15none });
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
     return tg(env, 'sendVideo', { chat_id: chat.id, video: `${url}?v=${fresh()}`, caption: `💧 ${FLAG[id]} ${NAMES[id][lang]} · ${X.accCap}`, supports_streaming: true });
@@ -1708,7 +1725,7 @@ async function handle(up, env) {
   if (kind === 'RX' && ADM.has(id)) {  // one district: the full forecast at its centre, named "district, region"
     const A = await adminData(env, id), d = A && A.adm2[+cb.data.split(':')[3]];
     if (d) { const r = A.adm1.find(a => a.id === d.p), nm = l => `${d.name[l] || d.name.ru}${r ? ', ' + (r.name[l] || r.name.ru) : ''}`;
-      return pointForecast(env, chat.id, lang, d.c[1], d.c[0], [nm('ru'), nm('uz'), d.name.en || nm('ru'), nm('tr'), id, d.c[1], d.c[0], 0, 0]); } }
+      return pointForecast(env, chat.id, lang, d.c[1], d.c[0], [nm('ru'), nm('uz'), d.name.en || nm('ru'), nm('ru'), id, d.c[1], d.c[0], 0, 0]); } }
   if (kind === 'RB' && ADM.has(id)) { const A = await adminData(env, id); if (A) return tg(env, 'editMessageText', { ...regionsList(A, lang, id, chat.id), message_id: cb.message.message_id }); }
   if (kind === 'RD' && ADM.has(id)) return sendDistricts(env, chat.id, lang, id, +cb.data.split(':')[3], cb.message.message_id);
   if (chat.type !== 'private' && ['NS', 'NT', 'NO', 'MS', 'WS', 'WA', 'WX'].includes(kind) && !(await isAdmin(env, chat, cb.from)))
@@ -1802,7 +1819,7 @@ async function handle(up, env) {
 /* ---------- private chat: commands, guide and messages to the bot's admin ---------- */
 async function privateMsg(msg, env) {
   const chat = msg.chat, text = msg.text || '', cmd = (text.trim().match(/^\/(\w+)(@\w+)?/) || [])[1];
-  const u = await getUser(env, chat.id), lang = (u && T[u.lang] && u.lang) || (/^ru/.test(msg.from && msg.from.language_code || '') ? 'ru' : /^tr/.test(msg.from && msg.from.language_code || '') ? 'tr' : 'uz');
+  const u = await getUser(env, chat.id), lang = (u && T[u.lang] && u.lang) || (/^ru/.test(msg.from && msg.from.language_code || '') ? 'ru' : /^uz/.test(msg.from && msg.from.language_code || '') || !(msg.from && msg.from.language_code) ? 'uz' : 'en');
   await saveUser(env, chat.id, who(msg.from));
   if (cmd === 'v') { const q = text.replace(/^\/v(@\w+)?\s*/, '').trim(); if (!q) return evMenu(env, chat.id, lang === 'uz' ? 'uz' : 'ru').then(() => sendEv(env, chat.id, lang, 'vil')); return evVillage(env, chat.id, lang, q); }
   const admin = await kv(env, 'admin');
@@ -1924,7 +1941,7 @@ async function privateMsg(msg, env) {
     if (rg && rg[0] <= rg[1] && (Date.parse(rg[1]) - Date.parse(rg[0])) / 864e5 <= 15) return weekDays(env, chat.id, lang, rg[0], rg[1]);
     if (cmd === 'week' || cmd === 'hafta' || cmd === 'nedelya') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     
-    if (act === 'rain') return TRJ.has(rid) ? rainMenu(env, chat.id, lang, rid) : cbk(`V:${lang}:${rid}`);
+    if (['rain', 'video', 'hourly', 'evv', 'traj'].includes(act)) return videoHub(env, chat.id, lang, rid, u);  // one place for all the videos
     if (act === 'more') return moreMenu(env, chat.id, lang, rid);
     if (act === 'traj') return TRJ.has(rid) ? sendTraj(env, chat.id, lang, rid) : cbk(`V:${lang}:${rid}`);
     if (act === 'home') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, rid) });
@@ -2062,7 +2079,7 @@ async function sendAccuracy(env, chat, lang) {
   const V = await memo('verify', 1800e3, async () => { const r = await fetch(`${base(env)}/prob/verify/index.json`, { cf: { cacheTtl: 1800 } }); return r.ok ? r.json() : null; });
   const X = { uz: { t: '🎯 <b>Prognoz aniqligi</b> (oxirgi 30 kun)', rain: 'Yog‘in bor/yo‘q to‘g‘ri topildi', temp: 'Harorat xatosi o‘rtacha', t2: '±2° ichida', city: 'Shaharlar bo‘yicha', wait: 'Tekshiruv boshlandi: ertangi prognozlar saqlanmoqda, birinchi natijalar 2–3 kunda chiqadi.', how: 'Ertangi kun prognozi (24–48 soat oldin) haqiqiy ob-havo bilan solishtiriladi: yog‘in ≥ 1 mm, ehtimol ≥ 50 % = «yog‘in».', days: 'kun' },
     ru: { t: '🎯 <b>Точность прогноза</b> (последние 30 дней)', rain: 'Угадано «будут осадки / нет»', temp: 'Средняя ошибка температуры', t2: 'в пределах ±2°', city: 'По городам', wait: 'Проверка запущена: прогнозы на завтра сохраняются, первые результаты — через 2–3 дня.', how: 'Прогноз на завтра (за 24–48 ч) сравнивается с фактической погодой: осадки ≥ 1 мм, вероятность ≥ 50 % = «будут осадки».', days: 'дн.' },
-    tr: { t: '🎯 <b>Tahmin doğruluğu</b> (son 30 gün)', rain: 'Yağış var/yok doğru', temp: 'Ortalama sıcaklık hatası', t2: '±2° içinde', city: 'Şehirler', wait: 'Doğrulama başladı: yarın tahminleri kaydediliyor, ilk sonuçlar 2–3 gün içinde.', how: 'Yarın tahmini (24–48 saat önce) gerçek hava ile karşılaştırılır: yağış ≥ 1 mm, olasılık ≥ %50 = «yağış».', days: 'gün' } }[lang] || null;
+    en: { t: '🎯 <b>Forecast accuracy</b> (last 30 days)', rain: 'Rain / no rain right', temp: 'Mean temperature error', t2: 'within ±2°', city: 'Cities', wait: 'Checking has started: tomorrow’s forecasts are being saved, the first results in 2–3 days.', how: 'The forecast for tomorrow (made 24–48 h before) is compared with the real weather: precipitation ≥ 1 mm, chance ≥ 50% = «precipitation».', days: 'days' } }[lang] || null;
   const o = V && (V.uz || V.overall);
   if (!o) return tg(env, 'sendMessage', { chat_id: chat, text: `${X.t}
 
@@ -2087,7 +2104,7 @@ async function say(env, cb, payload) {
 }
 async function kv(env, k) { if (!env.DB) return null; await db(env); const r = await env.DB.prepare('SELECT v FROM meta WHERE k = ?1').bind(k).first(); return r ? r.v : null; }
 async function setKv(env, k, v) { await db(env); await env.DB.prepare('INSERT OR REPLACE INTO meta (k, v) VALUES (?1, ?2)').bind(k, v).run(); }
-async function getUser(env, id) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM users WHERE chat_id = ?1').bind(id).first(); }
+async function getUser(env, id) { if (!env.DB) return null; await db(env); const u = await env.DB.prepare('SELECT * FROM users WHERE chat_id = ?1').bind(id).first(); if (u && u.lang === 'tr') u.lang = 'en'; return u; }  // Turkish was replaced by English
 const who = f => (f ? { name: [f.first_name, f.last_name].filter(Boolean).join(' ') || null, username: f.username || null } : {});
 async function saveUser(env, id, f) {
   if (!env.DB) return; await db(env);
@@ -2105,7 +2122,7 @@ async function sendGuide(env, chat, lang) {
   if (!f.ok) return tg(env, 'sendMessage', { chat_id: chat, text: HELP[lang], parse_mode: 'HTML' });
   const fd = new FormData();
   fd.append('chat_id', String(chat)); fd.append('caption', T[lang].guideCap);
-  fd.append('document', new Blob([await f.arrayBuffer()], { type: 'application/pdf' }), `Osmon_${lang === 'ru' ? 'instrukciya' : lang === 'tr' ? 'kilavuz' : 'yoriqnoma'}.pdf`);
+  fd.append('document', new Blob([await f.arrayBuffer()], { type: 'application/pdf' }), `Osmon_${lang === 'ru' ? 'instrukciya' : lang === 'en' ? 'guide' : 'yoriqnoma'}.pdf`);
   const r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd })).json();
   if (r.ok && r.result.document && env.DB) await setKv(env, key, r.result.document.file_id);
   return r;
@@ -2204,7 +2221,7 @@ async function siteFresh(env) {
 // button to get it every morning. Each person gets it once at most (table invited), in small batches per call
 const INV = { ru: { head: '☀️ Свежий прогноз от Osmon', btn: '🔔 Получать прогноз каждое утро', tip: 'Хотите получать такой прогноз каждый день в удобное время? Нажмите кнопку ниже.' },
               uz: { head: '☀️ Osmon’dan yangi prognoz', btn: '🔔 Har kuni ertalab prognoz olish', tip: 'Bunday prognozni har kuni qulay vaqtda olishni xohlaysizmi? Quyidagi tugmani bosing.' },
-              tr: { head: '☀️ Osmon’dan taze tahmin', btn: '🔔 Her sabah tahmin al', tip: 'Bu tahmini her gün istediğiniz saatte almak ister misiniz? Aşağıdaki düğmeye dokunun.' } };
+              en: { head: '☀️ Fresh forecast from Osmon', btn: '🔔 Get the forecast every morning', tip: 'Want this forecast every day at the time you like? Tap the button below.' } };
 async function invite(env, n) {
   if (!env.DB) return { ok: false }; await db(env);
   await env.DB.exec('CREATE TABLE IF NOT EXISTS invited (chat_id INTEGER PRIMARY KEY, at TEXT, ok INTEGER)');
