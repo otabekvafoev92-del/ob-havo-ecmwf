@@ -16,7 +16,7 @@ jobs:
         with: {python-version: '3.12'}
       - run: |
           (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
-          pip install -q numpy scipy matplotlib pillow requests qrcode
+          pip install -q numpy scipy matplotlib pillow requests qrcode pyproj
           python -u -W ignore tools/sat_true.py st ru,uz
           cd st && git init -q && git checkout -q -b sattrue && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "true colour $(date -u +%F' '%H:%M)"
