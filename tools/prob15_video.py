@@ -220,7 +220,8 @@ def draw(job):
         try: ax.clabel(cs, cs.levels, inline=True, fmt=lambda v: f'{v:+.0f}°'.replace('+0°', '0°'), fontsize=9, colors=['#1d2733'], inline_spacing=4)
         except Exception: pass
         ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
-        m_ = np.isfinite(Tf_); ny_, nx_ = m_.shape; m_[:, :nx_ // 12] = False; m_[:, -nx_ // 12:] = False; m_[:ny_ // 8] = False; m_[-ny_ // 8:] = False  # away from the edges and the corner texts
+        sx_, sy_ = x1 - x0, C['la1'] - C['la0']  # inside the visible map, away from its edges and the corner texts
+        m_ = np.isfinite(Tf_) & ((LO > x0 + 0.06 * sx_) & (LO < x1 - 0.06 * sx_))[None, :] & ((LA > C['la0'] + 0.12 * sy_) & (LA < C['la1'] - 0.08 * sy_))[:, None]
         if m_.any():
             for fn, col, sym in ((np.nanargmax, '#c0262d', '▲'), (np.nanargmin, '#2350b5', '▼')):
                 k_ = fn(np.where(m_, Tf_, np.nan)); yy, xx = np.unravel_index(k_, Tf_.shape)
