@@ -19,7 +19,7 @@ TZC = {'UZ': 5, 'KZ': 5, 'KG': 6, 'TJ': 5, 'TM': 5, 'AZ': 4, 'AM': 4, 'GE': 4, '
 TZN = {'UZ': {'ru': 'по Ташкенту', 'uz': 'Toshkent vaqti'}}
 AR = (PV.MAP[2] * PV.W) / (PV.MAP[3] * PV.H)  # the map's width : height
 # the continents of the bot: the box to show and the centre of the equal-area map (Lambert azimuthal)
-CONT = {'EU': dict(b=(-24, 45, 34, 71), c=(10, 52), ru='Европа', uz='Yevropa', tz=1), 'AS': dict(b=(26, 150, -10, 77), c=(90, 40), ru='Азия', uz='Osiyo', tz=6),
+CONT = {'EU': dict(b=(-24, 45, 34, 71), c=(10, 52), ru='Европа', uz='Yevropa', tz=1), 'AS': dict(b=(32, 146, -8, 68), c=(90, 38), ru='Азия', uz='Osiyo', tz=5, main=('Ташкент', 'Toshkent', 41.31, 69.28)),
         'AF': dict(b=(-19, 52, -36, 38), c=(17, 2), ru='Африка', uz='Afrika', tz=2), 'NA': dict(b=(-168, -52, 8, 72), c=(-100, 45), ru='Северная Америка', uz='Shimoliy Amerika', tz=-6),
         'world': dict(b=(-180, 180, -58, 82), c=(0, 0), ru='Весь мир', uz='Butun dunyo', tz=5, proj='+proj=eqearth +lon_0=0 +datum=WGS84 +units=m', main=('Ташкент', 'Toshkent', 41.31, 69.28)),
         'SA': dict(b=(-82, -34, -56, 13), c=(-60, -20), ru='Южная Америка', uz='Janubiy Amerika', tz=-4), 'OC': dict(b=(112, 179, -47, -9), c=(142, -28), ru='Австралия и Океания', uz='Avstraliya va Okeaniya', tz=10)}
@@ -99,7 +99,9 @@ def src_for(la, lo):
 def continent(data, out, code, lang):
     """The 15-day hourly video of a continent: the world data (0.5°), so the precipitation fills the whole map; an equal-area map."""
     C = CONT[code]; X = PV.TX[lang]; b = C['b']
-    big = sorted([p for p in GW['places'] if b[0] < p['lon'] < b[1] and b[2] < p['lat'] < b[3]], key=lambda p: (-(p.get('cap') or 0), -p.get('pop', 0)))
+    CN = {'EU': ('Europe',), 'AS': ('Asia',), 'AF': ('Africa',), 'NA': ('North America',), 'SA': ('South America',), 'OC': ('Oceania',)}.get(code)  # the continent's own towns only
+    inc = lambda p: CN is None or (GW['countries'].get(p.get('iso'), {}).get('cont') in CN)
+    big = sorted([p for p in GW['places'] if b[0] < p['lon'] < b[1] and b[2] < p['lat'] < b[3] and inc(p)], key=lambda p: (-(p.get('cap') or 0), -p.get('pop', 0)))
     towns = spread(([C['main']] if C.get('main') else []) + [(p.get('ru') or p['en'], p['en'], p['lat'], p['lon']) for p in big], (b[3] - b[2]) / 9)[:14 if not C.get('main') else 18]
     nb = [np.asarray(r, float) for c in GW['countries'].values() for r in c['rings']]
     view = dict(proj=C.get('proj') or f"+proj=laea +lat_0={C['c'][1]} +lon_0={C['c'][0]} +datum=WGS84 +units=m", bounds=b, globe=code == 'world', towns=towns, main=towns[0][0], borders=[(nb, '#7d8995', 0.7, 3)],

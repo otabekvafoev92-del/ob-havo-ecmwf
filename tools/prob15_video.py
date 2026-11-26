@@ -436,6 +436,10 @@ def wind_streams(seq, WX, lat_s, lon0, dg, ext, la0, la1, cosl, TF=None, TI=None
         hx.append(p); hx = hx[-TR:]
         for h_ in hx[:-1]: h_[gone] = p[gone]  # a new particle starts without a tail
         H_ = np.stack(hx, 1); sp = np.hypot(u, v)
+        jump = np.abs(np.diff(H_, axis=1)).max(axis=(1, 2)) > 0.06 * (ext[1] - ext[0])  # a particle that jumped (across the date line, the globe's edge): no long false line
+        if jump.any():
+            for h_ in hx: h_[jump] = p[jump]
+            H_ = np.stack(hx, 1)
         fade = np.sin(np.pi * np.clip(age / life, 0, 1)) ** 0.7
         al = np.clip(sp / 12, 0.2, 1) * 0.34 * fade; lw = 0.55 + 0.75 * np.clip(sp / 15, 0, 1)
         m = (al > 0.02) & (np.abs(np.diff(H_, axis=1)).sum((1, 2)) > 0)
