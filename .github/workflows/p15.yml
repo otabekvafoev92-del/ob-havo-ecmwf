@@ -9,7 +9,7 @@ jobs:
   v:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,6 +21,7 @@ jobs:
           timeout 600 gh run download $id -n npz -D npz && ls -la npz && date
           timeout 900 python -u -W ignore tools/fog_fetch.py npz/prob.npz fog.npz || echo 'no fog'
           timeout 2400 python -u -W ignore tools/prob15_video.py npz/prob.npz npz/wx.npz p15 ru,uz fog.npz
+          P15_MODE=temp timeout 2400 python -u -W ignore tools/prob15_video.py npz/prob.npz npz/wx.npz p15 ru,uz fog.npz
           cd p15 && git init -q && git checkout -q -b p15 && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "15 days $(date -u +%F' '%H:%M)"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" p15
