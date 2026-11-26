@@ -468,6 +468,16 @@ const VHX = { ru: { temp: '🌡 Температура воздуха · 15 дн
   uz: { temp: '🌡 Havo harorati · 15 kun soatma-soat', tcap: 'Havo harorati · 15 kun soatma-soat · izotermalar, shamol', cap: 'Yog‘ingarchilik ehtimoli va harorat · 15 kun soatma-soat · bulut, tuman, momaqaldiroq', moist: '🧭 Namlik qayerdan keladi · bulut va yog‘in · 15 kun', weeks: '📅 Haftalar bo‘yicha: yog‘in me’yorga va harorat', sat: '🛰 Sun’iy yo‘ldosh: kunning aniq suratlari va hozirgacha bulutlar', place: '📍 Mening joyim yaqindan + davlat' },
   en: { temp: '🌡 Air temperature · 15 days by the hour', tcap: 'Air temperature · 15 days by the hour · isotherms, wind', cap: 'Chance of precipitation and temperature · 15 days by the hour · clouds, fog, thunder', moist: '🧭 Where the moisture comes from · clouds and rain · 15 days', weeks: '📅 By weeks: precipitation against the normal and temperature', sat: '🛰 Satellite: sharp passes of the day and clouds up to now', place: '📍 My place close up + the country' } };
 const p15url = (rid, L, t = '') => rid === 'UZ' ? `${EVRAW}/p15/p15${t}_${L}.mp4` : `${EVRAW}/p15c-${rid}/country_${rid}${t}_${L}.mp4`;
+const VMX = { ru: { h: '🎬 <b>Видео</b> · {n} — что показать?', prob: '🌧 Осадки · 15 дней', temp: '🌡 Температура · 15 дней', cloud: '☁️ Тучи · 15 дней', moist: '🧭 Откуда идёт влага', weeks: '📅 По неделям', sat: '🛰 Спутник сейчас', air: '🌫 Воздух · 24 часа', place: '📍 Моё место крупно', ccap: 'Тучи и осадки · 15 дней по часам · ветер, грозы' },
+  uz: { h: '🎬 <b>Video</b> · {n} — nimani ko‘rsatay?', prob: '🌧 Yog‘in · 15 kun', temp: '🌡 Harorat · 15 kun', cloud: '☁️ Bulut · 15 kun', moist: '🧭 Namlik qayerdan', weeks: '📅 Haftalar bo‘yicha', sat: '🛰 Sun’iy yo‘ldosh', air: '🌫 Havo · 24 soat', place: '📍 Joyim yaqindan', ccap: 'Bulut va yog‘in · 15 kun soatma-soat · shamol, momaqaldiroq' },
+  en: { h: '🎬 <b>Video</b> · {n} — what shall I show?', prob: '🌧 Precipitation · 15 days', temp: '🌡 Temperature · 15 days', cloud: '☁️ Clouds · 15 days', moist: '🧭 Where moisture comes from', weeks: '📅 By weeks', sat: '🛰 Satellite now', air: '🌫 Air · 24 hours', place: '📍 My place close up', ccap: 'Clouds and precipitation · 15 days by the hour · wind, thunder' } };
+async function videoMenu(env, chat, lang, rid, u) {  // all the videos as one menu: two big buttons a row
+  const X = VMX[lang] || VMX.ru, b = (t, k) => ({ text: X[t], callback_data: `${k}:${lang}:${rid}` }), pl = u && u.place ? JSON.parse(u.place) : null;
+  const rows = [[b('prob', 'VP'), b('temp', 'TV')], [b('cloud', 'CV'), ...(rid === 'UZ' ? [b('moist', 'MV')] : [])]];
+  if (rid === 'UZ') rows.push([b('weeks', 'WV'), b('sat', 'ST')], [b('air', 'AQV')]);
+  if (pl) rows[rows.length - 1].push({ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place });
+  return tg(env, 'sendMessage', { chat_id: chat, text: X.h.replace('{n}', `${FLAG[rid] || ''} ${NAMES[rid][lang]}`), parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
+}
 async function newVids(id, lang) {  // the 15-day videos in the new look that exist for the place: chance of precipitation, temperature, clouds
   const L = lang === 'uz' ? 'uz' : 'ru', urls = ['', '_t', '_c'].map(t => p15url(id, L, t));
   const ok = await Promise.all(urls.map(x => fetch(x, { method: 'HEAD' }).then(r => r.ok).catch(() => false)));
@@ -476,7 +486,7 @@ async function newVids(id, lang) {  // the 15-day videos in the new look that ex
 async function videoHub(env, chat, lang, rid, u) {
   const X = VHX[lang] || VHX.ru, L = lang === 'uz' ? 'uz' : 'ru', url = p15url(rid, L);
   if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return handle({ callback_query: { id: '0', from: { id: chat }, data: `V:${lang}:${rid}`, message: { chat: { id: chat, type: 'private' } } } }, env);
-  const pl = u && u.place ? JSON.parse(u.place) : null, rows = [[{ text: X.temp, callback_data: `TV:${lang}:${rid}` }]];
+  const pl = u && u.place ? JSON.parse(u.place) : null, rows = [];
   if (rid === 'UZ') rows.push([{ text: X.moist, callback_data: `MV:${lang}:UZ` }], [{ text: X.weeks, callback_data: `WV:${lang}:UZ` }], [{ text: X.sat, callback_data: `ST:${lang}:UZ` }]);
   if (pl) rows.push([{ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place }]);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
@@ -1932,6 +1942,13 @@ async function handle(up, env) {
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_photo' });
     await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${EVRAW}/sattrue/sattrue_${L}.jpg?v=${v}`, caption: cap, parse_mode: 'HTML' });
     return tg(env, 'sendVideo', { chat_id: chat.id, video: `${EVRAW}/sattrue/sattrue_${L}.mp4?v=${v}`, supports_streaming: true, width: 1920, height: 1080 }); }
+  if (kind === 'VP' && NAMES[id]) return videoHub(env, chat.id, lang, id, null);
+  if (kind === 'CV' && NAMES[id]) {  // the 15-day clouds-and-precipitation video
+    const L = lang === 'uz' ? 'uz' : 'ru', url = p15url(id, L, '_c'), X = VMX[lang] || VMX.ru;
+    if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: lang === 'uz' ? 'Video tayyorlanmoqda, birozdan keyin qayta urinib ko‘ring.' : lang === 'en' ? 'The video is being made, try again a little later.' : 'Видео готовится, попробуйте чуть позже.' });
+    await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
+    return tg(env, 'sendVideo', { chat_id: chat.id, video: `${url}?v=${Math.floor(Date.now() / 1800e3)}`, caption: `☁️ ${FLAG[id] || ''} <b>${NAMES[id][lang]}</b> · ${X.ccap}`, parse_mode: 'HTML', supports_streaming: true, width: 1920, height: 1080 });
+  }
   if (kind === 'TV' && NAMES[id]) {  // the 15-day temperature video of the place's country or continent
     const L = lang === 'uz' ? 'uz' : 'ru', url = p15url(id, L, '_t'), X = VHX[lang] || VHX.ru;
     if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: lang === 'uz' ? 'Video tayyorlanmoqda, birozdan keyin qayta urinib ko‘ring.' : lang === 'en' ? 'The video is being made, try again a little later.' : 'Видео готовится, попробуйте чуть позже.' });
@@ -2174,7 +2191,7 @@ async function privateMsg(msg, env) {
     if (rg && rg[0] <= rg[1] && (Date.parse(rg[1]) - Date.parse(rg[0])) / 864e5 <= 15) return weekDays(env, chat.id, lang, rg[0], rg[1]);
     if (cmd === 'week' || cmd === 'hafta' || cmd === 'nedelya') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     
-    if (['rain', 'video', 'hourly', 'evv', 'traj'].includes(act)) return videoHub(env, chat.id, lang, rid, u);  // one place for all the videos
+    if (['rain', 'video', 'hourly', 'evv', 'traj'].includes(act)) return videoMenu(env, chat.id, lang, rid, u);  // one menu for all the videos
     if (act === 'fc' || act === 'mtnair' || act === 'settings' || act === 'more') return subMenu(env, chat.id, lang, rid, act === 'more' ? 'settings' : act, u);
     if (act === 'wkpick') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     if (act === 'more') return moreMenu(env, chat.id, lang, rid);

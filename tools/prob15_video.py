@@ -83,11 +83,11 @@ TOWNS = [('Ташкент', 'Toshkent', 41.31, 69.28), ('Самарканд', 'S
 OFF = {'Ташкент': (-30, 6, 'right', 'center'), 'Самарканд': (26, -14, 'left', 'top'), 'Бухара': (-28, 0, 'right', 'center'), 'Нукус': (0, 28, 'center', 'bottom'),
        'Ургенч': (0, -28, 'center', 'top'), 'Наманган': (0, 30, 'center', 'bottom'), 'Андижан': (28, 6, 'left', 'center'), 'Фергана': (26, -14, 'left', 'top'),
        'Карши': (-26, -10, 'right', 'top'), 'Термез': (28, 0, 'left', 'center'), 'Навои': (-6, 28, 'right', 'bottom'), 'Джизак': (8, 28, 'left', 'bottom')}
-TX = {'ru': dict(title='Вероятность осадков и температура · 15 дней', tz='по Ташкенту', day='день {i} из {n}', rain='дождь', snow='снег', mix='мокрый снег', wind='ветер', temp='температура', iso='изотермы через 5°', cloud='облачность', clear='ясно', overcast='сплошные тучи', title_c='Тучи и осадки · 15 дней', intro1_c='Тучи и осадки', title_t='Температура воздуха · 15 дней', intro1_t='Температура воздуха',
+TX = {'ru': dict(title='Вероятность осадков и температура · 15 дней', tz='по Ташкенту', day='день {i} из {n}', rain='дождь', snow='снег', mix='мокрый снег', wind='ветер', temp='температура', iso='изотермы через 5°', cloud='облачность', clear='ясно', overcast='сплошные тучи', title_c='Тучи и осадки · 15 дней', intro1_c='Тучи и осадки', title_t='Температура воздуха · 15 дней', chart_tt='{n}: температура по периодам, °C', chart_tc='{n}: облачность по периодам, %', intro1_t='Температура воздуха',
                  leg='Вероятность осадков (больше 0,2 мм) за период, %', models='Модели: ECMWF IFS и AIFS, NOAA GFS и GEFS, DWD ICON · {n} вариантов прогноза',
                  chart='Ташкент: вероятность осадков по периодам (столбики) и температура (линия)', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
                  intro1='Осадки и температура', intro2='на 15 дней по всему Узбекистану', end1='Погода в вашем районе и посёлке', end2='в Telegram-боте @ObHavo_ECMWF_bot'),
-      'uz': dict(title='Yog‘ingarchilik ehtimoli va harorat · 15 kun', tz='Toshkent vaqti', day='{i}-kun / {n}', rain='yomg‘ir', snow='qor', mix='ho‘l qor', wind='shamol', temp='harorat', iso='har 5° izoterma', cloud='bulutlilik', clear='ochiq', overcast='qalin bulut', title_c='Bulut va yog‘in · 15 kun', intro1_c='Bulut va yog‘in', title_t='Havo harorati · 15 kun', intro1_t='Havo harorati',
+      'uz': dict(title='Yog‘ingarchilik ehtimoli va harorat · 15 kun', tz='Toshkent vaqti', day='{i}-kun / {n}', rain='yomg‘ir', snow='qor', mix='ho‘l qor', wind='shamol', temp='harorat', iso='har 5° izoterma', cloud='bulutlilik', clear='ochiq', overcast='qalin bulut', title_c='Bulut va yog‘in · 15 kun', intro1_c='Bulut va yog‘in', title_t='Havo harorati · 15 kun', chart_tt='{n}: davrlar bo‘yicha harorat, °C', chart_tc='{n}: davrlar bo‘yicha bulutlilik, %', intro1_t='Havo harorati',
                  leg='Davr ichida yog‘ingarchilik (0,2 mm dan ko‘p) ehtimoli, %', models='Modellar: ECMWF IFS va AIFS, NOAA GFS va GEFS, DWD ICON · {n} ta prognoz varianti',
                  chart='Toshkent: davrlar bo‘yicha yog‘in ehtimoli (ustunlar) va harorat (chiziq)', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
                  intro1='Yog‘ingarchilik va harorat', intro2='butun O‘zbekiston bo‘yicha 15 kunga', end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda: @ObHavo_ECMWF_bot')}
@@ -325,22 +325,39 @@ def draw(job):
           fig.text(0.945, 0.183, 'туман' if lang == 'ru' else 'tuman', fontsize=12, color=MUTED, va='center')
     ax.text(0.005, 0.01, X['models'].format(n=C['members']), transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=FAINT, zorder=9)
     # Tashkent: bars of the chance, the temperature line
-    fig.text(0.016, 0.152, C['chart_t'][lang] if C.get('chart_t') else X['chart'], fontsize=12, fontweight='bold', color=INK, va='center')
+    mt = next((tw for tw in C['towns'] if tw[0] == C['main']), C['towns'][0])[0 if lang == 'ru' else 1]
+    ctitle = X['chart_tt'].format(n=mt) if TM else X['chart_tc'].format(n=mt) if CM else (C['chart_t'][lang] if C.get('chart_t') else X['chart'])
+    fig.text(0.016, 0.152, ctitle, fontsize=12, fontweight='bold', color=INK, va='center')
     bx = fig.add_axes([0.035, 0.035, 0.93, 0.1]); bx.set_facecolor('none')
     Xc, Wn, Pt, Tt = C['bx'], C['bw'], C['tp'], C['tt']
-    cols = [(level(p_, SNOW if t_ <= 0.5 else RAIN) or BAR_EMPTY) for p_, t_ in zip(Pt, Tt)]
-    bx.bar(Xc, np.maximum(Pt, 2), width=Wn * 0.8, color=cols, zorder=2)
+    if TM:  # the temperature video: the main town's temperature only — bars in the map's colours up to the line
+        Pt = Tt; cols = [tuple(c_) for c_ in temp_rgb(np.asarray(Tt))]
+    elif CM:  # the clouds video: the main town's cloud cover only, light (few clouds) → dark grey (overcast)
+        Pt = C['tc']; cols = [(0.86 - 0.5 * c_ / 100, 0.88 - 0.48 * c_ / 100, 0.91 - 0.44 * c_ / 100) for c_ in Pt]
+    else: cols = [(level(p_, SNOW if t_ <= 0.5 else RAIN) or BAR_EMPTY) for p_, t_ in zip(Pt, Tt)]
+    if TM:
+        tlo_, thi_ = np.nanmin(Tt), np.nanmax(Tt); pd_ = max(2, (thi_ - tlo_) * 0.2); base_ = tlo_ - pd_
+        bx.bar(Xc, np.asarray(Tt) - base_, bottom=base_, width=Wn * 0.8, color=cols, zorder=2)
+    else: bx.bar(Xc, np.maximum(Pt, 2), width=Wn * 0.8, color=cols, zorder=2)
     s = fr['s']; bx.axvspan(Xc[s] - Wn[s] / 2, Xc[s] + Wn[s] / 2, color=ORANGE, alpha=0.18, lw=0, zorder=1)
     bx.add_patch(Rectangle((Xc[s] - Wn[s] / 2, 0), Wn[s], 100, fill=False, ec=ORANGE, lw=2, zorder=5))
-    bx.set_ylim(0, 100); bx.set_xlim(Xc[0] - Wn[0], Xc[-1] + Wn[-1] / 2)
-    bx.set_yticks([0, 50, 100]); bx.set_yticklabels(['0', '50', '100%'], fontsize=10, color=FAINT); bx.tick_params(length=0)
+    if TM:
+        bx.set_ylim(base_, thi_ + pd_); tk_ = [v for v in np.arange(np.ceil(base_ / 5) * 5, thi_ + pd_, 5)][::max(1, int((thi_ - base_) / 15) + 1)]
+        bx.set_yticks(tk_); bx.set_yticklabels([f'{v:+.0f}°'.replace('+0°', '0°') for v in tk_], fontsize=10, color=FAINT)
+    else: bx.set_ylim(0, 100); bx.set_yticks([0, 50, 100]); bx.set_yticklabels(['0', '50', '100%'], fontsize=10, color=FAINT)
+    bx.set_xlim(Xc[0] - Wn[0], Xc[-1] + Wn[-1] / 2); bx.tick_params(length=0)
+    if TM: bx.patches[-1].set_height(thi_ + pd_ - base_); bx.patches[-1].set_y(base_)  # the frame of the current period spans the axis
     for d0, lab in C['days']: bx.axvline(d0, color=LINE, lw=0.9, zorder=0)
     bx.set_xticks([d + 12 for d, _ in C['days']]); bx.set_xticklabels([lab[lang] for _, lab in C['days']], fontsize=10.5, color=MUTED, linespacing=1.05)
     for sp in bx.spines.values(): sp.set_visible(False)
     tx = bx.twinx(); tlo, thi = np.nanmin(Tt), np.nanmax(Tt); pad = max(2, (thi - tlo) * 0.2)
-    tx.plot(Xc, Tt, color=TEMP, lw=2.2, zorder=6, solid_capstyle='round'); tx.set_ylim(tlo - pad, thi + pad)
-    tx.plot([Xc[s]], [fr['tash_t']], 'o', ms=9, color=TEMP, mec='white', mew=2, zorder=7)
-    tx.annotate(f"{fr['tash_t']:+.0f}°".replace('+0°', '0°'), (Xc[s], fr['tash_t']), xytext=(10, 4), textcoords='offset points', ha='left', fontsize=13, fontweight='bold', color=TEMP, zorder=8,
+    if TM: tlo, thi, pad = base_ + pd_, thi_, pd_  # the line on the same scale as the bars
+    if CM:  # the clouds video: the cover of the current period written over its bar, no temperature line
+        bx.annotate(f"{Pt[s]:.0f}%", (Xc[s], min(Pt[s], 88)), xytext=(0, 6), textcoords='offset points', ha='center', fontsize=13, fontweight='bold', color=INK, zorder=8,
+                    path_effects=[pe.withStroke(linewidth=3, foreground='white')])
+    tx.plot(Xc, Tt, color=TEMP, lw=2.2, zorder=6, solid_capstyle='round', alpha=0 if CM else 1); tx.set_ylim(tlo - pad, thi + pad)
+    if not CM: tx.plot([Xc[s]], [fr['tash_t']], 'o', ms=9, color=TEMP, mec='white', mew=2, zorder=7)
+    if not CM: tx.annotate(f"{fr['tash_t']:+.0f}°".replace('+0°', '0°'), (Xc[s], fr['tash_t']), xytext=(10, 4), textcoords='offset points', ha='left', fontsize=13, fontweight='bold', color=TEMP, zorder=8,
                 path_effects=[pe.withStroke(linewidth=3, foreground='white')])
     tx.set_yticks([]); [sp.set_visible(False) for sp in tx.spines.values()]
     # the opening and the closing cards
@@ -500,6 +517,7 @@ def main(npz, wxp, outd, langs, only=None, view=None):
     h0 = steps[keep[0]] - win[keep[0]]
     bx = np.array([steps[i] - win[i] / 2 - h0 for i in keep], float); bw = np.array([win[i] for i in keep], float)
     tp = np.array([at(Pk[i], tash[2], tash[3]) for i in keep]); tt = np.array([at(Tk[i], tash[2], tash[3]) for i in keep])
+    tcl = np.array([at(Ck[i], tash[2], tash[3]) * 100 if Ck.get(i) is not None else 0 for i in keep])
     days = []; t0 = loc(h0); d = (t0 + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0)
     if t0.hour == 0: d = t0
     while (d - t0).total_seconds() / 3600 < bx[-1]:
@@ -529,7 +547,7 @@ def main(npz, wxp, outd, langs, only=None, view=None):
     print('relief', None if rl is None else rl.shape, flush=True)
     CTX.update(mode=mode, globe=globe if proj and view.get('globe') else None, relief=rl, land=land, deg=DEG, LONu=LONu, LATu=LATu, sea=sea, borders=borders, lon_ext=ext, la0=la0, la1=la1, cosl=cosl, towns=towns, main=tash[0], names=view.get('names', []),
                title=view.get('title'), intro2=view.get('intro2'), tzl=view.get('tzl'), chart_t=view.get('chart_t'),
-               members=members, bx=bx, bw=bw, tp=tp, tt=tt, days=days, qr=qr('https://t.me/ObHavo_ECMWF_bot'), videos={})
+               members=members, bx=bx, bw=bw, tp=tp, tt=tt, tc=tcl, days=days, qr=qr('https://t.me/ObHavo_ECMWF_bot'), videos={})
     seq = []
     for n_, i in enumerate(keep):  # one frame for every hour of the window (15:00, 16:00, …), the fields eased towards the next window
         nxt = keep[min(n_ + 1, len(keep) - 1)]; N = win[i]
