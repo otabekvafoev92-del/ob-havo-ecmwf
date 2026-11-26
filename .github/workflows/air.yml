@@ -18,7 +18,8 @@ jobs:
           (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
           pip install -q numpy scipy matplotlib pyproj requests qrcode pillow
           curl -sfL -o prev.npz "https://raw.githubusercontent.com/${{ github.repository }}/air/air.npz" || rm -f prev.npz
-          python -u -W ignore tools/air_video.py air ru,uz prev.npz
+          python -u -W ignore tools/fog_list.py air || echo 'no fog list'
+          python -u -W ignore tools/air_video.py air ru,uz prev.npz || echo 'air video failed'
           cd air && git init -q && git checkout -q -b air && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "air $(date -u +%F' '%H:%M)"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" air

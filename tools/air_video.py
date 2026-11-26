@@ -20,7 +20,7 @@ import prob15_video as PV
 W, H, DPI = PV.W, PV.H, PV.DPI
 MAP = PV.MAP; LA0, LA1 = PV.LAT0, PV.LAT1; LC = 64.8
 COSL = math.cos(math.radians((LA0 + LA1) / 2)); SPAN = (LA1 - LA0) / COSL * (MAP[2] * W) / (MAP[3] * H); EXT = (LC - SPAN / 2, LC + SPAN / 2)
-LATS = np.round(np.arange(36.0, 46.81, 0.4), 2); LONS = np.round(np.arange(54.0, 76.01, 0.4), 2)
+LATS = np.round(np.arange(36.0, 47.01, 0.75), 2); LONS = np.round(np.arange(54.0, 76.51, 0.75), 2)  # 0.75°: ~480 points, fetched in ~2 minutes (CAMS itself is 0.4°)
 API = 'https://air-quality-api.open-meteo.com/v1/air-quality'
 VARS = ['us_aqi', 'pm2_5', 'pm10', 'dust']
 # the US AQI colours, softened: good, moderate, unhealthy for sensitive groups, unhealthy, very unhealthy, hazardous
@@ -162,7 +162,7 @@ def main():
     np.savez_compressed(out / 'air.npz', **D)
     times = [dt.datetime.fromisoformat(str(t)) for t in D['times']]; now = dt.datetime.utcnow().replace(minute=0, second=0, microsecond=0)
     k0 = next((k for k, t in enumerate(times) if t >= now), 0); idx = list(range(k0, min(k0 + 25, len(times))))
-    UP = 4; lat = np.linspace(LATS[0], LATS[-1], len(LATS) * UP); lon = np.linspace(LONS[0], LONS[-1], len(LONS) * UP)
+    UP = 6; lat = np.linspace(LATS[0], LATS[-1], len(LATS) * UP); lon = np.linspace(LONS[0], LONS[-1], len(LONS) * UP)
     up = lambda a: gaussian_filter(zoom(np.nan_to_num(a, nan=np.nanmean(a) if np.isfinite(a).any() else 0), UP, order=3), 2.0)
     Ag = {k: np.clip(up(D['g_us_aqi'][..., k]), 0, 500) for k in idx}; Dg = {k: np.clip(up(D['g_dust'][..., k]), 0, None) for k in idx}
     tw = lambda v, k: [float(np.nan_to_num(x)) for x in D[f't_{v}'][:, k]]

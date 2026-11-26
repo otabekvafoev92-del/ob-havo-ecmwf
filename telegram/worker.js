@@ -477,10 +477,40 @@ async function trajData(env, rid) { return fetch(`${base(env)}/prob/hr/${rid}_tr
 const VHX = { ru: { temp: '🌡 Температура воздуха · 15 дней по часам', tcap: 'Температура воздуха · 15 дней по часам · изотермы, ветер', cap: 'Вероятность осадков и температура · 15 дней по часам · тучи, туман, гроза', moist: '🧭 Откуда идёт влага · тучи и осадки · 15 дней', weeks: '📅 По неделям: осадки к норме и температура', sat: '🛰 Спутник: чёткие снимки дня и облака до текущего часа', place: '📍 Моё место крупно + страна' },
   uz: { temp: '🌡 Havo harorati · 15 kun soatma-soat', tcap: 'Havo harorati · 15 kun soatma-soat · izotermalar, shamol', cap: 'Yog‘ingarchilik ehtimoli va harorat · 15 kun soatma-soat · bulut, tuman, momaqaldiroq', moist: '🧭 Namlik qayerdan keladi · bulut va yog‘in · 15 kun', weeks: '📅 Haftalar bo‘yicha: yog‘in me’yorga va harorat', sat: '🛰 Sun’iy yo‘ldosh: kunning aniq suratlari va hozirgacha bulutlar', place: '📍 Mening joyim yaqindan + davlat' },
   en: { temp: '🌡 Air temperature · 15 days by the hour', tcap: 'Air temperature · 15 days by the hour · isotherms, wind', cap: 'Chance of precipitation and temperature · 15 days by the hour · clouds, fog, thunder', moist: '🧭 Where the moisture comes from · clouds and rain · 15 days', weeks: '📅 By weeks: precipitation against the normal and temperature', sat: '🛰 Satellite: sharp passes of the day and clouds up to now', place: '📍 My place close up + the country' } };
-const p15url = (rid, L, t = '') => rid === 'UZ' ? `${EVRAW}/p15/p15${t}_${L}.mp4` : `${EVRAW}/p15c-${rid}/country_${rid}${t}_${L}.mp4`;
+const P15B = { '': '', _t: '-t', _c: '-cl' };  // each kind of video is built by its own job, on its own branch
+const p15url = (rid, L, t = '') => rid === 'UZ' ? `${EVRAW}/p15${P15B[t]}/p15${t}_${L}.mp4` : `${EVRAW}/p15c-${rid}${P15B[t]}/country_${rid}${t}_${L}.mp4`;
+const p15old = (rid, L, t = '') => rid === 'UZ' ? `${EVRAW}/p15/p15${t}_${L}.mp4` : `${EVRAW}/p15c-${rid}/country_${rid}${t}_${L}.mp4`;  // before the kinds had their own branches
+const head = u => fetch(u, { method: 'HEAD' }).then(r => r.ok).catch(() => false);
+async function vidUrl(rid, L, t = '') { const a = p15url(rid, L, t); if (await head(a)) return a; const b = p15old(rid, L, t); return (await head(b)) ? b : null; }
 const VMX = { ru: { h: '🎬 <b>Видео</b> · {n} — что показать?', prob: '🌧 Осадки · 15 дней', temp: '🌡 Температура · 15 дней', cloud: '☁️ Тучи · 15 дней', moist: '🧭 Откуда идёт влага', weeks: '📅 По неделям', sat: '🛰 Спутник сейчас', air: '🌫 Воздух · 24 часа', risk: '⚠️ Опасная погода · 15 дней', place: '📍 Моё место крупно', ccap: 'Тучи и осадки · 15 дней по часам · ветер, грозы' },
   uz: { h: '🎬 <b>Video</b> · {n} — nimani ko‘rsatay?', prob: '🌧 Yog‘in · 15 kun', temp: '🌡 Harorat · 15 kun', cloud: '☁️ Bulut · 15 kun', moist: '🧭 Namlik qayerdan', weeks: '📅 Haftalar bo‘yicha', sat: '🛰 Sun’iy yo‘ldosh', air: '🌫 Havo · 24 soat', risk: '⚠️ Xavfli ob-havo · 15 kun', place: '📍 Joyim yaqindan', ccap: 'Bulut va yog‘in · 15 kun soatma-soat · shamol, momaqaldiroq' },
   en: { h: '🎬 <b>Video</b> · {n} — what shall I show?', prob: '🌧 Precipitation · 15 days', temp: '🌡 Temperature · 15 days', cloud: '☁️ Clouds · 15 days', moist: '🧭 Where moisture comes from', weeks: '📅 By weeks', sat: '🛰 Satellite now', air: '🌫 Air · 24 hours', risk: '⚠️ Dangerous weather · 15 days', place: '📍 My place close up', ccap: 'Clouds and precipitation · 15 days by the hour · wind, thunder' } };
+async function sendFog(env, chat, lang, rid, quiet) {  // 🌫 fog in the next 24 hours: in Uzbekistan region by region, district by district (tools/fog_list.py, hourly); elsewhere at the person's place
+  const X = { ru: { h: '🌫 <b>Туман в ближайшие сутки</b>', none: '🌫 В ближайшие сутки тумана не ожидается.', vis: 'видимость до {v} м', mine: '📍 У вас', src: 'Прогноз: ECMWF, ICON, GFS (Open-Meteo) · обновляется каждый час', tip: '🚗 На дорогах будьте осторожны: включите ближний свет и держите дистанцию.' },
+    uz: { h: '🌫 <b>Keyingi sutkada tuman</b>', none: '🌫 Keyingi sutkada tuman kutilmaydi.', vis: 'ko‘rinish {v} m gacha', mine: '📍 Sizda', src: 'Prognoz: ECMWF, ICON, GFS (Open-Meteo) · har soat yangilanadi', tip: '🚗 Yo‘lda ehtiyot bo‘ling: yaqin chiroqni yoqing va masofani saqlang.' },
+    en: { h: '🌫 <b>Fog in the next 24 hours</b>', none: '🌫 No fog expected in the next 24 hours.', vis: 'visibility down to {v} m', mine: '📍 At your place', src: 'Forecast: ECMWF, ICON, GFS (Open-Meteo) · updated hourly', tip: '🚗 Drive carefully: dipped headlights and a longer distance.' } }[lang] || {};
+  const u = chat > 0 ? await getUser(env, chat) : null, pl = u && u.place ? JSON.parse(u.place) : null, hm = t => String(t).slice(11, 16), L2 = lang === 'uz' ? 'uz' : 'ru';
+  const span = d => `${hm(d.frm)}–${hm(d.to)}${d.vis != null ? ` · ${X.vis.replace('{v}', Math.max(50, Math.round(d.vis / 50) * 50))}` : ''}`;
+  const inUz = rid === 'UZ' || (pl && +pl[1] > 55.9 && +pl[1] < 73.2 && +pl[0] > 37.1 && +pl[0] < 45.6);
+  if (inUz) {
+    const F = await fetch(`${EVRAW}/air/fog.json?v=${Math.floor(Date.now() / 600e3)}`).then(r => r.ok ? r.json() : null).catch(() => null);
+    const R = (F && F.regions) || [];
+    if (!R.length) return quiet ? null : tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+    let mine = null;
+    if (pl) for (const r of R) for (const d of r.districts) { const km = Math.hypot((d.lat - pl[0]) * 111, (d.lon - pl[1]) * 85); if (km < 30 && (!mine || km < mine.km)) mine = { ...d, km }; }
+    const lines = [X.h, ''];
+    if (mine) lines.push(`${X.mine}: <b>${esc(mine[L2])}</b> — ${span(mine)}`, '');
+    for (const r of R) { lines.push(`<b>${esc(r[L2])}</b>`); for (const d of r.districts) lines.push(`  • ${esc(d[L2])} — ${span(d)}`); }
+    lines.push('', X.tip, `<i>${X.src}</i>`);
+    return tg(env, 'sendMessage', { chat_id: chat, text: lines.join('\n').slice(0, 4000), parse_mode: 'HTML', ...(chat > 0 ? { reply_markup: { inline_keyboard: [[notifBtn(lang, 'fog')]] } } : {}) });
+  }
+  if (!pl) return quiet ? null : tg(env, 'sendMessage', { chat_id: chat, text: T[lang].locAsk, reply_markup: locOnce(lang) });
+  const j = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+pl[0]).toFixed(3)}&longitude=${(+pl[1]).toFixed(3)}&hourly=weather_code,visibility&forecast_hours=24&timezone=auto`).then(r => r.ok ? r.json() : null).catch(() => null);
+  const h = j && j.hourly, k = h ? h.time.map((t, i) => i).filter(i => [45, 48].includes(h.weather_code[i]) || (h.visibility[i] != null && h.visibility[i] < 1000)) : [];
+  if (!k.length) return quiet ? null : tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  const np = await nearestPlace(env, +pl[0], +pl[1]), vis = Math.min(...k.map(i => h.visibility[i]).filter(v => v != null));
+  return tg(env, 'sendMessage', { chat_id: chat, parse_mode: 'HTML', text: `${X.h}\n\n${X.mine}${np ? ` (${esc(pname(np, lang))})` : ''}: ${span({ frm: h.time[k[0]], to: h.time[k[k.length - 1]], vis: isFinite(vis) ? vis : null })}\n\n${X.tip}\n<i>${X.src}</i>` });
+}
 async function sendRisk(env, chat, lang, only) {  // ⚠️ the 15-day dangerous-weather video (tools/risk_video.py: ECMWF ensemble probabilities)
   const L = lang === 'uz' ? 'uz' : 'ru', url = `${EVRAW}/risk/risk_${L}.mp4`, X = VMX[lang] || VMX.ru;
   if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return only ? tg(env, 'sendMessage', { chat_id: chat, text: lang === 'uz' ? 'Video tayyorlanmoqda, birozdan keyin qayta urinib ko‘ring.' : lang === 'en' ? 'The video is being made, try again a little later.' : 'Видео готовится, попробуйте чуть позже.' }) : null;
@@ -496,13 +526,12 @@ async function videoMenu(env, chat, lang, rid, u) {  // all the videos as one me
   return tg(env, 'sendMessage', { chat_id: chat, text: X.h.replace('{n}', `${FLAG[rid] || ''} ${NAMES[rid][lang]}`), parse_mode: 'HTML', reply_markup: { inline_keyboard: rows.filter(r => r.length) } });
 }
 async function newVids(id, lang) {  // the 15-day videos in the new look that exist for the place: chance of precipitation, temperature, clouds
-  const L = lang === 'uz' ? 'uz' : 'ru', urls = ['', '_t', '_c'].map(t => p15url(id, L, t));
-  const ok = await Promise.all(urls.map(x => fetch(x, { method: 'HEAD' }).then(r => r.ok).catch(() => false)));
-  return ok[0] ? urls.filter((x, k) => ok[k]) : [];
+  const L = lang === 'uz' ? 'uz' : 'ru', urls = await Promise.all(['', '_t', '_c'].map(t => vidUrl(id, L, t)));
+  return urls[0] ? urls.filter(Boolean) : [];
 }
 async function videoHub(env, chat, lang, rid, u) {
-  const X = VHX[lang] || VHX.ru, L = lang === 'uz' ? 'uz' : 'ru', url = p15url(rid, L);
-  if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return handle({ callback_query: { id: '0', from: { id: chat }, data: `V:${lang}:${rid}`, message: { chat: { id: chat, type: 'private' } } } }, env);
+  const X = VHX[lang] || VHX.ru, L = lang === 'uz' ? 'uz' : 'ru', url = await vidUrl(rid, L);
+  if (!url) return handle({ callback_query: { id: '0', from: { id: chat }, data: `V:${lang}:${rid}`, message: { chat: { id: chat, type: 'private' } } } }, env);
   const pl = u && u.place ? JSON.parse(u.place) : null, rows = [];
   if (rid === 'UZ') rows.push([{ text: X.moist, callback_data: `MV:${lang}:UZ` }], [{ text: X.weeks, callback_data: `WV:${lang}:UZ` }], [{ text: X.sat, callback_data: `ST:${lang}:UZ` }]);
   if (pl) rows.push([{ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place }]);
@@ -612,7 +641,7 @@ const NX_ = {
   ru: { btn: '⏰ Присылать автоматически', ask: '⏰ Во сколько присылать «{s}»? Время — по Ташкенту.', weekly: ' (по понедельникам)', off: '🔕 Не присылать', on: '✅ «{s}» будет приходить каждый день в {h}.', onW: '✅ «{s}» будет приходить по понедельникам в {h}.', offT: '🔕 «{s}» больше не присылаю.', list: '⏰ <b>Мои уведомления</b>', none: 'Пока ничего не приходит автоматически. Нажмите раздел ниже и выберите время:', at: 'в', edit: 'Нажмите раздел, чтобы поменять время или выключить:', daily: '🔔 Прогноз каждое утро — включается кнопкой «🔔 Прогноз каждое утро»' },
   uz: { btn: '⏰ Avtomatik yuborish', ask: '⏰ «{s}» soat nechada kelsin? Vaqt — Toshkent bo‘yicha.', weekly: ' (dushanba kunlari)', off: '🔕 Yubormaslik', on: '✅ «{s}» har kuni soat {h} da keladi.', onW: '✅ «{s}» har dushanba soat {h} da keladi.', offT: '🔕 «{s}» endi yuborilmaydi.', list: '⏰ <b>Bildirishnomalarim</b>', none: 'Hozircha hech narsa avtomatik kelmaydi. Quyidagi bo‘limni bosing va vaqtni tanlang:', at: 'soat', edit: 'Vaqtni o‘zgartirish yoki o‘chirish uchun bo‘limni bosing:', daily: '🔔 Har tongi prognoz — «🔔 Har tongi prognoz» tugmasi bilan yoqiladi' },
   en: { btn: '⏰ Send automatically', ask: '⏰ At what time should «{s}» come? Time — Tashkent time.', weekly: ' (on Mondays)', off: '🔕 Do not send', on: '✅ «{s}» will come every day at {h}.', onW: '✅ «{s}» will come every Monday at {h}.', offT: '🔕 «{s}» will no longer be sent.', list: '⏰ <b>My notifications</b>', none: 'Nothing comes automatically now. Choose a section below and set the time:', at: 'at', edit: 'Tap a section to change its time or turn it off:', daily: '🔔 Forecast every morning — turned on with the «🔔 Forecast every morning» button' } };
-const NSEC = ['days', 'brief', 'dyn', 'hourly', 'outlook', 'mtn', 'air', 'traj'];  // days: the 15-day forecast of the person's own place (the picture) at the chosen hour  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
+const NSEC = ['days', 'fog', 'brief', 'dyn', 'hourly', 'outlook', 'mtn', 'air', 'traj'];  // days: the 15-day forecast of the person's own place (the picture) at the chosen hour  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
 const NWEEKLY = { outlook: true, dyn: true };  // «📊 against last year» on Mondays: the summary and the Excel report                   // the weeks and months change slowly: once a week is enough
 const secName = (sec, lang) => ((RKL[lang] || RKL.ru)[sec] || sec).replace(/^\S+\s/, '');
 const notifBtn = (lang, sec) => ({ text: (NX_[lang] || NX_.ru).btn, callback_data: `NS:${lang}:${sec}` });
@@ -694,7 +723,8 @@ async function notifTick(env, small = false) {
         const uu = n.chat_id > 0 ? await getUser(env, n.chat_id) : null, C = !(uu && uu.place) ? ((await cities(env, rid, lang)) || (await cities(env, rid, 'ru'))) : null, c0 = C && C.cities.find(c => c.lat != null);
         const pl = uu && uu.place ? JSON.parse(uu.place) : c0 ? [c0.lat, c0.lon] : [41.311, 69.279];
         r = await pointForecast(env, n.chat_id, lang, +pl[0], +pl[1], await nearestPlace(env, +pl[0], +pl[1], 8), null);
-      } else if (n.sec === 'brief') r = await sendBrief(env, n.chat_id, lang, rid);
+      } else if (n.sec === 'fog') r = await sendFog(env, n.chat_id, lang, rid, true);
+      else if (n.sec === 'brief') r = await sendBrief(env, n.chat_id, lang, rid);
       else if (n.sec === 'dyn') { r = await sendDyn(env, n.chat_id, lang); await sendDynXlsx(env, n.chat_id, lang, 'pdf'); await sendDynXlsx(env, n.chat_id, lang); }
       else if (n.sec === 'hourly') r = await sendHourly(env, n.chat_id, lang, rid);
       else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
@@ -861,9 +891,9 @@ async function mtnTick(env) {
 }
 // the menu is a keyboard under the input field (white buttons, as in the screenshot): one place for everything, no buttons under messages
 const RKL = {
-  ru: { csearch: '🔎 Поиск страны или города', evv: '🎬 Видео: тучи 12 ч и 3 дня', brief: '☀️ Утренний брифинг', dyn: '📊 Динамика к прошлому году', rain: '🌧 Осадки и тучи', more: '⚙️ Ещё', traj: '🧭 Откуда придут осадки', hourly: '⏱ Сегодня и завтра по часам', regions: '🗺 Погода по регионам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
-  uz: { csearch: '🔎 Davlat yoki shahar qidirish', evv: '🎬 Video: bulutlar 12 soat va 3 kun', brief: '☀️ Ertalabki brifing', dyn: '📊 O‘tgan yilga nisbatan dinamika', rain: '🌧 Yog‘in va bulutlar', more: '⚙️ Yana', traj: '🧭 Yog‘in qayerdan keladi', hourly: '⏱ Bugun va ertaga soatma-soat', regions: '🗺 Viloyatlar bo‘yicha', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
-  en: { csearch: '🔎 Find a country or city', evv: '🎬 Video: clouds 12 hours and 3 days', brief: '☀️ Morning summary', dyn: '📊 Compared with last year', rain: '🌧 Precipitation and clouds', more: '⚙️ More', traj: '🧭 Where the rain comes from', hourly: '⏱ Today and tomorrow by the hour', regions: '🗺 By regions', days: '🗓 15-day forecast', video: '🎬 15-day video forecast', outlook: '📅 Weeks and months (maps)', mtn: '🏔 Mountains: snow and trips', now: '🌡 Weather now', air: '🌫 Air quality today', cities: '🏙 Choose a city', loc: '📍 Send my location', countries: '🌍 Change country', daily: '🔔 Forecast every morning', notif: '⏰ My notifications', accuracy: '🎯 Forecast accuracy', alerts: '⚠️ Dangerous weather', site: '🗺 Map website and globe', home: '🏠 Main menu', reset: '🔄 Start over', back: '⬅️ Back', help: 'ℹ️ Guide' } };
+  ru: { fog: '🌫 Туман: где и когда', csearch: '🔎 Поиск страны или города', evv: '🎬 Видео: тучи 12 ч и 3 дня', brief: '☀️ Утренний брифинг', dyn: '📊 Динамика к прошлому году', rain: '🌧 Осадки и тучи', more: '⚙️ Ещё', traj: '🧭 Откуда придут осадки', hourly: '⏱ Сегодня и завтра по часам', regions: '🗺 Погода по регионам', days: '🗓 Прогноз на 15 дней', video: '🎬 Видео-прогноз 15 дней', outlook: '📅 Недели и месяцы (карты)', mtn: '🏔 Горы: снег и поездки', now: '🌡 Погода сейчас', air: '🌫 Воздух сегодня', cities: '🏙 Выбрать город', loc: '📍 Отправить моё место', countries: '🌍 Сменить страну', daily: '🔔 Прогноз каждое утро', notif: '⏰ Мои уведомления', accuracy: '🎯 Точность прогноза', alerts: '⚠️ Опасная погода', site: '🗺 Карта-сайт и глобус', home: '🏠 Главное меню', reset: '🔄 Начать заново', back: '⬅️ Назад', help: 'ℹ️ Инструкция' },
+  uz: { fog: '🌫 Tuman: qayerda va qachon', csearch: '🔎 Davlat yoki shahar qidirish', evv: '🎬 Video: bulutlar 12 soat va 3 kun', brief: '☀️ Ertalabki brifing', dyn: '📊 O‘tgan yilga nisbatan dinamika', rain: '🌧 Yog‘in va bulutlar', more: '⚙️ Yana', traj: '🧭 Yog‘in qayerdan keladi', hourly: '⏱ Bugun va ertaga soatma-soat', regions: '🗺 Viloyatlar bo‘yicha', days: '🗓 15 kunlik prognoz', video: '🎬 15 kunlik video-prognoz', outlook: '📅 Haftalar va oylar (xaritalar)', mtn: '🏔 Tog‘lar: qor va sayohat', now: '🌡 Hozirgi ob-havo', air: '🌫 Bugungi havo sifati', cities: '🏙 Shaharni tanlash', loc: '📍 Joyimni yuborish', countries: '🌍 Davlatni almashtirish', daily: '🔔 Har tongi prognoz', notif: '⏰ Bildirishnomalarim', accuracy: '🎯 Prognoz aniqligi', alerts: '⚠️ Xavfli ob-havo', site: '🗺 Xarita-sayt va globus', home: '🏠 Bosh menyu', reset: '🔄 Qaytadan boshlash', back: '⬅️ Orqaga', help: 'ℹ️ Yo‘riqnoma' },
+  en: { fog: '🌫 Fog: where and when', csearch: '🔎 Find a country or city', evv: '🎬 Video: clouds 12 hours and 3 days', brief: '☀️ Morning summary', dyn: '📊 Compared with last year', rain: '🌧 Precipitation and clouds', more: '⚙️ More', traj: '🧭 Where the rain comes from', hourly: '⏱ Today and tomorrow by the hour', regions: '🗺 By regions', days: '🗓 15-day forecast', video: '🎬 15-day video forecast', outlook: '📅 Weeks and months (maps)', mtn: '🏔 Mountains: snow and trips', now: '🌡 Weather now', air: '🌫 Air quality today', cities: '🏙 Choose a city', loc: '📍 Send my location', countries: '🌍 Change country', daily: '🔔 Forecast every morning', notif: '⏰ My notifications', accuracy: '🎯 Forecast accuracy', alerts: '⚠️ Dangerous weather', site: '🗺 Map website and globe', home: '🏠 Main menu', reset: '🔄 Start over', back: '⬅️ Back', help: 'ℹ️ Guide' } };
 // the labels the keyboard had before (people may still have the old keyboard on their phone): they keep working
 const RKL_OLD = {
   ru: { days: '🗓 15 дней', video: '🎬 Видео на 15 дней', outlook: '📅 Недели и месяцы', mtn: '🏔 Горы и снег', now: '🌡 Сейчас', cities: '🏙 Города', loc: '📍 Моё место', countries: '🌍 Страны', daily: '🔔 Каждый день', accuracy: '🎯 Точность', alerts: '⚠️ Предупреждения', site: '🗺 Сайт и глобус', home: '🏠 Главная', reset: '🔄 Сбросить', help: 'ℹ️ Помощь' },
@@ -1020,7 +1050,7 @@ async function subMenu(env, chat, lang, rid, which, u) {
   const pl = u && u.place ? JSON.parse(u.place) : CAP[rid] || CAP.UZ;
   let rows;
   if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), ...(rid === 'UZ' ? [a('outlook')] : [])],
-    [{ text: M.remind, callback_data: `NS:${lang}:days` }]];
+    [{ text: M.remind, callback_data: `NS:${lang}:days` }], [{ text: R.fog, callback_data: `FG:${lang}:${rid}` }, { text: '⏰ ' + R.fog.replace(/^\S+\s/, ''), callback_data: `NS:${lang}:fog` }]];
   else if (which === 'mtnair') rows = [[a('mtn'), a('air')], [a('alerts')]];
   else rows = [[{ text: M.country, callback_data: `MA:${lang}:countries` }, a('cities')], [a('daily'), a('notif')], ...(rid === 'UZ' ? [[a('dyn'), a('accuracy')]] : [[a('accuracy')]]), [a('help'), a('reset')]];
   rows[1] && which === 'fc' && (rows[1][1] = { ...rows[1][1], text: M.photo });
@@ -1432,6 +1462,12 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
     const brief = [WX.temp.replace('{lo}', deg(lo)).replace('{hi}', deg(hi)), wetW.length ? WX.wet.replace('{n}', wetW.length).replace('{d}', wetW.map(x => wd(x.d)).join(', ')) + (mm >= 1 ? WX.mm.replace('{mm}', Math.round(mm)) : '') : WX.dry];
     const cut = Dw.length < 1 + (Date.parse(b) - Date.parse(a)) / 864e5 ? `\n<i>${WX.part.replace('{last}', ddm(D[D.length - 1].d))}</i>` : '';
     const txt = [head, '', ...brief.map(x => `▸ ${x}`), '', ...Dw.map(x => day(x, x.d === today ? T[lang].tdy : x.d === tmrw ? T[lang].tmw : WDL[lang][new Date(x.d + 'T12:00:00Z').getUTCDay()])), cut, `<i>${K.note}</i>`].join('\n');
+    // the week as a picture too: the place's photo, the week's brief, its days
+    const cw_ = { name: place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`, sub: noEmo(head.replace(/<[^>]+>/g, '').replace(nm0.replace(/<[^>]+>/g, ''), '').replace(/^\s*·\s*/, '')), bh: K.brief, nh: K.next.replace(/.*/, { ru: 'По дням', uz: 'Kunma-kun', en: 'Day by day' }[lang]),
+      brief: brief.map(noEmo), note: noEmo(K.note), foot: 't.me/ObHavo_ECMWF_bot', now: null, two: [],
+      list: Dw.map(x => ({ wd: wd(x.d), ic: icKey(x.ic), lo: x.lo, hi: x.hi, lot: deg(x.lo), hit: deg(x.hi), p: x.p, mm: x.mm >= 0.5 ? `${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : '', snow: !!x.snow })) };
+    const cq_ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7), code: NW ? NW.weather_code : 2, day: true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : Dw[0].hi };
+    if (await sendCard(env, chat, cw_, cq_, `${head}`, weeksKb(lang, a))) return true;
     return tg(env, 'sendMessage', { chat_id: chat, text: txt.slice(0, 4000), parse_mode: 'HTML', reply_markup: weeksKb(lang, a) });
   }
   const isAdmin = String(chat) === (await kv(env, 'admin'));  // update times only for the bot's admin
@@ -1504,6 +1540,8 @@ function fxSvg(fx, W) {  // the season and the weather on the real photo: a colo
   if (fx.snow) for (let i = 0; i < 260; i++) { const x = rnd() * W, y = rnd() * 1000, rr = 1.5 + rnd() * 4; s += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${rr.toFixed(1)}" fill="#ffffff" fill-opacity="${(0.45 + rnd() * 0.5).toFixed(2)}"/>`; }
   if (fx.rain) for (let i = 0; i < 220; i++) { const x = rnd() * W, y = rnd() * 1000, l = 18 + rnd() * 26; s += `<line x1="${x.toFixed(0)}" y1="${y.toFixed(0)}" x2="${(x - l * 0.25).toFixed(0)}" y2="${(y + l).toFixed(0)}" stroke="#dfeaf5" stroke-opacity="${(0.25 + rnd() * 0.35).toFixed(2)}" stroke-width="1.6"/>`; }
   if (fx.night) s += `<rect width="${W}" height="1080" fill="#0a1430" fill-opacity="0.38"/>`;
+  if (fx.fog) s += `<defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9edf1" stop-opacity="0.35"/><stop offset="0.55" stop-color="#e9edf1" stop-opacity="0.78"/><stop offset="1" stop-color="#e9edf1" stop-opacity="0.55"/></linearGradient></defs><rect width="${W}" height="1080" fill="url(#fg)"/>`
+    + [0, 1, 2, 3, 4].map(i => `<ellipse cx="${(200 + i * 230) % W}" cy="${560 + (i % 3) * 90}" rx="420" ry="70" fill="#ffffff" fill-opacity="0.22"/>`).join('');
   return s;
 }
 function cardSvg(d, bg) {
@@ -1514,6 +1552,7 @@ function cardSvg(d, bg) {
   for (const L of br) { body += `<circle cx="68" cy="${y + 30}" r="6" fill="#f08a24"/>`; L.forEach((l, i) => { body += T(l, 90, y + 41 + i * 40, 31, '#ffffff'); }); y += 46 * L.length; }
   y += 26;
   const cw = (W - 112 - 24) / 2;
+  if (!d.two.length) y -= 282;  // no today/tomorrow block (a week): the days come right after the brief
   d.two.forEach((o, k) => { const x = 56 + k * (cw + 24);
     body += `<rect x="${x}" y="${y}" width="${cw}" height="236" rx="22" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"/>`;
     body += T(o.w, x + 26, y + 50, 29, '#ffd29c', { b: 1 }) + svgIcon(o.ic, x + cw - 56, y + 46, 40) + T(o.t, x + 26, y + 104, 44, '#ffffff', { b: 1 }) + T(wrapT(o.pr, cw - 52, 26, false, 1)[0], x + 26, y + 144, 26, '#ffffff', { op: 0.85 });
@@ -1573,7 +1612,7 @@ async function cardBg(env, q) {  // the place's real photo with the season and w
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS bgimg (k TEXT PRIMARY KEY, b TEXT, t INTEGER)').run();
   {
     const north = q.lat >= 0, idx0 = Math.floor((((north ? q.month : (q.month + 5) % 12 + 1)) % 12) / 3), wx0 = wmoKey(q.code, 1);
-    q.fx = { tint: ['#9fc4ff', '#bff0b0', '#ffe2a0', '#ff9a3c'][idx0], op: [0.2, 0.08, 0.06, 0.14][idx0], snow: wx0 === 'snow' || (idx0 === 0 && q.t <= -2 && wx0 !== 'sun'), rain: wx0 === 'rain' || wx0 === 'storm', night: !q.day };
+    q.fx = { fog: wx0 === 'fog', tint: ['#9fc4ff', '#bff0b0', '#ffe2a0', '#ff9a3c'][idx0], op: [0.2, 0.08, 0.06, 0.14][idx0], snow: wx0 === 'snow' || (idx0 === 0 && q.t <= -2 && wx0 !== 'sun'), rain: wx0 === 'rain' || wx0 === 'storm', night: !q.day };
     const real = await realPhoto(env, q);
     if (real) return real;
     q.fx = { night: false };
@@ -2044,15 +2083,16 @@ async function handle(up, env) {
   if (kind === 'VP' && NAMES[id]) return videoHub(env, chat.id, lang, id, null);
   if (kind === 'AQV') return sendAir(env, chat.id, lang, 'UZ');
   if (kind === 'RV') return sendRisk(env, chat.id, lang, true);
+  if (kind === 'FG') return sendFog(env, chat.id, lang, NAMES[id] ? id : 'UZ', false);
   if (kind === 'CV' && NAMES[id]) {  // the 15-day clouds-and-precipitation video
-    const L = lang === 'uz' ? 'uz' : 'ru', url = p15url(id, L, '_c'), X = VMX[lang] || VMX.ru;
-    if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: lang === 'uz' ? 'Video tayyorlanmoqda, birozdan keyin qayta urinib ko‘ring.' : lang === 'en' ? 'The video is being made, try again a little later.' : 'Видео готовится, попробуйте чуть позже.' });
+    const L = lang === 'uz' ? 'uz' : 'ru', url = await vidUrl(id, L, '_c'), X = VMX[lang] || VMX.ru;
+    if (!url) return tg(env, 'sendMessage', { chat_id: chat.id, text: lang === 'uz' ? 'Video tayyorlanmoqda, birozdan keyin qayta urinib ko‘ring.' : lang === 'en' ? 'The video is being made, try again a little later.' : 'Видео готовится, попробуйте чуть позже.' });
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
     return tg(env, 'sendVideo', { chat_id: chat.id, video: `${url}?v=${Math.floor(Date.now() / 1800e3)}`, caption: `☁️ ${FLAG[id] || ''} <b>${NAMES[id][lang]}</b> · ${X.ccap}`, parse_mode: 'HTML', supports_streaming: true, width: 1920, height: 1080 });
   }
   if (kind === 'TV' && NAMES[id]) {  // the 15-day temperature video of the place's country or continent
-    const L = lang === 'uz' ? 'uz' : 'ru', url = p15url(id, L, '_t'), X = VHX[lang] || VHX.ru;
-    if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return tg(env, 'sendMessage', { chat_id: chat.id, text: lang === 'uz' ? 'Video tayyorlanmoqda, birozdan keyin qayta urinib ko‘ring.' : lang === 'en' ? 'The video is being made, try again a little later.' : 'Видео готовится, попробуйте чуть позже.' });
+    const L = lang === 'uz' ? 'uz' : 'ru', url = await vidUrl(id, L, '_t'), X = VHX[lang] || VHX.ru;
+    if (!url) return tg(env, 'sendMessage', { chat_id: chat.id, text: lang === 'uz' ? 'Video tayyorlanmoqda, birozdan keyin qayta urinib ko‘ring.' : lang === 'en' ? 'The video is being made, try again a little later.' : 'Видео готовится, попробуйте чуть позже.' });
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
     return tg(env, 'sendVideo', { chat_id: chat.id, video: `${url}?v=${Math.floor(Date.now() / 1800e3)}`, caption: `🌡 ${FLAG[id] || ''} <b>${NAMES[id][lang]}</b> · ${X.tcap}`, parse_mode: 'HTML', supports_streaming: true, width: 1920, height: 1080 });
   }
@@ -2301,7 +2341,7 @@ async function privateMsg(msg, env) {
     if (act === 'home') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, rid) });
     if (act === 'days' || act === 'cities') return cityPicker(env, chat.id, lang, rid, u);
     if (act === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
-    if (act === 'alerts') { if (rid === 'UZ') await sendRisk(env, chat.id, lang, false); const A = await alertsData(env); const it = A ? A.items.filter(i => i.region === rid) : []; return tg(env, 'sendMessage', { chat_id: chat.id, text: it.length ? alertText(it, lang) : AL[lang].none, parse_mode: 'HTML' }); }
+    if (act === 'alerts') { if (rid === 'UZ') await sendRisk(env, chat.id, lang, false); await sendFog(env, chat.id, lang, rid, true); const A = await alertsData(env); const it = A ? A.items.filter(i => i.region === rid) : []; return tg(env, 'sendMessage', { chat_id: chat.id, text: it.length ? alertText(it, lang) : AL[lang].none, parse_mode: 'HTML' }); }
     if (act === 'video') {  // the video that matches the last forecast: that city's own video (Uzbekistan, Kazakhstan) or the country's
       const pl = u && u.place ? JSON.parse(u.place) : null, C = pl ? await cities(env, rid, lang) : null;
       const np = pl ? await nearestPlace(env, pl[0], pl[1], 8) : null;
@@ -2323,8 +2363,7 @@ async function privateMsg(msg, env) {
       const pl = u && u.place ? JSON.parse(u.place) : null;
       if (pl) {  // just the weather right now, short; the 15 days are one button away
         const np = await nearestPlace(env, pl[0], pl[1]), c = await nowWeather(+pl[0], +pl[1]), line = nowLine(c, lang);
-        if (line) return tg(env, 'sendMessage', { chat_id: chat.id, parse_mode: 'HTML', text: `${np ? `${FLAG[np[4]] || '📍'} <b>${esc(pname(np, lang))}</b>` : `📍 <b>${(+pl[0]).toFixed(2)}, ${(+pl[1]).toFixed(2)}</b>`}\n\n${line}`, reply_markup: replyKb(env, lang, rid) });
-        return pointForecast(env, chat.id, lang, pl[0], pl[1], np);
+        return pointForecast(env, chat.id, lang, pl[0], pl[1], np);  // the picture: the weather now at the top, the days below
       }
       return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].locAsk, reply_markup: locOnce(lang) });
     }
