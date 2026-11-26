@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - env: {GH_TOKEN: '${{ github.token }}', TELEGRAM_BOT_TOKEN: '${{ secrets.TELEGRAM_BOT_TOKEN }}'}
+      - env: {GH_TOKEN: '${{ github.token }}'}
         run: |
           (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
           pip install -q numpy scipy matplotlib pyproj qrcode requests eccodes metpy pillow
@@ -28,7 +28,7 @@ jobs:
           # fog only near Central Asia (its data box)
           if python3 -c "import sys; la,lo=float('${{ inputs.lat }}'),float('${{ inputs.lon }}'); sys.exit(0 if 32<=la<=50 and 45<=lo<=85 else 1)"; then timeout 600 python -u -W ignore tools/fog_fetch.py data/prob.npz data/fog.npz || true; fi
           timeout 1800 python -u -W ignore tools/place15.py data out --lang "${{ inputs.lang }}" --lat "${{ inputs.lat }}" --lon "${{ inputs.lon }}" --name "${{ inputs.name }}" --iso "${{ inputs.iso }}" --chat "${{ inputs.chat }}"
-          # a copy on the "ondemand" branch (the last request), also when the bot cannot send it (no TELEGRAM_BOT_TOKEN secret)
-          cd out && rm -f files.json && git init -q && git checkout -q -b ondemand && git add -A
+          # the videos on the branch "od-<chat>": the bot picks them up from there and sends them to the chat (no bot token needed here)
+          cd out && rm -f files.json && git init -q && git checkout -q -b od-${{ inputs.chat }} && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "place ${{ inputs.name }} for ${{ inputs.chat }}"
-          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ondemand
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" od-${{ inputs.chat }}

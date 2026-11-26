@@ -185,9 +185,10 @@ export default {
     // each job on its own, so one failure (or Cloudflare's limit of requests per run) cannot stop the others;
     // the check of the site builds goes first: it is small and it matters most
     const run = (name, f) => f().catch(e => console.log(name, e && e.stack));
-    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil((async () => { await run('watch', () => watchTick(env)); await run('sat', () => satTick(env)); })());  // its own runs: the weather at people's places
+    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil((async () => { await run('watch', () => watchTick(env)); await run('pv', () => pvTick(env)); await run('sat', () => satTick(env)); })());  // its own runs: the weather at people's places
     ctx.waitUntil((async () => {
       await run('stale', () => staleTick(env));
+      await run('pv', () => pvTick(env));
       const r = await broadcast(env).catch(e => { console.log('broadcast', e && e.stack); return null; });
       if (!r || !r.due) for (const [n, f] of [['alert', alertTick], ['mtn', mtnTick], ['notif', notifTick], ['stats', statsTick], ['backup', backupTick]]) await run(n, () => f(env));
       else await run('notif', () => notifTick(env, true));
@@ -1430,9 +1431,9 @@ async function photo15(env, chat, lang, lat, lon, place, D) {
   return o;
 }
 /* ---------- 🎬 the 15-day video of a place on demand: the country's video and the place's close-up (.github/workflows/place15.yml) ---------- */
-const PVX = { ru: { btn: '🎬 Видео 15 дней по часам: страна + это место', wait: '⏳ Готовлю 2 видео: вся страна и {n} крупно — осадки и температура на 15 дней по часам. Пришлю сюда через 7–10 минут.', busy: '⏳ Видео уже готовится, пришлю, как будет готово.', fail: '😔 Не удалось запустить подготовку видео, попробуйте позже.' },
-  uz: { btn: '🎬 15 kunlik soatma-soat video: davlat + shu joy', wait: '⏳ 2 ta video tayyorlayapman: butun davlat va {n} yaqindan — 15 kunga soatma-soat yog‘in va harorat. 7–10 daqiqada shu yerga yuboraman.', busy: '⏳ Video tayyorlanmoqda, tayyor bo‘lishi bilan yuboraman.', fail: '😔 Videoni tayyorlashni boshlab bo‘lmadi, keyinroq urinib ko‘ring.' },
-  en: { btn: '🎬 15-day hourly video: country + this place', wait: '⏳ Preparing 2 videos: the whole country and {n} close up — precipitation and temperature for 15 days by the hour. I will send them here in 7–10 minutes.', busy: '⏳ The video is being prepared, I will send it when it is ready.', fail: '😔 Could not start the video, try again later.' } };
+const PVX = { ru: { btn: '🎬 Видео 15 дней по часам: страна + это место', wait: '⏳ Готовлю 2 видео: вся страна и {n} крупно — осадки и температура на 15 дней по часам. Пришлю сюда минут через 15–25.', late: '😔 Видео не успело подготовиться, попробуйте ещё раз чуть позже.', capC: '🎬 {n}: вероятность осадков и температура на 15 дней по часам', capP: '📍 {n}: вероятность осадков и температура на 15 дней по часам', busy: '⏳ Видео уже готовится, пришлю, как будет готово.', fail: '😔 Не удалось запустить подготовку видео, попробуйте позже.' },
+  uz: { btn: '🎬 15 kunlik soatma-soat video: davlat + shu joy', wait: '⏳ 2 ta video tayyorlayapman: butun davlat va {n} yaqindan — 15 kunga soatma-soat yog‘in va harorat. 15–25 daqiqada shu yerga yuboraman.', late: '😔 Video tayyor bo‘lmadi, birozdan keyin qayta urinib ko‘ring.', capC: '🎬 {n}: 15 kunga soatma-soat yog‘in ehtimoli va harorat', capP: '📍 {n}: 15 kunga soatma-soat yog‘in ehtimoli va harorat', busy: '⏳ Video tayyorlanmoqda, tayyor bo‘lishi bilan yuboraman.', fail: '😔 Videoni tayyorlashni boshlab bo‘lmadi, keyinroq urinib ko‘ring.' },
+  en: { btn: '🎬 15-day hourly video: country + this place', wait: '⏳ Preparing 2 videos: the whole country and {n} close up — precipitation and temperature for 15 days by the hour. I will send them here in 15–25 minutes.', late: '😔 The video was not ready in time, please try again a little later.', capC: '🎬 {n}: chance of precipitation and temperature for 15 days by the hour', capP: '📍 {n}: chance of precipitation and temperature for 15 days by the hour', busy: '⏳ The video is being prepared, I will send it when it is ready.', fail: '😔 Could not start the video, try again later.' } };
 const pvBtn = (lang, lat, lon) => ({ text: (PVX[lang] || PVX.ru).btn, callback_data: `PV:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}`, style: 'primary' });
 async function placeVideo(env, chat, lang, lat, lon) {
   const X = PVX[lang] || PVX.ru, key = `pv_${chat}`, last = +(await kv(env, key) || 0);
@@ -1442,7 +1443,29 @@ async function placeVideo(env, chat, lang, lat, lon) {
     body: JSON.stringify({ ref: 'main', inputs: { lat: String(lat), lon: String(lon), name, iso: p ? p[4] : '', lang: lang === 'uz' ? 'uz' : 'ru', chat: String(chat) } }) });
   if (!r.ok) { console.log('place15', r.status, await r.text()); return tg(env, 'sendMessage', { chat_id: chat, text: X.fail }); }
   await setKv(env, key, String(Date.now()));
+  const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]').filter(x => x.c !== String(chat) && Date.now() - x.t < 90 * 60e3);
+  pend.push({ c: String(chat), l: lang, n: name, cn: p && NAMES[p[4]] ? NAMES[p[4]][lang] : '', t: Date.now() }); await setKv(env, 'pv_pend', JSON.stringify(pend));
   return tg(env, 'sendMessage', { chat_id: chat, text: X.wait.replace('{n}', name) });
+}
+// the on-demand videos are made by GitHub (place15.yml → branch od-<chat>); every cron run the bot looks for the finished ones and sends them
+async function pvTick(env) {
+  const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]'); if (!pend.length) return;
+  const keep = [];
+  for (const x of pend) {
+    const X = PVX[x.l] || PVX.ru;
+    const b = await ghApi(env, `branches/od-${x.c}`).then(r => r.ok ? r.json() : null).catch(() => null);
+    const sha = b && b.commit && b.commit.sha, when = b && Date.parse(b.commit.commit.committer.date);
+    if (!sha || when < x.t) { if (Date.now() - x.t < 75 * 60e3) keep.push(x); else await tg(env, 'sendMessage', { chat_id: x.c, text: X.late }); continue; }
+    const tree = await ghApi(env, `git/trees/${sha}`).then(r => r.ok ? r.json() : null).catch(() => null);
+    const files = ((tree && tree.tree) || []).map(f => f.path).filter(f => f.endsWith('.mp4')).sort((a, c) => (a.startsWith('place') ? 1 : 0) - (c.startsWith('place') ? 1 : 0));
+    for (const f of files) {
+      const r = await tg(env, 'sendVideo', { chat_id: x.c, video: `https://raw.githubusercontent.com/${REPO}/${sha}/${f}`, supports_streaming: true, width: 1920, height: 1080,
+        caption: (f.startsWith('place') ? X.capP.replace('{n}', x.n) : X.capC.replace('{n}', x.cn || x.n)) });
+      if (!r.ok) console.log('pv send', x.c, f, r.description);
+    }
+    await setKv(env, `pv_${x.c}`, '0');
+  }
+  await setKv(env, 'pv_pend', JSON.stringify(keep));
 }
 // the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
 // every morning at 09:00 (Tashkent): how many people used the bot and the site
