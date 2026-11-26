@@ -604,7 +604,7 @@ const NX_ = {
   ru: { btn: '⏰ Присылать автоматически', ask: '⏰ Во сколько присылать «{s}»? Время — по Ташкенту.', weekly: ' (по понедельникам)', off: '🔕 Не присылать', on: '✅ «{s}» будет приходить каждый день в {h}.', onW: '✅ «{s}» будет приходить по понедельникам в {h}.', offT: '🔕 «{s}» больше не присылаю.', list: '⏰ <b>Мои уведомления</b>', none: 'Пока ничего не приходит автоматически. Нажмите раздел ниже и выберите время:', at: 'в', edit: 'Нажмите раздел, чтобы поменять время или выключить:', daily: '🔔 Прогноз каждое утро — включается кнопкой «🔔 Прогноз каждое утро»' },
   uz: { btn: '⏰ Avtomatik yuborish', ask: '⏰ «{s}» soat nechada kelsin? Vaqt — Toshkent bo‘yicha.', weekly: ' (dushanba kunlari)', off: '🔕 Yubormaslik', on: '✅ «{s}» har kuni soat {h} da keladi.', onW: '✅ «{s}» har dushanba soat {h} da keladi.', offT: '🔕 «{s}» endi yuborilmaydi.', list: '⏰ <b>Bildirishnomalarim</b>', none: 'Hozircha hech narsa avtomatik kelmaydi. Quyidagi bo‘limni bosing va vaqtni tanlang:', at: 'soat', edit: 'Vaqtni o‘zgartirish yoki o‘chirish uchun bo‘limni bosing:', daily: '🔔 Har tongi prognoz — «🔔 Har tongi prognoz» tugmasi bilan yoqiladi' },
   en: { btn: '⏰ Send automatically', ask: '⏰ At what time should «{s}» come? Time — Tashkent time.', weekly: ' (on Mondays)', off: '🔕 Do not send', on: '✅ «{s}» will come every day at {h}.', onW: '✅ «{s}» will come every Monday at {h}.', offT: '🔕 «{s}» will no longer be sent.', list: '⏰ <b>My notifications</b>', none: 'Nothing comes automatically now. Choose a section below and set the time:', at: 'at', edit: 'Tap a section to change its time or turn it off:', daily: '🔔 Forecast every morning — turned on with the «🔔 Forecast every morning» button' } };
-const NSEC = ['brief', 'dyn', 'hourly', 'outlook', 'mtn', 'air', 'traj'];  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
+const NSEC = ['days', 'brief', 'dyn', 'hourly', 'outlook', 'mtn', 'air', 'traj'];  // days: the 15-day forecast of the person's own place (the picture) at the chosen hour  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
 const NWEEKLY = { outlook: true, dyn: true };  // «📊 against last year» on Mondays: the summary and the Excel report                   // the weeks and months change slowly: once a week is enough
 const secName = (sec, lang) => ((RKL[lang] || RKL.ru)[sec] || sec).replace(/^\S+\s/, '');
 const notifBtn = (lang, sec) => ({ text: (NX_[lang] || NX_.ru).btn, callback_data: `NS:${lang}:${sec}` });
@@ -682,7 +682,11 @@ async function notifTick(env, small = false) {
     const lang = RKL[n.lang] ? n.lang : 'ru', rid = NAMES[n.region] ? n.region : 'UZ';  // (groups: saved from their settings)
     let r = null;
     try {
-      if (n.sec === 'brief') r = await sendBrief(env, n.chat_id, lang, rid);
+      if (n.sec === 'days') {  // the 15-day forecast of the saved place (a group: its country's capital)
+        const uu = n.chat_id > 0 ? await getUser(env, n.chat_id) : null, C = !(uu && uu.place) ? ((await cities(env, rid, lang)) || (await cities(env, rid, 'ru'))) : null, c0 = C && C.cities.find(c => c.lat != null);
+        const pl = uu && uu.place ? JSON.parse(uu.place) : c0 ? [c0.lat, c0.lon] : [41.311, 69.279];
+        r = await pointForecast(env, n.chat_id, lang, +pl[0], +pl[1], await nearestPlace(env, +pl[0], +pl[1], 8), null);
+      } else if (n.sec === 'brief') r = await sendBrief(env, n.chat_id, lang, rid);
       else if (n.sec === 'dyn') { r = await sendDyn(env, n.chat_id, lang); await sendDynXlsx(env, n.chat_id, lang, 'pdf'); await sendDynXlsx(env, n.chat_id, lang); }
       else if (n.sec === 'hourly') r = await sendHourly(env, n.chat_id, lang, rid);
       else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
@@ -999,15 +1003,16 @@ function replyKb(env, lang, id) {
     [{ text: X.loc, request_location: true }, b(X.settings)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', en: 'City name…' }[lang] };
 }
 const SUBM = {  // the small menus behind the big buttons
-  ru: { fc: '🌤 <b>Прогноз</b> — что показать?', mtnair: '🏔 <b>Горы и воздух</b>', settings: '⚙️ <b>Настройки</b>', week: '📆 Неделя по дням', photo: '🖼 График на 15 дней (фото)', country: '🌍 Страна и континент' },
-  uz: { fc: '🌤 <b>Prognoz</b> — nimani ko‘rsatay?', mtnair: '🏔 <b>Tog‘lar va havo</b>', settings: '⚙️ <b>Sozlamalar</b>', week: '📆 Hafta kunma-kun', photo: '🖼 15 kunlik grafik (rasm)', country: '🌍 Davlat va qit’a' },
-  en: { fc: '🌤 <b>Forecast</b> — what shall I show?', mtnair: '🏔 <b>Mountains and air</b>', settings: '⚙️ <b>Settings</b>', week: '📆 A week day by day', photo: '🖼 15-day chart (picture)', country: '🌍 Country and continent' } };
+  ru: { fc: '🌤 <b>Прогноз</b> — что показать?', mtnair: '🏔 <b>Горы и воздух</b>', settings: '⚙️ <b>Настройки</b>', week: '📆 Неделя по дням', photo: '🖼 График на 15 дней (фото)', country: '🌍 Страна и континент', remind: '⏰ Присылать прогноз на 15 дней каждый день' },
+  uz: { fc: '🌤 <b>Prognoz</b> — nimani ko‘rsatay?', mtnair: '🏔 <b>Tog‘lar va havo</b>', settings: '⚙️ <b>Sozlamalar</b>', week: '📆 Hafta kunma-kun', photo: '🖼 15 kunlik grafik (rasm)', country: '🌍 Davlat va qit’a', remind: '⏰ 15 kunlik prognozni har kuni yuborish' },
+  en: { fc: '🌤 <b>Forecast</b> — what shall I show?', mtnair: '🏔 <b>Mountains and air</b>', settings: '⚙️ <b>Settings</b>', week: '📆 A week day by day', photo: '🖼 15-day chart (picture)', country: '🌍 Country and continent', remind: '⏰ Send the 15-day forecast every day' } };
 async function subMenu(env, chat, lang, rid, which, u) {
   const R = RKL[lang] || RKL.ru, M = SUBM[lang] || SUBM.ru, a = k => ({ text: R[k], callback_data: `MA:${lang}:${k}` });
   const CAP = { UZ: [41.311, 69.279], KZ: [51.169, 71.449], KG: [42.875, 74.612], TJ: [38.56, 68.774], TM: [37.96, 58.326], AZ: [40.41, 49.867], AM: [40.177, 44.513], BY: [53.9, 27.567], MD: [47.011, 28.863], RU: [55.756, 37.617], TR: [39.92, 32.854] };
   const pl = u && u.place ? JSON.parse(u.place) : CAP[rid] || CAP.UZ;
   let rows;
-  if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), ...(rid === 'UZ' ? [a('outlook')] : [])]];
+  if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), ...(rid === 'UZ' ? [a('outlook')] : [])],
+    [{ text: M.remind, callback_data: `NS:${lang}:days` }]];
   else if (which === 'mtnair') rows = [[a('mtn'), a('air')], [a('alerts')]];
   else rows = [[{ text: M.country, callback_data: `MA:${lang}:countries` }, a('cities')], [a('daily'), a('notif')], ...(rid === 'UZ' ? [[a('dyn'), a('accuracy')]] : [[a('accuracy')]]), [a('help'), a('reset')]];
   rows[1] && which === 'fc' && (rows[1][1] = { ...rows[1][1], text: M.photo });
@@ -1434,11 +1439,11 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   if (rid_ && chat > 0 && !(kbOver && kbOver.keyboard)) {
     const u = `${base(env)}/live.html?r=${rid_}&l=${lang}&lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}&n=${encodeURIComponent(String(nm).replace(/<[^>]+>/g, '').slice(0, 40))}`;
     // (the menu keyboard under the input field is persistent: it stays while this message carries the map button)
-    const mk = { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }], [phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)]] };
+    const mk = { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }], [phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)], [{ text: (SUBM[lang] || SUBM.ru).remind, callback_data: `NS:${lang}:days` }]] };
     if (await sendCard(env, chat, cardD, cardQ, capC, mk)) return true;
     return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: mk });
   }
-  const mk2 = chat > 0 ? { inline_keyboard: [[phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)]] } : kb;
+  const mk2 = chat > 0 ? { inline_keyboard: [[phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)], [{ text: (SUBM[lang] || SUBM.ru).remind, callback_data: `NS:${lang}:days` }]] } : kb;
   if (await sendCard(env, chat, cardD, cardQ, capC, mk2)) return true;
   if (chat > 0) return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: mk2 });
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
