@@ -952,17 +952,31 @@ function moreMenu(env, chat, lang, rid) {
     ...(TRJ.has(rid) ? [] : []), [a('help'), a('reset')]] } });
 }
 const rkAct = text => { for (const L of [...Object.values(RKS), ...Object.values(RKL), ...Object.values(RKL_OLD)]) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
-const RKS = {  // the main keyboard: few, short buttons; the rest is in «⚙️ More»
-  ru: { now: '🌡 Сейчас', days: '🗓 15 дней', video: '🎬 Видео', outlook: '📅 По неделям', regions: '🗺 Регионы', countries: '🌍 Страны', loc: '📍 Моё место', more: '⚙️ Ещё' },
-  uz: { now: '🌡 Hozir', days: '🗓 15 kun', video: '🎬 Video', outlook: '📅 Haftalar', regions: '🗺 Viloyatlar', countries: '🌍 Davlatlar', loc: '📍 Mening joyim', more: '⚙️ Yana' },
-  en: { now: '🌡 Now', days: '🗓 15 days', video: '🎬 Video', outlook: '📅 By weeks', regions: '🗺 Regions', countries: '🌍 Countries', loc: '📍 My place', more: '⚙️ More' } };
+const RKS = {  // the main keyboard: six big buttons by meaning; each opens a small menu
+  ru: { fc: '🌤 Прогноз', video: '🎬 Видео', regions: '🗺 Регионы', countries: '🌍 Страны', mtnair: '🏔 Горы · воздух', air: '🌫 Воздух', loc: '📍 Моё место', settings: '⚙️ Настройки' },
+  uz: { fc: '🌤 Prognoz', video: '🎬 Video', regions: '🗺 Viloyatlar', countries: '🌍 Davlatlar', mtnair: '🏔 Tog‘lar · havo', air: '🌫 Havo sifati', loc: '📍 Mening joyim', settings: '⚙️ Sozlamalar' },
+  en: { fc: '🌤 Forecast', video: '🎬 Video', regions: '🗺 Regions', countries: '🌍 Countries', mtnair: '🏔 Mountains · air', air: '🌫 Air quality', loc: '📍 My place', settings: '⚙️ Settings' } };
 function replyKb(env, lang, id) {
   const X = RKS[lang] || RKS.ru, b = t => ({ text: t });
   return { keyboard: [
-    [b(X.now), b(X.days)],
-    [b(X.video), b(X.outlook)],
-    [b(ADM.has(id) ? X.regions : X.countries), ...(ADM.has(id) ? [b(X.countries)] : [])],
-    [{ text: X.loc, request_location: true }, b(X.more)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', en: 'City name…' }[lang] };
+    [b(X.fc), b(X.video)],
+    [b(ADM.has(id) ? X.regions : X.countries), b(id === 'UZ' ? X.mtnair : X.air)],
+    [{ text: X.loc, request_location: true }, b(X.settings)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', en: 'City name…' }[lang] };
+}
+const SUBM = {  // the small menus behind the big buttons
+  ru: { fc: '🌤 <b>Прогноз</b> — что показать?', mtnair: '🏔 <b>Горы и воздух</b>', settings: '⚙️ <b>Настройки</b>', week: '📆 Неделя по дням', photo: '🖼 График на 15 дней (фото)', country: '🌍 Страна и континент' },
+  uz: { fc: '🌤 <b>Prognoz</b> — nimani ko‘rsatay?', mtnair: '🏔 <b>Tog‘lar va havo</b>', settings: '⚙️ <b>Sozlamalar</b>', week: '📆 Hafta kunma-kun', photo: '🖼 15 kunlik grafik (rasm)', country: '🌍 Davlat va qit’a' },
+  en: { fc: '🌤 <b>Forecast</b> — what shall I show?', mtnair: '🏔 <b>Mountains and air</b>', settings: '⚙️ <b>Settings</b>', week: '📆 A week day by day', photo: '🖼 15-day chart (picture)', country: '🌍 Country and continent' } };
+async function subMenu(env, chat, lang, rid, which, u) {
+  const R = RKL[lang] || RKL.ru, M = SUBM[lang] || SUBM.ru, a = k => ({ text: R[k], callback_data: `MA:${lang}:${k}` });
+  const CAP = { UZ: [41.311, 69.279], KZ: [51.169, 71.449], KG: [42.875, 74.612], TJ: [38.56, 68.774], TM: [37.96, 58.326], AZ: [40.41, 49.867], AM: [40.177, 44.513], BY: [53.9, 27.567], MD: [47.011, 28.863], RU: [55.756, 37.617], TR: [39.92, 32.854] };
+  const pl = u && u.place ? JSON.parse(u.place) : CAP[rid] || CAP.UZ;
+  let rows;
+  if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), ...(rid === 'UZ' ? [a('outlook')] : [])]];
+  else if (which === 'mtnair') rows = [[a('mtn'), a('air')], [a('alerts')]];
+  else rows = [[{ text: M.country, callback_data: `MA:${lang}:countries` }, a('cities')], [a('daily'), a('notif')], ...(rid === 'UZ' ? [[a('dyn'), a('accuracy')]] : [[a('accuracy')]]), [a('help'), a('reset')]];
+  rows[1] && which === 'fc' && (rows[1][1] = { ...rows[1][1], text: M.photo });
+  return tg(env, 'sendMessage', { chat_id: chat, text: M[which], parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
 }
 // countries and cities are keyboards too: the chosen one is marked with ✅
 function countryRk(lang, cur) {  // the continents first (then the countries, the towns, the regions and districts), the current country as a shortcut
@@ -1001,6 +1015,7 @@ async function sendCountry(env, chat, lang, iso) {
     rows.push([{ text: C.menu, callback_data: `CR:${lang}:${iso}`, style: 'primary' }]);
   }
   if (ADM.has(iso)) rows.push([{ text: C.regs, callback_data: `RG:${lang}:${iso}`, style: 'success' }]);
+  if (towns[0]) rows.push([{ ...phBtn(lang, +towns[0][5], +towns[0][6]), text: `${(PHX[lang] || PHX.ru).btn}: ${pname(towns[0], lang)}` }]);  // the biggest town's 15 days as a chart
   towns.forEach((p, i) => { if (i % 3 === 0) rows.push([]); rows[rows.length - 1].push({ text: pname(p, lang).slice(0, 30), callback_data: `Q:${lang}:${(+p[5]).toFixed(3)}:${(+p[6]).toFixed(3)}` }); });
   rows.push([{ text: C.back, callback_data: `CT:${lang}:${r[4]}:0` }]);
   return tg(env, 'sendMessage', { chat_id: chat, text: `${flagOf(iso)} <b>${esc(wname(r, lang))}</b>\n${towns.length ? C.towns : C.noTowns}`, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
@@ -1688,6 +1703,7 @@ async function handle(up, env) {
   }
   if (!cb) return;
   const chat = cb.message.chat, [kind, lang0, id] = cb.data.split(':'), lang = lang0 === 'tr' ? 'en' : lang0;
+  if (kind === 'MA' && id === 'wkpick') { await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) }); }
   if (kind === 'MA' && RKL[lang] && RKL[lang][id]) { await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id }); return handle({ message: { chat, from: cb.from, text: RKL[lang][id], message_id: cb.message.message_id } }, env); }  // a menu button = its keyboard button
   if (kind[0] === 'G') {  // group settings: GL language → GT toggle countries → GD done → GH hour
     if (!(await isAdmin(env, chat, cb.from))) return tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: T[lang].gAdm, show_alert: true });
@@ -1992,6 +2008,8 @@ async function privateMsg(msg, env) {
     if (cmd === 'week' || cmd === 'hafta' || cmd === 'nedelya') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     
     if (['rain', 'video', 'hourly', 'evv', 'traj'].includes(act)) return videoHub(env, chat.id, lang, rid, u);  // one place for all the videos
+    if (act === 'fc' || act === 'mtnair' || act === 'settings' || act === 'more') return subMenu(env, chat.id, lang, rid, act === 'more' ? 'settings' : act, u);
+    if (act === 'wkpick') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     if (act === 'more') return moreMenu(env, chat.id, lang, rid);
     if (act === 'traj') return TRJ.has(rid) ? sendTraj(env, chat.id, lang, rid) : cbk(`V:${lang}:${rid}`);
     if (act === 'home') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, rid) });
