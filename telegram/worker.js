@@ -1378,11 +1378,11 @@ function chart15(X, nm, lab, D, rc, r1) {  // Chart.js 2 config as code (the lab
   return JSON.stringify(cfg).replace(/"@(hi|pc|tk)"/g, (m, k) => F[k]);
 }
 async function photo15(env, chat, lang, lat, lon, place, D) {
-  const X = PHX[lang] || PHX.ru, nm = place ? `${FLAG[place[4]] || flagOf(place[4])} ${pname(place, lang)}` : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const X = PHX[lang] || PHX.ru, nm = place ? pname(place, lang) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;  // no flag: the picture's font has no flags
   const lab = D.map(x => { const t = new Date(x.d + 'T12:00:00Z'); return [`${x.ic} ${WD[lang][t.getUTCDay()]}`, `${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`]; });
   const rc = x => x.p < 10 ? '#e7edf3' : x.snow ? ['#eadcff', '#d3bcfa', '#b897f0', '#9b72e2', '#7a4bc8'][Math.min(4, Math.floor(x.p / 20))] : ['#d4e9f9', '#93c6ee', '#4a98e0', '#1c63c0', '#5b2fa8'][Math.min(4, Math.floor(x.p / 20))];
   const r1 = v => Math.round(v), chart = chart15(X, nm, lab, D, rc, r1);
-  const r = await fetch('https://quickchart.io/chart/create', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chart, width: 1920, height: 1080, backgroundColor: '#ffffff', format: 'png', version: '2' }) }).then(r => r.json()).catch(() => null);
+  const r = await fetch('https://quickchart.io/chart/create', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chart, width: 1920, height: 1080, devicePixelRatio: 1, backgroundColor: '#ffffff', format: 'png', version: '2' }) }).then(r => r.json()).catch(() => null);
   if (!r || !r.url) return tg(env, 'sendMessage', { chat_id: chat, text: X.fail });
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
   const o = await tg(env, 'sendDocument', { chat_id: chat, document: r.url + '.png', caption: `🖼 ${X.t.replace('{n}', nm)}\n${X.src}`, ...(chat > 0 ? { reply_markup: { inline_keyboard: [[pvBtn(lang, lat, lon)]] } } : {}) });
