@@ -68,7 +68,7 @@ def draw(job):
     fig.text(0.093, 0.953, X['title'], fontsize=22, fontweight='bold', color='white', va='center')
     d = meta[0]; h = meta[3]
     fig.text(0.984, 0.968, f"{X['wd'][d.weekday()]} {d:%d.%m} · {X['morning'] if h < 12 else X['day']}", fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
-    fig.text(0.984, 0.928, f"{X['when'].format(d=f'{d:%d.%m}', h=int(round(h + 5 - LC / 15)))} {X['tz']}",  # local solar overpass time → Tashkent time fontsize=14, color='#a9bdd6', ha='right', va='center')
+    fig.text(0.984, 0.928, f"{X['when'].format(d=f'{d:%d.%m}', h=int(round(h + 5 - LC / 15)))} {X['tz']}", fontsize=14, color='#a9bdd6', ha='right', va='center')
     fig.savefig(out, dpi=DPI, facecolor=fig.get_facecolor()); plt.close(fig)
 
 
