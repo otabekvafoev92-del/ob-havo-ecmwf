@@ -170,6 +170,11 @@ const regionsOf = s => (s && s.region ? s.region.split(',').filter(r => NAMES[r]
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    if (req.method === 'GET' && url.pathname.startsWith('/card/')) {  // the forecast pictures (SVG), fetched by wsrv.nl for Telegram
+      const id = url.pathname.slice(6).replace(/\.svg$/, '').replace(/[^0-9a-f]/g, '');
+      const row = env.DB ? await env.DB.prepare('SELECT s FROM cards WHERE id = ?1').bind(id).first().catch(() => null) : null;
+      return row ? new Response(row.s, { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=21600' } }) : new Response('not found', { status: 404 });
+    }
     if (req.method === 'GET' && url.pathname === '/setup') return setup(env, url);
     if (url.pathname === '/hit' || url.pathname === '/stats') return visits(req, env, url);
     if (req.method === 'GET' && url.pathname === '/invite') return new Response(JSON.stringify(await invite(env, +(url.searchParams.get('n') || 12))), { headers: { 'content-type': 'application/json' } });
@@ -1359,14 +1364,15 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   const nm = place ? `${FLAG[place[4]] || '📍'} <b>${esc(pname(place, lang))}</b>` : `📍 <b>${lat.toFixed(2)}, ${lon.toFixed(2)}</b>`;
   const hm = t => { const l = new Date(t + off * 3600e3); return `${String(l.getUTCDate()).padStart(2, '0')}.${String(l.getUTCMonth() + 1).padStart(2, '0')} ${String(l.getUTCHours()).padStart(2, '0')}:${String(l.getUTCMinutes()).padStart(2, '0')}`; };
   const u = I.built ? `${hm(Date.parse(I.built))} · ${K.model} ${hm(run).slice(0, 5)} ${hm(run).slice(6)}` : hm(run);
-  const detail = x => {  // when it rains and what to wear (3-hour windows of that day)
+  const umbr = x => {  // when it rains (3-hour windows of that day)
     const ws = wins.filter(v => v.d === x.d), wet = ws.filter(v => v.p >= 40);
     let r = K.noRain;
     if (wet.length) { const top = wet.reduce((a, b) => (b.p > a.p ? b : a)); let a = top, b = top; const i = ws.indexOf(top);
       for (let j = i - 1; j >= 0 && ws[j].p >= 40; j--) a = ws[j]; for (let j = i + 1; j < ws.length && ws[j].p >= 40; j++) b = ws[j];
       r = K.rainAt.replace('{w}', x.snow ? K.snow : K.rain).replace('{a}', String(a.h1).padStart(2, '0')).replace('{b}', String(b.h2).padStart(2, '0')).replace('{p}', Math.round(top.p)); }
-    return `\n      ☂️ ${r}\n      🧥 ${K.wear}: ${wearText(lang, x.lo, x.hi, x.p, x.snow, x.w)}`;
+    return r;
   };
+  const detail = x => `\n      ☂️ ${umbr(x)}\n      🧥 ${K.wear}: ${wearText(lang, x.lo, x.hi, x.p, x.snow, x.w)}`;
   const day = (x, w) => `${x.ic} <b>${w}</b> · ${wd(x.d)}\n      ${deg(x.lo)}…${deg(x.hi)} · ${pr(x)}${isFinite(x.w) && x.w >= 5 ? ` · ${K.windW} ${Math.round(x.w)} ${L.ms}` : ''}${detail(x)}`;
   if (range === 'photo') return photo15(env, chat, lang, lat, lon, place, D);  // the 15 days as one picture
   if (range) {  // one week (or any days asked for), day by day
@@ -1387,16 +1393,133 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
     ...(rows.length ? [`<b>${K.next}</b>`, `<pre>${esc(pad(K.cDay, cw.d) + pad(K.cT, cw.t) + K.cP)}\n${esc(rows.join('\n'))}</pre>`] : []),
     `<i>${K.note}</i>`].join('\n');
   let kb = kbOver && kbOver.keyboard ? kbOver : null;
+  // the picture: the city behind (its season and weather now), the same forecast on it; the text stays the fallback
+  const pn = place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const cardD = { name: pn, sub: `${L.head} · ${wd(D[0].d)}`, bh: K.brief, nh: K.next, brief: sum.map(noEmo).slice(0, 5), note: noEmo(K.note), foot: 't.me/ObHavo_ECMWF_bot',
+    now: NW && NW.temperature_2m != null ? { t: `${NW.temperature_2m > 0.5 ? '+' : ''}${Math.round(NW.temperature_2m)}°`.replace(/^-0°$/, '0°'), ic: wmoKey(NW.weather_code, NW.is_day),
+      txt: ((WMO[lang] || WMO.ru)[NW.weather_code] || '').replace(/^./, c => c.toUpperCase()),
+      more: `${(NOWX[lang] || NOWX.ru).feels} ${Math.round(NW.apparent_temperature)}° · ${(NOWX[lang] || NOWX.ru).hum} ${Math.round(NW.relative_humidity_2m)}% · ${(NOWX[lang] || NOWX.ru).wind} ${Math.round(NW.wind_speed_10m)} ${(NOWX[lang] || NOWX.ru).ms}` } : null,
+    two: D.slice(0, 2).map((x, k) => ({ w: `${k ? (x.d === tmrw ? T[lang].tmw : wd(x.d)) : (x.d === today ? T[lang].tdy : wd(x.d))} · ${wd(x.d)}`.replace(/^(.+) · \1$/, '$1'), ic: icKey(x.ic), t: `${deg(x.lo)}…${deg(x.hi)}`,
+      pr: noEmo(pr(x)), umb: noEmo(umbr(x)), wear: `${K.wear}: ${noEmo(wearText(lang, x.lo, x.hi, x.p, x.snow, x.w))}` })),
+    list: Dn.map(x => ({ wd: wd(x.d), ic: icKey(x.ic), lo: x.lo, hi: x.hi, lot: deg(x.lo), hit: deg(x.hi), p: x.p, mm: mmT(x), snow: !!x.snow })) };
+  const cardQ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7),
+    code: NW ? NW.weather_code : 2, day: NW ? !!NW.is_day : true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : D[0].hi };
+  const capC = `${nm} · ${L.head}${nowT ? `\n${nowT.split('\n')[0]}` : ''}`;
   if (!kb) { const uu = await getUser(env, chat); kb = replyKb(env, lang, place && NAMES[place[4]] ? place[4] : (uu && NAMES[uu.region] ? uu.region : 'UZ')); }
   // the place on the interactive map: its district and region outlined (Uzbekistan, Kazakhstan, Kyrgyzstan)
   const rid_ = ['UZ', 'KZ', 'KG'].find(c => { const A = { UZ: [55.9, 73.2, 37.1, 45.6], KZ: [46.4, 87.4, 40.5, 55.5], KG: [69.2, 80.3, 39.1, 43.3] }[c]; return lon >= A[0] && lon <= A[1] && lat >= A[2] && lat <= A[3]; });
   if (rid_ && chat > 0 && !(kbOver && kbOver.keyboard)) {
     const u = `${base(env)}/live.html?r=${rid_}&l=${lang}&lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}&n=${encodeURIComponent(String(nm).replace(/<[^>]+>/g, '').slice(0, 40))}`;
     // (the menu keyboard under the input field is persistent: it stays while this message carries the map button)
-    return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }], [phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)]] } });
+    const mk = { inline_keyboard: [[{ text: (MAPB[lang] || MAPB.ru), web_app: { url: u } }], [phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)]] };
+    if (await sendCard(env, chat, cardD, cardQ, capC, mk)) return true;
+    return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: mk });
   }
-  if (chat > 0) return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: { inline_keyboard: [[phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)]] } });
+  const mk2 = chat > 0 ? { inline_keyboard: [[phBtn(lang, lat, lon)], [pvBtn(lang, lat, lon)]] } : kb;
+  if (await sendCard(env, chat, cardD, cardQ, capC, mk2)) return true;
+  if (chat > 0) return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', reply_markup: mk2 });
   return tg(env, 'sendMessage', { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) });
+}
+/* ---------- 🏙 the forecast of a place as a picture: its city in the season and weather of today behind (Workers AI), the forecast on it.
+   The bot writes an SVG (/card/<id>.svg), wsrv.nl turns it into a JPEG, Telegram fetches that: no drawing on the bot's own (tiny) CPU budget. ---------- */
+const BOT_ORIGIN = 'https://osmon-bot.vafoev-otabek97.workers.dev';
+const xe = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const noEmo = s => String(s || '').replace(/<[^>]+>/g, '').replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+const icKey = e => /⛈/.test(e) ? 'storm' : /🌫/.test(e) ? 'fog' : /❄|🌨/.test(e) ? 'snow' : /💧|🌧|☔|🌦/.test(e) ? 'rain' : /⛅|🌤|🌥/.test(e) ? 'part' : /☁/.test(e) ? 'cloud' : /☀|🌞/.test(e) ? 'sun' : /🌙/.test(e) ? 'moon' : 'part';
+const wmoKey = (c, day) => c >= 95 ? 'storm' : c >= 85 || (c >= 71 && c <= 77) ? 'snow' : c >= 51 ? 'rain' : c >= 45 ? 'fog' : c === 3 ? 'cloud' : c === 2 ? 'part' : day ? 'sun' : 'moon';
+function svgIcon(k, x, y, r) {
+  const sun = (cx, cy, rr) => `<circle cx="${cx}" cy="${cy}" r="${rr}" fill="#ffc93c"/>` + [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<line x1="${(cx + Math.cos(a) * rr * 1.35).toFixed(1)}" y1="${(cy + Math.sin(a) * rr * 1.35).toFixed(1)}" x2="${(cx + Math.cos(a) * rr * 1.75).toFixed(1)}" y2="${(cy + Math.sin(a) * rr * 1.75).toFixed(1)}" stroke="#ffc93c" stroke-width="${(rr * 0.22).toFixed(1)}" stroke-linecap="round"/>`; }).join('');
+  const cloud = (cx, cy, rr, col) => `<g fill="${col}"><circle cx="${cx - rr * 0.55}" cy="${cy + rr * 0.15}" r="${rr * 0.55}"/><circle cx="${cx}" cy="${cy - rr * 0.2}" r="${rr * 0.75}"/><circle cx="${cx + rr * 0.6}" cy="${cy + rr * 0.1}" r="${rr * 0.6}"/><rect x="${cx - rr * 0.55}" y="${cy + rr * 0.1}" width="${rr * 1.15}" height="${rr * 0.6}"/></g>`;
+  if (k === 'sun') return sun(x, y, r * 0.6);
+  if (k === 'moon') return `<circle cx="${x}" cy="${y}" r="${r * 0.6}" fill="#f4e7b5"/><circle cx="${x + r * 0.28}" cy="${y - r * 0.2}" r="${r * 0.5}" fill="#0c1626"/>`;
+  if (k === 'part') return sun(x - r * 0.35, y - r * 0.3, r * 0.42) + cloud(x + r * 0.15, y + r * 0.15, r * 0.62, '#eef2f7');
+  if (k === 'fog') return [0, 1, 2].map(j => `<line x1="${x - r * 0.75}" y1="${y - r * 0.4 + j * r * 0.4}" x2="${x + r * 0.75}" y2="${y - r * 0.4 + j * r * 0.4}" stroke="#d6dde6" stroke-width="${r * 0.16}" stroke-linecap="round"/>`).join('');
+  let s = cloud(x, y - r * 0.15, r * 0.7, k === 'cloud' ? '#e3e9f0' : '#cfd8e3');
+  if (k === 'rain') s += [-1, 0, 1].map(i => `<line x1="${x + i * r * 0.38}" y1="${y + r * 0.45}" x2="${x + i * r * 0.38 - r * 0.12}" y2="${y + r * 0.8}" stroke="#5fb0ff" stroke-width="${r * 0.14}" stroke-linecap="round"/>`).join('');
+  if (k === 'snow') s += [-1, 0, 1].map(i => `<circle cx="${x + i * r * 0.38}" cy="${y + r * 0.62}" r="${r * 0.11}" fill="#ffffff"/>`).join('');
+  if (k === 'storm') s += `<path d="M${x + r * 0.05} ${y + r * 0.3} L${x - r * 0.25} ${y + r * 0.75} L${x + r * 0.02} ${y + r * 0.7} L${x - r * 0.12} ${y + r * 1.05} L${x + r * 0.32} ${y + r * 0.55} L${x + r * 0.05} ${y + r * 0.58} Z" fill="#ffd23c"/>`;
+  return s;
+}
+function wrapT(s, maxw, size, bold, maxl) {  // the lines of a text in a width (DejaVu Sans: ~0.55 em a letter, bold ~0.6)
+  const cw = size * (bold ? 0.62 : 0.56), out = []; let line = '';
+  for (const w of String(s).split(' ')) { const t = line ? line + ' ' + w : w; if ([...t].length * cw > maxw && line) { out.push(line); line = w; } else line = t; }
+  if (line) out.push(line);
+  if (out.length > maxl) { out.length = maxl; out[maxl - 1] = out[maxl - 1].replace(/\s*\S*$/, '') + '…'; }
+  return out;
+}
+const tColor = t => { const S = [[-25, [110, 64, 190]], [-10, [70, 110, 220]], [0, [90, 180, 235]], [8, [110, 200, 140]], [16, [235, 210, 70]], [25, [245, 140, 50]], [35, [220, 60, 45]]];
+  if (t <= S[0][0]) return `rgb(${S[0][1]})`; const i = S.findIndex(q => t <= q[0]); if (i < 0) return `rgb(${S[S.length - 1][1]})`;
+  const a = (t - S[i - 1][0]) / (S[i][0] - S[i - 1][0]); return `rgb(${[0, 1, 2].map(k => Math.round(S[i - 1][1][k] + (S[i][1][k] - S[i - 1][1][k]) * a))})`; };
+function cardSvg(d, bg) {
+  const W = 1080, F = 'font-family="DejaVu Sans, Verdana, sans-serif"', T = (s, x, y, sz, col, o = {}) => `<text x="${x}" y="${y}" ${F} font-size="${sz}" font-weight="${o.b ? 700 : 400}" fill="${col}"${o.a ? ` text-anchor="${o.a}"` : ''}${o.op ? ` fill-opacity="${o.op}"` : ''}${o.sh ? ' filter="url(#sh)"' : ''}>${xe(s)}</text>`;
+  const br = d.brief.map(b => wrapT(b, W - 160, 31, false, 2)), nb = br.reduce((s, l) => s + l.length, 0);
+  let y = 560, body = '';
+  body += T(d.bh, 56, y, 34, '#ffd29c', { b: 1 }); y += 18;
+  for (const L of br) { body += `<circle cx="68" cy="${y + 30}" r="6" fill="#f08a24"/>`; L.forEach((l, i) => { body += T(l, 90, y + 41 + i * 40, 31, '#ffffff'); }); y += 46 * L.length; }
+  y += 26;
+  const cw = (W - 112 - 24) / 2;
+  d.two.forEach((o, k) => { const x = 56 + k * (cw + 24);
+    body += `<rect x="${x}" y="${y}" width="${cw}" height="236" rx="22" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"/>`;
+    body += T(o.w, x + 26, y + 50, 29, '#ffd29c', { b: 1 }) + svgIcon(o.ic, x + cw - 56, y + 46, 40) + T(o.t, x + 26, y + 104, 44, '#ffffff', { b: 1 }) + T(wrapT(o.pr, cw - 52, 26, false, 1)[0], x + 26, y + 144, 26, '#ffffff', { op: 0.85 });
+    body += T(wrapT(o.umb, cw - 52, 23, false, 1)[0], x + 26, y + 182, 23, '#ffffff', { op: 0.75 }) + T(wrapT(o.wear, cw - 52, 23, false, 1)[0], x + 26, y + 214, 23, '#ffffff', { op: 0.75 }); });
+  y += 236 + 46;
+  body += T(d.nh, 56, y, 34, '#ffd29c', { b: 1 }); y += 22;
+  const lo = Math.min(...d.list.map(r => r.lo)), hi = Math.max(...d.list.map(r => r.hi)), sp = Math.max(1, hi - lo), bx0 = 470, bw = 250;
+  d.list.forEach((r, j) => { const yy = y + 16 + j * 58;
+    if (j % 2 === 0) body += `<rect x="40" y="${yy}" width="${W - 80}" height="56" rx="14" fill="#ffffff" fill-opacity="0.05"/>`;
+    body += T(r.wd, 64, yy + 38, 28, '#ffffff', { b: 1 }) + svgIcon(r.ic, 300, yy + 28, 23) + T(r.lot, bx0 - 16, yy + 38, 27, '#ffffff', { a: 'end', op: 0.75 });
+    let a0 = bx0 + bw * (r.lo - lo) / sp, a1 = bx0 + bw * (r.hi - lo) / sp; if (a1 - a0 < 12) a1 = a0 + 12;
+    body += `<defs><linearGradient id="t${j}" x1="0" x2="1"><stop offset="0" stop-color="${tColor(r.lo)}"/><stop offset="1" stop-color="${tColor(r.hi)}"/></linearGradient></defs>`;
+    body += `<rect x="${bx0}" y="${yy + 23}" width="${bw}" height="10" rx="5" fill="#ffffff" fill-opacity="0.12"/><rect x="${a0.toFixed(1)}" y="${yy + 23}" width="${(a1 - a0).toFixed(1)}" height="10" rx="5" fill="url(#t${j})"/>`;
+    body += T(r.hit, bx0 + bw + 16, yy + 38, 27, '#ffffff', { b: 1 });
+    if (r.p >= 20) { const col = r.snow ? '#c9a7ff' : '#5fb0ff';
+      body += `<path d="M${W - 258} ${yy + 30} L${W - 250} ${yy + 14} L${W - 242} ${yy + 30} A8 8 0 1 1 ${W - 258} ${yy + 30} Z" fill="${col}"/>` + T(`${r.p}%`, W - 230, yy + 38, 27, col, { b: 1 }) + (r.mm ? T(r.mm, W - 60, yy + 38, 25, '#ffffff', { a: 'end', op: 0.7 }) : '');
+    } else body += T('—', W - 230, yy + 38, 27, '#ffffff', { op: 0.35 }); });
+  y += 16 + d.list.length * 58 + 50;
+  body += wrapT(d.note, W - 112, 22, false, 2).map((l, i) => T(l, W / 2, y + i * 30, 22, '#ffffff', { a: 'middle', op: 0.5 })).join(''); y += 64;
+  body += T(d.foot, W / 2, y, 24, '#ffd29c', { a: 'middle', b: 1, op: 0.8 }); const H = y + 40;
+  const head = T(d.name, 56, 112, d.name.length > 16 ? 52 : 66, '#ffffff', { b: 1, sh: 1 }) + T(d.sub, 58, 162, 30, '#ffffff', { op: 0.9, sh: 1 }) +
+    (d.now ? T(d.now.t, W - 56, 140, 120, '#ffffff', { b: 1, a: 'end', sh: 1 }) + svgIcon(d.now.ic, W - 56 - [...d.now.t].length * 72 - 60, 98, 52) + T(d.now.txt, W - 56, 196, 30, '#ffffff', { b: 1, a: 'end', sh: 1 }) + T(d.now.more, W - 56, 238, 24, '#ffffff', { a: 'end', op: 0.9, sh: 1 }) : '');
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<defs><filter id="sh" x="-5%" y="-20%" width="110%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity="0.6"/></filter>
+<linearGradient id="gt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08101e" stop-opacity="0.65"/><stop offset="1" stop-color="#08101e" stop-opacity="0"/></linearGradient>
+<linearGradient id="gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c1626" stop-opacity="0"/><stop offset="0.55" stop-color="#0c1626" stop-opacity="0.82"/><stop offset="1" stop-color="#0c1626"/></linearGradient></defs>
+<rect width="${W}" height="${H}" fill="#0c1626"/>
+${bg ? `<image x="0" y="0" width="${W}" height="1080" preserveAspectRatio="xMidYMid slice" href="data:image/jpeg;base64,${bg}" xlink:href="data:image/jpeg;base64,${bg}"/>` : `<rect width="${W}" height="1080" fill="#26476b"/>`}
+<rect width="${W}" height="320" fill="url(#gt)"/><rect y="420" width="${W}" height="480" fill="url(#gb)"/><rect y="899" width="${W}" height="${H - 899}" fill="#0c1626"/>
+${head}${body}</svg>`;
+}
+async function cardBg(env, q) {  // the city's picture for this season, weather and time of day: made once, kept in the database
+  if (!env.DB) return null;
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS bgimg (k TEXT PRIMARY KEY, b TEXT, t INTEGER)').run();
+  const north = q.lat >= 0, m = q.month, idx = Math.floor(((north ? m : (m + 5) % 12 + 1) % 12) / 3);  // 0 winter, 1 spring, 2 summer, 3 autumn
+  let season = Math.abs(q.lat) < 23 ? 'tropical' : ['winter', 'spring', 'summer', 'autumn'][idx];
+  const SE = { winter: q.t <= 2 ? 'winter, snow on roofs, streets and trees' : 'mild winter, bare trees, no snow', spring: 'spring, fresh green trees and blossoms', summer: 'summer, lush green trees',
+    autumn: q.t <= 1 ? 'late autumn, frosty air, a light dusting of first snow, last yellow leaves' : 'autumn, golden and orange leaves', tropical: 'tropical, palm trees and lush greenery' }[season];
+  if (season === 'autumn' && q.t <= 1) season = 'lateaut';
+  const wx = wmoKey(q.code, 1), WXT = { sun: 'clear blue sky, soft sunlight', part: 'partly cloudy sky', cloud: 'overcast grey sky', rain: 'rain, wet reflective streets', snow: 'falling snow', fog: 'misty fog', storm: 'dramatic storm clouds' }[wx];
+  const key = `${(q.city + '-' + q.country).toLowerCase().replace(/[^a-z0-9]+/g, '-')}_${season}_${wx}_${q.day ? 'd' : 'n'}`;
+  const row = await env.DB.prepare('SELECT b FROM bgimg WHERE k = ?1').bind(key).first();
+  if (row && row.b) return row.b;
+  if (!env.AI) return null;
+  const prompt = `Beautiful photorealistic view of ${q.city}, ${q.country}: its famous landmarks and characteristic architecture, ${SE}, ${WXT}, ${q.day ? 'daytime' : 'at night, warm city lights glowing'}. Professional travel photography, wide angle, natural colours, sharp details, no text, no watermark, no logo.`;
+  const r = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt, steps: 6 }).catch(e => { console.log('bg ai', e && e.message); return null; });
+  const b = r && r.image; if (!b) return null;
+  await env.DB.prepare('INSERT OR REPLACE INTO bgimg (k, b, t) VALUES (?1, ?2, ?3)').bind(key, b, Date.now()).run();
+  return b;
+}
+async function sendCard(env, chat, d, q, caption, markup) {  // → the Telegram result, or null when the picture could not be made
+  try {
+    const bg = await cardBg(env, q);
+    await env.DB.prepare('CREATE TABLE IF NOT EXISTS cards (id TEXT PRIMARY KEY, s TEXT, t INTEGER)').run();
+    const id = [...crypto.getRandomValues(new Uint8Array(9))].map(v => v.toString(16).padStart(2, '0')).join('');
+    await env.DB.prepare('DELETE FROM cards WHERE t < ?1').bind(Date.now() - 6 * 3600e3).run();
+    await env.DB.prepare('INSERT INTO cards (id, s, t) VALUES (?1, ?2, ?3)').bind(id, cardSvg(d, bg), Date.now()).run();
+    const url = `https://wsrv.nl/?url=${encodeURIComponent(`${BOT_ORIGIN}/card/${id}.svg`)}&output=jpg&q=88`;
+    const r = await tg(env, 'sendPhoto', { chat_id: chat, photo: url, caption: caption.slice(0, 1024), parse_mode: 'HTML', ...(markup ? { reply_markup: markup } : {}) });
+    if (!r.ok) console.log('card', r.description);
+    return r.ok ? r : null;
+  } catch (e) { console.log('card', e && e.stack); return null; }
 }
 /* ---------- 🖼 the 15 days of a place as one picture (Full HD, drawn by QuickChart from the same numbers as the text) ---------- */
 const PHX = { ru: { btn: '🖼 Фото прогноза на 15 дней', t: '{n} · прогноз на 15 дней', p: 'Вероятность осадков, %', hi: 'Днём, °C', lo: 'Ночью, °C', src: 'Osmon · модели ECMWF, NOAA, DWD · t.me/ObHavo_ECMWF_bot', fail: '😔 Не удалось нарисовать картинку, попробуйте позже.' },
