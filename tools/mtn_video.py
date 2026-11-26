@@ -116,7 +116,7 @@ def draw(job):
                                               fc=c if show else '#f3f5f7', ec=PV.ORANGE if (j in s['best'] and show) else ('#d5dbe1' if c == '#ffffff' else 'none'), lw=2.2 if j in s['best'] else 0.6))
             if show:
                 t = f"{d['sn']:.0f} {X['cm']}" if d['sn'] >= 1 else f"{max(d['rn'], d['pr']):.0f} {X['mm']}" if max(d['rn'], d['pr']) >= 1 else f"{PV_deg(d['tmax'])}"
-                fig.text(x0 + cw * (j + 0.5), yy + rh / 2, t, fontsize=10.5, fontweight='bold', color='white' if (d['sn'] >= 6 or max(d['rn'], d['pr']) >= 8) else PV.INK, ha='center', va='center')
+                fig.text(x0 + cw * (j + 0.5), yy + rh / 2, t, fontsize=10.5, fontweight='bold', color='white' if (d['sn'] >= 12 or max(d['rn'], d['pr']) >= 15) else PV.INK, ha='center', va='center')
     fig.patches.append(Rectangle((x0 + cw * k, top - len(C['spots']) * rh), cw, len(C['spots']) * rh, transform=fig.transFigure, fill=False, ec=PV.NAVY, lw=2.2))
     if fr.get('card') == 'intro':
         a = fr['a']; fig.patches.append(Rectangle((0, MAP[1]), 1, MAP[3], transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
