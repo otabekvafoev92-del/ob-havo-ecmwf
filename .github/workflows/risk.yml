@@ -1,0 +1,26 @@
+name: Dangerous weather, 15 days (video)
+# ECMWF ensemble probabilities (gusts, heavy precipitation) with frost, heat, snow and thunderstorms, day by day (tools/risk_video.py); after each site run; kept on the "risk" branch
+on:
+  workflow_run: {workflows: ['Update ECMWF forecast'], types: [completed]}
+  workflow_dispatch: {}
+permissions: {contents: write, actions: read}
+concurrency: {group: risk, cancel-in-progress: true}
+jobs:
+  v:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          pip install -q numpy scipy matplotlib pyproj qrcode requests eccodes pillow
+          id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
+          timeout 600 gh run download $id -n npz -D data
+          python -u -W ignore tools/risk_video.py data risk ru,uz
+          cd risk && git init -q && git checkout -q -b risk && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "risk $(date -u +%F' '%H:%M)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" risk
