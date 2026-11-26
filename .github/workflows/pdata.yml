@@ -1,6 +1,8 @@
 name: Forecast data for Uzbekistan (cut)
 # the multimodel prob.npz and wx.npz of the last site run, cut to Uzbekistan, kept on the "pdata" branch (for drawing tests)
-on: {workflow_dispatch: {}}
+on:
+  workflow_dispatch:
+    inputs: {box: {default: '50 80 32 49'}, branch: {default: pdata}}
 permissions: {contents: write, actions: read}
 jobs:
   d:
@@ -11,8 +13,8 @@ jobs:
           pip install -q numpy
           id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
           gh run download $id -n npz -D npz && ls -la npz
-          mkdir pd && for f in npz/*.npz; do python tools/crop_npz.py $f pd/$(basename $f); done; ls -la pd
-          cd pd && git init -q && git checkout -q -b pdata && git add -A
+          mkdir pd && for f in npz/*.npz; do python tools/crop_npz.py $f pd/$(basename $f) ${{ inputs.box }}; done; ls -la pd
+          cd pd && git init -q && git checkout -q -b ${{ inputs.branch }} && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm data
-          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" pdata
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ${{ inputs.branch }}
         env: {GH_TOKEN: '${{ github.token }}'}

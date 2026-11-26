@@ -6,19 +6,20 @@ from shapely.geometry import shape
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from names_current import fix_dict_place
 src, out = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+TOL, MINA = 0.012, 0.0008  # ~1 km: coasts, islands and borders sharp in a close-up too
 
 
 def coords(geom, tol):
     g = geom.simplify(tol, preserve_topology=True)
     polys = [g] if g.geom_type == 'Polygon' else list(getattr(g, 'geoms', []))
-    return [[[round(x, 2), round(y, 2)] for x, y in p.exterior.coords] for p in polys if p.geom_type == 'Polygon' and not p.is_empty and p.area > 0.02]
+    return [[[round(x, 3), round(y, 3)] for x, y in p.exterior.coords] for p in polys if p.geom_type == 'Polygon' and not p.is_empty and p.area > MINA]
 
 
 countries = {}
 for f in json.load(open(src / 'ne_10m_admin_0_countries.geojson'))['features']:
     p = f['properties']; iso = p.get('ISO_A2_EH') or p.get('ISO_A2')
     if not iso or iso == '-99' or p['NAME_EN'] == 'Baikonur': continue
-    rings = coords(shape(f['geometry']), 0.08)
+    rings = coords(shape(f["geometry"]), TOL)
     c = countries.setdefault(iso, {'name': p['NAME_EN'], 'ru': p.get('NAME_RU'), 'tr': p.get('NAME_TR'), 'rings': [], 'cont': p.get('CONTINENT')})
     c['rings'] += rings
 places = []
