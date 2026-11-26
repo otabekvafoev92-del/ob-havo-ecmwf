@@ -70,7 +70,8 @@ def fetch_points(lats, lons, hours=72):
 def get_data(prev):
     if prev and pathlib.Path(prev).exists():
         z = np.load(prev, allow_pickle=True)
-        if time.time() - float(z['fetched']) < 6 * 3600: print('grid from the last fetch', flush=True); return {k: z[k] for k in z.files}
+        same = z['g_us_aqi'].shape[:2] == (len(LATS), len(LONS))  # the grid of the last fetch is the same as now
+        if same and time.time() - float(z['fetched']) < 6 * 3600: print('grid from the last fetch', flush=True); return {k: z[k] for k in z.files}
     gl, go = np.meshgrid(LATS, LONS, indexing='ij'); t0 = time.time()
     G, times = fetch_points(gl.ravel(), go.ravel())
     T, _ = fetch_points(np.array([t[2] for t in PV.TOWNS]), np.array([t[3] for t in PV.TOWNS]))
