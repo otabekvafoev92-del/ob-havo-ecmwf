@@ -339,7 +339,7 @@ function outlookKb(its, lang, cur) {
 const WKX = {
   ru: { btn: '📆 Неделя {n} · {a}–{b} по дням', head: 'неделя {n} · {a}–{b}', temp: 'Температура за неделю: от {lo} ночью до {hi} днём', wet: 'Осадки вероятны {n} дн.: {d}', mm: ', всего ~{mm} мм', dry: 'Неделя без заметных осадков',
         part: 'Прогноз по дням есть до {last}; дальше — в «📅 Недели и месяцы» (осадки и температура к норме).', far: 'Прогноз по дням пока есть только до {last}. Для этой недели смотрите «📅 Недели и месяцы».', pick: '📆 Выберите неделю — пришлю погоду по дням:' },
-  uz: { btn: '📆 Hafta {n} · {a}–{b} kunma-kun', head: '{n}-hafta · {a}–{b}', temp: 'Hafta harorati: kechasi {lo} dan kunduzi {hi} gacha', wet: 'Yog‘in ehtimoli {n} kun: {d}', mm: ', jami ~{mm} mm', dry: 'Hafta sezilarli yog‘insiz',
+  uz: { btn: '📆 Hafta {n} · {a}–{b} kunma-kun', head: 'hafta {n} · {a}–{b}', temp: 'Hafta harorati: kechasi {lo} dan kunduzi {hi} gacha', wet: 'Yog‘in ehtimoli {n} kun: {d}', mm: ', jami ~{mm} mm', dry: 'Hafta sezilarli yog‘insiz',
         part: 'Kunma-kun prognoz {last} gacha bor; keyingisi — «📅 Haftalar va oylar»da (yog‘in va harorat me’yorga nisbatan).', far: 'Kunma-kun prognoz hozircha {last} gacha. Bu hafta uchun «📅 Haftalar va oylar»ni ko‘ring.', pick: '📆 Haftani tanlang — kunma-kun ob-havoni yuboraman:' },
   en: { btn: '📆 Week {n} · {a}–{b} day by day', head: 'week {n} · {a}–{b}', temp: 'Temperature this week: from {lo} at night to {hi} by day', wet: 'Precipitation likely on {n} days: {d}', mm: ', about {mm} mm in all', dry: 'A week without notable precipitation',
         part: 'The day-by-day forecast goes up to {last}; after that — «📅 Weeks and months» (precipitation and temperature against the normal).', far: 'The day-by-day forecast only goes up to {last} so far. For this week see «📅 Weeks and months».', pick: '📆 Choose a week — I will send the weather day by day:' } };
@@ -1401,7 +1401,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   if (range) {  // one week (or any days asked for), day by day
     const WX = WKX[lang] || WKX.ru, [a, b] = range, Dw = D.filter(x => x.d >= a && x.d <= b);
     const nm0 = place ? `${FLAG[place[4]] || '📍'} <b>${esc(pname(place, lang))}</b>` : `📍 <b>${lat.toFixed(2)}, ${lon.toFixed(2)}</b>`;
-    const head = `${nm0} · ${WX.head.replace('{n}', isoWeek(a)).replace('{a}', ddm(a)).replace('{b}', ddm(b))}`;
+    const head = `${nm0} · ${WX.head.replace('{n}', isoKey(a)).replace('{a}', ddm(a)).replace('{b}', ddm(b))}`;
     if (!Dw.length) return tg(env, 'sendMessage', { chat_id: chat, text: `${head}\n\n${WX.far.replace('{last}', ddm(D[D.length - 1].d))}`, parse_mode: 'HTML', reply_markup: weeksKb(lang) });
     const wetW = Dw.filter(wet), mm = Dw.reduce((s_, x) => s_ + (x.mm || 0), 0), lo = Math.min(...Dw.map(x => x.lo)), hi = Math.max(...Dw.map(x => x.hi));
     const brief = [WX.temp.replace('{lo}', deg(lo)).replace('{hi}', deg(hi)), wetW.length ? WX.wet.replace('{n}', wetW.length).replace('{d}', wetW.map(x => wd(x.d)).join(', ')) + (mm >= 1 ? WX.mm.replace('{mm}', Math.round(mm)) : '') : WX.dry];
