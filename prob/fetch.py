@@ -194,6 +194,63 @@ class IconEps:
         return [[np.maximum(c - o, 0) for c, o in zip(cur[m], old[m])] for m in cur if m in old]
 
 
+class Geps:
+    """Canada's GEPS (21 members, 0.5°, MSC Datamart): one file per lead time holds every member's precipitation since the start;
+    3-hourly output up to 192 h, then 6-hourly. Fetched ahead in a thread (the files are a few MB each)."""
+    BASE = 'https://dd.weather.gc.ca'
+    def __init__(self, run, grids):
+        self.run = run; self.grids = grids; self.prev = {}; self.fut = {}; self.ok = True
+        import concurrent.futures as cf_; self.pool = cf_.ThreadPoolExecutor(2)
+
+    def url(self, step):
+        d, h = self.run.strftime('%Y%m%d'), self.run.strftime('%H')
+        return f'{self.BASE}/{d}/WXO-DD/ensemble/geps/grib2/raw/{h}/{step:03d}/CMC_geps-raw_APCP_SFC_0_latlon0p5x0p5_{d}{h}_P{step:03d}_allmbrs.grib2'
+
+    def _load(self, step):
+        raw = get(self.url(step), tries=3)
+        if not raw: return None
+        import tempfile, os
+        out = {}
+        with tempfile.NamedTemporaryFile(suffix='.grib2', delete=False) as f: f.write(raw); fn = f.name
+        try:
+            with open(fn, 'rb') as fh:
+                while True:
+                    g = eccodes.codes_grib_new_from_file(fh)
+                    if g is None: break
+                    try:
+                        m = eccodes.codes_get(g, 'perturbationNumber') if eccodes.codes_is_defined(g, 'perturbationNumber') else len(out)
+                        Ni, Nj = eccodes.codes_get(g, 'Ni'), eccodes.codes_get(g, 'Nj')
+                        G = dict(Ni=Ni, Nj=Nj, lo1=eccodes.codes_get(g, 'longitudeOfFirstGridPointInDegrees'), la1=eccodes.codes_get(g, 'latitudeOfFirstGridPointInDegrees'),
+                                 di=eccodes.codes_get(g, 'iDirectionIncrementInDegrees'), dj=eccodes.codes_get(g, 'jDirectionIncrementInDegrees'),
+                                 v=eccodes.codes_get_values(g).astype(np.float32).reshape(Nj, Ni))
+                        if G['la1'] < 0:  # south to north: flip to the north-first layout regrid() expects
+                            G['v'] = G['v'][::-1]; G['la1'] = G['la1'] + (Nj - 1) * G['dj']
+                        out[int(m)] = [regrid(G, G_) for G_ in self.grids]
+                    finally: eccodes.codes_release(g)
+        finally: os.unlink(fn)
+        return out or None
+
+    def ahead(self, step):
+        if self.ok and step not in self.fut and step not in self.prev: self.fut[step] = self.pool.submit(self._load, step)
+
+    def fields(self, step):
+        if not self.ok: return None
+        if step not in self.prev:
+            f = self.fut.pop(step, None)
+            try: self.prev[step] = f.result() if f else self._load(step)
+            except Exception as e: log('geps', step, e); self.prev[step] = None
+        self.prev = {k: v for k, v in self.prev.items() if k >= step - 12}
+        return self.prev.get(step)
+
+    def amounts(self, step, win):
+        cur = self.fields(step)
+        if not cur: return None
+        if step == win: return list(cur.values())
+        old = self.fields(step - win)
+        if not old: return None
+        return [[np.maximum(c - o, 0) for c, o in zip(cur[m], old[m])] for m in cur if m in old]
+
+
 UKMO = 'https://met-office-atmospheric-model-data.s3.eu-west-2.amazonaws.com/global-deterministic-10km'
 
 
@@ -255,16 +312,18 @@ def main():
     # 3-hour windows while the models give 3-hourly output (ECMWF IFS ENS/HRES, GEFS, GFS, ICON: up to 144 h), then 6-hour windows
     steps = [x for x in range(3, min(a.step3_until, a.max_step) + 1, 3)] + [x for x in range(6, a.max_step + 1, 6) if x > a.step3_until]
     wins = [s - (steps[i - 1] if i else 0) for i, s in enumerate(steps)]
-    ENS = ['ifs', 'aifs', 'gefs', 'iconeps']; DET = ['hres', 'aifss', 'gfs', 'icon', 'ukmo']
+    ENS = ['ifs', 'aifs', 'gefs', 'iconeps', 'geps']; DET = ['hres', 'aifss', 'gfs', 'icon', 'ukmo']
     GRIDS = [GRID] + ([GLOBAL] if a.glob else [])  # regional maps (0.25°) and, for the globe, the whole world (0.5°)
     Z = lambda G_, dt_=np.uint8: np.zeros((len(steps), G_['H'], G_['W']), dt_)
     cnt = [{k: Z(G_) for k in ENS} for G_ in GRIDS]; det = [Z(G_) for G_ in GRIDS]; amt = [Z(G_) for G_ in GRIDS]
     nmem = {k: np.zeros(len(steps), np.int16) for k in ENS}; avail = np.zeros((len(steps), len(DET)), bool)
     prev = {}
-    icon = Icon(run, GRIDS); ieps = IconEps(run, GRIDS)
+    icon = Icon(run, GRIDS); ieps = IconEps(run, GRIDS); geps = Geps(run, GRIDS)
     pool = cf.ThreadPoolExecutor(a.workers)
     for si, s in enumerate(steps):
         win = wins[si]; jobs = []
+        geps.ahead(s)
+        if si + 1 < len(steps): geps.ahead(steps[si + 1])
         for j in ecmwf_jobs(run, 'ifs', 'enfo', 'ef', s, 1000): jobs.append(('ifs', j))
         for typ in ('cf', 'pf'):
             for j in ecmwf_jobs(run, 'aifs-ens', 'enfo', typ, s, 1): jobs.append(('aifs', j))
@@ -310,6 +369,11 @@ def main():
             nmem['iconeps'][si] = len(ea)
             for amount in ea:
                 for gi in range(len(GRIDS)): cnt[gi]['iconeps'][si] += (amount[gi] >= THR); sums[gi]['iconeps'] += amount[gi]
+        ga = geps.amounts(s, win)  # Canada GEPS: 3-hourly to 192 h, then 6-hourly (a window it has no output for is left out)
+        if ga:
+            nmem['geps'][si] = len(ga)
+            for amount in ga:
+                for gi in range(len(GRIDS)): cnt[gi]['geps'][si] += (amount[gi] >= THR); sums[gi]['geps'] += amount[gi]
         have = [k for k in ENS if nmem[k][si]]
         for gi in range(len(GRIDS)):
             mean = sum(sums[gi][k] / nmem[k][si] for k in have) / max(1, len(have))

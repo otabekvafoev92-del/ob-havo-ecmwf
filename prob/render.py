@@ -56,7 +56,7 @@ LOW_BAR = '#22304a'
 BAR_COLORS = [LOW_BAR] + COLORS
 SNOW_BAR = [LOW_BAR] + SNOW
 LABELS = ['10–30 %', '30–50 %', '50–70 %', '70–90 %', '90–100 %']
-ENS_LABEL = {'ifs': 'ECMWF IFS ENS', 'aifs': 'ECMWF AIFS ENS', 'gefs': 'NOAA GEFS', 'iconeps': 'DWD ICON-EPS'}
+ENS_LABEL = {'ifs': 'ECMWF IFS ENS', 'aifs': 'ECMWF AIFS ENS', 'gefs': 'NOAA GEFS', 'iconeps': 'DWD ICON-EPS', 'geps': 'Canada GEPS'}
 DET_LABEL = {'hres': 'ECMWF IFS', 'aifss': 'ECMWF AIFS', 'gfs': 'NOAA GFS', 'icon': 'DWD ICON', 'ukmo': 'UK Met Office'}
 HEAVY = '#ffd166'
 STORM = '#7b3fb8'  # thunderstorms (hatched)
@@ -127,7 +127,7 @@ def probability(D):
     if 'P' in D:  # already combined (browser demo)
         nm, dv = D['n_members'], D['det_avail']
         used = [ENS_LABEL[k] for i, k in enumerate(D['ens_names']) if nm[:, i].max() > 0] + [DET_LABEL[k] for i, k in enumerate(D['det_names']) if dv[:, i].any()]
-        order = ['ECMWF IFS', 'ECMWF IFS ENS', 'ECMWF AIFS', 'ECMWF AIFS ENS', 'NOAA GFS', 'NOAA GEFS', 'DWD ICON', 'DWD ICON-EPS', 'UK Met Office']
+        order = ['ECMWF IFS', 'ECMWF IFS ENS', 'ECMWF AIFS', 'ECMWF AIFS ENS', 'NOAA GFS', 'NOAA GEFS', 'DWD ICON', 'DWD ICON-EPS', 'Canada GEPS', 'UK Met Office']
         return D['P'].astype(np.float32), [m for m in order if m in used], int(nm.max(0).sum() + dv.any(0).sum())
     S, H, W = D['amt'].shape
     num = np.zeros((S, H, W), np.float32); den = np.zeros((S, 1, 1), np.float32)
@@ -148,7 +148,7 @@ def probability(D):
         ok = (nd > 0)[:, None, None]
         num += np.where(ok, cnt / np.maximum(nd, 1)[:, None, None], 0); den += ok
     P = 100 * num / np.maximum(den, 1)
-    order = ['ECMWF IFS', 'ECMWF IFS ENS', 'ECMWF AIFS', 'ECMWF AIFS ENS', 'NOAA GFS', 'NOAA GEFS', 'DWD ICON', 'DWD ICON-EPS', 'UK Met Office']
+    order = ['ECMWF IFS', 'ECMWF IFS ENS', 'ECMWF AIFS', 'ECMWF AIFS ENS', 'NOAA GFS', 'NOAA GEFS', 'DWD ICON', 'DWD ICON-EPS', 'Canada GEPS', 'UK Met Office']
     return P, [m for m in order if m in used], members
 
 
