@@ -849,7 +849,7 @@ async function sendCam(env, chat, lang) {  // the last 30 seconds of the Amirsoy
   const w = M.weather, L2 = lang === 'uz' ? 'uz' : 'ru';
   const cap = [`📹 <b>${{ ru: 'Амирсой', uz: 'Amirsoy', en: 'Amirsoy' }[lang]}</b> · ${M.cams.map(c => c[L2]).join(' · ')}`, `🕒 ${M.made.slice(8, 10)}.${M.made.slice(5, 7)} ${M.made.slice(11, 16)} ${{ ru: 'по Ташкенту', uz: 'Toshkent vaqti', en: 'Tashkent time' }[lang]}`,
     w ? `🌡 ${w.temperature_2m > 0 ? '+' : ''}${Math.round(w.temperature_2m)}° · 💨 ${Math.round(w.wind_speed_10m)} ${{ ru: 'м/с', uz: 'm/s', en: 'm/s' }[lang]}${w.snow_depth ? ` · ❄️ ${Math.round(w.snow_depth * 100)} ${{ ru: 'см снега', uz: 'sm qor', en: 'cm of snow' }[lang]}` : ''}` : '',
-    `<i>${{ ru: 'Видео обновляется каждые 30 минут', uz: 'Video har 30 daqiqada yangilanadi', en: 'Updated every 30 minutes' }[lang]}</i>`].filter(Boolean).join('\n');
+    `<i>${{ ru: 'Видео обновляется каждые 15 минут', uz: 'Video har 15 daqiqada yangilanadi', en: 'Updated every 15 minutes' }[lang]}</i>`].filter(Boolean).join('\n');
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   return tg(env, 'sendVideo', { chat_id: chat, video: `${EVRAW}/cam/amirsoy.mp4?v=${M.made}`, caption: cap, parse_mode: 'HTML', supports_streaming: true, width: 1280, height: 720 });
 }
@@ -1073,7 +1073,8 @@ async function subMenu(env, chat, lang, rid, which, u) {
   if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), ...(rid === 'UZ' ? [a('outlook')] : [])],
     [{ text: M.remind, callback_data: `NS:${lang}:days` }], [{ text: R.fog, callback_data: `FG:${lang}:${rid}` }, { text: '⏰ ' + R.fog.replace(/^\S+\s/, ''), callback_data: `NS:${lang}:fog` }]];
   else if (which === 'mtnair') rows = [[a('mtn'), a('air')], [a('alerts')]];
-  else rows = [[{ text: M.country, callback_data: `MA:${lang}:countries` }, a('cities')], [a('daily'), a('notif')], ...(rid === 'UZ' ? [[a('dyn'), a('accuracy')]] : [[a('accuracy')]]), [a('help'), a('reset')]];
+  else rows = [[{ text: { ru: '🌐 Язык · Til · Language', uz: '🌐 Til · Язык · Language', en: '🌐 Language · Til · Язык' }[lang] || '🌐 Язык', callback_data: `MA:${lang}:langpick` }],
+    [{ text: M.country, callback_data: `MA:${lang}:countries` }, a('cities')], [a('daily'), a('notif')], ...(rid === 'UZ' ? [[a('dyn'), a('accuracy')]] : [[a('accuracy')]]), [a('help'), a('reset')]];
   rows[1] && which === 'fc' && (rows[1][1] = { ...rows[1][1], text: M.photo });
   return tg(env, 'sendMessage', { chat_id: chat, text: M[which], parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
 }
@@ -2181,6 +2182,10 @@ async function handle(up, env) {
   if (kind === 'LQ') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].locAsk, reply_markup: locOnce(lang) });
   if (kind === 'P') return sendGuide(env, chat.id, lang);
   if (kind === 'M') { await saveUser(env, chat.id, { lang, mode: 'contact' }); return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].admAsk }); }
+  if (kind === 'LS') {  // the language from the settings: saved at once, the menu in the new language, the country and place kept
+    await saveUser(env, chat.id, { lang }); const uu = await getUser(env, chat.id), rr = uu && NAMES[uu.region] ? uu.region : 'UZ';
+    return tg(env, 'sendMessage', { chat_id: chat.id, text: { ru: '✅ Язык: русский', uz: '✅ Til: o‘zbekcha', en: '✅ Language: English' }[lang] + `\n${FLAG[rr] || ''} ${NAMES[rr][lang]} · ${T[lang].menu}`, reply_markup: replyKb(env, lang, rr) });
+  }
   if (kind === 'L') await saveUser(env, chat.id, { lang });
   if (kind === 'C') await saveUser(env, chat.id, { lang, region: id });
   if (kind === 'B' || kind === 'BH' || kind === 'BX') {  // personal daily forecast in the private chat
@@ -2366,6 +2371,7 @@ async function privateMsg(msg, env) {
     
     if (['rain', 'video', 'hourly', 'evv', 'traj'].includes(act)) return videoMenu(env, chat.id, lang, rid, u);  // one menu for all the videos
     if (act === 'fc' || act === 'mtnair' || act === 'settings' || act === 'more') return subMenu(env, chat.id, lang, rid, act === 'more' ? 'settings' : act, u);
+    if (act === 'langpick') return tg(env, 'sendMessage', { chat_id: chat.id, text: '🌐 Tilni tanlang · Выберите язык · Choose the language', reply_markup: langKb('LS') });
     if (act === 'csearch') return tg(env, 'sendMessage', { chat_id: chat.id, text: { ru: '🔎 Напишите название или начало названия страны или города, например: <b>Каз</b>, <b>Уз</b>, <b>Таш</b>, <b>Герм</b>, <b>Дуб</b>.', uz: '🔎 Davlat yoki shahar nomini yoki boshini yozing, masalan: <b>Qoz</b>, <b>O‘zb</b>, <b>Tosh</b>, <b>Germ</b>, <b>Dub</b>.', en: '🔎 Type a country or city name or its beginning, e.g. <b>Kaz</b>, <b>Uzb</b>, <b>Tash</b>, <b>Germ</b>, <b>Dub</b>.' }[lang], parse_mode: 'HTML' });
     if (act === 'wkpick') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     if (act === 'more') return moreMenu(env, chat.id, lang, rid);
