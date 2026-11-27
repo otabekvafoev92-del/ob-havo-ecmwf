@@ -75,7 +75,7 @@ async function load() {
   const mc = M.cities.find(c => c.ru === (M.main[LANG] || M.main.ru)) || M.cities[0];
   sel = { lat: mc.lat, lon: mc.lon, name: mc[LANG] || mc.ru, city: true };
   if (isFinite(+Q.get('lat')) && isFinite(+Q.get('lon')) && Q.get('lat')) {  // opened for a place (a district, a town): it is chosen and outlined
-    const la = +Q.get('lat'), lo = +Q.get('lon'), c = nearCity(la, lo); sel = { lat: la, lon: lo, name: Q.get('n') || (c ? (c[LANG] || c.ru) : TX.here), city: false }; }
+    const la = +Q.get('lat'), lo = +Q.get('lon'), c = M.cities.find(c => Math.hypot(c.lat - la, (c.lon - lo) * 0.75) < 0.1);  // the map is not laid out yet: by degrees, not pixels sel = { lat: la, lon: lo, name: Q.get('n') || (c ? (c[LANG] || c.ru) : TX.here), city: false }; }
   $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = '▶'; $('play').setAttribute('aria-label', TX.play); $('snd').textContent = '🔈'; $('snd').setAttribute('aria-label', TX.son);
   $('load').remove(); setup(); draw();
   // make the other hours' pictures and lines in the quiet moments, from the current hour on, so playing is smooth
