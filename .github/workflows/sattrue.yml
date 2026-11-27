@@ -1,15 +1,18 @@
 name: Satellite in true colour
-# the NASA GIBS passes (VIIRS 375 m, MODIS 250 m) of the last two days over Uzbekistan as a picture and a video (tools/sat_true.py); kept on the "sattrue" branch
+# the NASA GIBS passes (VIIRS 375 m, MODIS 250 m) over Uzbekistan and the Meteosat clouds up to now, as a picture and a video
+# (tools/sat_true.py); kept on the "sattrue" branch. GitHub's schedule skips runs when it is busy, so one job keeps going for ~5.8 hours
+# and makes a new video every 40 minutes itself; the schedule only starts the next such job (a new one replaces the old one).
 on:
   schedule:
-    - cron: '41 * * * *'
+    - cron: '11 */6 * * *'
+    - cron: '41 */3 * * *'   # a spare start if a job died: it simply takes over
   workflow_dispatch: {}
 permissions: {contents: write}
 concurrency: {group: sattrue, cancel-in-progress: true}
 jobs:
   s:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -17,7 +20,13 @@ jobs:
       - run: |
           (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
           pip install -q numpy scipy matplotlib pillow requests qrcode pyproj skyfield
-          python -u -W ignore tools/sat_true.py st ru,uz
-          cd st && git init -q && git checkout -q -b sattrue && git add -A
-          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "true colour $(date -u +%F' '%H:%M)"
-          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" sattrue
+          end=$(( $(date +%s) + 340*60 ))
+          while [ $(date +%s) -lt $end ]; do
+            t0=$(date +%s); rm -rf st
+            if timeout 1500 python -u -W ignore tools/sat_true.py st ru,uz; then
+              ( cd st && git init -q && git checkout -q -b sattrue && git add -A \
+                && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "true colour $(date -u +%F' '%H:%M)" \
+                && git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" sattrue ) || echo push failed
+            fi
+            left=$(( 2400 - ($(date +%s) - t0) )); [ $left -gt 0 ] && sleep $left
+          done

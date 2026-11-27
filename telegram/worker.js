@@ -988,7 +988,8 @@ async function satTick(env) {  // every 10 minutes: a new snapshot at EUMETSAT �
   const cap = await fetch('https://view.eumetsat.int/geoserver/msg_iodc/ir108/wms?service=WMS&request=GetCapabilities&version=1.3.0').then(r => r.ok ? r.text() : '').catch(() => '');
   const m = cap.match(/<Dimension[^>]*name="time"[^>]*default="([^"]+)"/), newest = m ? Date.parse(m[1]) : 0;
   const have = meta ? Date.parse(meta.last) : 0;
-  if (newest ? newest <= have : (meta && Date.now() - Date.parse(meta.made) < 35 * 60e3)) return;  // nothing newer yet
+  if (newest && newest <= have) return;  // nothing newer yet
+  if (meta && Date.now() - Date.parse(meta.made) < 40 * 60e3) return;  // a new video every 40 minutes
   if (Date.now() - +(await kv(env, 'sat_kick') || 0) < 7 * 60e3) return;  // asked a moment ago: it is being made
   await setKv(env, 'sat_kick', String(Date.now()));
   await ghApi(env, 'actions/workflows/sat.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main' }), headers: { 'content-type': 'application/json' } });
@@ -2243,10 +2244,14 @@ async function handle(up, env) {
   if (kind === 'CR' && NAMES[id]) { await saveUser(env, chat.id, { lang, region: id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id] || '🌍'} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, id) }); }
   if (kind === 'WK') return weekDays(env, chat.id, lang, id);
   if (kind === 'ST') {  // the satellite in true colour: the latest clear pass as a picture, the last two days' passes as a video (tools/sat_true.py)
-    const L = lang === 'uz' ? 'uz' : 'ru', v = Math.floor(Date.now() / 1800e3), cap = `🛰 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).sat}`;
+    const L = lang === 'uz' ? 'uz' : 'ru', v = Math.floor(Date.now() / 600e3), cap = `🛰 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).sat}`;
+    const sb = await ghApi(env, 'branches/sattrue').then(r => r.ok ? r.json() : null).catch(() => null), ssha = sb && sb.commit && sb.commit.sha;  // the newest video, not a cached one
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_photo' });
-    await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${EVRAW}/sattrue/sattrue_${L}.jpg?v=${v}`, caption: cap, parse_mode: 'HTML' });
-    return tg(env, 'sendVideo', { chat_id: chat.id, video: `${EVRAW}/sattrue/sattrue_${L}.mp4?v=${v}`, supports_streaming: true, width: 1920, height: 1080 }); }
+    const sbase = ssha ? `https://raw.githubusercontent.com/${REPO}/${ssha}` : `${EVRAW}/sattrue`, sq = ssha ? '' : `?v=${v}`;
+    const made = sb && sb.commit ? new Date(Date.parse(sb.commit.commit.committer.date) + TZ * 3600e3).toISOString().slice(11, 16) : '';
+    const cap2 = cap + (made ? `\n🕒 ${{ ru: 'обновлено в', uz: 'yangilangan:', en: 'updated at' }[lang] || 'обновлено в'} ${made} · ${{ ru: 'каждые 40 минут', uz: 'har 40 daqiqada', en: 'every 40 minutes' }[lang] || ''}` : '');
+    await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${sbase}/sattrue_${L}.jpg${sq}`, caption: cap2, parse_mode: 'HTML' });
+    return tg(env, 'sendVideo', { chat_id: chat.id, video: `${sbase}/sattrue_${L}.mp4${sq}`, supports_streaming: true, width: 1920, height: 1080 }); }
   if (kind === 'VP' && NAMES[id]) return videoHub(env, chat.id, lang, id, null);
   if (kind === 'AQV') return sendAir(env, chat.id, lang, 'UZ');
   if (kind === 'RV') return sendRisk(env, chat.id, lang, true);
