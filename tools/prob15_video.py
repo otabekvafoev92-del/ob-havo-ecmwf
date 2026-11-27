@@ -54,7 +54,7 @@ TCL = np.array([matplotlib.colors.to_rgb(c) for c in ['#2b0a4e', '#5b2a86', '#7d
                                                       '#6cc36a', '#c9dd52', '#f3dc4c', '#f9b23f', '#f27f33', '#df4a2b', '#b01d31', '#5c0b22']])
 
 
-LANDC, SEAC = '#c9c6ad', '#3d6d96'  # the clouds' map: earth tones under white clouds, like a picture from space
+LANDC, SEAC = '#8e9a78', '#2b5a86'  # the clouds' map: earth tones under white clouds, like a picture from space
 TLV = np.arange(-50, 52, 2.0)  # 2° bands
 TBC = None
 
@@ -228,7 +228,7 @@ def draw(job):
                 ax.annotate(f"{sym} {Tf_[yy, xx]:+.0f}°".replace('+0°', '0°'), (LO[xx], LA[yy]), ha='center', va='center', fontsize=12.5, fontweight='bold', color=col, zorder=7.5,
                             bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.5', fc='white', ec=col, lw=1.4, alpha=0.9 * a_in))
     if CM and fr.get('Cl') is not None:  # the clouds' map: white clouds, thicker where the sky is more covered
-        cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = 1.0; cl[..., 3] = np.clip((fr['Cl'] - 0.08) / 0.85, 0, 1) ** 1.1 * 0.93 * a_in
+        cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = 1.0; cl[..., 3] = np.clip((fr['Cl'] - 0.05) / 0.8, 0, 1) ** 0.9 * 0.95 * a_in
         ax.imshow(cl, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.5)
         ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
     elif fr.get('Cl') is not None and not TM:  # clouds: a soft grey veil under the rain, thicker where the sky is more covered
