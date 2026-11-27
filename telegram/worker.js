@@ -530,7 +530,7 @@ async function sendRisk(env, chat, lang, only) {  // ⚠️ the 15-day dangerous
 async function videoMenu(env, chat, lang, rid, u) {  // all the videos as one menu: two big buttons a row
   const X = VMX[lang] || VMX.ru, b = (t, k) => ({ text: X[t], callback_data: `${k}:${lang}:${rid}` }), pl = u && u.place ? JSON.parse(u.place) : null;
   const rows = [[b('prob', 'VP'), b('temp', 'TV')], [b('cloud', 'CV'), ...(rid === 'UZ' ? [b('moist', 'MV')] : [])]];
-  if (rid === 'UZ') rows.push([b('weeks', 'WV'), b('sat', 'ST')], [b('risk', 'RV'), b('air', 'AQV')], []);
+  if (rid === 'UZ') rows.push([b('weeks', 'WV'), b('sat', 'ST')], [b('risk', 'RV'), b('air', 'AQV')], [{ text: CAMB[lang] || CAMB.ru, callback_data: `CAM:${lang}:UZ` }]);
   if (pl) rows[rows.length - 1].push({ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place });
   return tg(env, 'sendMessage', { chat_id: chat, text: X.h.replace('{n}', `${FLAG[rid] || ''} ${NAMES[rid][lang]}`), parse_mode: 'HTML', reply_markup: { inline_keyboard: rows.filter(r => r.length) } });
 }
@@ -842,6 +842,17 @@ async function mountainsKb(env, chat, lang, M, cur) {
   rows.push([notifBtn(lang, 'mtn')]);
   return { inline_keyboard: rows };
 }
+const CAMB = { ru: '📹 Амирсой — камеры сейчас', uz: '📹 Amirsoy — kameralar hozir', en: '📹 Amirsoy — webcams now' };
+async function sendCam(env, chat, lang) {  // the last 30 seconds of the Amirsoy cameras that are online (tools/amirsoy_cam.py, every 30 minutes)
+  const M = await fetch(`${EVRAW}/cam/meta.json?v=${Math.floor(Date.now() / 300e3)}`).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!M || !M.ok) return tg(env, 'sendMessage', { chat_id: chat, text: { ru: '📹 Камеры Амирсоя сейчас не в сети — попробуйте позже.', uz: '📹 Amirsoy kameralari hozir ishlamayapti — keyinroq urinib ko‘ring.', en: '📹 The Amirsoy cameras are offline now — try later.' }[lang] });
+  const w = M.weather, L2 = lang === 'uz' ? 'uz' : 'ru';
+  const cap = [`📹 <b>${{ ru: 'Амирсой', uz: 'Amirsoy', en: 'Amirsoy' }[lang]}</b> · ${M.cams.map(c => c[L2]).join(' · ')}`, `🕒 ${M.made.slice(8, 10)}.${M.made.slice(5, 7)} ${M.made.slice(11, 16)} ${{ ru: 'по Ташкенту', uz: 'Toshkent vaqti', en: 'Tashkent time' }[lang]}`,
+    w ? `🌡 ${w.temperature_2m > 0 ? '+' : ''}${Math.round(w.temperature_2m)}° · 💨 ${Math.round(w.wind_speed_10m)} ${{ ru: 'м/с', uz: 'm/s', en: 'm/s' }[lang]}${w.snow_depth ? ` · ❄️ ${Math.round(w.snow_depth * 100)} ${{ ru: 'см снега', uz: 'sm qor', en: 'cm of snow' }[lang]}` : ''}` : '',
+    `<i>${{ ru: 'Видео обновляется каждые 30 минут', uz: 'Video har 30 daqiqada yangilanadi', en: 'Updated every 30 minutes' }[lang]}</i>`].filter(Boolean).join('\n');
+  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+  return tg(env, 'sendVideo', { chat_id: chat, video: `${EVRAW}/cam/amirsoy.mp4?v=${M.made}`, caption: cap, parse_mode: 'HTML', supports_streaming: true, width: 1280, height: 720 });
+}
 async function sendMountains(env, chat, lang) {
   const X = MTX[lang] || MTX.ru, M = await mountainsData(env);
   if (!M || !M.spots) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
@@ -851,6 +862,7 @@ async function sendMountains(env, chat, lang) {
     return sendMountainText(env, chat, lang, null);
   }
   const kb = await mountainsKb(env, chat, lang, M), cap = `${X.title}\n${(MTA[lang] || MTA.ru).pick}`;
+  if (kb && kb.inline_keyboard) kb.inline_keyboard.unshift([{ text: CAMB[lang] || CAMB.ru, callback_data: `CAM:${lang}:UZ` }]);  // the Amirsoy webcams, live
   // the video on the map first (tools/mtn_video.py, the "mtn" branch), the picture if it is not there
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   const rv = await tg(env, 'sendVideo', { chat_id: chat, video: `${EVRAW}/mtn/mtn_${lang === 'uz' ? 'uz' : 'ru'}.mp4?v=${Math.floor(Date.now() / 3600e3)}`, caption: cap, parse_mode: 'HTML', supports_streaming: true, width: 1920, height: 1080, reply_markup: kb });
@@ -2094,6 +2106,7 @@ async function handle(up, env) {
   if (kind === 'VP' && NAMES[id]) return videoHub(env, chat.id, lang, id, null);
   if (kind === 'AQV') return sendAir(env, chat.id, lang, 'UZ');
   if (kind === 'RV') return sendRisk(env, chat.id, lang, true);
+  if (kind === 'CAM') return sendCam(env, chat.id, lang);
   if (kind === 'FG') return sendFog(env, chat.id, lang, NAMES[id] ? id : 'UZ', false);
   if (kind === 'CV' && NAMES[id]) {  // the 15-day clouds-and-precipitation video
     const L = lang === 'uz' ? 'uz' : 'ru', url = await vidUrl(id, L, '_c'), X = VMX[lang] || VMX.ru;

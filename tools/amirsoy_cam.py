@@ -46,7 +46,7 @@ def main():
     wtxt = ''
     if W:
         wtxt = f"{W['temperature_2m']:+.0f}°C · ветер {W['wind_speed_10m']:.0f} м/с (порывы {W['wind_gusts_10m']:.0f})" + (f" · снег {W['snow_depth'] * 100:.0f} см" if W.get('snow_depth') else '')
-    parts = []; per = TOTAL / max(1, min(len(live), 3))
+    parts = []  # each camera recorded for the whole 30 s; then the ones that worked share the 30 s (a camera that fails gives its time to the others)
     for k, d, ru, uz, u in live[:3]:
         f = tmp / f'{k}.mp4'
         vf = (f"scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=25,"
@@ -57,13 +57,14 @@ def main():
               f"drawbox=x=0:y=ih-56:w=iw:h=56:color=0x0b1220@0.6:t=fill,"
               f"drawtext=fontfile={F}:text='{esc(wtxt or 'камера в прямом эфире')}':x=24:y=h-42:fontsize=26:fontcolor=white,"
               f"drawtext=fontfile={F}:text='t.me/ObHavo_ECMWF_bot':x=w-tw-24:y=h-40:fontsize=22:fontcolor=0xa9bdd6")
-        r = subprocess.run(['ffmpeg', '-y', '-v', 'error', '-rw_timeout', '15000000', '-i', u, '-t', f'{per:.1f}', '-an', '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24',
+        r = subprocess.run(['ffmpeg', '-y', '-v', 'error', '-rw_timeout', '15000000', '-i', u, '-t', str(TOTAL), '-an', '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-g', '25',
                             '-pix_fmt', 'yuv420p', str(f)], capture_output=True, text=True, timeout=180)
         if r.returncode == 0 and f.exists() and f.stat().st_size > 50000: parts.append((k, ru, uz, f))
         else: print('record failed', k, r.stderr[-300:], flush=True)
     if not parts:
         json.dump(dict(made=now.strftime('%Y-%m-%dT%H:%M'), cams=[], ok=False), open(out / 'meta.json', 'w'), ensure_ascii=False); print('no camera recorded'); return
-    (tmp / 'l.txt').write_text(''.join(f"file '{p[3]}'\n" for p in parts))
+    per = TOTAL / len(parts)
+    (tmp / 'l.txt').write_text(''.join(f"file '{p[3]}'\noutpoint {per:.2f}\n" for p in parts))
     dst = out / 'amirsoy.mp4'
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(tmp / 'l.txt'), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a', '-c:v', 'copy',
                     '-c:a', 'aac', '-b:a', '32k', '-shortest', '-movflags', '+faststart', str(dst)], check=True)
