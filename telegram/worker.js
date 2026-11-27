@@ -26,7 +26,7 @@ const GROUPS = [['UZ', 'KZ', 'KG'], ['TJ', 'TM', 'AZ'], ['AM', 'BY', 'MD'], ['RU
 const T = {
   uz: {
     cities: '🏙 Shaharlar', cPick: '🏙 Shaharni tanlang:', cTitle: '🏙 Bugun shaharlarda', time: '⏰ Guruhga prognoz qaysi vaqtda yuborilsin? (Toshkent vaqti)', help: 'ℹ️ Yordam',
-    d15: '15 kunlik prognoz', hi: '☀️ <b>Osmon</b> — ob-havo prognozi\n6 ta model (ECMWF, NOAA) asosida 15 kunga.\n\nTilni tanlang:', pick: '📍 Davlat yoki qit’ani tanlang:',
+    d15: '15 kunlik prognoz', hi: '☀️ <b>Osmon</b> — ob-havo prognozi\n9 ta model (ECMWF, NOAA, DWD, UKMO, UK Met Office) asosida 15 kunga.\n\nTilni tanlang:', pick: '📍 Davlat yoki qit’ani tanlang:',
     menu: 'Nimani ko‘rsatay?', today: '⏱ Bugun va ertaga soatma-soat', all: '🎬 15 kunlik video', days: '🗓 15 kun', site: '🗺 Sayt va globus', rep: '📊 Hisobot', menuHint: '⌨️ Barcha bo‘limlar — pastdagi tugmalarda.\n📍 Joylashuvni yuboring yoki shahar nomini yozing, masalan: Namangan', locAsk: '📍 Pastdagi tugmani bosing — joylashuvingiz yuboriladi.',
     back: '↩️ Davlatlar', none: '⏳ Ma’lumot hali tayyor emas, birozdan keyin urinib ko‘ring.', tdy: 'Bugun', tmw: 'Ertaga', next: 'Keyingi kunlar',
     upd: 'Yangilandi', swipe: '🎬 Videoni suring: 🌧 yog‘in · 🌡 harorat · ☁️ bulutlar · 💨 shamol', bot: '🤖 Bot',
@@ -37,7 +37,7 @@ const T = {
   },
   ru: {
     cities: '🏙 Города', cPick: '🏙 Выберите город:', cTitle: '🏙 Сегодня по городам', time: '⏰ Во сколько присылать прогноз в группу? (по Ташкенту)', help: 'ℹ️ Помощь',
-    d15: 'прогноз на 15 дней', hi: '☀️ <b>Osmon</b> — прогноз погоды\nна 15 дней по 6 моделям (ECMWF, NOAA).\n\nВыберите язык:', pick: '📍 Выберите страну или континент:',
+    d15: 'прогноз на 15 дней', hi: '☀️ <b>Osmon</b> — прогноз погоды\nна 15 дней по 9 моделям (ECMWF, NOAA, DWD, UKMO, UK Met Office).\n\nВыберите язык:', pick: '📍 Выберите страну или континент:',
     menu: 'Что показать?', today: '⏱ Сегодня и завтра по часам', all: '🎬 Видео на 15 дней', days: '🗓 15 дней', site: '🗺 Сайт и глобус', rep: '📊 Отчёт', menuHint: '⌨️ Все разделы — на кнопках внизу.\n📍 Отправьте геолокацию или напишите город, например: Наманган', locAsk: '📍 Нажмите кнопку внизу — бот получит ваше место.',
     back: '↩️ Страны', none: '⏳ Данные ещё не готовы, попробуйте чуть позже.', tdy: 'Сегодня', tmw: 'Завтра', next: 'Дальше',
     upd: 'Обновлено', swipe: '🎬 Листайте видео: 🌧 осадки · 🌡 температура · ☁️ облака · 💨 ветер', bot: '🤖 Бот',
@@ -48,7 +48,7 @@ const T = {
   },
   en: {
     cities: '🏙 Cities', cPick: '🏙 Choose a city:', cTitle: '🏙 Today in the cities', time: '⏰ At what time should the group get the forecast? (Tashkent time)', help: 'ℹ️ Help',
-    d15: '15-day forecast', hi: '☀️ <b>Osmon</b> — weather forecast\nfor 15 days from 6 models (ECMWF, NOAA).\n\nChoose a language:', pick: '📍 Choose a country or continent:',
+    d15: '15-day forecast', hi: '☀️ <b>Osmon</b> — weather forecast\nfor 15 days from 9 models (ECMWF, NOAA, DWD, UKMO, UK Met Office).\n\nChoose a language:', pick: '📍 Choose a country or continent:',
     menu: 'What shall I show?', today: '⏱ Today and tomorrow by the hour', all: '🎬 15-day video', days: '🗓 15 days', site: '🗺 Website and globe', rep: '📊 Report', menuHint: '⌨️ All sections are on the buttons below.\n📍 Send your location or type a city name, e.g.: London', locAsk: '📍 Press the button below — your location will be sent.',
     back: '↩️ Countries', none: '⏳ The data is not ready yet, try again a little later.', tdy: 'Today', tmw: 'Tomorrow', next: 'Next days',
     upd: 'Updated', swipe: '🎬 Swipe the videos: 🌧 precipitation · 🌡 temperature · ☁️ clouds · 💨 wind', bot: '🤖 Bot',
@@ -89,7 +89,7 @@ Bo‘limlar ostida «⏰ Avtomatik yuborish» tugmasi bor: vaqtni tanlang — bo
 ✉️ Savol yoki taklif — /admin, javob shu yerga keladi
 📄 /guide — PDF yo‘riqnoma
 
-Ma’lumot: ECMWF, NOAA, DWD modellari; havo sifati — CAMS. Har 3 soatda yangilanadi.`,
+Ma’lumot: ECMWF, NOAA, DWD, UKMO modellari; havo sifati — CAMS. Har 3 soatda yangilanadi.`,
   ru: `ℹ️ <b>Osmon — как пользоваться</b>
 
 <b>Кнопки внизу экрана</b>
@@ -120,7 +120,7 @@ Ma’lumot: ECMWF, NOAA, DWD modellari; havo sifati — CAMS. Har 3 soatda yangi
 ✉️ Вопрос или предложение — /admin, ответ придёт сюда
 📄 /guide — инструкция в PDF
 
-Данные: модели ECMWF, NOAA, DWD; качество воздуха — CAMS. Обновление каждые 3 часа.`,
+Данные: модели ECMWF, NOAA, DWD, UKMO; качество воздуха — CAMS. Обновление каждые 3 часа.`,
   en: `ℹ️ <b>Osmon — how to use it</b>
 
 <b>The buttons below</b>
@@ -150,7 +150,7 @@ Under the sections there is a «⏰ Send automatically» button: choose the time
 ✉️ Questions or ideas — /admin, the answer comes here
 📄 /guide — the PDF guide
 
-Data: ECMWF, NOAA, DWD models; air quality — CAMS. Updated every 3 hours.`,
+Data: ECMWF, NOAA, DWD, UKMO models; air quality — CAMS. Updated every 3 hours.`,
 };
 const WD = { uz: ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'], ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
 const PER_TICK = 4;      // groups per cron run (Workers free plan: 50 subrequests per run; a group may want several countries)
@@ -273,7 +273,7 @@ async function setup(env, url) {
   await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'notify', description: '⏰ Nima yuborilsin / Что присылать (adminlar)' }, { command: 'help', description: 'Yordam / Помощь' }] });
   await tg(env, 'setChatMenuButton', { menu_button: { type: 'commands' } });  // ☰ opens the command menu
   await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода · Hava — 15 kun, 6 model (ECMWF, NOAA). Guruhlarga avtomatik prognoz.' });
-  await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 6 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 6 моделям. Добавьте в группу — бот сам будет присылать прогноз.' });
+  await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 9 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON/ICON-EPS, UK Met Office).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 9 моделям. Добавьте в группу — бот сам будет присылать прогноз.' });
   if (env.DB) await db(env);
   const me = await tg(env, 'getMe', {});
   return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
@@ -1233,9 +1233,9 @@ const AX = {  // more kinds of warnings
   en: { heat: 'great heat, by day', frost: 'hard frost, at night', ice: 'ice (frost on the roads)', wind: 'strong wind, mean', storm: 'thunderstorm with heavy rain', dust: 'dust storm / air pollution', ms: 'm/s', title: '⚠️ <b>Warning: dangerous weather</b>' },
 };
 const AL = {
-  uz: { title: '⚠️ <b>Ogohlantirish: kuchli yog‘in</b>', r1: 'kuchli yomg‘ir', r2: 'juda kuchli yomg‘ir', s1: 'kuchli qor', s2: 'juda kuchli qor', mm: 'mm', peak: 'eng kuchli', foot: 'ECMWF, NOAA, DWD modellari ansambli bo‘yicha. Ehtiyot bo‘ling!', none: '✅ Yaqin 3 kunda kuchli yog‘in kutilmayapti.' },
-  ru: { title: '⚠️ <b>Предупреждение: сильные осадки</b>', r1: 'сильный дождь', r2: 'очень сильный дождь', s1: 'сильный снег', s2: 'очень сильный снег', mm: 'мм', peak: 'пик', foot: 'По ансамблю моделей ECMWF, NOAA, DWD. Будьте осторожны!', none: '✅ В ближайшие 3 дня сильных осадков не ожидается.' },
-  en: { title: '⚠️ <b>Warning: heavy precipitation</b>', r1: 'heavy rain', r2: 'very heavy rain', s1: 'heavy snow', s2: 'very heavy snow', mm: 'mm', peak: 'heaviest', foot: 'From the ECMWF, NOAA, DWD model ensemble. Take care!', none: '✅ No heavy precipitation expected in the next 3 days.' },
+  uz: { title: '⚠️ <b>Ogohlantirish: kuchli yog‘in</b>', r1: 'kuchli yomg‘ir', r2: 'juda kuchli yomg‘ir', s1: 'kuchli qor', s2: 'juda kuchli qor', mm: 'mm', peak: 'eng kuchli', foot: 'ECMWF, NOAA, DWD, UKMO modellari ansambli bo‘yicha. Ehtiyot bo‘ling!', none: '✅ Yaqin 3 kunda kuchli yog‘in kutilmayapti.' },
+  ru: { title: '⚠️ <b>Предупреждение: сильные осадки</b>', r1: 'сильный дождь', r2: 'очень сильный дождь', s1: 'сильный снег', s2: 'очень сильный снег', mm: 'мм', peak: 'пик', foot: 'По ансамблю моделей ECMWF, NOAA, DWD, UKMO. Будьте осторожны!', none: '✅ В ближайшие 3 дня сильных осадков не ожидается.' },
+  en: { title: '⚠️ <b>Warning: heavy precipitation</b>', r1: 'heavy rain', r2: 'very heavy rain', s1: 'heavy snow', s2: 'very heavy snow', mm: 'mm', peak: 'heaviest', foot: 'From the ECMWF, NOAA, DWD, UKMO model ensemble. Take care!', none: '✅ No heavy precipitation expected in the next 3 days.' },
 };
 async function alertsData(env) {
   const r = await fetch(`${base(env)}/prob/alerts.json?t=${Date.now()}`, { cf: { cacheTtl: 0 } });
@@ -1288,9 +1288,9 @@ async function alertTick(env) {
 }
 /* ---------- forecast for any point: the user's location or a searched town (site/prob/pt, prob/points.py) ---------- */
 const PT = {
-  uz: { locBtn: '📍 Mening joyimdagi ob-havo', locHint: '📍 Pastdagi tugmani bosing — joylashuvingiz bo‘yicha 15 kunlik prognoz.\nYoki shahar nomini yozing, masalan: <i>Namangan</i>', nf: '🔎 Bunday shahar topilmadi. Boshqacha yozib ko‘ring yoki 📍 joylashuvni yuboring.', pick: '🔎 Qaysi biri?', head: '15 kunlik prognoz', none: 'yog‘insiz', rain: 'yomg‘ir', snow: 'qor', ms: 'm/s', mm: 'mm', vid: '🎬 Davlat videosi', src: 'ECMWF, NOAA, DWD ansambli · ~50 km to‘r', far: 'Bu nuqta uchun ma’lumot yo‘q.' },
-  ru: { locBtn: '📍 Погода у меня', locHint: '📍 Нажмите кнопку внизу — прогноз на 15 дней для вашего места.\nИли напишите название города, например: <i>Наманган</i>', nf: '🔎 Не нашла такой город. Попробуйте написать иначе или отправьте 📍 геолокацию.', pick: '🔎 Какой из них?', head: 'Прогноз на 15 дней', none: 'без осадков', rain: 'дождь', snow: 'снег', ms: 'м/с', mm: 'мм', vid: '🎬 Видео страны', src: 'Ансамбль ECMWF, NOAA, DWD · сетка ~50 км', far: 'Для этой точки нет данных.' },
-  en: { locBtn: '📍 Weather where I am', locHint: '📍 Press the button below — the 15-day forecast for your location.\nOr type a city name, e.g.: <i>London</i>', nf: '🔎 City not found. Try writing it differently or send your 📍 location.', pick: '🔎 Which one?', head: '15-day forecast', none: 'dry', rain: 'rain', snow: 'snow', ms: 'm/s', mm: 'mm', vid: '🎬 Country video', src: 'ECMWF, NOAA, DWD ensemble · ~50 km grid', far: 'No data for this point.' },
+  uz: { locBtn: '📍 Mening joyimdagi ob-havo', locHint: '📍 Pastdagi tugmani bosing — joylashuvingiz bo‘yicha 15 kunlik prognoz.\nYoki shahar nomini yozing, masalan: <i>Namangan</i>', nf: '🔎 Bunday shahar topilmadi. Boshqacha yozib ko‘ring yoki 📍 joylashuvni yuboring.', pick: '🔎 Qaysi biri?', head: '15 kunlik prognoz', none: 'yog‘insiz', rain: 'yomg‘ir', snow: 'qor', ms: 'm/s', mm: 'mm', vid: '🎬 Davlat videosi', src: 'ECMWF, NOAA, DWD, UKMO ansambli · ~50 km to‘r', far: 'Bu nuqta uchun ma’lumot yo‘q.' },
+  ru: { locBtn: '📍 Погода у меня', locHint: '📍 Нажмите кнопку внизу — прогноз на 15 дней для вашего места.\nИли напишите название города, например: <i>Наманган</i>', nf: '🔎 Не нашла такой город. Попробуйте написать иначе или отправьте 📍 геолокацию.', pick: '🔎 Какой из них?', head: 'Прогноз на 15 дней', none: 'без осадков', rain: 'дождь', snow: 'снег', ms: 'м/с', mm: 'мм', vid: '🎬 Видео страны', src: 'Ансамбль ECMWF, NOAA, DWD, UKMO · сетка ~50 км', far: 'Для этой точки нет данных.' },
+  en: { locBtn: '📍 Weather where I am', locHint: '📍 Press the button below — the 15-day forecast for your location.\nOr type a city name, e.g.: <i>London</i>', nf: '🔎 City not found. Try writing it differently or send your 📍 location.', pick: '🔎 Which one?', head: '15-day forecast', none: 'dry', rain: 'rain', snow: 'snow', ms: 'm/s', mm: 'mm', vid: '🎬 Country video', src: 'ECMWF, NOAA, DWD, UKMO ensemble · ~50 km grid', far: 'No data for this point.' },
 };
 const PK = {  // words of the point forecast
   ru: { brief: 'Коротко', allDry: 'Все 15 дней без существенных осадков', wetNow: 'Осадки возможны уже сегодня', dryUntil: 'Сухо до {d} включительно',
@@ -1751,9 +1751,9 @@ async function sendCard(env, chat, d, q, caption, markup) {  // → the Telegram
   } catch (e) { console.log('card', e && e.stack); return null; }
 }
 /* ---------- 🖼 the 15 days of a place as one picture (Full HD, drawn by QuickChart from the same numbers as the text) ---------- */
-const PHX = { ru: { btn: '🖼 Фото прогноза на 15 дней', t: '{n} · прогноз на 15 дней', p: 'Вероятность осадков, %', hi: 'Днём, °C', lo: 'Ночью, °C', src: 'Osmon · модели ECMWF, NOAA, DWD · t.me/ObHavo_ECMWF_bot', fail: '😔 Не удалось нарисовать картинку, попробуйте позже.' },
-  uz: { btn: '🖼 15 kunlik prognoz rasmi', t: '{n} · 15 kunlik prognoz', p: 'Yog‘in ehtimoli, %', hi: 'Kunduzi, °C', lo: 'Kechasi, °C', src: 'Osmon · ECMWF, NOAA, DWD modellari · t.me/ObHavo_ECMWF_bot', fail: '😔 Rasmni chizib bo‘lmadi, keyinroq urinib ko‘ring.' },
-  en: { btn: '🖼 15-day forecast picture', t: '{n} · 15-day forecast', p: 'Chance of precipitation, %', hi: 'By day, °C', lo: 'At night, °C', src: 'Osmon · ECMWF, NOAA, DWD models · t.me/ObHavo_ECMWF_bot', fail: '😔 Could not draw the picture, try again later.' } };
+const PHX = { ru: { btn: '🖼 Фото прогноза на 15 дней', t: '{n} · прогноз на 15 дней', p: 'Вероятность осадков, %', hi: 'Днём, °C', lo: 'Ночью, °C', src: 'Osmon · модели ECMWF, NOAA, DWD, UKMO · t.me/ObHavo_ECMWF_bot', fail: '😔 Не удалось нарисовать картинку, попробуйте позже.' },
+  uz: { btn: '🖼 15 kunlik prognoz rasmi', t: '{n} · 15 kunlik prognoz', p: 'Yog‘in ehtimoli, %', hi: 'Kunduzi, °C', lo: 'Kechasi, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO modellari · t.me/ObHavo_ECMWF_bot', fail: '😔 Rasmni chizib bo‘lmadi, keyinroq urinib ko‘ring.' },
+  en: { btn: '🖼 15-day forecast picture', t: '{n} · 15-day forecast', p: 'Chance of precipitation, %', hi: 'By day, °C', lo: 'At night, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO models · t.me/ObHavo_ECMWF_bot', fail: '😔 Could not draw the picture, try again later.' } };
 const phBtn = (lang, lat, lon) => ({ text: (PHX[lang] || PHX.ru).btn, callback_data: `PH:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}` });
 function chart15(X, nm, lab, D, rc, r1) {  // Chart.js 2 config as code (the label formatters are functions)
   const F = { hi: 'function(v){return (v>0?"+":"")+v+"°"}', pc: 'function(v){return v>=10?v+"%":""}', tk: 'function(v){return v+"°"}' };
