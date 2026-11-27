@@ -20,7 +20,7 @@ import prob15_video as PV
 W, H, DPI = PV.W, PV.H, PV.DPI
 MAP = PV.MAP; LA0, LA1 = PV.LAT0, PV.LAT1; LC = 64.8
 COSL = math.cos(math.radians((LA0 + LA1) / 2)); SPAN = (LA1 - LA0) / COSL * (MAP[2] * W) / (MAP[3] * H); EXT = (LC - SPAN / 2, LC + SPAN / 2)
-LATS = np.round(np.arange(35.25, 47.76, 0.75), 2); LONS = np.round(np.arange(50.25, 80.26, 0.75), 2)
+LATS = np.round(np.arange(35.5, 47.6, 1.0), 2); LONS = np.round(np.arange(50.5, 80.6, 1.0), 2)  # 1° grid (fog is local: the 199 districts carry the detail)
 API = 'https://api.open-meteo.com/v1/forecast'
 GA = json.load(open(ROOT / 'prob' / 'geo_admin.json'))['UZ']
 FOGC = ['#e9eef3', '#c9d2dc', '#9aa8b8']  # haze, fog, thick fog
@@ -35,29 +35,29 @@ CTX = {}
 
 def fetch(lats, lons, hours=30):
     out_v, out_c, times = [], [], None
-    for i in range(0, len(lats), 50):
+    for i in range(0, len(lats), 100):
         r = None
         for _ in range(8):
             try:
-                r = requests.get(API, params=dict(latitude=','.join(f'{x:.3f}' for x in lats[i:i + 50]), longitude=','.join(f'{x:.3f}' for x in lons[i:i + 50]),
+                r = requests.get(API, params=dict(latitude=','.join(f'{x:.3f}' for x in lats[i:i + 100]), longitude=','.join(f'{x:.3f}' for x in lons[i:i + 100]),
                                                   hourly='visibility,weather_code', forecast_hours=hours, past_hours=1, timezone='GMT'), timeout=180)
                 if r.status_code == 200: break
                 print('fog api', r.status_code, r.text[:120], flush=True)
             except Exception as e: print('fog api', e, flush=True)
-            time.sleep(65 if r is not None and r.status_code == 429 else 15)
+            time.sleep(61 if r is not None and r.status_code == 429 else 5)
         if r is None or r.status_code != 200: raise RuntimeError('fog api failed')
         J = r.json(); J = J if isinstance(J, list) else [J]
         for j in J:
             times = times or j['hourly']['time']
             out_v.append([np.nan if x is None else x for x in j['hourly']['visibility']]); out_c.append([0 if x is None else x for x in j['hourly']['weather_code']])
-        time.sleep(2)
+        time.sleep(0.5)
     return np.array(out_v, np.float32), np.array(out_c, np.int16), times
 
 
 def get_data(prev):
     if prev and pathlib.Path(prev).exists():
         z = np.load(prev, allow_pickle=True)
-        if z['gv'].shape[:2] == (len(LATS), len(LONS)) and time.time() - float(z['fetched']) < 3 * 3600: print('fog data from the last fetch', flush=True); return {k: z[k] for k in z.files}
+        if z['gv'].shape[:2] == (len(LATS), len(LONS)) and time.time() - float(z['fetched']) < 2.5 * 3600: print('fog data from the last fetch', flush=True); return {k: z[k] for k in z.files}
     gl, go = np.meshgrid(LATS, LONS, indexing='ij')
     gv, gc, times = fetch(gl.ravel(), go.ravel())
     dv, dc, _ = fetch(np.array([d['c'][1] for d in GA['adm2']]), np.array([d['c'][0] for d in GA['adm2']]))

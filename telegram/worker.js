@@ -486,24 +486,25 @@ const VMX = { ru: { h: '🎬 <b>Видео</b> · {n} — что показат�
   uz: { h: '🎬 <b>Video</b> · {n} — nimani ko‘rsatay?', prob: '🌧 Yog‘in · 15 kun', temp: '🌡 Harorat · 15 kun', cloud: '☁️ Bulut va momaqaldiroq · 15 kun', moist: '🧭 Namlik qayerdan', weeks: '📅 Haftalar bo‘yicha', sat: '🛰 Sun’iy yo‘ldosh', air: '🌫 Havo · 24 soat', risk: '⚠️ Xavfli ob-havo · 15 kun', place: '📍 Joyim yaqindan', ccap: 'Bulut va momaqaldiroq · 15 kun soatma-soat · shamol' },
   en: { h: '🎬 <b>Video</b> · {n} — what shall I show?', prob: '🌧 Precipitation · 15 days', temp: '🌡 Temperature · 15 days', cloud: '☁️ Clouds · 15 days', moist: '🧭 Where moisture comes from', weeks: '📅 By weeks', sat: '🛰 Satellite now', air: '🌫 Air · 24 hours', risk: '⚠️ Dangerous weather · 15 days', place: '📍 My place close up', ccap: 'Clouds and thunderstorms · 15 days by the hour · wind' } };
 async function sendFog(env, chat, lang, rid, quiet) {  // 🌫 fog in the next 24 hours: in Uzbekistan region by region, district by district (tools/fog_list.py, hourly); elsewhere at the person's place
-  const X = { ru: { h: '🌫 <b>Туман в ближайшие сутки</b>', none: '🌫 В ближайшие сутки тумана не ожидается.', vis: 'видимость до {v} м', mine: '📍 У вас', src: 'Прогноз: ECMWF, ICON, GFS (Open-Meteo) · обновляется каждый час', tip: '🚗 На дорогах будьте осторожны: включите ближний свет и держите дистанцию.' },
-    uz: { h: '🌫 <b>Keyingi sutkada tuman</b>', none: '🌫 Keyingi sutkada tuman kutilmaydi.', vis: 'ko‘rinish {v} m gacha', mine: '📍 Sizda', src: 'Prognoz: ECMWF, ICON, GFS (Open-Meteo) · har soat yangilanadi', tip: '🚗 Yo‘lda ehtiyot bo‘ling: yaqin chiroqni yoqing va masofani saqlang.' },
-    en: { h: '🌫 <b>Fog in the next 24 hours</b>', none: '🌫 No fog expected in the next 24 hours.', vis: 'visibility down to {v} m', mine: '📍 At your place', src: 'Forecast: ECMWF, ICON, GFS (Open-Meteo) · updated hourly', tip: '🚗 Drive carefully: dipped headlights and a longer distance.' } }[lang] || {};
+  const X = { ru: { h: '🌫 <b>Туман в ближайшие сутки</b>', none: '🌫 В ближайшие сутки тумана не ожидается.', vis: 'видимость до {v} м', mine: '📍 У вас', src: 'Прогноз: ECMWF, ICON, GFS (Open-Meteo) · обновляется каждые 3 часа', tip: '🚗 На дорогах будьте осторожны: включите ближний свет и держите дистанцию.' },
+    uz: { h: '🌫 <b>Keyingi sutkada tuman</b>', none: '🌫 Keyingi sutkada tuman kutilmaydi.', vis: 'ko‘rinish {v} m gacha', mine: '📍 Sizda', src: 'Prognoz: ECMWF, ICON, GFS (Open-Meteo) · har 3 soatda yangilanadi', tip: '🚗 Yo‘lda ehtiyot bo‘ling: yaqin chiroqni yoqing va masofani saqlang.' },
+    en: { h: '🌫 <b>Fog in the next 24 hours</b>', none: '🌫 No fog expected in the next 24 hours.', vis: 'visibility down to {v} m', mine: '📍 At your place', src: 'Forecast: ECMWF, ICON, GFS (Open-Meteo) · updated every 3 hours', tip: '🚗 Drive carefully: dipped headlights and a longer distance.' } }[lang] || {};
   const u = chat > 0 ? await getUser(env, chat) : null, pl = u && u.place ? JSON.parse(u.place) : null, hm = t => String(t).slice(11, 16), L2 = lang === 'uz' ? 'uz' : 'ru';
   const span = d => `${hm(d.frm)}–${hm(d.to)}${d.vis != null ? ` · ${X.vis.replace('{v}', Math.max(50, Math.round(d.vis / 50) * 50))}` : ''}`;
   const inUz = rid === 'UZ' || (pl && +pl[1] > 55.9 && +pl[1] < 73.2 && +pl[0] > 37.1 && +pl[0] < 45.6);
   if (inUz) {
-    const F = await fetch(`${EVRAW}/air/fog.json?v=${Math.floor(Date.now() / 600e3)}`).then(r => r.ok ? r.json() : null).catch(() => null);
+    const F = await fetch(`${EVRAW}/fog/fog.json?v=${Math.floor(Date.now() / 600e3)}`).then(r => r.ok ? r.json() : null).catch(() => null);
     const R = (F && F.regions) || [];
     if (!R.length) return quiet ? null : tg(env, 'sendMessage', { chat_id: chat, text: X.none });
     let mine = null;
     if (pl) for (const r of R) for (const d of r.districts) { const km = Math.hypot((d.lat - pl[0]) * 111, (d.lon - pl[1]) * 85); if (km < 30 && (!mine || km < mine.km)) mine = { ...d, km }; }
-    const fv = `${EVRAW}/air/fog24_${L2}.mp4`;
+    const fv = `${EVRAW}/fog/fog24_${L2}.mp4`;
     if (await head(fv)) {  // the 24-hour fog video, with a short caption (your district, how many districts)
       const nD = R.reduce((a_, r) => a_ + r.districts.length, 0);
       await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
       return tg(env, 'sendVideo', { chat_id: chat, video: `${fv}?v=${Math.floor(Date.now() / 1800e3)}`, supports_streaming: true, width: 1920, height: 1080, parse_mode: 'HTML',
-        caption: [X.h, mine ? `${X.mine}: <b>${esc(mine[L2])}</b> — ${span(mine)}` : '', `${{ ru: 'Районов в тумане', uz: 'Tumanli tumanlar', en: 'Districts with fog' }[lang]}: ${nD}`, X.tip].filter(Boolean).join('\n'),
+        caption: [X.h, mine ? `${X.mine}: <b>${esc(mine[L2])}</b> — ${span(mine)}` : '', `${{ ru: 'Районов в тумане', uz: 'Tumanli tumanlar', en: 'Districts with fog' }[lang]}: ${nD}`, X.tip,
+          F.made ? `<i>${{ ru: 'Обновлено', uz: 'Yangilandi', en: 'Updated' }[lang]} ${new Date(Date.parse(F.made) + 5 * 3600e3).toISOString().slice(11, 16)} · ${X.src.split(' · ').pop()}</i>` : ''].filter(Boolean).join('\n'),
         ...(chat > 0 ? { reply_markup: { inline_keyboard: [[notifBtn(lang, 'fog')]] } } : {}) });
     }
     const lines = [X.h, ''];

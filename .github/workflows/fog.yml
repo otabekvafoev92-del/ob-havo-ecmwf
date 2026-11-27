@@ -1,0 +1,23 @@
+name: Fog, 24 hours (video)
+# fog over Uzbekistan for the next 24 hours (tools/fog_video.py): fresh model data every 3 hours; kept on the "fog" branch
+on:
+  schedule:
+    - cron: '5 */3 * * *'
+  workflow_dispatch: {}
+permissions: {contents: write}
+concurrency: {group: fog, cancel-in-progress: true}
+jobs:
+  v:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - run: |
+          (sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null)); rm -rf ~/.cache/matplotlib
+          pip install -q numpy scipy matplotlib pyproj requests qrcode pillow
+          python -u -W ignore tools/fog_video.py fog ru,uz || python -u -W ignore tools/fog_list.py fog
+          cd fog && git init -q && git checkout -q -b fog && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "fog $(date -u +%F' '%H:%M)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" fog
