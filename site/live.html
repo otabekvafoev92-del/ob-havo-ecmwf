@@ -172,8 +172,9 @@ function yandex() {
   sc.onload = () => ymaps.ready(() => {
     try {
       const el = $('ymap'); el.style.height = Hc + 'px';
-      YMAP = new ymaps.Map('ymap', { center: [sel.lat, sel.lon], zoom: 9, controls: ['zoomControl', 'typeSelector'] }, { suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true });
+      YMAP = new ymaps.Map('ymap', { center: [sel.lat, sel.lon], zoom: 9, controls: ['zoomControl', 'typeSelector', 'trafficControl'] }, { suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true });
       document.body.classList.add('ya');
+      if (Q.get('traffic') === '1') { const t = YMAP.controls.get('trafficControl'); t.state.set('providerKey', 'traffic#actual'); t.showTraffic(); }  // the jams now (Yandex's own layer, live)
       const on = () => { YG = null; PV = ''; draw(); };
       YMAP.events.add(['actiontick', 'actiontickcomplete', 'boundschange', 'sizechange'], on);
       YMAP.events.add('click', e => { const [la, lo] = e.get('coords'); pick(la, lo); });
