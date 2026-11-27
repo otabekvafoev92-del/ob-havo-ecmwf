@@ -57,7 +57,7 @@ BAR_COLORS = [LOW_BAR] + COLORS
 SNOW_BAR = [LOW_BAR] + SNOW
 LABELS = ['10–30 %', '30–50 %', '50–70 %', '70–90 %', '90–100 %']
 ENS_LABEL = {'ifs': 'ECMWF IFS ENS', 'aifs': 'ECMWF AIFS ENS', 'gefs': 'NOAA GEFS', 'iconeps': 'DWD ICON-EPS'}
-DET_LABEL = {'hres': 'ECMWF IFS', 'aifss': 'ECMWF AIFS', 'gfs': 'NOAA GFS', 'icon': 'DWD ICON'}
+DET_LABEL = {'hres': 'ECMWF IFS', 'aifss': 'ECMWF AIFS', 'gfs': 'NOAA GFS', 'icon': 'DWD ICON', 'ukmo': 'UK Met Office'}
 HEAVY = '#ffd166'
 STORM = '#7b3fb8'  # thunderstorms (hatched)
 

@@ -8,6 +8,7 @@ Sources (all open data, only the precipitation field is downloaded thanks to byt
   DWD ICON (global, icosahedral → regridded)  https://opendata.dwd.de/weather/nwp/icon/grib/
   DWD ICON-EPS (40 members, up to 72 h)       https://opendata.dwd.de/weather/nwp/icon-eps/grib/
   ECMWF IFS HRES at 0.1° (9 km) where published
+  UK Met Office global 10 km (to 168 h)       https://met-office-atmospheric-model-data.s3.eu-west-2.amazonaws.com
 Usage: python3 prob/fetch.py out.npz [--run 2026-10-29T00] [--max-step 360]
 """
 import argparse, bz2, datetime as dt, io, json, re, sys, time, concurrent.futures as cf
@@ -193,6 +194,36 @@ class IconEps:
         return [[np.maximum(c - o, 0) for c, o in zip(cur[m], old[m])] for m in cur if m in old]
 
 
+UKMO = 'https://met-office-atmospheric-model-data.s3.eu-west-2.amazonaws.com/global-deterministic-10km'
+
+
+def ukmo_amount(run, step, win, grids):
+    """UK Met Office global 10 km: the precipitation of the window (step − win, step] from its own 3- or 6-hour accumulation file (NetCDF)"""
+    if step > 168 or win not in (3, 6): return None
+    try:
+        import netCDF4
+    except Exception:
+        return None
+    vt = run + dt.timedelta(hours=step)
+    url = f"{UKMO}/{run:%Y%m%dT%H00Z}/{vt:%Y%m%dT%H00Z}-PT{step:04d}H00M-precipitation_accumulation-PT{win:02d}H.nc"
+    raw = get(url, tries=3)
+    if not raw: return None
+    try:
+        ds = netCDF4.Dataset('mem', memory=raw)
+        var = next(v for v in ds.variables.values() if v.ndim >= 2 and v.dimensions[-1].startswith(('lon', 'x', 'grid_longitude')))
+        lat = np.asarray(ds.variables[var.dimensions[-2]][:], float); lon = np.asarray(ds.variables[var.dimensions[-1]][:], float)
+        v = np.asarray(var[:], np.float32).reshape(len(lat), len(lon))
+        un = (getattr(var, 'units', '') or '').strip()
+        if un in ('m', 'metre', 'meters'): v = v * 1000
+        elif un in ('kg m-2 s-1', 'mm s-1'): v = v * win * 3600
+        v = np.nan_to_num(v, nan=0.0)
+        if lat[0] < lat[-1]: lat = lat[::-1]; v = v[::-1]
+        g = dict(Ni=len(lon), Nj=len(lat), lo1=float(lon[0]) % 360, la1=float(lat[0]), di=float(abs(lon[1] - lon[0])), dj=float(abs(lat[1] - lat[0])), v=v)
+        return [regrid(g, G_) for G_ in grids]
+    except Exception as e:
+        log('ukmo', step, e); return None
+
+
 def pick_run(want=None):
     if want: return dt.datetime.strptime(want, '%Y-%m-%dT%H')
     now = dt.datetime.utcnow()
@@ -222,7 +253,7 @@ def main():
     # 3-hour windows while the models give 3-hourly output (ECMWF IFS ENS/HRES, GEFS, GFS, ICON: up to 144 h), then 6-hour windows
     steps = [x for x in range(3, min(a.step3_until, a.max_step) + 1, 3)] + [x for x in range(6, a.max_step + 1, 6) if x > a.step3_until]
     wins = [s - (steps[i - 1] if i else 0) for i, s in enumerate(steps)]
-    ENS = ['ifs', 'aifs', 'gefs', 'iconeps']; DET = ['hres', 'aifss', 'gfs', 'icon']
+    ENS = ['ifs', 'aifs', 'gefs', 'iconeps']; DET = ['hres', 'aifss', 'gfs', 'icon', 'ukmo']
     GRIDS = [GRID] + ([GLOBAL] if a.glob else [])  # regional maps (0.25°) and, for the globe, the whole world (0.5°)
     Z = lambda G_, dt_=np.uint8: np.zeros((len(steps), G_['H'], G_['W']), dt_)
     cnt = [{k: Z(G_) for k in ENS} for G_ in GRIDS]; det = [Z(G_) for G_ in GRIDS]; amt = [Z(G_) for G_ in GRIDS]
@@ -268,6 +299,10 @@ def main():
         if ia is not None:
             b = DET.index('icon'); avail[si, b] = True
             for gi in range(len(GRIDS)): det[gi][si] |= ((ia[gi] >= THR) << b).astype(np.uint8)
+        ua = ukmo_amount(run, s, win, GRIDS)
+        if ua is not None:
+            b = DET.index('ukmo'); avail[si, b] = True
+            for gi in range(len(GRIDS)): det[gi][si] |= ((ua[gi] >= THR) << b).astype(np.uint8)
         ea = ieps.amounts(s, win) if s <= 72 else None  # ICON-EPS: 3-hourly output only up to 72 h
         if ea:
             nmem['iconeps'][si] = len(ea)

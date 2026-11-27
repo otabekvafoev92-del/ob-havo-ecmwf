@@ -79,7 +79,7 @@ jobs:
           python-version: '3.12'
       - name: Multimodel precipitation, temperature, clouds and wind (ECMWF, NOAA, DWD)
         run: |
-          pip install eccodes numpy requests scipy
+          pip install eccodes numpy requests scipy netCDF4
           python prob/fetch.py prob.npz
       - uses: actions/upload-artifact@v4
         with:
