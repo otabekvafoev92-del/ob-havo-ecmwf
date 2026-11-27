@@ -2264,12 +2264,20 @@ async function privateMsg(msg, env) {
     return tg(env, 'sendMessage', { chat_id: chat.id, parse_mode: 'HTML', text: `🔎 <b>Поиск городов за 7 дней</b>: ${S.tot}\n\n${S.top.map((x, i) => `${i + 1}. ${esc(x.q)} — ${x.n}`).join('\n') || '—'}${S.miss.length ? `\n\n❓ <b>Не нашлось</b>:\n${S.miss.map(x => `• ${esc(x.q)} — ${x.n}`).join('\n')}` : ''}` });
   }
   if ((cmd === 'users' || text === ADMIN_BTN) && admin === String(chat.id)) {
-    const rows = (await env.DB.prepare('SELECT * FROM users ORDER BY seen DESC LIMIT 100').all()).results;
+    // everyone who used the bot in the last 6 months: the count, the latest 50 in the message, the whole list as a table (CSV, opens in Excel)
+    const since = new Date(Date.now() - 183 * 864e5).toISOString();
+    const rows = (await env.DB.prepare('SELECT * FROM users WHERE seen > ?1 ORDER BY seen DESC').bind(since).all()).results;
     const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).n;
-    const lines = rows.map((x, i) => `${i + 1}. ${esc(x.name || '—')}${x.username ? ' @' + esc(x.username) : ''} · ${x.lang || '?'}${x.region ? ' · ' + (FLAG[x.region] || x.region) : ''} · ${tkt(x.seen)}`);
-    const out = [`👤 <b>Users: ${n}</b> (last 100, время Ташкента)`, ...lines]; let buf = '';
+    const lines = rows.slice(0, 50).map((x, i) => `${i + 1}. ${esc(x.name || '—')}${x.username ? ' @' + esc(x.username) : ''} · ${x.lang || '?'}${x.region ? ' · ' + (FLAG[x.region] || x.region) : ''} · ${tkt(x.seen)}`);
+    const out = [`👤 <b>За 6 месяцев: ${rows.length}</b> (всего в боте: ${n}) · время Ташкента`, '', ...lines, ...(rows.length > 50 ? ['', `… и ещё ${rows.length - 50} — весь список в файле ниже 👇`] : [])]; let buf = '';
     for (const l of out) { if ((buf + l).length > 3800) { await tg(env, 'sendMessage', { chat_id: chat.id, text: buf, parse_mode: 'HTML' }); buf = ''; } buf += l + '\n'; }
-    return tg(env, 'sendMessage', { chat_id: chat.id, text: buf, parse_mode: 'HTML' });
+    await tg(env, 'sendMessage', { chat_id: chat.id, text: buf, parse_mode: 'HTML' });
+    const q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+    const csv = '\ufeff' + [['№', 'Имя', 'Username', 'ID', 'Язык', 'Страна', 'Место', 'Первый раз', 'Последний раз'].map(q).join(';'),
+      ...rows.map((x, i) => [i + 1, x.name, x.username ? '@' + x.username : '', x.chat_id, x.lang, x.region ? (NAMES[x.region] ? NAMES[x.region].ru : x.region) : '', x.place || '', x.first ? tkt(x.first) : '', tkt(x.seen)].map(q).join(';'))].join('\r\n');
+    const fd = new FormData(); fd.append('chat_id', String(chat.id)); fd.append('caption', `👤 Пользователи за 6 месяцев: ${rows.length}`);
+    fd.append('document', new Blob([csv], { type: 'text/csv' }), `osmon_users_6m_${new Date().toISOString().slice(0, 10)}.csv`);
+    return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd }).then(r => r.json());
   }
   if (cmd === 'admin') {
     if (!admin && env.DB) {  // the first one to send /admin becomes the bot's admin
