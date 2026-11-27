@@ -1,0 +1,29 @@
+name: Extra videos
+# eight more videos (tools/extra_videos.py): mountain roads, frost, wind and dust, the models disagree, tomorrow in the provinces (9:16),
+# the week behind, snow in the mountains, the night sky — every morning and evening; kept on the "extra" branch, the bot sends them.
+on:
+  schedule:
+    - cron: '23 0 * * *'    # 05:23 Tashkent: ready for the morning posts
+    - cron: '23 11 * * *'   # 16:23 Tashkent: the evening ones (night sky, frost) with the fresh run
+  workflow_dispatch:
+    inputs:
+      names: {required: false, default: ''}
+permissions: {contents: write}
+concurrency: {group: extra, cancel-in-progress: false}
+jobs:
+  x:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/cache@v4
+        with: {path: ~/.cache/pip, key: pip-extra-v1}
+      - run: |
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || { sudo apt-get update -qq >/dev/null; sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; }
+          pip install -q numpy scipy matplotlib pillow requests qrcode pyproj
+          timeout 3000 python -u -W ignore tools/extra_videos.py ex uz,ru ${{ inputs.names }}
+          cd ex && git init -q && git checkout -q -b extra && git add -A \
+            && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "extra $(date -u +%F' '%H:%M)" \
+            && git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" extra
