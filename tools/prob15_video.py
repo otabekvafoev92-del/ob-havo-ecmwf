@@ -286,7 +286,7 @@ def draw(job):
         txt =  (tw[L] if TM else f"{tw[L]} · {cc_.get(tw[0], 0):.0f}%" if CM else f"{tw[L]}  {p_:.0f}%") + ((' · туман' if lang == 'ru' else ' · tuman') if fg_ else '')
         an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
                          bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#f1f3f5', ec=ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.72))
-    ax.text(0.995, 0.01, '@ObHavo_ECMWF_bot · @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
+    ax.text(0.995, 0.01, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
     for lb_, lo_, la_ in C.get('names', []): ax.text(lo_, la_, lb_, fontsize=10, color='#8a96a3', ha='center', va='center', zorder=3.6, style='italic')
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=NAVY, ec='none', zorder=-1))

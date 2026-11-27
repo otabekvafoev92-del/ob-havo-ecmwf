@@ -188,7 +188,7 @@ export default {
     // each job on its own, so one failure (or Cloudflare's limit of requests per run) cannot stop the others;
     // the check of the site builds goes first: it is small and it matters most
     const run = (name, f) => f().catch(e => console.log(name, e && e.stack));
-    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil((async () => { await run('watch', () => watchTick(env)); await run('pv', () => pvTick(env)); await run('sat', () => satTick(env)); })());  // its own runs: the weather at people's places
+    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil((async () => { await run('watch', () => watchTick(env)); await run('chan', () => chanTick(env)); await run('pv', () => pvTick(env)); await run('sat', () => satTick(env)); })());  // its own runs: the weather at people's places
     ctx.waitUntil((async () => {
       await run('stale', () => staleTick(env));
       await run('pv', () => pvTick(env));
@@ -287,7 +287,7 @@ async function secret(env) {
 // the channel's mark: the sun and three open rings of the sky (the logo of @osmon_obhavo), drawn into the SVG cards
 const osmonMark = (x, y, size, ink = '#ffffff', op = 1) => `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(size / 100).toFixed(3)})" opacity="${op}"><g fill="none" stroke="${ink}" stroke-width="9" stroke-linecap="round" transform="rotate(-15 50 50)"><circle cx="50" cy="50" r="22" stroke-dasharray="115.19 23.04"/><circle cx="50" cy="50" r="40" stroke-dasharray="209.44 41.89"/></g><circle cx="50" cy="50" r="10" fill="#FFB020"/></g>`;
 // under every forecast the bot sends: the bot and the channel (media captions, albums, long texts)
-const SIGN = '@ObHavo_ECMWF_bot · @osmon_obhavo';
+const SIGN = 'Bot - @ObHavo_ECMWF_bot\nKanal - @osmon_obhavo', SIGN1 = 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo';
 const sig = (t, max = 1024) => (!t || t.includes('@osmon_obhavo') || t.length + SIGN.length + 2 > max) ? t : `${t}\n\n${SIGN}`;
 async function tg(env, method, body) {
   if (body && /^send(Photo|Video|Animation|Document|Audio)$/.test(method) && typeof body.caption === 'string') body = { ...body, caption: sig(body.caption) };
@@ -774,6 +774,7 @@ async function notifTick(env, small = false) {
       else if (n.sec === 'hourly') r = await sendHourly(env, n.chat_id, lang, rid);
       else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
       else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
+      else if (n.sec === 'cam' || n.sec === 'cam2') r = await sendCam(env, n.chat_id, lang);  // the Amirsoy cameras (the channel: 09:00 and 12:00)
       else if (n.sec === 'air') r = await sendAir(env, n.chat_id, lang, rid);
       else if (n.sec === 'traj') r = await sendTrajLite(env, n.chat_id, lang, TRJ.has(rid) ? rid : 'UZ');
     } catch (e) {
@@ -1585,7 +1586,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
     const txt = [head, '', ...brief.map(x => `▸ ${x}`), '', ...Dw.map(x => day(x, x.d === today ? T[lang].tdy : x.d === tmrw ? T[lang].tmw : WDL[lang][new Date(x.d + 'T12:00:00Z').getUTCDay()])), cut, `<i>${K.note}</i>`].join('\n');
     // the week as a picture too: the place's photo, the week's brief, its days
     const cw_ = { name: place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`, sub: noEmo(head.replace(/<[^>]+>/g, '').replace(nm0.replace(/<[^>]+>/g, ''), '').replace(/^\s*·\s*/, '')), bh: K.brief, nh: K.next.replace(/.*/, { ru: 'По дням', uz: 'Kunma-kun', en: 'Day by day' }[lang]),
-      brief: brief.map(noEmo), note: noEmo(K.note), foot: SIGN, now: null, two: [],
+      brief: brief.map(noEmo), note: noEmo(K.note), foot: SIGN1, now: null, two: [],
       list: Dw.map(x => ({ wd: wd(x.d), ic: icKey(x.ic), lo: x.lo, hi: x.hi, lot: deg(x.lo), hit: deg(x.hi), p: x.p, mm: x.mm >= 0.5 ? `${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : '', snow: !!x.snow })) };
     const cq_ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, lon, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7), code: NW ? NW.weather_code : 2, day: true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : Dw[0].hi };
     if (await sendCard(env, chat, cw_, cq_, `${head}`, weeksKb(lang, a))) return true;
@@ -1603,7 +1604,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   const exact = !place || Math.hypot(place[5] - lat, (place[6] - lon) * Math.cos(lat * Math.PI / 180)) > 0.02;  // a sent location, not a town's own point
   const pn = exact && wi && wi.short ? noEmo(wi.short) : place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
   const geoT = `${wi && wi.addr ? wi.addr + ' · ' : ''}${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-  const cardD = { name: pn, sub: `${L.head} · ${wd(D[0].d)}`, bh: K.brief, nh: K.next, brief: sum.map(noEmo).slice(0, 5), note: noEmo(K.note), foot: SIGN,
+  const cardD = { name: pn, sub: `${L.head} · ${wd(D[0].d)}`, bh: K.brief, nh: K.next, brief: sum.map(noEmo).slice(0, 5), note: noEmo(K.note), foot: SIGN1,
     now: NW && NW.temperature_2m != null ? { t: `${NW.temperature_2m > 0.5 ? '+' : ''}${Math.round(NW.temperature_2m)}°`.replace(/^-0°$/, '0°'), ic: wmoKey(NW.weather_code, NW.is_day),
       txt: ((WMO[lang] || WMO.ru)[NW.weather_code] || '').replace(/^./, c => c.toUpperCase()),
       more: `${(NOWX[lang] || NOWX.ru).feels} ${Math.round(NW.apparent_temperature)}° · ${(NOWX[lang] || NOWX.ru).hum} ${Math.round(NW.relative_humidity_2m)}% · ${(NOWX[lang] || NOWX.ru).wind} ${Math.round(NW.wind_speed_10m)} ${(NOWX[lang] || NOWX.ru).ms}${NW.is_day && NW.uv_index != null ? ` · ${uvText(NW.uv_index, lang)}` : ''}`, nc: nowcast(NW, lang), geo: geoT.length > 78 ? geoT.slice(0, 76) + '…' : geoT } : null,
@@ -1791,9 +1792,9 @@ async function sendCard(env, chat, d, q, caption, markup) {  // → the Telegram
   } catch (e) { console.log('card', e && e.stack); return null; }
 }
 /* ---------- 🖼 the 15 days of a place as one picture (Full HD, drawn by QuickChart from the same numbers as the text) ---------- */
-const PHX = { ru: { btn: '🖼 Фото прогноза на 15 дней', t: '{n} · прогноз на 15 дней', p: 'Вероятность осадков, %', hi: 'Днём, °C', lo: 'Ночью, °C', src: 'Osmon · модели ECMWF, NOAA, DWD, UKMO · @ObHavo_ECMWF_bot · @osmon_obhavo', fail: '😔 Не удалось нарисовать картинку, попробуйте позже.' },
-  uz: { btn: '🖼 15 kunlik prognoz rasmi', t: '{n} · 15 kunlik prognoz', p: 'Yog‘in ehtimoli, %', hi: 'Kunduzi, °C', lo: 'Kechasi, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO modellari · @ObHavo_ECMWF_bot · @osmon_obhavo', fail: '😔 Rasmni chizib bo‘lmadi, keyinroq urinib ko‘ring.' },
-  en: { btn: '🖼 15-day forecast picture', t: '{n} · 15-day forecast', p: 'Chance of precipitation, %', hi: 'By day, °C', lo: 'At night, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO models · @ObHavo_ECMWF_bot · @osmon_obhavo', fail: '😔 Could not draw the picture, try again later.' } };
+const PHX = { ru: { btn: '🖼 Фото прогноза на 15 дней', t: '{n} · прогноз на 15 дней', p: 'Вероятность осадков, %', hi: 'Днём, °C', lo: 'Ночью, °C', src: 'Osmon · модели ECMWF, NOAA, DWD, UKMO · Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fail: '😔 Не удалось нарисовать картинку, попробуйте позже.' },
+  uz: { btn: '🖼 15 kunlik prognoz rasmi', t: '{n} · 15 kunlik prognoz', p: 'Yog‘in ehtimoli, %', hi: 'Kunduzi, °C', lo: 'Kechasi, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO modellari · Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fail: '😔 Rasmni chizib bo‘lmadi, keyinroq urinib ko‘ring.' },
+  en: { btn: '🖼 15-day forecast picture', t: '{n} · 15-day forecast', p: 'Chance of precipitation, %', hi: 'By day, °C', lo: 'At night, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO models · Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fail: '😔 Could not draw the picture, try again later.' } };
 const phBtn = (lang, lat, lon) => ({ text: (PHX[lang] || PHX.ru).btn, callback_data: `PH:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}` });
 function chart15(X, nm, lab, D, rc, r1) {  // Chart.js 2 config as code (the label formatters are functions)
   const F = { hi: 'function(v){return (v>0?"+":"")+v+"°"}', pc: 'function(v){return v>=10?v+"%":""}', tk: 'function(v){return v+"°"}' };
@@ -1918,6 +1919,26 @@ async function changesTick(env) {
   for (const [k, f] of [['photo', () => pointForecast(env, +admin, lang, 41.311, 69.28, tash, null, 'photo')], ['air', () => sendAir(env, +admin, lang, 'UZ')], ['cam', () => sendCam(env, +admin, lang)]])
     await f().catch(e => console.log('changes demo', k, e && e.message));
 }
+// the channel @osmon_obhavo: every morning a 15-day video of each of Uzbekistan's 14 provinces (place15.yml, the same close-up as "my place");
+// each is tagged <channel>x<k> so the 14 runs do not share one branch, and pvTick sends it to the channel as soon as it is ready
+const CHAN = -1005868797289;
+const PROV = [['Toshkent shahri', 41.311, 69.279], ['Toshkent viloyati', 41.0, 69.36], ['Andijon viloyati', 40.783, 72.344], ['Farg‘ona viloyati', 40.384, 71.784],
+  ['Namangan viloyati', 40.998, 71.673], ['Sirdaryo viloyati', 40.49, 68.785], ['Jizzax viloyati', 40.116, 67.842], ['Samarqand viloyati', 39.655, 66.976],
+  ['Qashqadaryo viloyati', 38.861, 65.79], ['Surxondaryo viloyati', 37.224, 67.278], ['Buxoro viloyati', 39.768, 64.421], ['Navoiy viloyati', 40.103, 65.374],
+  ['Xorazm viloyati', 41.55, 60.631], ['Qoraqalpog‘iston Respublikasi', 42.461, 59.611]];
+async function chanTick(env) {
+  const now = new Date(Date.now() + TZ * 3600e3); if (now.getUTCHours() < 5) return;
+  const day = now.toISOString().slice(0, 10); let k = +(await kv(env, `chan_prov_${day}`) || 0); if (k >= PROV.length) return;
+  const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]').filter(x => Date.now() - x.t < 90 * 60e3);
+  for (let n = 0; n < 5 && k < PROV.length; n++, k++) {
+    const [name, lat, lon] = PROV[k], tag = `${CHAN}x${k}`;
+    const r = await ghApi(env, 'actions/workflows/place15.yml/dispatches', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ref: 'main', inputs: { lat: String(lat), lon: String(lon), name, iso: 'UZ', lang: 'uz', chat: tag, only: 'place' } }) });
+    if (!r.ok) { console.log('chan prov', name, r.status); break; }
+    pend.push({ c: tag, to: String(CHAN), l: 'uz', n: name, f: `${name}, O‘zbekiston · ${lat.toFixed(2)}, ${lon.toFixed(2)}`, cn: 'O‘zbekiston', t: Date.now(), k: ['place'] });
+  }
+  await setKv(env, 'pv_pend', JSON.stringify(pend)); await setKv(env, `chan_prov_${day}`, String(k));
+}
 async function pvTick(env) {  // each video is pushed by its own job to od-<chat>-<kind>; the job then pokes /pv, so it goes out at once (the cron is the fallback)
   const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]'); if (!pend.length) return;
   const keep = [];
@@ -1932,13 +1953,13 @@ async function pvTick(env) {  // each video is pushed by its own job to od-<chat
       if (!ins.meta || !ins.meta.changes) continue;
       const tree = await ghApi(env, `git/trees/${sha}`).then(r => r.ok ? r.json() : null).catch(() => null);
       for (const f of ((tree && tree.tree) || []).map(f => f.path).filter(f => f.endsWith('.mp4'))) {
-        const r = await tg(env, 'sendVideo', { chat_id: x.c, video: `https://raw.githubusercontent.com/${REPO}/${sha}/${f}`, supports_streaming: true, width: 1920, height: 1080,
+        const r = await tg(env, 'sendVideo', { chat_id: x.to || x.c, video: `https://raw.githubusercontent.com/${REPO}/${sha}/${f}`, supports_streaming: true, width: 1920, height: 1080,
           caption: (f.startsWith('place') ? X.capP.replace('{n}', x.n) + (x.f ? `\n🗺 ${x.f}` : '') : X.capC.replace('{n}', x.cn || x.n)) });
         if (!r.ok) console.log('pv send', x.c, f, r.description);
       }
     }
     if (left.length && Date.now() - x.t < 45 * 60e3) { keep.push({ ...x, k: left }); continue; }
-    if (left.length) await tg(env, 'sendMessage', { chat_id: x.c, text: X.late });
+    if (left.length && !x.to) await tg(env, 'sendMessage', { chat_id: x.c, text: X.late });
     await setKv(env, `pv_${x.c}`, '0');
   }
   await setKv(env, 'pv_pend', JSON.stringify(keep));

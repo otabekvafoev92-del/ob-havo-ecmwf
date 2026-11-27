@@ -25,12 +25,12 @@ ECM = 'https://storage.googleapis.com/ecmwf-open-data'
 PARAMS = ['10fgg15', '10fgg25', 'tpg5', 'tpg10', 'tpg20']
 # the risks: key, colour, threshold of the probability shown (%)
 RISK = [('rain', '#1f6fd1'), ('snow', '#8b4fd6'), ('wind', '#f08a24'), ('storm', '#d93a3a'), ('frost', '#2bb3d9'), ('heat', '#e0302a')]
-TX = {'ru': dict(title='Опасная погода · 15 дней', tz='прогноз ансамбля ECMWF', src='ECMWF ENS (вероятности ансамбля) · NOAA GEFS · @ObHavo_ECMWF_bot · @osmon_obhavo',
+TX = {'ru': dict(title='Опасная погода · 15 дней', tz='прогноз ансамбля ECMWF', src='ECMWF ENS (вероятности ансамбля) · NOAA GEFS · Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo',
                  names=dict(rain='ливень >20 мм', snow='снегопад >10 мм', wind='порывы >15 м/с', storm='гроза', frost='мороз < −10°', heat='жара > +35°'),
                  short=dict(rain='ливень', snow='снегопад', wind='ветер', storm='гроза', frost='мороз', heat='жара', calm='спокойно'),
                  leg='вероятность, %', chart='{n}: самый вероятный риск дня, %', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], hur='ураганные порывы >25 м/с',
                  intro1='Опасная погода', intro2='ветер, ливни, снег, мороз, жара и грозы на 15 дней', end1='Предупреждения для вашего места', end2='в Telegram-боте @ObHavo_ECMWF_bot'),
-      'uz': dict(title='Xavfli ob-havo · 15 kun', tz='ECMWF ansambl prognozi', src='ECMWF ENS (ansambl ehtimollari) · NOAA GEFS · @ObHavo_ECMWF_bot · @osmon_obhavo',
+      'uz': dict(title='Xavfli ob-havo · 15 kun', tz='ECMWF ansambl prognozi', src='ECMWF ENS (ansambl ehtimollari) · NOAA GEFS · Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo',
                  names=dict(rain='jala >20 mm', snow='qor >10 mm', wind='shamol >15 m/s', storm='momaqaldiroq', frost='sovuq < −10°', heat='jazirama > +35°'),
                  short=dict(rain='jala', snow='qor', wind='shamol', storm='momaqaldiroq', frost='sovuq', heat='jazirama', calm='tinch'),
                  leg='ehtimol, %', chart='{n}: kunning eng ehtimolli xavfi, %', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'], hur='dovul >25 m/s',

@@ -617,7 +617,7 @@ def _borders(ax, R):
     if (R.cont or R.id == 'cis') and 'UZ' in R.cpoly:  # Uzbekistan stands out on the world, continent and CIS maps
         ax.add_collection(PolyCollection(R.cpoly['UZ'], facecolor=matplotlib.colors.to_rgba(ACCENT, 0.12), edgecolor='none', zorder=4.5))
         ax.add_collection(LineCollection(R.cpoly['UZ'], colors=ACCENT, linewidths=1.8, zorder=6.5))
-    ax.text(0.99, 0.015, '@ObHavo_ECMWF_bot · @osmon_obhavo', transform=ax.transAxes, fontsize=7, color=FAINT, ha='right', va='bottom', zorder=13)
+    ax.text(0.99, 0.015, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, fontsize=7, color=FAINT, ha='right', va='bottom', zorder=13)
 
 
 def _cities(fig, ax, R, label, extra=()):

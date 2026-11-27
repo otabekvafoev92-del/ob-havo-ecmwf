@@ -156,7 +156,7 @@ def draw(job):
         ax.annotate(lab_, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5,
                     fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
                     bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#eef1f4', ec=PV.ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.62))
-    ax.text(0.995, 0.01, '@ObHavo_ECMWF_bot · @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
+    ax.text(0.995, 0.01, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
     fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=PV.ORANGE, va='center')
@@ -270,7 +270,7 @@ def draw_day(job):
                     bbox=dict(boxstyle='circle,pad=0.38' if main else 'circle,pad=0.32', fc=PV.tcol(t_), ec=PV.ORANGE if main else 'white', lw=3 if main else 2))
         ax.annotate(lb, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=17 if main else 13.5, fontweight='bold' if main else 'semibold', color='#1f2933', zorder=9,
                     bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#eef1f4', ec=PV.ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.7))
-    ax.text(0.995, 0.01, '@ObHavo_ECMWF_bot · @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
+    ax.text(0.995, 0.01, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
     ax.text(0.005, 0.01, X['src'], transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=PV.FAINT, zorder=9)
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
     fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=PV.ORANGE, va='center')
