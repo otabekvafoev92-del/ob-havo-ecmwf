@@ -789,7 +789,7 @@ async function sendAir(env, chat, lang, rid) {
   const av = `${EVRAW}/air/air24_${lang === 'uz' ? 'uz' : 'ru'}.mp4`;
   if (rid === 'UZ' && await fetch(av, { method: 'HEAD' }).then(r => r.ok).catch(() => false)) {  // the 24-hour air video (CAMS, made every hour) instead of the picture
     await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
-    await tg(env, 'sendVideo', { chat_id: chat, video: `${av}?v=${Math.floor(Date.now() / 1800e3)}`, supports_streaming: true, width: 1920, height: 1080, caption: `🌫 ${X.title} · 24 ${lang === 'uz' ? 'soat' : lang === 'en' ? 'hours' : 'часа'} · CAMS (Copernicus)` });
+    await tg(env, 'sendVideo', { chat_id: chat, video: `${av}?v=${Math.floor(Date.now() / 1800e3)}`, supports_streaming: true, width: 1920, height: 1080, parse_mode: 'HTML', caption: `🌫 <b>${{ ru: 'Качество воздуха · 24 часа', uz: 'Havo sifati · 24 soat', en: 'Air quality · 24 hours' }[lang] || 'Качество воздуха · 24 часа'}</b>\n${{ ru: 'Индекс AQI и PM2.5 по часам · CAMS (Copernicus) · обновляется каждый час', uz: 'Soatma-soat AQI indeksi va PM2.5 · CAMS (Copernicus) · har soat yangilanadi', en: 'AQI and PM2.5 by the hour · CAMS (Copernicus) · updated hourly' }[lang] || ''}` });
   } else if (rid === 'UZ') {
     const I = await (await fetch(`${base(env)}/prob/outlook/index.json?t=${fresh()}`)).json().catch(() => null), it = I && (I.items.find(i => i.key === 'dust' && i.lang === lang) || I.items.find(i => i.key === 'dust'));
     if (it) await tg(env, 'sendPhoto', { chat_id: chat, photo: `${base(env)}/prob/${(it.imgs || [it.img])[0]}?v=${encodeURIComponent(I.made || '')}`, caption: `🌫 ${X.map}` });
