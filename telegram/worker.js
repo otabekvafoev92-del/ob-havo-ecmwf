@@ -1411,9 +1411,15 @@ function uzLat(t) {
 }
 // what a point on the map is: the village or town, its district and region (OpenStreetMap), else the nearest known place and how far
 async function whereIs(env, lat, lon, lang) {
+  const ck = `geo:${lang}:${lat.toFixed(3)},${lon.toFixed(3)}`, hit = await kv(env, ck).catch(() => null);  // OpenStreetMap asks for at most one question a second: the answers are kept
+  if (hit) return JSON.parse(hit);
+  const res = await whereIs0(env, lat, lon, lang); if (res && res.addr) await setKv(env, ck, JSON.stringify(res)).catch(() => {});
+  return res;
+}
+async function whereIs0(env, lat, lon, lang) {
   const L = lang === 'uz' ? 'uz' : lang === 'en' ? 'en' : 'ru';
   try {
-    const j = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1&accept-language=${L}`,
+    const j = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=${L}`,
       { headers: { 'user-agent': 'OsmonWeatherBot/1.0 (t.me/ObHavo_ECMWF_bot)' }, signal: AbortSignal.timeout(4000) }).then(r => r.ok ? r.json() : null);
     const a = j && j.address;
     if (a) {
@@ -1421,7 +1427,8 @@ async function whereIs(env, lat, lon, lang) {
       const dist = a.county || a.city_district || a.district || '', reg = a.state || a.region || '';
       const parts = [spot, dist, reg].filter((v, i, A) => v && A.indexOf(v) === i);
       const fx = lang === 'uz' ? uzLat : v => v, P2 = parts.map(fx);
-      if (P2.length) return { short: fx(spot || dist || reg), full: P2.join(', '), cc: (a.country_code || '').toUpperCase() };
+      const addr = [a.country, reg, dist, spot && spot !== dist ? spot : '', a.road].filter((v, i, A) => v && A.indexOf(v) === i).map(fx).join(', ');
+      if (P2.length) return { short: fx(spot || dist || reg), full: P2.join(', '), addr, cc: (a.country_code || '').toUpperCase() };
     }
   } catch (e) { console.log('whereIs', e && e.message); }
   const p = await nearestPlace(env, lat, lon, 80);
@@ -1442,7 +1449,7 @@ async function nowWeather(lat, lon) {
   return memo(k, 10 * 60e3, async () => {
     try {
       const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation,snowfall,is_day,uv_index&minutely_15=precipitation,snowfall,weather_code&forecast_minutely_15=24&daily=weather_code,uv_index_max&forecast_days=16&wind_speed_unit=ms&timezone=auto`, { cf: { cacheTtl: 600 } });
-      if (!r.ok) return null; const j = await r.json(); const c = j.current || {}; c.m15 = j.minutely_15 || null; c.utc_offset_seconds = j.utc_offset_seconds || 0; c.uvmax = j.daily && j.daily.uv_index_max ? j.daily.uv_index_max[0] : null; c.codes = {}; (j.daily && j.daily.time || []).forEach((d, i) => { c.codes[d] = j.daily.weather_code[i]; }); return c;
+      if (!r.ok) return null; const j = await r.json(); const c = j.current || {}; c.m15 = j.minutely_15 || null; c.utc_offset_seconds = j.utc_offset_seconds || 0; c.elev = j.elevation; c.uvmax = j.daily && j.daily.uv_index_max ? j.daily.uv_index_max[0] : null; c.codes = {}; (j.daily && j.daily.time || []).forEach((d, i) => { c.codes[d] = j.daily.weather_code[i]; }); return c;
     } catch (e) { return null; }
   });
 }
@@ -1584,17 +1591,20 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
     `<i>${K.note}</i>`].join('\n');
   let kb = kbOver && kbOver.keyboard ? kbOver : null;
   // the picture: the city behind (its season and weather now), the same forecast on it; the text stays the fallback
-  const pn = place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const wi = await whereIs(env, lat, lon, lang).catch(() => null);
+  const exact = !place || Math.hypot(place[5] - lat, (place[6] - lon) * Math.cos(lat * Math.PI / 180)) > 0.02;  // a sent location, not a town's own point
+  const pn = exact && wi && wi.short ? noEmo(wi.short) : place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const geoT = `${wi && wi.addr ? wi.addr + ' · ' : ''}${lat.toFixed(4)}, ${lon.toFixed(4)}`;
   const cardD = { name: pn, sub: `${L.head} · ${wd(D[0].d)}`, bh: K.brief, nh: K.next, brief: sum.map(noEmo).slice(0, 5), note: noEmo(K.note), foot: 't.me/ObHavo_ECMWF_bot',
     now: NW && NW.temperature_2m != null ? { t: `${NW.temperature_2m > 0.5 ? '+' : ''}${Math.round(NW.temperature_2m)}°`.replace(/^-0°$/, '0°'), ic: wmoKey(NW.weather_code, NW.is_day),
       txt: ((WMO[lang] || WMO.ru)[NW.weather_code] || '').replace(/^./, c => c.toUpperCase()),
-      more: `${(NOWX[lang] || NOWX.ru).feels} ${Math.round(NW.apparent_temperature)}° · ${(NOWX[lang] || NOWX.ru).hum} ${Math.round(NW.relative_humidity_2m)}% · ${(NOWX[lang] || NOWX.ru).wind} ${Math.round(NW.wind_speed_10m)} ${(NOWX[lang] || NOWX.ru).ms}${NW.is_day && NW.uv_index != null ? ` · ${uvText(NW.uv_index, lang)}` : ''}`, nc: nowcast(NW, lang) } : null,
+      more: `${(NOWX[lang] || NOWX.ru).feels} ${Math.round(NW.apparent_temperature)}° · ${(NOWX[lang] || NOWX.ru).hum} ${Math.round(NW.relative_humidity_2m)}% · ${(NOWX[lang] || NOWX.ru).wind} ${Math.round(NW.wind_speed_10m)} ${(NOWX[lang] || NOWX.ru).ms}${NW.is_day && NW.uv_index != null ? ` · ${uvText(NW.uv_index, lang)}` : ''}`, nc: nowcast(NW, lang), geo: geoT.length > 78 ? geoT.slice(0, 76) + '…' : geoT } : null,
     two: D.slice(0, 2).map((x, k) => ({ w: `${k ? (x.d === tmrw ? T[lang].tmw : wd(x.d)) : (x.d === today ? T[lang].tdy : wd(x.d))} · ${wd(x.d)}`.replace(/^(.+) · \1$/, '$1'), ic: icKey(x.ic), t: `${deg(x.lo)}…${deg(x.hi)}`,
       pr: noEmo(pr(x)), umb: noEmo(umbr(x)), wear: `${K.wear}: ${noEmo(wearText(lang, x.lo, x.hi, x.p, x.snow, x.w))}` })),
     list: Dn.map(x => ({ wd: wd(x.d), ic: icKey(x.ic), lo: x.lo, hi: x.hi, lot: deg(x.lo), hit: deg(x.hi), p: x.p, mm: mmT(x), snow: !!x.snow })) };
   const cardQ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, lon, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7),
-    code: NW ? NW.weather_code : 2, day: NW ? !!NW.is_day : true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : D[0].hi };
-  const ncT = nowcast(NW, lang), capC = `${nm} · ${L.head}${nowT ? `\n${nowT.split('\n')[0]}` : ''}${ncT ? `\n🕒 ${ncT}` : ''}`;
+    code: NW ? NW.weather_code : 2, day: NW ? !!NW.is_day : true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : D[0].hi, elev: NW ? NW.elev : 0 };
+  const ncT = nowcast(NW, lang), nmC = exact && wi && wi.short ? `${place ? FLAG[place[4]] || '📍' : '📍'} <b>${esc(wi.short)}</b>` : nm, capC = `${nmC} · ${L.head}${nowT ? `\n${nowT.split('\n')[0]}` : ''}${ncT ? `\n🕒 ${ncT}` : ''}\n📍 ${esc(geoT)}`;
   if (!kb) { const uu = await getUser(env, chat); kb = replyKb(env, lang, place && NAMES[place[4]] ? place[4] : (uu && NAMES[uu.region] ? uu.region : 'UZ')); }
   // the place on the interactive map: its district and region outlined (Uzbekistan, Kazakhstan, Kyrgyzstan)
   const rid_ = ['UZ', 'KZ', 'KG'].find(c => { const A = { UZ: [55.9, 73.2, 37.1, 45.6], KZ: [46.4, 87.4, 40.5, 55.5], KG: [69.2, 80.3, 39.1, 43.3] }[c]; return lon >= A[0] && lon <= A[1] && lat >= A[2] && lat <= A[3]; });
@@ -1680,7 +1690,7 @@ function cardSvg(d, bg) {
   body += wrapT(d.note, W - 112, 22, false, 2).map((l, i) => T(l, W / 2, y + i * 30, 22, '#ffffff', { a: 'middle', op: 0.5 })).join(''); y += 64;
   body += T(d.foot, W / 2, y, 24, '#ffd29c', { a: 'middle', b: 1, op: 0.8 }); const H = y + 40;
   const head = T(d.name, 56, 112, d.name.length > 16 ? 52 : 66, '#ffffff', { b: 1, sh: 1 }) + T(d.sub, 58, 162, 30, '#ffffff', { op: 0.9, sh: 1 }) +
-    (d.now ? T(d.now.t, W - 56, 140, 120, '#ffffff', { b: 1, a: 'end', sh: 1 }) + svgIcon(d.now.ic, W - 56 - [...d.now.t].length * 72 - 60, 98, 52) + T(d.now.txt, W - 56, 196, 30, '#ffffff', { b: 1, a: 'end', sh: 1 }) + T(d.now.more, W - 56, 238, 24, '#ffffff', { a: 'end', op: 0.9, sh: 1 }) + (d.now.nc ? T(d.now.nc, W - 56, 280, 25, '#ffd29c', { a: 'end', b: 1, sh: 1 }) : '') : '');
+    (d.now ? T(d.now.t, W - 56, 140, 120, '#ffffff', { b: 1, a: 'end', sh: 1 }) + svgIcon(d.now.ic, W - 56 - [...d.now.t].length * 72 - 60, 98, 52) + T(d.now.txt, W - 56, 196, 30, '#ffffff', { b: 1, a: 'end', sh: 1 }) + T(d.now.more, W - 56, 238, 24, '#ffffff', { a: 'end', op: 0.9, sh: 1 }) + (d.now.nc ? T(d.now.nc, W - 56, 280, 25, '#ffd29c', { a: 'end', b: 1, sh: 1 }) : '') + (d.now.geo ? T(d.now.geo, W - 56, 318, 20, '#ffffff', { a: 'end', op: 0.85, sh: 1 }) : '') : '');
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs><filter id="sh" x="-5%" y="-20%" width="110%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity="0.6"/></filter>
 <linearGradient id="gt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08101e" stop-opacity="0.65"/><stop offset="1" stop-color="#08101e" stop-opacity="0"/></linearGradient>
@@ -1692,15 +1702,30 @@ ${fxSvg(d.fx || {}, W)}
 ${head}${body}</svg>`;
 }
 const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
-// the photo a town is known by, where its own article's picture is not it (Wikipedia article titles)
-const PHOTO_T = { tashkent: 'Tashkent Tower', 'tashkent region': 'Bostanliq District' };
-// the towns of Tashkent region (not the city): the mountains and Lake Charvak
+// fixed photos (Wikimedia Commons / Wikipedia files, straight from the file, no search): Tashkent — the TV tower, the towns of Tashkent
+// region — Lake Charvak, any place high in the mountains — the mountains (snowy Chimgan in winter)
+const WM = 'https://thumb.wikimedia.org/wikipedia';
+const PH = { tower: `${WM}/en/thumb/5/5c/Toshkent_teleminorasi.jpg/1920px-Toshkent_teleminorasi.jpg`, charvak: `${WM}/commons/thumb/2/2b/Panorama_of_Chorvoq.jpg/1920px-Panorama_of_Chorvoq.jpg`,
+  chimgan: `${WM}/commons/thumb/6/6e/Chimgan_ski.JPG/1920px-Chimgan_ski.JPG`, river: `${WM}/commons/thumb/6/68/Chirchik_River_in_Khodzhikent.jpg/1920px-Chirchik_River_in_Khodzhikent.jpg` };
 const inTashReg = q => q.country === 'Uzbekistan' && q.lat >= 40.55 && q.lat <= 42.3 && q.lon >= 69.0 && q.lon <= 71.3 && Math.hypot(q.lat - 41.31, (q.lon - 69.28) * 0.75) > 0.13;
+function fixedPhoto(q) {
+  const winter = [12, 1, 2].includes(q.month);
+  if ((q.elev || 0) >= 1300) return winter ? PH.chimgan : PH.river;  // the mountains
+  if (String(q.city).toLowerCase() === 'tashkent' || (q.country === 'Uzbekistan' && q.lon != null && Math.hypot(q.lat - 41.31, (q.lon - 69.28) * 0.75) <= 0.13)) return PH.tower;
+  if (q.lon != null && inTashReg(q)) return (q.elev || 0) >= 800 && winter ? PH.chimgan : PH.charvak;
+  return '';
+}
 async function realPhoto(env, q) {  // a real photo of the place (Wikipedia's picture of its article), cut to a square by wsrv.nl; '' when there is none
-  const ov = PHOTO_T[String(q.city).toLowerCase()] || (q.lon != null && inTashReg(q) ? 'Bostanliq District' : '');
-  const key = `real${ov ? 'o2' : ''}:${(q.city + '-' + q.country).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  const fx = fixedPhoto(q), ov = '';
+  if (fx) {
+    const k = `fix:${fx.split('/').pop()}`, row = await env.DB.prepare('SELECT b, t FROM bgimg WHERE k = ?1').bind(k).first();
+    if (row && row.b) return row.b;
+    const r = await fetch(`https://wsrv.nl/?url=${encodeURIComponent(fx)}&w=1080&h=1080&fit=cover&a=attention&output=jpg&q=78`).catch(() => null);
+    if (r && r.ok) { const b = b64(await r.arrayBuffer()); await env.DB.prepare('INSERT OR REPLACE INTO bgimg (k, b, t) VALUES (?1, ?2, ?3)').bind(k, b, Date.now()).run(); return b; }
+  }
+  const key = `real:${(q.city + '-' + q.country).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   const row = await env.DB.prepare('SELECT b, t FROM bgimg WHERE k = ?1').bind(key).first();
-  if (row && (row.b || Date.now() - (row.t || 0) < 3 * 864e5)) return row.b;  // none found: try again after 3 days
+  if (row && (row.b || Date.now() - (row.t || 0) < 3600e3)) return row.b;  // none found: try again after an hour
   let b = '';
   try {
     const UA = { 'user-agent': 'OsmonWeatherBot/1.0 (https://t.me/ObHavo_ECMWF_bot)' };
