@@ -8,7 +8,8 @@ import datetime as _d
 run = 'global-deterministic-10km/' + (_d.datetime.utcnow() - _d.timedelta(hours=14)).replace(hour=0 if (_d.datetime.utcnow() - _d.timedelta(hours=14)).hour < 12 else 12).strftime('%Y%m%dT%H00Z') + '/'; P('run', run); keys = []; tok = ''
 while True:
     r = S.get(f'{B}/?list-type=2&prefix={run}&max-keys=1000' + (f'&continuation-token={requests.utils.quote(tok)}' if tok else ''), timeout=60)
-    keys += re.findall(r'<Key>([^<]+)</Key><LastModified>[^<]+</LastModified><ETag>[^<]+</ETag><Size>(\d+)</Size>', r.text)
+    keys += [(re.search(r'<Key>([^<]+)</Key>', c).group(1), re.search(r'<Size>(\d+)</Size>', c).group(1)) for c in re.findall(r'<Contents>(.*?)</Contents>', r.text)]
+    if not keys: P('raw', r.status_code, r.text[:500])
     m = re.search(r'<NextContinuationToken>([^<]+)</NextContinuationToken>', r.text)
     if not m: break
     tok = m.group(1)

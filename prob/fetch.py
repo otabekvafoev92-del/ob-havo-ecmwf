@@ -6,6 +6,8 @@ Sources (all open data, only the precipitation field is downloaded thanks to byt
       https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com  (ECMWF open data, CC BY 4.0)
   NOAA GEFS (31), NOAA GFS     https://noaa-gefs-pds.s3.amazonaws.com, https://noaa-gfs-bdp-pds.s3.amazonaws.com
   DWD ICON (global, icosahedral → regridded)  https://opendata.dwd.de/weather/nwp/icon/grib/
+  DWD ICON-EPS (40 members, up to 72 h)       https://opendata.dwd.de/weather/nwp/icon-eps/grib/
+  ECMWF IFS HRES at 0.1° (9 km) where published
 Usage: python3 prob/fetch.py out.npz [--run 2026-10-29T00] [--max-step 360]
 """
 import argparse, bz2, datetime as dt, io, json, re, sys, time, concurrent.futures as cf
@@ -71,9 +73,9 @@ def regrid(g, grid=None):
     return (a * (1 - ay[:, None]) + b * ay[:, None]).astype(np.float32)
 
 
-def ecmwf_jobs(run, model, stream, typ, step, scale):
+def ecmwf_jobs(run, model, stream, typ, step, scale, res='0p25'):
     d, h = run.strftime('%Y%m%d'), run.strftime('%H')
-    base = f'{ECM}/{d}/{h}z/{model}/0p25/{stream}/{d}{h}0000-{step}h-{stream}-{typ}'
+    base = f'{ECM}/{d}/{h}z/{model}/{res}/{stream}/{d}{h}0000-{step}h-{stream}-{typ}'
     idx = get(base + '.index')
     if not idx: return []
     out = []
@@ -136,6 +138,61 @@ class Icon:
         return [np.maximum(c - q, 0) for c, q in zip(cur, p[1])]
 
 
+class IconEps:
+    """DWD ICON-EPS (40 members, ~40 km icosahedral): every file holds all members' precipitation since the start; up to 72 h every 3 h or less."""
+    BASE = 'https://opendata.dwd.de/weather/nwp/icon-eps/grib'
+    def __init__(self, run, grids):
+        self.run = run; self.idx = None; self.grids = grids; self.prev = {}
+        try:
+            from scipy.spatial import cKDTree
+            h = run.strftime('%H'); tag = run.strftime('%Y%m%d%H')
+            def field(var):
+                raw = get(f'{self.BASE}/{h}/{var}/icon-eps_global_icosahedral_time-invariant_{tag}_{var}.grib2.bz2')
+                return eccodes.codes_get_values(eccodes.codes_new_from_message(bz2.decompress(raw)))
+            clat, clon = np.radians(field('clat')), np.radians(field('clon'))
+            tree = cKDTree(np.c_[np.cos(clat) * np.cos(clon), np.cos(clat) * np.sin(clon), np.sin(clat)]); self.idx = []
+            for G_ in grids:
+                lon = np.radians(G_['lon0'] + np.arange(G_['W']) * G_['d']); lat = np.radians(G_['lat0'] - np.arange(G_['H']) * G_['d'])
+                LON, LAT = np.meshgrid(lon, lat)
+                self.idx.append(tree.query(np.c_[(np.cos(LAT) * np.cos(LON)).ravel(), (np.cos(LAT) * np.sin(LON)).ravel(), np.sin(LAT).ravel()])[1])
+            log('icon-eps grid ok', len(clat))
+        except Exception as e:
+            log('icon-eps disabled:', e); self.idx = None
+
+    def fields(self, step):
+        """{member: [array per grid]} of the precipitation since the start, or None"""
+        if self.idx is None or step > 180: return None
+        if step in self.prev: return self.prev[step]
+        h = self.run.strftime('%H'); tag = self.run.strftime('%Y%m%d%H')
+        raw = get(f'{self.BASE}/{h}/tot_prec/icon-eps_global_icosahedral_single-level_{tag}_{step:03d}_tot_prec.grib2.bz2')
+        if not raw: return None
+        import tempfile, os
+        out = {}
+        with tempfile.NamedTemporaryFile(suffix='.grib2', delete=False) as f: f.write(bz2.decompress(raw)); fn = f.name
+        try:
+            with open(fn, 'rb') as fh:
+                while True:
+                    g = eccodes.codes_grib_new_from_file(fh)
+                    if g is None: break
+                    try:
+                        m = eccodes.codes_get(g, 'perturbationNumber') if eccodes.codes_is_defined(g, 'perturbationNumber') else len(out) + 1
+                        v = eccodes.codes_get_values(g)
+                        out[int(m)] = [v[ix].reshape(G_['H'], G_['W']).astype(np.float32) for ix, G_ in zip(self.idx, self.grids)]
+                    finally: eccodes.codes_release(g)
+        finally: os.unlink(fn)
+        self.prev = {k: v for k, v in self.prev.items() if k >= step - 12}; self.prev[step] = out
+        return out
+
+    def amounts(self, step, win):
+        """the members' precipitation in (step − win, step], or None when the model has no output at one of the ends"""
+        cur = self.fields(step)
+        if not cur: return None
+        if step == win: return list(cur.values())
+        old = self.fields(step - win)
+        if not old: return None
+        return [[np.maximum(c - o, 0) for c, o in zip(cur[m], old[m])] for m in cur if m in old]
+
+
 def pick_run(want=None):
     if want: return dt.datetime.strptime(want, '%Y-%m-%dT%H')
     now = dt.datetime.utcnow()
@@ -165,20 +222,22 @@ def main():
     # 3-hour windows while the models give 3-hourly output (ECMWF IFS ENS/HRES, GEFS, GFS, ICON: up to 144 h), then 6-hour windows
     steps = [x for x in range(3, min(a.step3_until, a.max_step) + 1, 3)] + [x for x in range(6, a.max_step + 1, 6) if x > a.step3_until]
     wins = [s - (steps[i - 1] if i else 0) for i, s in enumerate(steps)]
-    ENS = ['ifs', 'aifs', 'gefs']; DET = ['hres', 'aifss', 'gfs', 'icon']
+    ENS = ['ifs', 'aifs', 'gefs', 'iconeps']; DET = ['hres', 'aifss', 'gfs', 'icon']
     GRIDS = [GRID] + ([GLOBAL] if a.glob else [])  # regional maps (0.25°) and, for the globe, the whole world (0.5°)
     Z = lambda G_, dt_=np.uint8: np.zeros((len(steps), G_['H'], G_['W']), dt_)
     cnt = [{k: Z(G_) for k in ENS} for G_ in GRIDS]; det = [Z(G_) for G_ in GRIDS]; amt = [Z(G_) for G_ in GRIDS]
     nmem = {k: np.zeros(len(steps), np.int16) for k in ENS}; avail = np.zeros((len(steps), len(DET)), bool)
     prev = {}
-    icon = Icon(run, GRIDS)
+    icon = Icon(run, GRIDS); ieps = IconEps(run, GRIDS)
     pool = cf.ThreadPoolExecutor(a.workers)
     for si, s in enumerate(steps):
         win = wins[si]; jobs = []
         for j in ecmwf_jobs(run, 'ifs', 'enfo', 'ef', s, 1000): jobs.append(('ifs', j))
         for typ in ('cf', 'pf'):
             for j in ecmwf_jobs(run, 'aifs-ens', 'enfo', typ, s, 1): jobs.append(('aifs', j))
-        for j in ecmwf_jobs(run, 'ifs', 'oper', 'fc', s, 1000): jobs.append(('hres', j))
+        # IFS HRES at 9 km (0.1°) where it is published, else 0.25°
+        hj = ecmwf_jobs(run, 'ifs', 'oper', 'fc-sfc', s, 1000, res='0p1') or ecmwf_jobs(run, 'ifs', 'oper', 'fc', s, 1000)
+        for j in hj: jobs.append(('hres', j))
         for j in ecmwf_jobs(run, 'aifs-single', 'oper', 'fc', s, 1): jobs.append(('aifss', j))
         urls = [(m, f'{GEFS}/gefs.{d}/{h}/atmos/pgrb2ap5/{"gec00" if m == 0 else f"gep{m:02d}"}.t{h}z.pgrb2a.0p50.f{s:03d}') for m in range(31)]
         for m, j in zip([u[0] for u in urls], pool.map(lambda u: ncep_job(u[1], s, u[0], win), urls)):
@@ -209,6 +268,11 @@ def main():
         if ia is not None:
             b = DET.index('icon'); avail[si, b] = True
             for gi in range(len(GRIDS)): det[gi][si] |= ((ia[gi] >= THR) << b).astype(np.uint8)
+        ea = ieps.amounts(s, win) if s <= 72 else None  # ICON-EPS: 3-hourly output only up to 72 h
+        if ea:
+            nmem['iconeps'][si] = len(ea)
+            for amount in ea:
+                for gi in range(len(GRIDS)): cnt[gi]['iconeps'][si] += (amount[gi] >= THR); sums[gi]['iconeps'] += amount[gi]
         have = [k for k in ENS if nmem[k][si]]
         for gi in range(len(GRIDS)):
             mean = sum(sums[gi][k] / nmem[k][si] for k in have) / max(1, len(have))
