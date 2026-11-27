@@ -1,0 +1,118 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Tomorrow in the provinces, vertical 9:16 for stories / Reels / Shorts — rendered frame by frame (window.frame(k)), captured by tools/extra_videos.py.
+// window.D = {date, title, sub, rows:[{name, hi, lo, p, code}], lab:{rain, snow, dry}, qr:[dataURL,dataURL], fps}
+const C = document.getElementById('c'), X = C.getContext('2d'), W = 1080, H = 1920, FPS = 30;
+let D = null, SPR = {}, QR = [];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), ease = t => 1 - Math.pow(1 - clamp(t, 0, 1), 3), lerp = (a, b, f) => a + (b - a) * f;
+function rnd(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function cloudSprite(seed, w, h) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'), r = rnd(seed); g.filter = 'blur(12px)';
+  for (let i = 0; i < 24; i++) { const x = w * (0.15 + 0.7 * r()), y = h * (0.5 + 0.25 * (r() - 0.5)) - Math.sin((x / w) * Math.PI) * h * 0.18, rr = h * (0.18 + 0.22 * r());
+    const gr = g.createRadialGradient(x, y, rr * 0.1, x, y, rr); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, 7); g.fill(); }
+  return cv;
+}
+// scenes: cover (0–3 s), three pages of five (4.6 s each), outro (3.2 s)
+const T0 = 3.0, TP = 4.6, TO = 3.2;
+function total() { return T0 + TP * Math.ceil(D.rows.length / 5) + TO; }
+
+function background(t) {
+  const g = X.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0B2545'); g.addColorStop(0.55, '#1E63C6'); g.addColorStop(1, '#7fb2e5'); X.fillStyle = g; X.fillRect(0, 0, W, H);
+  // a slow sun glow and drifting clouds
+  const sx = W * 0.8, sy = H * 0.16 + Math.sin(t * 0.3) * 10, gl = X.createRadialGradient(sx, sy, 0, sx, sy, 700);
+  gl.addColorStop(0, 'rgba(255,214,140,0.45)'); gl.addColorStop(0.3, 'rgba(255,190,110,0.15)'); gl.addColorStop(1, 'rgba(255,190,110,0)'); X.fillStyle = gl; X.fillRect(0, 0, W, H);
+  SPR.clouds.forEach((c, j) => { const x = ((j * 430 + t * (18 + j * 7)) % (W + 900)) - 700, y = 180 + j * 290; X.globalAlpha = 0.28 + 0.1 * (j % 2); X.drawImage(c, x, y, c.width * 1.6, c.height * 1.6); });
+  X.globalAlpha = 1;
+  // the mountains at the bottom, in three hazy ranges
+  [[0.86, '#1b3a63', 0.9], [0.9, '#14304f', 1], [0.95, '#0B2545', 1]].forEach(([y0, col, a], li) => {
+    const r = rnd(7 + li); X.fillStyle = col; X.globalAlpha = a; X.beginPath(); X.moveTo(0, H);
+    for (let x = 0; x <= W; x += 40) X.lineTo(x, H * y0 - 60 * Math.abs(Math.sin(x * 0.006 + li * 2)) - 30 * r()); X.lineTo(W, H); X.fill(); });
+  X.globalAlpha = 1;
+}
+function glass(x, y, w, h, r = 34, a = 0.18) {
+  X.save(); X.beginPath(); X.roundRect(x, y, w, h, r); X.fillStyle = `rgba(255,255,255,${a})`; X.fill(); X.strokeStyle = 'rgba(255,255,255,0.35)'; X.lineWidth = 2; X.stroke(); X.restore();
+}
+function logo(x, y, s, ink = '#fff') {
+  X.save(); X.translate(x, y); X.lineCap = 'round'; X.strokeStyle = ink;
+  for (const r of [0.42, 0.7, 0.98]) { X.lineWidth = s * 0.14; X.beginPath(); X.arc(0, 0, r * s, -Math.PI * 0.25 + 0.55, -Math.PI * 0.25 - 0.55 + Math.PI * 2); X.stroke(); }
+  X.fillStyle = '#FFB020'; X.beginPath(); X.arc(0, 0, s * 0.2, 0, 7); X.fill(); X.restore();
+}
+function icon(code, x, y, s, t) {  // animated: the sun turns, the cloud floats, drops and flakes fall, lightning flashes
+  X.save(); X.translate(x, y);
+  const clear = code <= 1, part = code === 2 || code === 3, fog = code === 45 || code === 48, snow = [71, 73, 75, 77, 85, 86].includes(code), rain = !snow && code >= 51 && code < 95, storm = code >= 95;
+  if (clear || part) { X.save(); if (part) X.translate(s * 0.22, -s * 0.2); X.rotate(t * 0.8); X.fillStyle = '#FFB020';
+    for (let r = 0; r < 10; r++) { X.rotate(Math.PI / 5); X.beginPath(); X.roundRect(s * 0.38, -s * 0.035, s * 0.16, s * 0.07, s * 0.03); X.fill(); }
+    X.restore(); X.fillStyle = '#FFC94A'; X.beginPath(); X.arc(part ? s * 0.22 : 0, part ? -s * 0.2 : 0, s * 0.3, 0, 7); X.fill(); }
+  if (!clear) { const bob = Math.sin(t * 2.2) * s * 0.03; X.fillStyle = rain || storm || snow ? '#d7e0ea' : '#ffffff';
+    for (const [dx, dy, r] of [[-0.28, 0.08, 0.24], [0.02, -0.06, 0.32], [0.3, 0.1, 0.22], [0.0, 0.16, 0.26]]) { X.beginPath(); X.arc(dx * s, dy * s + bob, r * s, 0, 7); X.fill(); } }
+  if (rain || storm) { X.strokeStyle = '#4ea3ff'; X.lineWidth = s * 0.06; X.lineCap = 'round';
+    for (let j = 0; j < 4; j++) { const ph = (t * 1.6 + j * 0.27) % 1; X.globalAlpha = 1 - ph; X.beginPath(); X.moveTo((-0.3 + 0.2 * j) * s, s * (0.42 + ph * 0.3)); X.lineTo((-0.34 + 0.2 * j) * s, s * (0.56 + ph * 0.3)); X.stroke(); } X.globalAlpha = 1; }
+  if (snow) { X.fillStyle = '#fff'; for (let j = 0; j < 4; j++) { const ph = (t * 0.7 + j * 0.25) % 1; X.globalAlpha = 1 - ph; X.beginPath(); X.arc((-0.3 + 0.2 * j) * s + Math.sin(t * 3 + j) * 4, s * (0.45 + ph * 0.35), s * 0.06, 0, 7); X.fill(); } X.globalAlpha = 1; }
+  if (storm && (t * 2) % 2 < 0.25) { X.fillStyle = '#FFB020'; X.beginPath(); X.moveTo(0, s * 0.25); X.lineTo(-s * 0.12, s * 0.55); X.lineTo(s * 0.02, s * 0.53); X.lineTo(-s * 0.06, s * 0.85); X.lineTo(s * 0.16, s * 0.45); X.lineTo(s * 0.02, s * 0.47); X.fill(); }
+  if (fog) { X.strokeStyle = 'rgba(255,255,255,0.9)'; X.lineWidth = s * 0.07; X.lineCap = 'round'; for (let j = 0; j < 3; j++) { const o = Math.sin(t * 1.5 + j) * s * 0.08; X.beginPath(); X.moveTo(-s * 0.45 + o, s * (0.38 + 0.15 * j)); X.lineTo(s * 0.45 + o, s * (0.38 + 0.15 * j)); X.stroke(); } }
+  X.restore();
+}
+function header(a) {
+  X.globalAlpha = a; logo(96, 110, 34); X.fillStyle = '#fff'; X.font = '800 46px Manrope, Inter, sans-serif'; X.fillText('osmon', 150, 126);
+  X.textAlign = 'right'; X.font = '700 30px Manrope, Inter, sans-serif'; X.fillStyle = '#ffd29c'; X.fillText(D.date, W - 60, 124); X.textAlign = 'left'; X.globalAlpha = 1;
+}
+function footer() {
+  X.textAlign = 'center'; X.font = '600 28px Manrope, Inter, sans-serif'; X.fillStyle = 'rgba(255,255,255,0.9)';
+  X.fillText('Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', W / 2, H - 70); X.textAlign = 'left';
+}
+function cover(t) {
+  const a = ease(t / 0.8), out = clamp((T0 - t) / 0.5, 0, 1);
+  X.globalAlpha = out; logo(W / 2, H * 0.30 - (1 - a) * 60, 120 * (0.8 + 0.2 * a));
+  X.textAlign = 'center'; X.fillStyle = '#fff'; X.font = '800 92px Manrope, Inter, sans-serif'; X.globalAlpha = out * a; X.fillText(D.title, W / 2, H * 0.47);
+  X.font = '700 54px Manrope, Inter, sans-serif'; X.fillStyle = '#FFB020'; X.globalAlpha = out * ease((t - 0.4) / 0.8); X.fillText(D.sub, W / 2, H * 0.53);
+  X.font = '600 34px Manrope, Inter, sans-serif'; X.fillStyle = 'rgba(255,255,255,0.85)'; X.globalAlpha = out * ease((t - 0.8) / 0.8); X.fillText(D.lead, W / 2, H * 0.585);
+  X.textAlign = 'left'; X.globalAlpha = 1;
+}
+function page(pi, t) {
+  const rows = D.rows.slice(pi * 5, pi * 5 + 5), out = clamp((TP - t) / 0.45, 0, 1);
+  X.fillStyle = '#fff'; X.font = '800 58px Manrope, Inter, sans-serif'; X.globalAlpha = ease(t / 0.5) * out; X.fillText(D.title, 60, 260);
+  X.font = '600 32px Manrope, Inter, sans-serif'; X.fillStyle = 'rgba(255,255,255,0.8)'; X.fillText(D.sub, 60, 312); X.globalAlpha = 1;
+  rows.forEach((r, j) => {
+    const a = ease((t - 0.15 - j * 0.18) / 0.6), x = 50 + (1 - a) * 600, y = 380 + j * 268, w = W - 100, h = 232;
+    X.globalAlpha = a * out; glass(x, y, w, h);
+    X.fillStyle = '#fff'; X.font = '800 54px Manrope, Inter, sans-serif'; X.fillText(r.name, x + 46, y + 98);
+    // the chance of precipitation as a little bar
+    const pc = clamp(r.p, 0, 100), bw = 300 * ease((t - 0.5 - j * 0.18) / 0.8) * pc / 100;
+    X.fillStyle = 'rgba(255,255,255,0.22)'; X.beginPath(); X.roundRect(x + 46, y + 140, 300, 18, 9); X.fill();
+    X.fillStyle = r.snow ? '#c9b8ff' : '#4ea3ff'; if (bw > 1) { X.beginPath(); X.roundRect(x + 46, y + 140, bw, 18, 9); X.fill(); }
+    X.font = '700 28px Manrope, Inter, sans-serif'; X.fillStyle = 'rgba(255,255,255,0.9)'; X.fillText(pc >= 20 ? `${r.snow ? D.lab.snow : D.lab.rain} ${Math.round(pc)}%` : D.lab.dry, x + 364, y + 158);
+    icon(r.code, x + w - 330, y + 108, 98, t + j * 0.3);
+    const cnt = ease((t - 0.3 - j * 0.18) / 0.9);
+    X.textAlign = 'right'; X.font = '800 76px Manrope, Inter, sans-serif'; X.fillStyle = '#fff'; const hi = Math.round(r.hi * cnt);
+    X.fillText(`${hi > 0 ? '+' : ''}${hi}°`, x + w - 46, y + 118); X.font = '700 36px Manrope, Inter, sans-serif'; X.fillStyle = 'rgba(255,255,255,0.75)'; const lo = Math.round(r.lo * cnt);
+    X.fillText(`${lo > 0 ? '+' : ''}${lo}°`, x + w - 46, y + 176); X.textAlign = 'left'; X.globalAlpha = 1;
+  });
+}
+function outro(t) {
+  const a = ease(t / 0.7); X.globalAlpha = a;
+  logo(W / 2, H * 0.2, 110); X.textAlign = 'center'; X.fillStyle = '#fff'; X.font = '800 96px Manrope, Inter, sans-serif'; X.fillText('osmon', W / 2, H * 0.33);
+  X.font = '700 34px Manrope, Inter, sans-serif'; X.fillStyle = 'rgba(255,255,255,0.85)'; X.fillText(D.lab.more, W / 2, H * 0.385);
+  [['@ObHavo_ECMWF_bot', 0], ['@osmon_obhavo', 1]].forEach(([lab, i]) => { const x = W / 2 + (i ? 60 : -420), y = H * 0.44, s = 360;
+    glass(x - 20, y - 20, s + 40, s + 110, 30, 0.95); if (QR[i]) X.drawImage(QR[i], x, y, s, s);
+    X.fillStyle = '#0B2545'; X.font = '800 30px Manrope, Inter, sans-serif'; X.fillText(lab, x + s / 2, y + s + 60); });
+  X.textAlign = 'left'; X.globalAlpha = 1;
+}
+window.init = async (data) => {
+  D = data; SPR.clouds = [0, 1, 2, 3, 4, 5].map(i => cloudSprite(30 + i, 520, 220));
+  const load = src => new Promise(r => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = src; });
+  QR = await Promise.all((D.qr || []).map(load)); await document.fonts.ready; return Math.round(total() * FPS);
+};
+window.frame = (k) => {
+  const t = k / FPS; background(t); header(t < T0 ? 0 : 1);
+  if (t < T0) cover(t);
+  else if (t < total() - TO) { const pi = Math.floor((t - T0) / TP); page(pi, t - T0 - pi * TP); }
+  else outro(t - (total() - TO));
+  footer();
+  const N = total(); const fa = Math.min(1, t / 0.4, (N - t) / 0.4); if (fa < 1) { X.fillStyle = `rgba(0,0,0,${1 - fa})`; X.fillRect(0, 0, W, H); }
+  return true;
+};
+</script></body></html>

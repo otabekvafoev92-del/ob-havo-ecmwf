@@ -22,7 +22,8 @@ jobs:
         with: {path: ~/.cache/pip, key: pip-extra-v1}
       - run: |
           sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || { sudo apt-get update -qq >/dev/null; sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; }
-          pip install -q numpy scipy matplotlib pillow requests qrcode pyproj
+          pip install -q numpy scipy matplotlib pillow requests qrcode pyproj playwright
+          python -m playwright install --with-deps chromium >/dev/null   # the animated scenes are drawn in a browser canvas
           timeout 3000 python -u -W ignore tools/extra_videos.py ex uz,ru ${{ inputs.names }}
           cd ex && git init -q && git checkout -q -b extra && git add -A \
             && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "extra $(date -u +%F' '%H:%M)" \

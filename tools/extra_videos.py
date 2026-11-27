@@ -311,33 +311,32 @@ def wico(ax, x, y, code, s=1.0):
     if code >= 95: ax.plot([x + 0.05 * s, x - 0.08 * s, x + 0.1 * s], [y - 0.25 * s, y - 0.45 * s, y - 0.6 * s], color=AMBER, lw=3, zorder=8)
 
 
+SHX = {'uz': dict(title='Ertaga viloyatlarda', lead='O‘zbekistonning 15 shahri', rain='yog‘in', snow='qor', dry='yog‘insiz', more='Joyingiz uchun prognoz — botda'),
+       'ru': dict(title='Завтра по областям', lead='15 городов Узбекистана', rain='осадки', snow='снег', dry='без осадков', more='Прогноз для вашего места — в боте')}
+
+
 def v_short(lang, tmp):
-    X = T[lang]; w, h = 1080, 1920
-    js = om_many(OM, [p[2] for p in PROV], [p[3] for p in PROV], dict(daily='weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max', forecast_days=2))
-    tm = dt.date.fromisoformat(js[0]['daily']['time'][1]); items = []
-    # the cover
-    fig = frame(lang, X['short_s'], '', w, h, bg=NAVY)
-    fig.text(0.5, 0.64, X['short_t'], fontsize=56, fontweight='bold', color='white', ha='center', va='center')
-    fig.text(0.5, 0.56, f"{WD[lang][tm.weekday()]} · {tm:%d.%m.%Y}", fontsize=40, color=AMBER, ha='center', va='center', fontweight='bold')
-    mark(fig, 0.5, 0.36, 260, ink='#ffffff', rings=(20, 32, 44)); brand(fig, 0.5, 0.06, SIGN, fontsize=18, color='#c9d8ec', ha='center', va='bottom')
-    f = tmp / f'short_{lang}_0.png'; save(fig, f); items.append((f, 2.0))
-    for part in range(3):  # 15 places, five a screen
-        fig = frame(lang, X['short_t'], f"{tm:%d.%m}", w, h)
-        ax = fig.add_axes([0.04, 0.07, 0.92, 0.84]); ax.set_xlim(0, 10); ax.set_ylim(0, 10 * 0.84 * h / (0.92 * w)); ax.axis('off')  # equal units: the icons stay round
-        top = ax.get_ylim()[1]
-        for r, k in enumerate(range(part * 5, min(len(PROV), part * 5 + 5))):
-            p, j = PROV[k], js[k]['daily']; y = top - 1.6 - r * 3.0
-            ax.add_patch(FancyBboxPatch((0.05, y - 1.25), 9.9, 2.5, boxstyle='round,pad=0,rounding_size=0.35', fc='white', ec='none', zorder=2))
-            ax.text(0.4, y, p[0] if lang == 'uz' else p[1], fontsize=30, fontweight='bold', color=INK, va='center', zorder=3)
-            wico(ax, 6.1, y + 0.1, j['weather_code'][1], 1.5)
-            lo_, hi_ = j['temperature_2m_min'][1], j['temperature_2m_max'][1]
-            ax.text(9.7, y + 0.3, f"{hi_:+.0f}°".replace('+0°', '0°'), fontsize=32, fontweight='bold', color='#e0601b', ha='right', va='center', zorder=3)
-            ax.text(9.7, y - 0.5, f"{lo_:+.0f}°".replace('+0°', '0°'), fontsize=20, color=MUTED, ha='right', va='center', zorder=3)
-            pp = j['precipitation_probability_max'][1]
-            if pp is not None and pp >= 20: ax.text(7.3, y, f'{pp:.0f}%', fontsize=22, fontweight='bold', color='#1E63C6', va='center', zorder=3)
-        brand(fig, 0.5, 0.025, SIGN, fontsize=16, color=MUTED, ha='center', va='bottom')
-        f = tmp / f'short_{lang}_{part + 1}.png'; save(fig, f); items.append((f, 4.5))
-    items.append((outro(lang, tmp, w, h), 3.0)); return items, (w, h)
+    """Vertical 9:16, drawn in a browser canvas (tools/short_scene.html): a moving sky and mountains, the cards sliding in, the icons alive, the numbers counting up."""
+    import base64, io
+    from playwright.sync_api import sync_playwright
+    X_ = SHX[lang]; w, h = 1080, 1920
+    js = om_many(OM, [p[2] for p in PROV], [p[3] for p in PROV], dict(daily='weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,snowfall_sum', forecast_days=2))
+    tm = dt.date.fromisoformat(js[0]['daily']['time'][1])
+    rows = [dict(name=p[0] if lang == 'uz' else p[1], hi=float(j['daily']['temperature_2m_max'][1]), lo=float(j['daily']['temperature_2m_min'][1]),
+                 p=float(j['daily']['precipitation_probability_max'][1] or 0), code=int(j['daily']['weather_code'][1] or 0), snow=bool((j['daily']['snowfall_sum'][1] or 0) > 0)) for p, j in zip(PROV, js)]
+    def qr(url):
+        import qrcode
+        b = io.BytesIO(); qrcode.make(url, border=1, box_size=12).save(b, 'PNG'); return 'data:image/png;base64,' + base64.b64encode(b.getvalue()).decode()
+    data = dict(date=f"{tm:%d.%m.%Y}", title=X_['title'], sub=f"{WD[lang][tm.weekday()]} · {tm:%d.%m.%Y}", lead=X_['lead'], rows=rows,
+                lab=dict(rain=X_['rain'], snow=X_['snow'], dry=X_['dry'], more=X_['more']), qr=[qr('https://t.me/ObHavo_ECMWF_bot'), qr('https://t.me/osmon_obhavo')])
+    fr = tmp / 'frames'; fr.mkdir()
+    with sync_playwright() as pw:
+        br = pw.chromium.launch(); pg = br.new_page(viewport={'width': w, 'height': h})
+        pg.goto((ROOT / 'tools' / 'short_scene.html').as_uri()); pg.wait_for_timeout(1500)
+        N = pg.evaluate('d => window.init(d)', data)
+        for k in range(N): pg.evaluate(f'window.frame({k})'); pg.screenshot(path=str(fr / f'{k:04d}.jpg'), type='jpeg', quality=90)
+        br.close()
+    return ('frames', fr, (w, h))
 
 
 # ---------- 6. the week behind
@@ -471,8 +470,14 @@ def main():
             tmp = pathlib.Path(tempfile.mkdtemp())
             try:
                 r = VIDEOS[name](lang, tmp)
-                items, size = (r if isinstance(r, tuple) else (r, (W, H)))
-                encode(items, out / f'{name}_{lang}.mp4', *size)
+                if isinstance(r, tuple) and r[0] == 'frames':  # ready frames at 30 fps (the canvas scenes)
+                    part = out / f'.{name}_{lang}.part.mp4'
+                    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '30', '-i', str(r[1] / '%04d.jpg'), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a',
+                                    '-vf', 'format=yuv420p', '-c:v', 'libx264', '-crf', '21', '-preset', 'medium', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(part)], check=True)
+                    part.replace(out / f'{name}_{lang}.mp4')
+                else:
+                    items, size = (r if isinstance(r, tuple) else (r, (W, H)))
+                    encode(items, out / f'{name}_{lang}.mp4', *size)
                 meta['ok'].append(f'{name}_{lang}')
             except Exception as e:
                 traceback.print_exc(); meta['fail'][f'{name}_{lang}'] = str(e)[:200]

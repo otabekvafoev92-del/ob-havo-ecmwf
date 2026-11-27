@@ -535,7 +535,8 @@ async function sendRisk(env, chat, lang, only) {  // ⚠️ the 15-day dangerous
     caption: `${X.risk} · ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b>\n${{ ru: 'Вероятности ансамбля ECMWF: ливни, снегопады, сильный ветер, грозы, мороз и жара', uz: 'ECMWF ansambl ehtimollari: jala, qor, kuchli shamol, momaqaldiroq, sovuq va jazirama', en: 'ECMWF ensemble probabilities: downpours, snowfall, strong wind, thunderstorms, frost and heat' }[lang]}` });
 }
 // the eight newer videos of Uzbekistan (tools/extra_videos.py → branch "extra"): buttons, sending, and the channel's schedule (notif secs x_<name>)
-const XVN = ['pass', 'frost', 'dust', 'models', 'short', 'week', 'snow', 'sky'];
+const XVN = ['short'];  // the others are being remade as animated scenes (the chart versions were not good enough)
+const XVN_ALL = ['pass', 'frost', 'dust', 'models', 'short', 'week', 'snow', 'sky'];
 const XVX = {
   ru: { pass: ['🏔 Горные дороги (Камчик)', 'Горные дороги на 3 дня по часам: снег, гололёд, туман, ветер · Камчик, Тахтакарача, дорога на Чимган'], frost: ['🥶 Заморозки на 7 ночей', 'Заморозки на 7 ночей: где ниже 0° — берегите сады и теплицы'],
     dust: ['🌪 Ветер и пыль', 'Ветер и пыль на 3 дня (CAMS)'], models: ['🧮 Модели спорят', 'Как 10 моделей мира видят Ташкент на 7 дней'], short: ['📱 Завтра по областям (вертикальное)', 'Завтра в 14 областях'],
@@ -2402,7 +2403,7 @@ async function handle(up, env) {
   if (kind === 'CR' && NAMES[id]) { await saveUser(env, chat.id, { lang, region: id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id] || '🌍'} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, id) }); }
   if (kind === 'WK') return weekDays(env, chat.id, lang, id);
   if (kind === 'XM') return extraMenu(env, chat.id, lang);
-  if (kind === 'XV' && XVN.includes(id)) return sendExtra(env, chat.id, lang, id);
+  if (kind === 'XV' && XVN_ALL.includes(id)) return sendExtra(env, chat.id, lang, id);
   if (kind === 'ST') {  // the satellite in true colour: the latest clear pass as a picture, the last two days' passes as a video (tools/sat_true.py)
     const L = lang === 'uz' ? 'uz' : 'ru', v = Math.floor(Date.now() / 600e3), cap = `🛰 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).sat}`;
     const sb = await ghApi(env, 'branches/sattrue').then(r => r.ok ? r.json() : null).catch(() => null), ssha = sb && sb.commit && sb.commit.sha;  // the newest video, not a cached one
