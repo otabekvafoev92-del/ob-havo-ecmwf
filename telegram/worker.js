@@ -2375,8 +2375,13 @@ async function handle(up, env) {
     const sb = await ghApi(env, 'branches/sattrue').then(r => r.ok ? r.json() : null).catch(() => null), ssha = sb && sb.commit && sb.commit.sha;  // the newest video, not a cached one
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_photo' });
     const sbase = ssha ? `https://raw.githubusercontent.com/${REPO}/${ssha}` : `${EVRAW}/sattrue`, sq = ssha ? '' : `?v=${v}`;
-    const made = sb && sb.commit ? new Date(Date.parse(sb.commit.commit.committer.date) + TZ * 3600e3).toISOString().slice(11, 16) : '';
-    const cap2 = cap + (made ? `\n🕒 ${{ ru: 'обновлено в', uz: 'yangilangan:', en: 'updated at' }[lang] || 'обновлено в'} ${made} · ${{ ru: 'каждые 40 минут', uz: 'har 40 daqiqada', en: 'every 40 minutes' }[lang] || ''}` : '');
+    // say honestly what the picture is: the day's true-colour pass (with its date and hour) or, at night, the clouds now in infrared
+    const meta = await fetch(`${sbase}/meta.json${sq}`).then(r => r.ok ? r.json() : null).catch(() => null), pic = meta && meta.pic;
+    const SPX = { ru: { live: '☁️ Облака сейчас — Meteosat, инфракрасный снимок (виден и ночью) · {t} · новый каждые 40 минут', pass: '📸 Снимок {d}, около {h}:00 по Ташкенту — {s} · ночью здесь облака в инфракрасном' },
+      uz: { live: '☁️ Hozirgi bulutlar — Meteosat, infraqizil surat (kechasi ham ko‘rinadi) · {t} · har 40 daqiqada yangisi', pass: '📸 Surat {d}, taxminan {h}:00 Toshkent vaqti — {s} · kechasi bu yerda infraqizil bulutlar' },
+      en: { live: '☁️ Clouds now — Meteosat infrared (works at night) · {t} · new every 40 minutes', pass: '📸 Picture of {d}, about {h}:00 Tashkent time — {s} · at night: infrared clouds here' } }[lang] || null;
+    const X2 = SPX || { live: '', pass: '' }, dm = x => `${x.slice(8, 10)}.${x.slice(5, 7)}`;
+    const cap2 = cap + (pic && pic.k === 'live' ? `\n${X2.live.replace('{t}', `${dm(pic.t)} ${pic.t.slice(11, 16)}`)}` : pic && pic.k === 'pass' ? `\n${X2.pass.replace('{d}', dm(pic.d)).replace('{h}', String(pic.h).padStart(2, '0')).replace('{s}', pic.s)}` : '');
     await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${sbase}/sattrue_${L}.jpg${sq}`, caption: cap2, parse_mode: 'HTML' });
     return tg(env, 'sendVideo', { chat_id: chat.id, video: `${sbase}/sattrue_${L}.mp4${sq}`, supports_streaming: true, width: 1920, height: 1080 }); }
   if (kind === 'VP' && NAMES[id]) return videoHub(env, chat.id, lang, id, null);

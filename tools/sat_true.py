@@ -28,9 +28,9 @@ PASSES = [('MODIS_Terra_CorrectedReflectance_TrueColor', 'Terra · MODIS 250 м'
           ('VIIRS_NOAA21_CorrectedReflectance_TrueColor', 'NOAA-21 · VIIRS 375 м', 'NOAA-21 · VIIRS 375 m', 12.8),
           ('VIIRS_NOAA20_CorrectedReflectance_TrueColor', 'NOAA-20 · VIIRS 375 м', 'NOAA-20 · VIIRS 375 m', 13.3),
           ]  # (Aqua's MODIS is past its prime: striped swath edges, so it is left out)
-TX = {'ru': dict(title='Спутник · Узбекистан в истинных цветах', when='{d} · около {h}:00', tz='по Ташкенту', morning='утро', day='день',
+TX = {'ru': dict(title='Спутник · Узбекистан в истинных цветах', title_live='Спутник · облака сейчас (Meteosat, ИК)', when='{d} · около {h}:00', tz='по Ташкенту', morning='утро', day='день',
                  leg='белое — облака и снег в горах · серое — дымка, пыль · бурое — пустыня · тёмное — вода', src='NASA GIBS · {s}', live='снимок {t} по Ташкенту', leg2='облака — Meteosat (каждые 30 мин, днём и ночью) · синее — осадки · земля — чистый снимок VIIRS', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']),
-      'uz': dict(title='Sun’iy yo‘ldosh · O‘zbekiston haqiqiy ranglarda', when='{d} · taxminan {h}:00', tz='Toshkent vaqti', morning='ertalab', day='kunduzi',
+      'uz': dict(title='Sun’iy yo‘ldosh · O‘zbekiston haqiqiy ranglarda', title_live='Sun’iy yo‘ldosh · hozirgi bulutlar (Meteosat, IQ)', when='{d} · taxminan {h}:00', tz='Toshkent vaqti', morning='ertalab', day='kunduzi',
                  leg='oq — bulut va tog‘dagi qor · kulrang — tuman, chang · jigarrang — cho‘l · to‘q — suv', src='NASA GIBS · {s}', live='surat {t} Toshkent vaqti', leg2='bulut — Meteosat (har 30 daqiqa, kechayu kunduz) · ko‘k — yog‘in · yer — toza VIIRS surati', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'])}
 
 
@@ -116,9 +116,10 @@ def draw(job):
     PV.brand(ax, 0.994, 0.012, X['src'].format(s=meta[2 if lang != 'ru' else 1]) + ' · Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, ha='right', fontsize=12, color='white', zorder=9,
             bbox=dict(boxstyle='round,pad=0.4', fc='#0b1220', ec='none', alpha=0.55))
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
-    fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=PV.ORANGE, va='center')
-    fig.text(0.093, 0.953, X['title'], fontsize=22, fontweight='bold', color='white', va='center')
+    PV.mark(fig, 0.016 + 22 / W, 0.953, 44, ink='#ffffff', rings=(20, 32, 44))  # the channel's logo
+    fig.text(0.016 + 50 / W, 0.953, 'osmon', fontsize=22, fontweight='bold', color='white', va='center')
     d = meta[0]; h = meta[3]
+    fig.text(0.093, 0.953, X['title_live' if live else 'title'], fontsize=22, fontweight='bold', color='white', va='center')
     if live:
         lt = meta[5]
         fig.text(0.984, 0.968, f"{X['wd'][lt.weekday()]} {lt:%d.%m} · {lt:%H:%M}", fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
@@ -247,17 +248,26 @@ def main():
         t_last = max(dt.datetime.combine(m[0], dt.time()) + dt.timedelta(hours=m[3] - LC / 15) for m, _ in shots)
         LIVE = [(t, a) for t, a in live_frames(ground) if t > t_last + dt.timedelta(minutes=20)]
     except Exception as e: print('live', e, flush=True)
-    tmp = pathlib.Path(tempfile.mkdtemp())
+    tmp = pathlib.Path(tempfile.mkdtemp()); PIC = {}
     for lang in langs:
         files = []; kinds = []
         for k, (m, a) in enumerate(shots):
             f = tmp / f'{lang}_{k:02d}.png'; draw((lang, k, a, m, f)); files.append(f); kinds.append('pass')
         # the picture: the latest day's VIIRS pass, the sharpest
         best = max((k for k, (m, _) in enumerate(shots) if 'VIIRS' in m[1]), key=lambda k: (shots[k][0][0], -k), default=len(files) - 1)
-        Image.open(files[best]).convert('RGB').save(out / f'sattrue_{lang}.jpg', quality=92)
         for k, (t, a) in enumerate(LIVE):
             lt = t + dt.timedelta(hours=5); f = tmp / f'{lang}_L{k:02d}.png'
             draw((lang, k, a, (lt.date(), 'Meteosat · EUMETSAT', 'Meteosat · EUMETSAT', lt.hour, 'live', lt), f)); files.append(f); kinds.append('live')
+        # the picture: by day the sharp true-colour pass; at night (or when the pass is old) the clouds now, Meteosat infrared
+        bm = shots[best][0]; t_pass = dt.datetime.combine(bm[0], dt.time()) + dt.timedelta(hours=bm[3] - LC / 15)
+        loc = dt.datetime.utcnow() + dt.timedelta(hours=5)
+        night = loc.hour < 8 or loc.hour >= 17
+        if LIVE and (night or LIVE[-1][0] - t_pass > dt.timedelta(hours=4)):
+            Image.open(files[-1]).convert('RGB').save(out / f'sattrue_{lang}.jpg', quality=92)
+            PIC.update(k='live', t=(LIVE[-1][0] + dt.timedelta(hours=5)).strftime('%Y-%m-%dT%H:%M'))
+        else:
+            Image.open(files[best]).convert('RGB').save(out / f'sattrue_{lang}.jpg', quality=92)
+            PIC.update(k='pass', d=bm[0].isoformat(), h=int(round(bm[3] + 5 - LC / 15)), s=bm[2])
         # the video: a sharp pass held 2.5 s and eased into the next over 1 s; the Meteosat half-hours run on, 0.5 s each, blended
         fr = tmp / f'v_{lang}'; fr.mkdir(); n = 0; lst = []
         prev = None
@@ -275,7 +285,7 @@ def main():
         subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(fr / 'list.txt'), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a',
                         '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '21', '-maxrate', '4000k', '-bufsize', '8000k', '-preset', 'slow', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(part)], check=True)
         part.replace(out / f'sattrue_{lang}.mp4'); print(out / f'sattrue_{lang}.mp4', (out / f'sattrue_{lang}.mp4').stat().st_size // 1024, 'KB', flush=True)
-    json.dump(dict(made=dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), passes=[[m[0].isoformat(), m[2], m[3]] for m, _ in shots], live=[LIVE[0][0].isoformat(), LIVE[-1][0].isoformat()] if LIVE else None), open(out / 'meta.json', 'w'))
+    json.dump(dict(made=dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), passes=[[m[0].isoformat(), m[2], m[3]] for m, _ in shots], live=[LIVE[0][0].isoformat(), LIVE[-1][0].isoformat()] if LIVE else None, pic=PIC), open(out / 'meta.json', 'w'))
     shutil.rmtree(tmp)
 
 
