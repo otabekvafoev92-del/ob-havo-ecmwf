@@ -1,0 +1,21 @@
+name: Amirsoy webcams (30 s video)
+# every 30 minutes: the Amirsoy cameras that are online now, 30 seconds with the weather on the top (tools/amirsoy_cam.py); kept on the "cam" branch
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch: {}
+permissions: {contents: write}
+concurrency: {group: cam, cancel-in-progress: true}
+jobs:
+  v:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          (sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null))
+          pip install -q requests
+          python3 -u tools/amirsoy_cam.py cam
+          cd cam && git init -q && git checkout -q -b cam && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "amirsoy $(date -u +%F' '%H:%M)"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" cam
