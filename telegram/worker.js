@@ -65,7 +65,6 @@ const HELP = {
 ⏱ <b>Bugun va ertaga soatma-soat</b> — 48 soatlik ovozli video va «🗺 Interaktiv xarita»: xaritaga bosing — o‘sha joy ob-havosi; pastdagi soatlar chizig‘ini suring; ▶ — ijro, 🔈 — ob-havo ovozi, ⛶ — to‘liq ekran
 🗓 <b>15 kunlik prognoz</b> — shaharni tanlang, kunlar bo‘yicha prognoz keladi
 🎬 <b>15 kunlik video-prognoz</b> — shahringiz yoki davlat uchun yog‘in va harorat videosi
-📅 <b>Haftalar va oylar</b> — davrni tugma bilan tanlang: o‘tgan hafta, keyingi haftalar, oylar, chang
 🏔 <b>Tog‘lar: qor va sayohat</b> — 10 kunlik rasm (qor, yomg‘ir, yaxshi kunlar); joy nomli tugma — batafsil; 🔔 — qor haqida xabar
 🌡 <b>Hozirgi ob-havo</b> — joyingizda hozir qanday
 🌫 <b>Bugungi havo sifati</b> — chang va havo sifati soatma-soat
@@ -97,7 +96,6 @@ Ma’lumot: ECMWF, NOAA, DWD modellari; havo sifati — CAMS. Har 3 soatda yangi
 ⏱ <b>Сегодня и завтра по часам</b> — видео со звуком на 48 часов и «🗺 Интерактивная карта»: нажмите на карту — погода в этой точке; тяните полосу часов внизу; ▶ — проиграть, 🔈 — звук погоды, ⛶ — во весь экран
 🗓 <b>Прогноз на 15 дней</b> — выберите город и получите прогноз по дням
 🎬 <b>Видео-прогноз 15 дней</b> — видео осадков и температуры для вашего города или страны
-📅 <b>Недели и месяцы</b> — выберите период кнопкой: прошедшая неделя, следующие недели, месяцы, пыль
 🏔 <b>Горы: снег и поездки</b> — картинка на 10 дней (снег, дождь, хорошие дни); кнопка с названием места — подробно; 🔔 — сигнал о снеге
 🌡 <b>Погода сейчас</b> — что сейчас в вашем месте
 🌫 <b>Воздух сегодня</b> — пыль и качество воздуха по часам
@@ -129,7 +127,6 @@ Ma’lumot: ECMWF, NOAA, DWD modellari; havo sifati — CAMS. Har 3 soatda yangi
 ⏱ <b>Today and tomorrow by the hour</b> — a 48-hour video with sound and «🗺 Interactive map»: tap the map — the weather at that spot; swipe the hours strip; ▶ — play, 🔈 — weather sounds, ⛶ — full screen
 🗓 <b>15-day forecast</b> — choose a city, get the forecast by days
 🎬 <b>15-day video forecast</b> — precipitation and temperature video for your city or country
-📅 <b>Weeks and months</b> — pick a period with a button: last week, next weeks, months, dust
 🏔 <b>Mountains: snow and trips</b> — a 10-day picture (snow, rain, good days); a place button — details; 🔔 — snow alerts
 🌡 <b>Weather now</b> — right now where you are
 🌫 <b>Air quality today</b> — dust and air quality by the hour
@@ -334,17 +331,16 @@ function outlookKb(its, lang, cur) {
     its.filter(i => !['past', 'w1', 'w2', 'm0', 'm1', 'dust'].includes(i.key)).map(btn)].filter(r => r.length);
   rows.push([{ text: A.all, callback_data: `OA:${lang}` }]);
   rows.push(...weeksKb(lang).inline_keyboard);
-  rows.push([notifBtn(lang, 'outlook')]);
   return { inline_keyboard: rows };
 }
 /* ---------- a week day by day: the ISO weeks within the 15-day forecast, at the user's place (or Tashkent) ---------- */
 const WKX = {
   ru: { btn: '📆 Неделя {n} · {a}–{b} по дням', head: 'неделя {n} · {a}–{b}', temp: 'Температура за неделю: от {lo} ночью до {hi} днём', wet: 'Осадки вероятны {n} дн.: {d}', mm: ', всего ~{mm} мм', dry: 'Неделя без заметных осадков',
-        part: 'Прогноз по дням есть до {last}; дальше — в «📅 Недели и месяцы» (осадки и температура к норме).', far: 'Прогноз по дням пока есть только до {last}. Для этой недели смотрите «📅 Недели и месяцы».', pick: '📆 Выберите неделю — пришлю погоду по дням:' },
+        part: 'Прогноз по дням есть до {last}; дальше — видео «📅 По неделям».', far: 'Прогноз по дням пока есть только до {last}. Для этой недели смотрите «📅 Недели и месяцы».', pick: '📆 Выберите неделю — пришлю погоду по дням:' },
   uz: { btn: '📆 Hafta {n} · {a}–{b} kunma-kun', head: 'hafta {n} · {a}–{b}', temp: 'Hafta harorati: kechasi {lo} dan kunduzi {hi} gacha', wet: 'Yog‘in ehtimoli {n} kun: {d}', mm: ', jami ~{mm} mm', dry: 'Hafta sezilarli yog‘insiz',
-        part: 'Kunma-kun prognoz {last} gacha bor; keyingisi — «📅 Haftalar va oylar»da (yog‘in va harorat me’yorga nisbatan).', far: 'Kunma-kun prognoz hozircha {last} gacha. Bu hafta uchun «📅 Haftalar va oylar»ni ko‘ring.', pick: '📆 Haftani tanlang — kunma-kun ob-havoni yuboraman:' },
+        part: 'Kunma-kun prognoz {last} gacha bor; keyingisi — «📅 Haftalar bo‘yicha» videosida.', far: 'Kunma-kun prognoz hozircha {last} gacha. Bu hafta uchun «📅 Haftalar va oylar»ni ko‘ring.', pick: '📆 Haftani tanlang — kunma-kun ob-havoni yuboraman:' },
   en: { btn: '📆 Week {n} · {a}–{b} day by day', head: 'week {n} · {a}–{b}', temp: 'Temperature this week: from {lo} at night to {hi} by day', wet: 'Precipitation likely on {n} days: {d}', mm: ', about {mm} mm in all', dry: 'A week without notable precipitation',
-        part: 'The day-by-day forecast goes up to {last}; after that — «📅 Weeks and months» (precipitation and temperature against the normal).', far: 'The day-by-day forecast only goes up to {last} so far. For this week see «📅 Weeks and months».', pick: '📆 Choose a week — I will send the weather day by day:' } };
+        part: 'The day-by-day forecast goes up to {last}; after that — the «📅 By weeks» video.', far: 'The day-by-day forecast only goes up to {last} so far. For this week see «📅 Weeks and months».', pick: '📆 Choose a week — I will send the weather day by day:' } };
 const WDL = { uz: ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'], ru: ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'], en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] };
 function isoWeek(d) { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); const y0 = Date.UTC(t.getUTCFullYear(), 0, 1); return Math.ceil(((t - y0) / 864e5 + 1) / 7); }
 const isoKey = d => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7)); return `${isoWeek(d)}-${t.getUTCFullYear()}`; };  // «49-2026»: the week and its ISO year
@@ -564,7 +560,7 @@ async function sendTrajLite(env, chat, lang, rid) {  // the morning 🧭: only t
   if (!(rid in TJ_CACHE.J)) TJ_CACHE.J[rid] = await trajData(env, rid);
   const J = TJ_CACHE.J[rid], v = encodeURIComponent(J ? J.run : fresh());
   return tg(env, 'sendVideo', { chat_id: chat, video: `${base(env)}/prob/hr/${rid}_moist_${L}.mp4?v=${v}`, caption: `🧭 ${FLAG[rid]} ${NAMES[rid][lang]} · ${X.moist}`, supports_streaming: true,
-    reply_markup: { inline_keyboard: [[{ text: X.btn, callback_data: `TJ:${lang}:${rid}` }], [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }], ...moistBtns(env, lang, rid, chat)] } });
+    reply_markup: { inline_keyboard: [[{ text: X.m15, callback_data: `MV:${lang}:${rid}` }], ...moistBtns(env, lang, rid, chat)] } });
 }
 async function sendTraj(env, chat, lang, rid) {
   if (rid === 'UZ') return sendMoist15(env, chat, lang, rid);  // the new look
@@ -589,17 +585,23 @@ async function sendTraj(env, chat, lang, rid) {
 const WATCH_CRON = '10,30,50 * * * *';
 const WX = {
   ru: { ask: '📍 <b>Где вы сейчас?</b>\nОтправьте своё место — я сообщу, если начнётся дождь или снег, будет гроза, сильная жара, мороз или ветер. В обычную погоду писать не буду.', send: '📍 Отправить моё место', sameP: '✅ Я там же: ', off: '🔕 Не предупреждать',
-    onOk: '🔔 Слежу за погодой: <b>{p}</b>\nСообщу, если начнётся дождь или снег, будет гроза, сильная жара, мороз или сильный ветер. В обычную погоду — тишина, ночью тоже.', offOk: '🔕 Хорошо, предупреждать не буду. Включить снова — отправьте 📍 своё место.', here: 'ваше место',
+    onOk: '🔔 Слежу за погодой: <b>{p}</b>\nСообщу, если начнётся дождь или снег, гроза рядом (до 20 км), сильная жара, мороз, сильный ветер, резкая смена температуры, опасность селей или подъём рек. В обычную погоду — тишина, ночью тоже.', offOk: '🔕 Хорошо, предупреждать не буду. Включить снова — отправьте 📍 своё место.', here: 'ваше место',
     rainSoon: '🌧 <b>{p}</b>: примерно через {m} мин начнётся дождь', snowSoon: '🌨 <b>{p}</b>: примерно через {m} мин начнётся снег', rainNow: '🌧 <b>{p}</b>: у вас начался дождь', snowNow: '🌨 <b>{p}</b>: у вас пошёл снег',
-    storm: '⛈ <b>{p}</b>: гроза в ближайший час — лучше быть в помещении', heat: '🥵 <b>{p}</b>: очень жарко — {t}, ощущается как {f}. Пейте воду, в полдень лучше в тень', cold: '🥶 <b>{p}</b>: сильный мороз — {t}, ощущается как {f}. Одевайтесь теплее', wind: '💨 <b>{p}</b>: сильный ветер, порывы до {w} м/с' },
+    storm: '⛈ <b>{p}</b>: гроза в ближайший час — лучше быть в помещении', heat: '🥵 <b>{p}</b>: очень жарко — {t}, ощущается как {f}. Пейте воду, в полдень лучше в тень', cold: '🥶 <b>{p}</b>: сильный мороз — {t}, ощущается как {f}. Одевайтесь теплее', wind: '💨 <b>{p}</b>: сильный ветер, порывы до {w} м/с',
+    stormNear: '⚡ <b>{p}</b>: гроза в ~20 км от вас ({d}) — может дойти в ближайший час', colder: '🥶 <b>{p}</b>: завтра резко холоднее — днём {b} вместо {a} сегодня ({x})', warmer: '🌡 <b>{p}</b>: завтра резко теплее — днём {b} вместо {a} сегодня (+{x}°)',
+    mud: '⚠️ <b>{p}</b>: {d} сильный дождь — до {mm} мм. В горах и предгорьях опасность селей и камнепадов: не останавливайтесь у русел и в саях', flood: '🌊 <b>{p}</b>: реки поднимаются — расход воды в {k} раза выше обычного ({d}). Держитесь подальше от берегов', dirs: ['на севере', 'на востоке', 'на юге', 'на западе'], tmw: 'завтра', tdy: 'сегодня' },
   uz: { ask: '📍 <b>Hozir qayerdasiz?</b>\nJoyingizni yuboring — yomg‘ir yoki qor boshlansa, momaqaldiroq, kuchli issiq, sovuq yoki shamol bo‘lsa xabar beraman. Oddiy ob-havoda yozmayman.', send: '📍 Joyimni yuborish', sameP: '✅ O‘sha joydaman: ', off: '🔕 Ogohlantirmaslik',
-    onOk: '🔔 Ob-havoni kuzataman: <b>{p}</b>\nYomg‘ir yoki qor boshlansa, momaqaldiroq, kuchli issiq, sovuq yoki kuchli shamol bo‘lsa xabar beraman. Oddiy ob-havoda va kechasi — jimlik.', offOk: '🔕 Yaxshi, ogohlantirmayman. Qayta yoqish — 📍 joyingizni yuboring.', here: 'joyingiz',
+    onOk: '🔔 Ob-havoni kuzataman: <b>{p}</b>\nYomg‘ir yoki qor boshlansa, yaqinda (20 km gacha) momaqaldiroq, kuchli issiq, sovuq, kuchli shamol, haroratning keskin o‘zgarishi, sel xavfi yoki daryolar ko‘tarilsa xabar beraman. Oddiy ob-havoda va kechasi — jimlik.', offOk: '🔕 Yaxshi, ogohlantirmayman. Qayta yoqish — 📍 joyingizni yuboring.', here: 'joyingiz',
     rainSoon: '🌧 <b>{p}</b>: taxminan {m} daqiqadan keyin yomg‘ir boshlanadi', snowSoon: '🌨 <b>{p}</b>: taxminan {m} daqiqadan keyin qor boshlanadi', rainNow: '🌧 <b>{p}</b>: yomg‘ir boshlandi', snowNow: '🌨 <b>{p}</b>: qor yog‘a boshladi',
-    storm: '⛈ <b>{p}</b>: yaqin bir soatda momaqaldiroq — xonada bo‘lgan ma’qul', heat: '🥵 <b>{p}</b>: juda issiq — {t}, {f} kabi seziladi. Suv iching, tushda soyada bo‘ling', cold: '🥶 <b>{p}</b>: qattiq sovuq — {t}, {f} kabi seziladi. Issiq kiyining', wind: '💨 <b>{p}</b>: kuchli shamol, {w} m/s gacha' },
+    storm: '⛈ <b>{p}</b>: yaqin bir soatda momaqaldiroq — xonada bo‘lgan ma’qul', heat: '🥵 <b>{p}</b>: juda issiq — {t}, {f} kabi seziladi. Suv iching, tushda soyada bo‘ling', cold: '🥶 <b>{p}</b>: qattiq sovuq — {t}, {f} kabi seziladi. Issiq kiyining', wind: '💨 <b>{p}</b>: kuchli shamol, {w} m/s gacha',
+    stormNear: '⚡ <b>{p}</b>: sizdan ~20 km da momaqaldiroq ({d}) — bir soat ichida yetib kelishi mumkin', colder: '🥶 <b>{p}</b>: ertaga keskin sovuqroq — kunduzi bugungi {a} o‘rniga {b} ({x})', warmer: '🌡 <b>{p}</b>: ertaga keskin issiqroq — kunduzi bugungi {a} o‘rniga {b} (+{x}°)',
+    mud: '⚠️ <b>{p}</b>: {d} kuchli yomg‘ir — {mm} mm gacha. Tog‘ va tog‘oldi hududlarida sel va tosh ko‘chishi xavfi: soy va o‘zanlar yonida to‘xtamang', flood: '🌊 <b>{p}</b>: daryolar ko‘tarilmoqda — suv sarfi odatdagidan {k} barobar ko‘p ({d}). Qirg‘oqlardan uzoqroq turing', dirs: ['shimolda', 'sharqda', 'janubda', 'g‘arbda'], tmw: 'ertaga', tdy: 'bugun' },
   en: { ask: '📍 <b>Where are you now?</b>\nSend your location — I will tell you if rain or snow starts, or there is a thunderstorm, great heat, frost or wind. In normal weather I stay quiet.', send: '📍 Send my location', sameP: '✅ I am in the same place: ', off: '🔕 Do not warn me',
-    onOk: '🔔 Watching the weather: <b>{p}</b>\nI will tell you if rain or snow starts, or there is a thunderstorm, great heat, frost or strong wind. In normal weather and at night — silence.', offOk: '🔕 OK, I will not warn you. To turn it on again, send your 📍 location.', here: 'your location',
+    onOk: '🔔 Watching the weather: <b>{p}</b>\nI will tell you if rain or snow starts, a thunderstorm comes within 20 km, great heat, frost, strong wind, a sharp temperature change, mudflow danger or rising rivers. In normal weather and at night — silence.', offOk: '🔕 OK, I will not warn you. To turn it on again, send your 📍 location.', here: 'your location',
     rainSoon: '🌧 <b>{p}</b>: rain will start in about {m} min', snowSoon: '🌨 <b>{p}</b>: snow will start in about {m} min', rainNow: '🌧 <b>{p}</b>: rain has started', snowNow: '🌨 <b>{p}</b>: snow has started',
-    storm: '⛈ <b>{p}</b>: a thunderstorm within the hour — stay indoors', heat: '🥵 <b>{p}</b>: very hot — {t}, feels like {f}. Drink water, stay in the shade at midday', cold: '🥶 <b>{p}</b>: hard frost — {t}, feels like {f}. Dress warmly', wind: '💨 <b>{p}</b>: strong wind, up to {w} m/s' } };
+    storm: '⛈ <b>{p}</b>: a thunderstorm within the hour — stay indoors', heat: '🥵 <b>{p}</b>: very hot — {t}, feels like {f}. Drink water, stay in the shade at midday', cold: '🥶 <b>{p}</b>: hard frost — {t}, feels like {f}. Dress warmly', wind: '💨 <b>{p}</b>: strong wind, up to {w} m/s',
+    stormNear: '⚡ <b>{p}</b>: a thunderstorm ~20 km away ({d}) — it may reach you within the hour', colder: '🥶 <b>{p}</b>: much colder tomorrow — {b} by day instead of {a} today ({x})', warmer: '🌡 <b>{p}</b>: much warmer tomorrow — {b} by day instead of {a} today (+{x}°)',
+    mud: '⚠️ <b>{p}</b>: heavy rain {d} — up to {mm} mm. In the mountains and foothills: danger of mudflows and rockfalls, do not stop near riverbeds', flood: '🌊 <b>{p}</b>: rivers are rising — the flow is {k} times the usual ({d}). Keep away from the banks', dirs: ['to the north', 'to the east', 'to the south', 'to the west'], tmw: 'tomorrow', tdy: 'today' } };
 async function watchGet(env, chat) { if (!env.DB) return null; await db(env); return env.DB.prepare('SELECT * FROM watch WHERE chat_id = ?1').bind(chat).first(); }
 async function watchSet(env, chat, f) {
   if (!env.DB) return; await db(env);
@@ -620,7 +622,10 @@ async function watchTick(env) {
   const rows = (await env.DB.prepare("SELECT * FROM watch WHERE on_ = 1 AND lat IS NOT NULL ORDER BY COALESCE(checked, '') LIMIT 22").all()).results;
   for (const w of rows) {
     const now = Date.now(); await env.DB.prepare('UPDATE watch SET checked = ?2 WHERE chat_id = ?1').bind(w.chat_id, new Date(now).toISOString()).run();
-    const j = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+w.lat).toFixed(3)}&longitude=${(+w.lon).toFixed(3)}&current=temperature_2m,apparent_temperature,precipitation,rain,snowfall,weather_code,wind_gusts_10m&minutely_15=precipitation,snowfall,weather_code&forecast_minutely_15=6&wind_speed_unit=ms&timezone=auto`).then(r => r.ok ? r.json() : null).catch(() => null);
+    // the place and four points 20 km around it (a storm nearby), with today's and tomorrow's day temperature and rain
+    const la0 = +w.lat, lo0 = +w.lon, dl = 0.18, dk = 0.18 / Math.cos(la0 * Math.PI / 180), pts = [[la0, lo0], [la0 + dl, lo0], [la0, lo0 + dk], [la0 - dl, lo0], [la0, lo0 - dk]];
+    const J = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(q => q[0].toFixed(3)).join(',')}&longitude=${pts.map(q => q[1].toFixed(3)).join(',')}&current=temperature_2m,apparent_temperature,precipitation,rain,snowfall,weather_code,wind_gusts_10m&minutely_15=precipitation,snowfall,weather_code&forecast_minutely_15=6&daily=temperature_2m_max,precipitation_sum&forecast_days=3&wind_speed_unit=ms&timezone=auto`).then(r => r.ok ? r.json() : null).catch(() => null);
+    const j = Array.isArray(J) ? J[0] : J, near = Array.isArray(J) ? J.slice(1) : [];
     if (!j || !j.current) continue;
     const hourL = new Date(now + (j.utc_offset_seconds || 0) * 1000).getUTCHours();
     if (hourL >= 23 || hourL < 7) continue;  // night: silence
@@ -635,6 +640,26 @@ async function watchTick(env) {
     st.wet = wetNow || soonI >= 0 ? 1 : (st.wet && ago('rain') < 2 * 3600e3 ? 1 : 0);  // dry again for a while: the next rain is news again
     const code = Math.max(c.weather_code || 0, ...(m.weather_code || []).slice(0, 4));
     if (code >= 95 && ago('storm') > 3 * 3600e3) { out.push(X.storm.replace('{p}', p)); st.storm = now; }
+    else if (ago('storm') > 3 * 3600e3) {  // not here yet, but 20 km away
+      const k = near.findIndex(q => Math.max((q.current || {}).weather_code || 0, ...(((q.minutely_15 || {}).weather_code) || []).slice(0, 2)) >= 95);
+      if (k >= 0) { out.push(X.stormNear.replace('{p}', p).replace('{d}', X.dirs[k])); st.storm = now; }
+    }
+    const dd = j.daily || {}, tx = dd.temperature_2m_max || [], ps = dd.precipitation_sum || [];
+    if (hourL >= 17 && st.chg !== day && tx.length > 1 && Math.abs(tx[1] - tx[0]) >= 8) {  // a sharp change tomorrow, told in the evening
+      const fd = v => `${v > 0 ? '+' : ''}${Math.round(v)}°`, x = Math.round(tx[1] - tx[0]);
+      out.push((x < 0 ? X.colder : X.warmer).replace('{p}', p).replace('{a}', fd(tx[0])).replace('{b}', fd(tx[1])).replace('{x}', x < 0 ? `${x}°` : String(x))); st.chg = day;
+    }
+    if ((j.elevation || 0) >= 800 && st.mud !== day) {  // mountains: heavy rain → mudflows
+      const k = ps.slice(0, 2).findIndex(v => v >= 25);
+      if (k >= 0) { out.push(X.mud.replace('{p}', p).replace('{d}', k ? X.tmw : X.tdy).replace('{mm}', String(Math.round(ps[k])))); st.mud = day; }
+    }
+    if (hourL >= 9 && st.flq !== day) {  // rivers (GloFAS, once a day): the next 5 days against the usual flow of this day
+      st.flq = day;
+      const F = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${la0.toFixed(3)}&longitude=${lo0.toFixed(3)}&daily=river_discharge,river_discharge_median&forecast_days=6`).then(r => r.ok ? r.json() : null).catch(() => null);
+      const q = F && F.daily ? F.daily.river_discharge || [] : [], md = F && F.daily ? F.daily.river_discharge_median || [] : [];
+      let bi = -1, bk = 0; q.forEach((v, i) => { const k = md[i] > 0 ? v / md[i] : 0; if (v >= 20 && k > bk) { bk = k; bi = i; } });
+      if (bk >= 2.5 && ago('flood') > 3 * 864e5) { const dt_ = F.daily.time[bi]; out.push(X.flood.replace('{p}', p).replace('{k}', bk.toFixed(1).replace(/\.0$/, '')).replace('{d}', `${dt_.slice(8, 10)}.${dt_.slice(5, 7)}`)); st.flood = now; }
+    }
     const t = c.temperature_2m, f = c.apparent_temperature, ft = v => `${v > 0 ? '+' : ''}${Math.round(v)}°`;
     if ((t >= 38 || f >= 40) && st.heat !== day) { out.push(X.heat.replace('{p}', p).replace('{t}', ft(t)).replace('{f}', ft(f))); st.heat = day; }
     if ((t <= -15 || f <= -20) && st.cold !== day) { out.push(X.cold.replace('{p}', p).replace('{t}', ft(t)).replace('{f}', ft(f))); st.cold = day; }
@@ -651,7 +676,7 @@ const NX_ = {
   ru: { btn: '⏰ Присылать автоматически', ask: '⏰ Во сколько присылать «{s}»? Время — по Ташкенту.', weekly: ' (по понедельникам)', off: '🔕 Не присылать', on: '✅ «{s}» будет приходить каждый день в {h}.', onW: '✅ «{s}» будет приходить по понедельникам в {h}.', offT: '🔕 «{s}» больше не присылаю.', list: '⏰ <b>Мои уведомления</b>', none: 'Пока ничего не приходит автоматически. Нажмите раздел ниже и выберите время:', at: 'в', edit: 'Нажмите раздел, чтобы поменять время или выключить:', daily: '🔔 Прогноз каждое утро — включается кнопкой «🔔 Прогноз каждое утро»' },
   uz: { btn: '⏰ Avtomatik yuborish', ask: '⏰ «{s}» soat nechada kelsin? Vaqt — Toshkent bo‘yicha.', weekly: ' (dushanba kunlari)', off: '🔕 Yubormaslik', on: '✅ «{s}» har kuni soat {h} da keladi.', onW: '✅ «{s}» har dushanba soat {h} da keladi.', offT: '🔕 «{s}» endi yuborilmaydi.', list: '⏰ <b>Bildirishnomalarim</b>', none: 'Hozircha hech narsa avtomatik kelmaydi. Quyidagi bo‘limni bosing va vaqtni tanlang:', at: 'soat', edit: 'Vaqtni o‘zgartirish yoki o‘chirish uchun bo‘limni bosing:', daily: '🔔 Har tongi prognoz — «🔔 Har tongi prognoz» tugmasi bilan yoqiladi' },
   en: { btn: '⏰ Send automatically', ask: '⏰ At what time should «{s}» come? Time — Tashkent time.', weekly: ' (on Mondays)', off: '🔕 Do not send', on: '✅ «{s}» will come every day at {h}.', onW: '✅ «{s}» will come every Monday at {h}.', offT: '🔕 «{s}» will no longer be sent.', list: '⏰ <b>My notifications</b>', none: 'Nothing comes automatically now. Choose a section below and set the time:', at: 'at', edit: 'Tap a section to change its time or turn it off:', daily: '🔔 Forecast every morning — turned on with the «🔔 Forecast every morning» button' } };
-const NSEC = ['days', 'fog', 'brief', 'dyn', 'hourly', 'outlook', 'mtn', 'air', 'traj'];  // days: the 15-day forecast of the person's own place (the picture) at the chosen hour  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
+const NSEC = ['days', 'fog', 'brief', 'dyn', 'hourly', 'mtn', 'air'];  // days: the 15-day forecast of the person's own place (the picture) at the chosen hour  // sections that can come by themselves (the 15 days already have 🔔 Прогноз каждое утро)
 const NWEEKLY = { outlook: true, dyn: true };  // «📊 against last year» on Mondays: the summary and the Excel report                   // the weeks and months change slowly: once a week is enough
 const secName = (sec, lang) => ((RKL[lang] || RKL.ru)[sec] || sec).replace(/^\S+\s/, '');
 const notifBtn = (lang, sec) => ({ text: (NX_[lang] || NX_.ru).btn, callback_data: `NS:${lang}:${sec}` });
@@ -718,6 +743,7 @@ async function notifTick(env, small = false) {
     await env.DB.prepare("INSERT OR IGNORE INTO notif (chat_id, sec, hour, lang, region, last_day, added) SELECT chat_id, 'brief', 7, lang, region, ?1, ?2 FROM notif WHERE sec = 'traj'").bind(day, new Date().toISOString()).run();
     await setKv(env, 'brief_mig', day);
   }
+  if (!(await kv(env, 'drop_old_secs'))) { await env.DB.prepare("DELETE FROM notif WHERE sec IN ('traj', 'outlook')").run(); await setKv(env, 'drop_old_secs', day); }  // 🧭 and 📅 maps were removed
   let due = (await env.DB.prepare("SELECT * FROM notif WHERE hour <= ?1 AND COALESCE(last_day, '') <> ?2 ORDER BY hour LIMIT 30").bind(hour, day).all()).results;
   if (due.some(n => n.sec !== 'air')) { const F = await siteFresh(env); if (!F.fresh) due = due.filter(n => n.sec === 'air' || hour - n.hour >= HOLD_MAX_H); }
   // a light section (one video each: 🧭) lets more people through in one run; the others stay at 6
@@ -929,7 +955,7 @@ const RAINM = { ru: { t: '🌧 <b>Осадки и тучи</b> — выбери�
   en: { t: '🌧 <b>Precipitation and clouds</b> — choose:', now: '⏱ Today and tomorrow (video)', pr: '🎬 Chance of precipitation, 15 days' } };
 function rainMenu(env, chat, lang, rid) {
   const X = TJX[lang] || TJX.ru, M = RAINM[lang] || RAINM.ru, R = RKL[lang] || RKL.ru;
-  const rows = [[{ text: R.traj, callback_data: `TJ:${lang}:${rid}` }], [{ text: M.now, callback_data: `MA:${lang}:hourly` }],
+  const rows = [[{ text: M.now, callback_data: `MA:${lang}:hourly` }],
     [{ text: X.m15, callback_data: `MV:${lang}:${rid}` }], [{ text: X.acc, callback_data: `AV:${lang}:${rid}` }], [{ text: M.pr, callback_data: `V:${lang}:${rid}` }],
     [{ text: (SATX[lang] || SATX.ru).cl, callback_data: `SV:${lang}:${rid}:clouds` }], ...moistBtns(env, lang, rid, chat)];
   return tg(env, 'sendMessage', { chat_id: chat, text: M.t, parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
@@ -1074,7 +1100,7 @@ async function subMenu(env, chat, lang, rid, which, u) {
   const CAP = { UZ: [41.311, 69.279], KZ: [51.169, 71.449], KG: [42.875, 74.612], TJ: [38.56, 68.774], TM: [37.96, 58.326], AZ: [40.41, 49.867], AM: [40.177, 44.513], BY: [53.9, 27.567], MD: [47.011, 28.863], RU: [55.756, 37.617], TR: [39.92, 32.854] };
   const pl = u && u.place ? JSON.parse(u.place) : CAP[rid] || CAP.UZ;
   let rows;
-  if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), ...(rid === 'UZ' ? [a('outlook')] : [])],
+  if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts')],
     [{ text: M.remind, callback_data: `NS:${lang}:days` }], [{ text: R.fog, callback_data: `FG:${lang}:${rid}` }, { text: '⏰ ' + R.fog.replace(/^\S+\s/, ''), callback_data: `NS:${lang}:fog` }]];
   else if (which === 'mtnair') rows = [[a('mtn'), a('air')], [a('alerts')]];
   else rows = [[{ text: { ru: '🌐 Язык · Til · Language', uz: '🌐 Til · Язык · Language', en: '🌐 Language · Til · Язык' }[lang] || '🌐 Язык', callback_data: `MA:${lang}:langpick` }],
@@ -1155,7 +1181,6 @@ function menuKbInline(env, lang, id) {
     // coloured buttons (Telegram 2026+): blue = main actions, green = forecast texts, the rest plain
     [{ text: T[lang].today, callback_data: `T:${lang}:${id}`, style: 'primary' }],
     [{ text: T[lang].days, callback_data: `D:${lang}:${id}`, style: 'success' }, { text: T[lang].all, callback_data: `V:${lang}:${id}`, style: 'primary' }],
-    ...(id === 'UZ' ? [[{ text: OLK[lang], callback_data: `O:${lang}:${id}`, style: 'success' }]] : []),
     [{ text: T[lang].cities, callback_data: `Y:${lang}:${id}` }, { text: T[lang].sub, callback_data: `B:${lang}:${id}` }],
     [{ text: T[lang].site, web_app: { url: site(env, `prob/${id}/${lang}/prob`) } }, { text: T[lang].back, callback_data: `L:${lang}` }],
     [{ text: (HK[lang] || HK.ru).reset, callback_data: `RS:${lang}` }],
@@ -1344,7 +1369,7 @@ async function sendHourly(env, chat, lang, id) {
   // (the keyboard under the input field stays as it is; this message carries the mini-app button)
   // groups and channels: only a link to the interactive map (keyboards under the input field and mini-app buttons work in private chats only)
   // three buttons: the map, where the rain comes from, the notification
-  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], ...(TRJ.has(id) ? [[{ text: (TJX[lang] || TJX.ru).btn, callback_data: `TJ:${lang}:${id}` }]] : []), [notifBtn(lang, 'hourly')]] } : { inline_keyboard: [[liveBtn(env, lang, id, chat)]] };
+  const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], [notifBtn(lang, 'hourly')]] } : { inline_keyboard: [[liveBtn(env, lang, id, chat)]] };
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
   if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
@@ -1414,16 +1439,34 @@ async function nowWeather(lat, lon) {
   const k = `now:${lat.toFixed(2)},${lon.toFixed(2)}`;
   return memo(k, 10 * 60e3, async () => {
     try {
-      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation,is_day&daily=weather_code&forecast_days=16&wind_speed_unit=ms&timezone=auto`, { cf: { cacheTtl: 600 } });
-      if (!r.ok) return null; const j = await r.json(); const c = j.current || {}; c.codes = {}; (j.daily && j.daily.time || []).forEach((d, i) => { c.codes[d] = j.daily.weather_code[i]; }); return c;
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation,snowfall,is_day,uv_index&minutely_15=precipitation,snowfall,weather_code&forecast_minutely_15=24&daily=weather_code,uv_index_max&forecast_days=16&wind_speed_unit=ms&timezone=auto`, { cf: { cacheTtl: 600 } });
+      if (!r.ok) return null; const j = await r.json(); const c = j.current || {}; c.m15 = j.minutely_15 || null; c.utc_offset_seconds = j.utc_offset_seconds || 0; c.uvmax = j.daily && j.daily.uv_index_max ? j.daily.uv_index_max[0] : null; c.codes = {}; (j.daily && j.daily.time || []).forEach((d, i) => { c.codes[d] = j.daily.weather_code[i]; }); return c;
     } catch (e) { return null; }
   });
 }
+// the next 6 hours in one line, from the 15-minute forecast: when the rain or snow starts or stops, a thunderstorm
+const NCX = { ru: { dry: 'Ближайшие 6 часов без осадков', rs: 'Дождь начнётся через {m}', ss: 'Снег начнётся через {m}', re: 'Дождь идёт, закончится примерно через {m}', se: 'Снег идёт, закончится примерно через {m}', on: 'Осадки — ещё не меньше 6 часов', st: 'гроза около {h}', min: 'мин', hr: 'ч', uv: 'УФ', uvw: ['низкий', 'умеренный', 'высокий', 'очень высокий', 'экстремальный'] },
+  uz: { dry: 'Yaqin 6 soatda yog‘in yo‘q', rs: 'Yomg‘ir {m}dan keyin boshlanadi', ss: 'Qor {m}dan keyin boshlanadi', re: 'Yomg‘ir yog‘yapti, taxminan {m}dan keyin to‘xtaydi', se: 'Qor yog‘yapti, taxminan {m}dan keyin to‘xtaydi', on: 'Yog‘in kamida yana 6 soat davom etadi', st: 'soat {h} atrofida momaqaldiroq', min: 'daqiqa', hr: 'soat', uv: 'UB', uvw: ['past', 'o‘rtacha', 'yuqori', 'juda yuqori', 'ekstremal'] },
+  en: { dry: 'No precipitation in the next 6 hours', rs: 'Rain will start in {m}', ss: 'Snow will start in {m}', re: 'Raining, should stop in about {m}', se: 'Snowing, should stop in about {m}', on: 'Precipitation for 6 more hours at least', st: 'a thunderstorm around {h}', min: 'min', hr: 'h', uv: 'UV', uvw: ['low', 'moderate', 'high', 'very high', 'extreme'] } };
+function nowcast(c, lang) {
+  const X = NCX[lang] || NCX.ru, m = c && c.m15; if (!m || !m.precipitation) return '';
+  const P = m.precipitation, S = m.snowfall || [], tt = m.time || [], now = Date.now(), off = (c.utc_offset_seconds || 0);
+  const t0 = tt.findIndex(t => Date.parse(t + 'Z') - off * 1000 > now - 15 * 60e3); if (t0 < 0) return '';
+  const wet = i => (P[i] || 0) >= 0.1, snow = i => (S[i] || 0) > 0, mins = i => Math.max(15, Math.round((Date.parse(tt[i] + 'Z') - off * 1000 - now) / 60e3 / 5) * 5);
+  const fm = n => n < 60 ? `${n} ${X.min}` : `${Math.floor(n / 60)} ${X.hr}${n % 60 >= 15 ? ` ${n % 60} ${X.min}` : ''}`;
+  let s;
+  if (wet(t0) || (c.precipitation || 0) >= 0.1) { let e = t0; while (e < P.length && wet(e)) e++; s = e >= P.length ? X.on : (snow(t0) ? X.se : X.re).replace('{m}', fm(mins(e))); }
+  else { const b = P.findIndex((v, i) => i > t0 && v >= 0.1); s = b < 0 ? X.dry : (snow(b) ? X.ss : X.rs).replace('{m}', fm(mins(b))); }
+  const st = (m.weather_code || []).findIndex((v, i) => i >= t0 && v >= 95);
+  if (st >= 0) s += ` · ⚡ ${X.st.replace('{h}', tt[st].slice(11, 16))}`;
+  return s;
+}
+const uvText = (v, lang) => { if (v == null) return ''; const X = NCX[lang] || NCX.ru, k = v < 3 ? 0 : v < 6 ? 1 : v < 8 ? 2 : v < 11 ? 3 : 4; return `${X.uv} ${Math.round(v)} (${X.uvw[k]})`; };
 function nowLine(c, lang) {
   if (!c || c.temperature_2m == null) return '';
   const X = NOWX[lang] || NOWX.ru, f = v => `${v > 0.5 ? '+' : ''}${Math.round(v)}°`.replace(/^-0°$/, '0°');
   const w = (WMO[lang] || WMO.ru)[c.weather_code] || '';
-  return `${wmoIcon(c.weather_code, c.is_day)} <b>${X.now}: ${f(c.temperature_2m)}</b>${w ? `, ${w}` : ''}\n      ${X.feels} ${f(c.apparent_temperature)} · ${X.hum} ${Math.round(c.relative_humidity_2m)}% · ${X.wind} ${Math.round(c.wind_speed_10m)} ${X.ms}${c.wind_gusts_10m >= 10 ? ` (${X.gust} ${Math.round(c.wind_gusts_10m)})` : ''}`;
+  return `${wmoIcon(c.weather_code, c.is_day)} <b>${X.now}: ${f(c.temperature_2m)}</b>${w ? `, ${w}` : ''}\n      ${X.feels} ${f(c.apparent_temperature)} · ${X.hum} ${Math.round(c.relative_humidity_2m)}% · ${X.wind} ${Math.round(c.wind_speed_10m)} ${X.ms}${c.wind_gusts_10m >= 10 ? ` (${X.gust} ${Math.round(c.wind_gusts_10m)})` : ''}${c.uv_index != null && c.is_day ? ` · ${uvText(c.uv_index, lang)}` : ''}${nowcast(c, lang) ? `\n      🕒 ${nowcast(c, lang)}` : ''}`;
 }
 const MAPB = { ru: '🗺 Показать на карте (район выделен)', uz: '🗺 Xaritada ko‘rsatish (tuman ajratilgan)', en: '🗺 Show on the map (district marked)' };
 async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
@@ -1543,13 +1586,13 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   const cardD = { name: pn, sub: `${L.head} · ${wd(D[0].d)}`, bh: K.brief, nh: K.next, brief: sum.map(noEmo).slice(0, 5), note: noEmo(K.note), foot: 't.me/ObHavo_ECMWF_bot',
     now: NW && NW.temperature_2m != null ? { t: `${NW.temperature_2m > 0.5 ? '+' : ''}${Math.round(NW.temperature_2m)}°`.replace(/^-0°$/, '0°'), ic: wmoKey(NW.weather_code, NW.is_day),
       txt: ((WMO[lang] || WMO.ru)[NW.weather_code] || '').replace(/^./, c => c.toUpperCase()),
-      more: `${(NOWX[lang] || NOWX.ru).feels} ${Math.round(NW.apparent_temperature)}° · ${(NOWX[lang] || NOWX.ru).hum} ${Math.round(NW.relative_humidity_2m)}% · ${(NOWX[lang] || NOWX.ru).wind} ${Math.round(NW.wind_speed_10m)} ${(NOWX[lang] || NOWX.ru).ms}` } : null,
+      more: `${(NOWX[lang] || NOWX.ru).feels} ${Math.round(NW.apparent_temperature)}° · ${(NOWX[lang] || NOWX.ru).hum} ${Math.round(NW.relative_humidity_2m)}% · ${(NOWX[lang] || NOWX.ru).wind} ${Math.round(NW.wind_speed_10m)} ${(NOWX[lang] || NOWX.ru).ms}${NW.is_day && NW.uv_index != null ? ` · ${uvText(NW.uv_index, lang)}` : ''}`, nc: nowcast(NW, lang) } : null,
     two: D.slice(0, 2).map((x, k) => ({ w: `${k ? (x.d === tmrw ? T[lang].tmw : wd(x.d)) : (x.d === today ? T[lang].tdy : wd(x.d))} · ${wd(x.d)}`.replace(/^(.+) · \1$/, '$1'), ic: icKey(x.ic), t: `${deg(x.lo)}…${deg(x.hi)}`,
       pr: noEmo(pr(x)), umb: noEmo(umbr(x)), wear: `${K.wear}: ${noEmo(wearText(lang, x.lo, x.hi, x.p, x.snow, x.w))}` })),
     list: Dn.map(x => ({ wd: wd(x.d), ic: icKey(x.ic), lo: x.lo, hi: x.hi, lot: deg(x.lo), hit: deg(x.hi), p: x.p, mm: mmT(x), snow: !!x.snow })) };
   const cardQ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7),
     code: NW ? NW.weather_code : 2, day: NW ? !!NW.is_day : true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : D[0].hi };
-  const capC = `${nm} · ${L.head}${nowT ? `\n${nowT.split('\n')[0]}` : ''}`;
+  const ncT = nowcast(NW, lang), capC = `${nm} · ${L.head}${nowT ? `\n${nowT.split('\n')[0]}` : ''}${ncT ? `\n🕒 ${ncT}` : ''}`;
   if (!kb) { const uu = await getUser(env, chat); kb = replyKb(env, lang, place && NAMES[place[4]] ? place[4] : (uu && NAMES[uu.region] ? uu.region : 'UZ')); }
   // the place on the interactive map: its district and region outlined (Uzbekistan, Kazakhstan, Kyrgyzstan)
   const rid_ = ['UZ', 'KZ', 'KG'].find(c => { const A = { UZ: [55.9, 73.2, 37.1, 45.6], KZ: [46.4, 87.4, 40.5, 55.5], KG: [69.2, 80.3, 39.1, 43.3] }[c]; return lon >= A[0] && lon <= A[1] && lat >= A[2] && lat <= A[3]; });
@@ -1635,7 +1678,7 @@ function cardSvg(d, bg) {
   body += wrapT(d.note, W - 112, 22, false, 2).map((l, i) => T(l, W / 2, y + i * 30, 22, '#ffffff', { a: 'middle', op: 0.5 })).join(''); y += 64;
   body += T(d.foot, W / 2, y, 24, '#ffd29c', { a: 'middle', b: 1, op: 0.8 }); const H = y + 40;
   const head = T(d.name, 56, 112, d.name.length > 16 ? 52 : 66, '#ffffff', { b: 1, sh: 1 }) + T(d.sub, 58, 162, 30, '#ffffff', { op: 0.9, sh: 1 }) +
-    (d.now ? T(d.now.t, W - 56, 140, 120, '#ffffff', { b: 1, a: 'end', sh: 1 }) + svgIcon(d.now.ic, W - 56 - [...d.now.t].length * 72 - 60, 98, 52) + T(d.now.txt, W - 56, 196, 30, '#ffffff', { b: 1, a: 'end', sh: 1 }) + T(d.now.more, W - 56, 238, 24, '#ffffff', { a: 'end', op: 0.9, sh: 1 }) : '');
+    (d.now ? T(d.now.t, W - 56, 140, 120, '#ffffff', { b: 1, a: 'end', sh: 1 }) + svgIcon(d.now.ic, W - 56 - [...d.now.t].length * 72 - 60, 98, 52) + T(d.now.txt, W - 56, 196, 30, '#ffffff', { b: 1, a: 'end', sh: 1 }) + T(d.now.more, W - 56, 238, 24, '#ffffff', { a: 'end', op: 0.9, sh: 1 }) + (d.now.nc ? T(d.now.nc, W - 56, 280, 25, '#ffd29c', { a: 'end', b: 1, sh: 1 }) : '') : '');
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs><filter id="sh" x="-5%" y="-20%" width="110%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity="0.6"/></filter>
 <linearGradient id="gt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08101e" stop-opacity="0.65"/><stop offset="1" stop-color="#08101e" stop-opacity="0"/></linearGradient>
@@ -2192,8 +2235,8 @@ async function handle(up, env) {
   if (kind === 'AD' && chat.type === 'private' && String(chat.id) === (await kv(env, 'admin'))) return sendDynamics(env, chat.id, +(id || 14));
   if ((kind === 'AU' || kind === 'AY') && chat.type === 'private') return privateMsg({ chat, from: cb.from, message_id: cb.message.message_id, text: kind === 'AU' ? '/users' : '/yt' }, env);
   if (kind === 'EV') { await tg(env, 'answerCallbackQuery', { callback_query_id: cb.id, text: ({ uz: '⏳ Video yuklanmoqda…', ru: '⏳ Загружаю видео…', en: '⏳ Loading the video…' })[lang] || '⏳' }); return sendEv(env, chat.id, lang, id); }
-  if (kind === 'O') return sendOutlook(env, chat.id, lang);
-  if (kind === 'OP') return sendOutlookPart(env, chat.id, lang, id);
+  if (kind === 'O') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });  // the old 📅 maps: now the weeks videos
+  if (kind === 'OP') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });  // the old 📅 maps: now the weeks videos
   if (kind === 'CT') return sendCountries(env, chat.id, lang, id, +(cb.data.split(':')[3] || 0), cb.message && cb.message.message_id && cb.id !== '0' ? cb.message.message_id : null);
   if (kind === 'CY') return sendCountry(env, chat.id, lang, id);
   if (kind === 'CR' && NAMES[id]) { await saveUser(env, chat.id, { lang, region: id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id] || '🌍'} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, id) }); }
@@ -2223,10 +2266,10 @@ async function handle(up, env) {
   if (kind === 'WV') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' }); return tg(env, 'sendVideo', { chat_id: chat.id, video: `${EVRAW}/weeks/weeks_${lang === 'uz' ? 'uz' : 'ru'}.mp4?v=${Math.floor(Date.now() / 3600e3)}`, caption: `📅 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).weeks}`, parse_mode: 'HTML', supports_streaming: true }); }
   if (kind === 'PH') { const [, , la, lo] = cb.data.split(':'); await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_photo' }); return pointForecast(env, chat.id, lang, +la, +lo, await nearestPlace(env, +la, +lo, 25), null, 'photo'); }
   if (kind === 'PV') { const [, , la, lo] = cb.data.split(':'); return placeVideo(env, chat.id, lang, +la, +lo); }
-  if (kind === 'OA') return sendOutlookPart(env, chat.id, lang, null);
+  if (kind === 'OA') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });  // the old 📅 maps: now the weeks videos
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
-  if (kind === 'TJ' && TRJ.has(id)) return sendTraj(env, chat.id, lang, id);
+  if (kind === 'TJ' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);  // 🧭 was replaced by «where the moisture comes from»
   if (kind === 'MV' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);
   if (kind === 'DV') return id === 'xlsx' || id === 'pdf' ? sendDynXlsx(env, chat.id, lang, id) : sendDynVideo(env, chat.id, lang, id === 'weeks' ? 'weeks' : 'month');
   if (kind === 'SV' && TRJ.has(id)) return sendSat(env, chat.id, lang, id, 'clouds');  // one video: clouds and rain together (old "rain" buttons get it too)
@@ -2340,7 +2383,7 @@ async function privateMsg(msg, env) {
   const chat = msg.chat, text = msg.text || '', cmd = (text.trim().match(/^\/(\w+)(@\w+)?/) || [])[1];
   const u = await getUser(env, chat.id), lang = (u && T[u.lang] && u.lang) || (/^ru/.test(msg.from && msg.from.language_code || '') ? 'ru' : /^uz/.test(msg.from && msg.from.language_code || '') || !(msg.from && msg.from.language_code) ? 'uz' : 'en');
   await saveUser(env, chat.id, who(msg.from));
-  if (cmd === 'v') { const q = text.replace(/^\/v(@\w+)?\s*/, '').trim(); if (!q) return evMenu(env, chat.id, lang === 'uz' ? 'uz' : 'ru').then(() => sendEv(env, chat.id, lang, 'vil')); return evVillage(env, chat.id, lang, q); }
+  if (cmd === 'v') return videoMenu(env, chat.id, lang, (u && NAMES[u.region] && u.region) || 'UZ', u);  // the old 12 h / 3 days videos were replaced by the 15-day ones
   const admin = await kv(env, 'admin');
   // the admin answers a user: Reply to the forwarded message
   if (admin && String(chat.id) === admin && msg.reply_to_message && !cmd) {
@@ -2487,8 +2530,7 @@ async function privateMsg(msg, env) {
     }
     if (act === 'reset') return cbk(`RS:${lang}`);
     if (act === 'hourly') return sendHourly(env, chat.id, lang, rid);
-    if (act === 'outlook') return rid === 'UZ' ? sendOutlook(env, chat.id, lang) : tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
-    if (act === 'evv') return evMenu(env, chat.id, lang);
+    if (act === 'outlook') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     if (act === 'dyn') return sendDyn(env, chat.id, lang);
     if (act === 'brief') { await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'typing' }); return sendBrief(env, chat.id, lang, rid); }
     if (act === 'mtn') return sendMountains(env, chat.id, lang);
