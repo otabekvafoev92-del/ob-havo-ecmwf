@@ -1,6 +1,7 @@
 name: 15-day video for a place (on demand)
 # the bot asks for it (🎬 button under a place's forecast): the country's video and the place's close-up, hour by hour for 15 days
-# (tools/place15.py), sent straight to the chat that asked
+# (tools/place15.py). Every video is drawn by 3 machines side by side (a third of the frames each); part 0 waits for the other two,
+# joins them (tools/seg_join.py) and puts the video on the branch od-<chat>-<kind>, then pokes the bot, which sends it at once.
 on:
   workflow_dispatch:
     inputs:
@@ -14,29 +15,48 @@ on:
 permissions: {contents: write, actions: read}
 jobs:
   v:
-    # the country and the close-up are made side by side; when the bot already sent the ready country video, only the close-up
     strategy:
       matrix:
         kind: ${{ fromJSON(inputs.only == 'place' && '["place"]' || '["country","place"]') }}
+        part: [0, 1, 2]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env: {N: 3, GH_TOKEN: '${{ github.token }}', SEG: 'seg-${{ inputs.chat }}-${{ matrix.kind }}', RUN: '${{ github.run_id }}'}
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - uses: actions/cache@v4
         with: {path: ~/.cache/pip, key: pip-place15-v1}
-      - env: {GH_TOKEN: '${{ github.token }}'}
-        run: |
+      - run: |
           sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || { sudo apt-get update -qq >/dev/null; sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; }; rm -rf ~/.cache/matplotlib
           pip install -q numpy scipy matplotlib pyproj qrcode requests eccodes metpy pillow
           id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
           timeout 600 gh run download $id -n npz -D data && ls -la data
           # fog only near Central Asia (its data box)
           if python3 -c "import sys; la,lo=float('${{ inputs.lat }}'),float('${{ inputs.lon }}'); sys.exit(0 if 32<=la<=50 and 45<=lo<=85 else 1)"; then timeout 600 python -u -W ignore tools/fog_fetch.py data/prob.npz data/fog.npz || true; fi
-          timeout 1800 python -u -W ignore tools/place15.py data out --lang "${{ inputs.lang }}" --lat "${{ inputs.lat }}" --lon "${{ inputs.lon }}" --name "${{ inputs.name }}" --iso "${{ inputs.iso }}" --chat "${{ inputs.chat }}" --only ${{ matrix.kind }}
-          # the videos on the branch "od-<chat>": the bot picks them up from there and sends them to the chat (no bot token needed here)
-          cd out && rm -f files.json && git init -q && git checkout -q -b od-${{ inputs.chat }}-${{ matrix.kind }} && git add -A
+          P15_PART="${{ matrix.part }}/$N" timeout 1500 python -u -W ignore tools/place15.py data out --lang "${{ inputs.lang }}" --lat "${{ inputs.lat }}" --lon "${{ inputs.lon }}" --name "${{ inputs.name }}" --iso "${{ inputs.iso }}" --only ${{ matrix.kind }}
+          rm -f out/files.json
+          R="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+          if [ "${{ matrix.part }}" != "0" ]; then
+            # hand the part over to part 0 on its own branch
+            ( cd out && git init -q && git checkout -q -b $SEG-${{ matrix.part }} && git add -A && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -q --allow-empty -m "$RUN" && git push -fq "$R" $SEG-${{ matrix.part }} )
+            exit 0
+          fi
+          # part 0: wait for the other parts of this run, join, publish
+          for k in $(seq 1 $((N-1))); do
+            for t in $(seq 1 120); do
+              msg=$(gh api "repos/${{ github.repository }}/branches/$SEG-$k" --jq .commit.commit.message 2>/dev/null || true)
+              [ "$msg" = "$RUN" ] && break; sleep 5
+            done
+            [ "$msg" = "$RUN" ] || { echo "part $k missing"; exit 1; }
+            git fetch -q --depth 1 "$R" $SEG-$k && git --work-tree=out checkout FETCH_HEAD -- . && git reset -q
+            git push -q "$R" --delete $SEG-$k || true
+          done
+          ls -la out
+          if ls out/seg_0.json >/dev/null 2>&1; then python -u tools/seg_join.py out $N; fi
+          cd out && rm -f seg_* segs.txt && git init -q && git checkout -q -b od-${{ inputs.chat }}-${{ matrix.kind }} && git add -A
           git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -q --allow-empty -m "place ${{ inputs.name }} for ${{ inputs.chat }}"
-          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" od-${{ inputs.chat }}-${{ matrix.kind }}
+          git push -fq "$R" od-${{ inputs.chat }}-${{ matrix.kind }}
           curl -fsS -m 20 https://osmon-bot.vafoev-otabek97.workers.dev/pv || true  # the bot sends it now, not at its next cron run

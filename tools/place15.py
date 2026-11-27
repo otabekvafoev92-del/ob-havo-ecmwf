@@ -5,7 +5,7 @@ hour by hour, the chance of precipitation and the temperature —
 and sends them to the Telegram chat that asked.
 Data: prob.npz (0.25°, Eurasia 20–190° E, 25–82° N) or glob.npz (0.5°, the world), wx.npz, fog.npz (optional).
 Usage: python tools/place15.py DATA_DIR OUT --lang ru --lat 41.31 --lon 69.28 --name Ташкент [--iso UZ] [--chat ID]"""
-import sys, os, json, math, pathlib, argparse, multiprocessing as mp
+import sys, os, json, math, pathlib, argparse, subprocess, multiprocessing as mp
 import numpy as np
 from matplotlib.path import Path as MPath
 
@@ -81,16 +81,42 @@ def borders(iso, adm2=False):
     return out
 
 
+def levels(lang, a, b):
+    """the sound's levels (prob/sound.py) of frames a…b−1, the same as prob15_video.encode makes for the whole video"""
+    import sound
+    C = PV.CTX; V = C['videos'][lang]; mi = next((k for k, tw in enumerate(C['towns']) if tw[0] == C['main']), 0); lv = []
+    for fr in V['frames'][a:b]:
+        p_, t_, st_, _f = fr['towns'][mi]; l_ = sound.from_series([p_], [t_], [3.0])[0]; l_['storm'] = 1.0 if st_ else 0.0
+        if fr.get('Cl') is not None: tw = C['towns'][mi]; l_['cloud'] = float(np.clip(fr['Cl'][np.abs(C['LATu'] - tw[2]).argmin(), np.abs(C['LONu'] - tw[3]).argmin()], 0, 1))
+        lv += [{k: float(v) for k, v in l_.items()}] * max(1, int(round(fr['d'] / 0.1)))
+    return lv
+
+
 def render(data, out, lang, view):
+    """The whole video here, or with P15_PART=k/n only the k-th of n parts of its frames: seg_k.mp4 (no sound) + seg_k.json (its sound levels);
+    tools/seg_join.py joins the parts. Several machines drawing one video side by side: ~n times faster."""
     npz = data / ('prob.npz' if view['src'] == 'prob' else 'glob.npz')
     PV.FOG = str(data / 'fog.npz') if (data / 'fog.npz').exists() else None
     PV.main(str(npz), str(data / 'wx.npz'), str(out), [lang], only=int(os.environ.get('P15_ONLY', 0)) or None, view=view)
-    jobs = [(lang, i) for i in range(len(PV.CTX['videos'][lang]['frames']))]
+    name = out / f"{view['stem']}{ {'temp': '_t', 'cloud': '_c'}.get(os.environ.get('P15_MODE', ''), '')}_{lang}.mp4"
+    V = PV.CTX['videos'][lang]; nf = len(V['frames']); part = os.environ.get('P15_PART', '')
+    if part:
+        k, n = map(int, part.split('/')); a, b = nf * k // n, nf * (k + 1) // n
+        with mp.get_context('fork').Pool(max(1, os.cpu_count() or 1)) as pool: list(pool.imap_unordered(PV.draw, [(lang, i) for i in range(a, b)], chunksize=2))
+        fd = pathlib.Path(V['dir']); lst = fd / 'list.txt'
+        lst.write_text(''.join(f"file '{i:04d}.png'\nduration {V['frames'][i]['d']}\n" for i in range(a, b)) + f"file '{b - 1:04d}.png'\n")
+        seg = out / f'seg_{k}.mp4'
+        subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-maxrate', '1600k', '-bufsize', '3200k',
+                        '-preset', 'slow', '-tune', 'animation', '-g', '60', str(seg)], check=True)
+        json.dump(dict(lv=levels(lang, a, b), mode=PV.CTX.get('mode'), name=name.name), open(out / f'seg_{k}.json', 'w'))
+        print('part', part, 'frames', a, b, seg, seg.stat().st_size // 1024, 'KB', flush=True)
+        return seg
+    jobs = [(lang, i) for i in range(nf)]
     with mp.get_context('fork').Pool(max(1, os.cpu_count() or 1)) as pool:
         list(pool.imap_unordered(PV.draw, jobs, chunksize=4))
         r = pool.apply(PV.encode, (lang,))
     print(r, flush=True)
-    return out / f"{view['stem']}{ {'temp': '_t', 'cloud': '_c'}.get(os.environ.get('P15_MODE', ''), '')}_{lang}.mp4"
+    return name
 
 
 def src_for(la, lo):

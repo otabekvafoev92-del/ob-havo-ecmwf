@@ -198,30 +198,32 @@ UKMO = 'https://met-office-atmospheric-model-data.s3.eu-west-2.amazonaws.com/glo
 
 
 def ukmo_amount(run, step, win, grids):
-    """UK Met Office global 10 km: the precipitation of the window (step − win, step] from its own 3- or 6-hour accumulation file (NetCDF)"""
-    if step > 168 or win not in (3, 6): return None
+    """UK Met Office global 10 km: the precipitation of the window (step − win, step]. Its files (NetCDF, metres of water) hold
+    1-hour amounts up to 54 h, 3-hour amounts up to 144 h and 6-hour amounts up to 168 h: the window is the sum of the ones inside it."""
+    if step > 168: return None
+    acc = 1 if step <= 54 else 3 if step <= 144 else 6
+    if win % acc: return None
     try:
         import netCDF4
-    except Exception:
-        return None
-    vt = run + dt.timedelta(hours=step)
-    url = f"{UKMO}/{run:%Y%m%dT%H00Z}/{vt:%Y%m%dT%H00Z}-PT{step:04d}H00M-precipitation_accumulation-PT{win:02d}H.nc"
-    raw = get(url, tries=3)
-    if not raw: return None
-    try:
-        ds = netCDF4.Dataset('mem', memory=raw)
-        var = next(v for v in ds.variables.values() if v.ndim >= 2 and v.dimensions[-1].startswith(('lon', 'x', 'grid_longitude')))
-        lat = np.asarray(ds.variables[var.dimensions[-2]][:], float); lon = np.asarray(ds.variables[var.dimensions[-1]][:], float)
-        v = np.asarray(var[:], np.float32).reshape(len(lat), len(lon))
-        un = (getattr(var, 'units', '') or '').strip()
-        if un in ('m', 'metre', 'meters'): v = v * 1000
-        elif un in ('kg m-2 s-1', 'mm s-1'): v = v * win * 3600
-        v = np.nan_to_num(v, nan=0.0)
-        if lat[0] < lat[-1]: lat = lat[::-1]; v = v[::-1]
-        g = dict(Ni=len(lon), Nj=len(lat), lo1=float(lon[0]) % 360, la1=float(lat[0]), di=float(abs(lon[1] - lon[0])), dj=float(abs(lat[1] - lat[0])), v=v)
-        return [regrid(g, G_) for G_ in grids]
     except Exception as e:
-        log('ukmo', step, e); return None
+        log('ukmo: no netCDF4', e); return None
+    tot = None
+    for e in range(step - win + acc, step + 1, acc):
+        vt = run + dt.timedelta(hours=e)
+        raw = get(f"{UKMO}/{run:%Y%m%dT%H00Z}/{vt:%Y%m%dT%H00Z}-PT{e:04d}H00M-precipitation_accumulation-PT{acc:02d}H.nc", tries=3)
+        if not raw: return None
+        try:
+            ds = netCDF4.Dataset('mem', memory=raw)
+            var = ds.variables['lwe_thickness_of_precipitation_amount'] if 'lwe_thickness_of_precipitation_amount' in ds.variables else \
+                next(v for v in ds.variables.values() if v.ndim == 2 and v.dimensions[-1].startswith('lon'))
+            lat = np.asarray(ds.variables['latitude'][:], float); lon = np.asarray(ds.variables['longitude'][:], float)
+            v = np.nan_to_num(np.asarray(var[:], np.float32).reshape(len(lat), len(lon)) * (1000 if (getattr(var, 'units', 'm') or 'm').strip() in ('m', 'metre', 'meters') else 1), nan=0.0)
+            if lat[0] < lat[-1]: lat = lat[::-1]; v = v[::-1]
+            tot = v if tot is None else tot + v
+        except Exception as ex:
+            log('ukmo', e, ex); return None
+    g = dict(Ni=len(lon), Nj=len(lat), lo1=float(lon[0]) % 360, la1=float(lat[0]), di=float(abs(lon[1] - lon[0])), dj=float(abs(lat[1] - lat[0])), v=tot)
+    return [regrid(g, G_) for G_ in grids]
 
 
 def pick_run(want=None):
