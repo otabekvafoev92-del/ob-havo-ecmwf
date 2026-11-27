@@ -1572,7 +1572,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
     const cw_ = { name: place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`, sub: noEmo(head.replace(/<[^>]+>/g, '').replace(nm0.replace(/<[^>]+>/g, ''), '').replace(/^\s*·\s*/, '')), bh: K.brief, nh: K.next.replace(/.*/, { ru: 'По дням', uz: 'Kunma-kun', en: 'Day by day' }[lang]),
       brief: brief.map(noEmo), note: noEmo(K.note), foot: 't.me/ObHavo_ECMWF_bot', now: null, two: [],
       list: Dw.map(x => ({ wd: wd(x.d), ic: icKey(x.ic), lo: x.lo, hi: x.hi, lot: deg(x.lo), hit: deg(x.hi), p: x.p, mm: x.mm >= 0.5 ? `${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : '', snow: !!x.snow })) };
-    const cq_ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7), code: NW ? NW.weather_code : 2, day: true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : Dw[0].hi };
+    const cq_ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, lon, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7), code: NW ? NW.weather_code : 2, day: true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : Dw[0].hi };
     if (await sendCard(env, chat, cw_, cq_, `${head}`, weeksKb(lang, a))) return true;
     return tg(env, 'sendMessage', { chat_id: chat, text: txt.slice(0, 4000), parse_mode: 'HTML', reply_markup: weeksKb(lang, a) });
   }
@@ -1592,7 +1592,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
     two: D.slice(0, 2).map((x, k) => ({ w: `${k ? (x.d === tmrw ? T[lang].tmw : wd(x.d)) : (x.d === today ? T[lang].tdy : wd(x.d))} · ${wd(x.d)}`.replace(/^(.+) · \1$/, '$1'), ic: icKey(x.ic), t: `${deg(x.lo)}…${deg(x.hi)}`,
       pr: noEmo(pr(x)), umb: noEmo(umbr(x)), wear: `${K.wear}: ${noEmo(wearText(lang, x.lo, x.hi, x.p, x.snow, x.w))}` })),
     list: Dn.map(x => ({ wd: wd(x.d), ic: icKey(x.ic), lo: x.lo, hi: x.hi, lot: deg(x.lo), hit: deg(x.hi), p: x.p, mm: mmT(x), snow: !!x.snow })) };
-  const cardQ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7),
+  const cardQ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, lon, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7),
     code: NW ? NW.weather_code : 2, day: NW ? !!NW.is_day : true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : D[0].hi };
   const ncT = nowcast(NW, lang), capC = `${nm} · ${L.head}${nowT ? `\n${nowT.split('\n')[0]}` : ''}${ncT ? `\n🕒 ${ncT}` : ''}`;
   if (!kb) { const uu = await getUser(env, chat); kb = replyKb(env, lang, place && NAMES[place[4]] ? place[4] : (uu && NAMES[uu.region] ? uu.region : 'UZ')); }
@@ -1693,10 +1693,12 @@ ${head}${body}</svg>`;
 }
 const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
 // the photo a town is known by, where its own article's picture is not it (Wikipedia article titles)
-const PHOTO_T = { tashkent: 'Tashkent Tower' };
+const PHOTO_T = { tashkent: 'Tashkent Tower', 'tashkent region': 'Bostanliq District' };
+// the towns of Tashkent region (not the city): the mountains and Lake Charvak
+const inTashReg = q => q.country === 'Uzbekistan' && q.lat >= 40.55 && q.lat <= 42.3 && q.lon >= 69.0 && q.lon <= 71.3 && Math.hypot(q.lat - 41.31, (q.lon - 69.28) * 0.75) > 0.13;
 async function realPhoto(env, q) {  // a real photo of the place (Wikipedia's picture of its article), cut to a square by wsrv.nl; '' when there is none
-  const ov = PHOTO_T[String(q.city).toLowerCase()];
-  const key = `real${ov ? 'o' : ''}:${(q.city + '-' + q.country).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  const ov = PHOTO_T[String(q.city).toLowerCase()] || (q.lon != null && inTashReg(q) ? 'Bostanliq District' : '');
+  const key = `real${ov ? 'o2' : ''}:${(q.city + '-' + q.country).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   const row = await env.DB.prepare('SELECT b, t FROM bgimg WHERE k = ?1').bind(key).first();
   if (row && (row.b || Date.now() - (row.t || 0) < 3 * 864e5)) return row.b;  // none found: try again after 3 days
   let b = '';
