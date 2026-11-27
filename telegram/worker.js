@@ -1692,18 +1692,21 @@ ${fxSvg(d.fx || {}, W)}
 ${head}${body}</svg>`;
 }
 const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
+// the photo a town is known by, where its own article's picture is not it (Wikipedia article titles)
+const PHOTO_T = { tashkent: 'Tashkent Tower' };
 async function realPhoto(env, q) {  // a real photo of the place (Wikipedia's picture of its article), cut to a square by wsrv.nl; '' when there is none
-  const key = `real:${(q.city + '-' + q.country).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-  const row = await env.DB.prepare('SELECT b FROM bgimg WHERE k = ?1').bind(key).first();
-  if (row) return row.b;
+  const ov = PHOTO_T[String(q.city).toLowerCase()];
+  const key = `real${ov ? 'o' : ''}:${(q.city + '-' + q.country).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  const row = await env.DB.prepare('SELECT b, t FROM bgimg WHERE k = ?1').bind(key).first();
+  if (row && (row.b || Date.now() - (row.t || 0) < 3 * 864e5)) return row.b;  // none found: try again after 3 days
   let b = '';
   try {
     const UA = { 'user-agent': 'OsmonWeatherBot/1.0 (https://t.me/ObHavo_ECMWF_bot)' };
     const W_ = 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&piprop=thumbnail|name&pithumbsize=1600';
-    for (const u of [`${W_}&redirects=1&titles=${encodeURIComponent(q.city)}`, `${W_}&generator=search&gsrlimit=5&gsrsearch=${encodeURIComponent(`${q.city} ${q.country} city`)}`]) {  // the town's own article first
+    for (const u of [...(ov ? [`${W_}&redirects=1&titles=${encodeURIComponent(ov)}`] : []), `${W_}&redirects=1&titles=${encodeURIComponent(q.city)}`, `${W_}&generator=search&gsrlimit=5&gsrsearch=${encodeURIComponent(`${q.city} ${q.country} city`)}`]) {  // the town's own article first
       const j = await fetch(u, { headers: UA }).then(r => r.ok ? r.json() : null).catch(() => null);
       const pages = j && j.query && j.query.pages ? Object.values(j.query.pages).sort((a, c) => (a.index || 0) - (c.index || 0)) : [];
-      const p = pages.find(x => x.thumbnail && /\.jpe?g$/i.test(x.pageimage || '') && !/flag|coat|map|locator|emblem|seal|logo|location|airways|boeing|airbus|bombard|russian_|aircraft/i.test(x.pageimage || '')
+      const p = ov && u.includes(encodeURIComponent(ov)) ? pages.find(x => x.thumbnail) : pages.find(x => x.thumbnail && /\.jpe?g$/i.test(x.pageimage || '') && !/flag|coat|map|locator|emblem|seal|logo|location|airways|boeing|airbus|bombard|russian_|aircraft/i.test(x.pageimage || '')
         && !/airport|airways|battle|invasion|front|ghost|district|region|province|fc$|pfk|club|university/i.test(x.title || ''));
       if (!p) continue;
       const r = await fetch(`https://wsrv.nl/?url=${encodeURIComponent(p.thumbnail.source)}&w=1080&h=1080&fit=cover&a=attention&output=jpg&q=78`);
