@@ -4,7 +4,8 @@ S = requests.Session(); S.headers['User-Agent'] = 'osmon-probe/1.0'; out = []
 def P(*a): s = ' '.join(str(x) for x in a); print(s, flush=True); out.append(s)
 B = 'https://met-office-atmospheric-model-data.s3.eu-west-2.amazonaws.com'
 r = S.get(f'{B}/?list-type=2&prefix=global-deterministic-10km/&delimiter=/&max-keys=1000', timeout=30); runs = re.findall(r'<Prefix>(global-deterministic-10km/[^<]+/)</Prefix>', r.text); P('runs', runs[-4:])
-run = runs[-2]; keys = []; tok = ''
+import datetime as _d
+run = 'global-deterministic-10km/' + (_d.datetime.utcnow() - _d.timedelta(hours=14)).replace(hour=0 if (_d.datetime.utcnow() - _d.timedelta(hours=14)).hour < 12 else 12).strftime('%Y%m%dT%H00Z') + '/'; P('run', run); keys = []; tok = ''
 while True:
     r = S.get(f'{B}/?list-type=2&prefix={run}&max-keys=1000' + (f'&continuation-token={requests.utils.quote(tok)}' if tok else ''), timeout=60)
     keys += re.findall(r'<Key>([^<]+)</Key><LastModified>[^<]+</LastModified><ETag>[^<]+</ETag><Size>(\d+)</Size>', r.text)
