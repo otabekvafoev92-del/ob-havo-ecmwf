@@ -14,6 +14,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import render as Rn
 from regions import UZ_CITY
+from uz_names import uz_name
 
 TILE, N = 10, 21
 
@@ -54,7 +55,7 @@ def main():
             k = (p['en'], p['iso'])
             if k in seen: continue
             seen.add(k)
-            places.append([p['ru'], UZ_CITY.get(p['en'], ''), p['en'], p.get('tr') or '', p['iso'], round(p['lat'], 3), round(p['lon'], 3), int(p['pop']), int(p.get('cap') or 0)])
+            places.append([p['ru'], uz_name(p), p['en'], p.get('tr') or '', p['iso'], round(p['lat'], 3), round(p['lon'], 3), int(p['pop']), int(p.get('cap') or 0)])
     places.sort(key=lambda r: -r[7])
     json.dump(places, open(out / 'places.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     print('points:', n, 'tiles,', len(places), 'places')

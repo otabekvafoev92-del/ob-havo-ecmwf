@@ -23,7 +23,7 @@ def places():
         for p in json.load(open(HERE / f))['places']:
             if p['en'] in CITIES and p['en'] not in out:
                 out[p['en']] = {'en': p['en'], 'lat': p['lat'], 'lon': p['lon'], 'iso': p['iso'],
-                                'name': {'ru': p['ru'], 'uz': UZ_CITY.get(p['en']) or p['en'], 'tr': p.get('tr') or p['en']}}
+                                'name': {'ru': p['ru'], 'uz': __import__('uz_names').uz_name(p), 'tr': p.get('tr') or p['en']}}
     return [out[c] for c in CITIES if c in out]
 
 

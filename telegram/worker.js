@@ -1355,7 +1355,7 @@ const MEMO = new Map();  // per-isolate cache: answers stay fast between message
 async function memo(key, ttl, fn) { const m = MEMO.get(key); if (m && Date.now() - m.t < ttl) return m.v; const v = await fn(); if (v) MEMO.set(key, { t: Date.now(), v }); return v; }
 async function places(env) { return (await memo('places', 3600e3, async () => { const r = await fetch(`${base(env)}/prob/places.json`, { cf: { cacheTtl: 3600 } }); return r.ok ? r.json() : null; })) || []; }
 const norm = t => String(t || '').toLowerCase().replace(/[‘’ʻʼ`´']/g, "'").replace(/ё/g, 'е').replace(/[^\p{L}\p{N}' -]/gu, '').trim();
-const pname = (p, lang) => (lang === 'uz' ? p[1] || p[2] : lang === 'en' ? p[2] || p[0] : p[0] || p[2]);
+const pname = (p, lang) => (lang === 'uz' ? (p[1] ? uzLat(p[1]) : uzLat(p[0]) || p[2]) : lang === 'en' ? p[2] || p[0] : p[0] || p[2]);
 async function searchPlaces(env, q) {
   q = norm(q); if (q.length < 2) return [];
   const P = await places(env), hit = [], part = [];
@@ -1370,9 +1370,21 @@ async function nearestPlace(env, lat, lon, km = 35) {
   for (const p of await places(env)) { const d = Math.hypot((p[5] - lat) * 111, (p[6] - lon) * 111 * Math.cos(lat * Math.PI / 180)); if (d < bd) { bd = d; best = p; } }
   return best;
 }
+// Uzbek Latin done right: o‘ g‘ with ‘, the other apostrophes ’, Cyrillic letters in Uzbek letters (дж → j), viloyati / tumani in small letters
+const C2L = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'yo', ж: 'j', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'x', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sh', ъ: '’', ы: 'i', ь: '', э: 'e', ю: 'yu', я: 'ya', ў: 'o‘', қ: 'q', ғ: 'g‘', ҳ: 'h', ә: 'a', ө: 'o‘', ү: 'u', ң: 'ng', і: 'i', һ: 'h', ұ: 'u' };
+function uzLat(t) {
+  t = String(t || '').replace(/дж/gi, m => m[0] === 'Д' ? 'Ж' : 'ж');
+  let o = '', prev = ' ';
+  for (const ch of t) { const lo = ch.toLowerCase(); let r = C2L[lo];
+    if (r === undefined) { o += ch; prev = ch; continue; }
+    if (lo === 'е' && !/\p{L}/u.test(prev)) r = 'ye';
+    if (ch !== lo && r) r = r[0].toUpperCase() + r.slice(1);
+    o += r; prev = ch; }
+  return o.replace(/([OoGg])['`’ʻʼ´]/g, '$1‘').replace(/(?<=\p{L})['`ʻʼ´](?=\p{L})/gu, '’').replace(/\b(Viloyati|Tumani|Shahri|Shahar)\b/g, w => w.toLowerCase());
+}
 // what a point on the map is: the village or town, its district and region (OpenStreetMap), else the nearest known place and how far
 async function whereIs(env, lat, lon, lang) {
-  const L = lang === 'uz' ? 'uz,ru' : lang === 'en' ? 'en' : 'ru';
+  const L = lang === 'uz' ? 'uz' : lang === 'en' ? 'en' : 'ru';
   try {
     const j = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1&accept-language=${L}`,
       { headers: { 'user-agent': 'OsmonWeatherBot/1.0 (t.me/ObHavo_ECMWF_bot)' }, signal: AbortSignal.timeout(4000) }).then(r => r.ok ? r.json() : null);
@@ -1381,7 +1393,8 @@ async function whereIs(env, lat, lon, lang) {
       const spot = a.village || a.town || a.city || a.hamlet || a.suburb || a.municipality || a.neighbourhood || '';
       const dist = a.county || a.city_district || a.district || '', reg = a.state || a.region || '';
       const parts = [spot, dist, reg].filter((v, i, A) => v && A.indexOf(v) === i);
-      if (parts.length) return { short: spot || dist || reg, full: parts.join(', '), cc: (a.country_code || '').toUpperCase() };
+      const fx = lang === 'uz' ? uzLat : v => v, P2 = parts.map(fx);
+      if (P2.length) return { short: fx(spot || dist || reg), full: P2.join(', '), cc: (a.country_code || '').toUpperCase() };
     }
   } catch (e) { console.log('whereIs', e && e.message); }
   const p = await nearestPlace(env, lat, lon, 80);
@@ -1808,7 +1821,7 @@ async function placeVideo(env, chat, lang, lat, lon) {
 const CHANGES = { v: '2026-11-27b', text: `🆕 <b>Osmon: что нового сегодня</b>
 
 ⚡ <b>Видео «страна + моё место» быстрее.</b> Видео страны приходит сразу, крупный план места — примерно через 5 минут (было 15–25). Оба видео делаются одновременно, а готовое отправляется в ту же минуту.
-📍 <b>Под видео места — его название:</b> село или город, район и область (например «Мирзаабад, Bagʻdod tumani, Farg'ona viloyati»), а не просто координаты.
+📍 <b>Под видео места — его название:</b> село или город, район и область (например «Mirzaobod, Bag‘dod tumani, Farg‘ona viloyati»), а не просто координаты.
 🖼 <b>Картинка прогноза на 15 дней — новый светлый дизайн:</b> полоса день/ночь, градусы, столбики дождя (синие) и снега (фиолетовые) с мм, значки погоды, выделены сегодня и выходные.
 📹 <b>Амирсой:</b> видео с камер каждые 12 минут, бот всегда берёт самую свежую запись; строка «обновляется каждые…» под видео убрана.
 🌫 <b>Воздух:</b> подпись под видео исправлена (без лишнего значка и тегов).

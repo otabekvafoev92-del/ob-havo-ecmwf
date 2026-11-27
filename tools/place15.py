@@ -12,6 +12,7 @@ from matplotlib.path import Path as MPath
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tools')); sys.path.insert(0, str(ROOT / 'prob'))
 import prob15_video as PV
+from uz_names import uz_name
 
 GW = json.load(open(ROOT / 'prob' / 'geo_world.json')); GP = json.load(open(ROOT / 'prob' / 'geo_prob.json'))
 GC = json.load(open(ROOT / 'prob' / 'geo_casia.json'))['countries']; GA = json.load(open(ROOT / 'prob' / 'geo_admin.json'))
@@ -46,7 +47,7 @@ def towns_of(iso, box=None, n=12):
     for p in sorted(GP['places'] + GW['places'], key=lambda p: (-(p.get('cap') or 0) // 2, -p.get('pop', 0))):
         if p.get('iso') != iso or p['en'] in seen: continue
         if box and not (box[0] < p['lon'] < box[1] and box[2] < p['lat'] < box[3]): continue
-        seen.add(p['en']); out.append((p.get('ru') or p['en'], p['en'], p['lat'], p['lon']))
+        seen.add(p['en']); out.append((p.get('ru') or p['en'], uz_name(p), p['lat'], p['lon']))
         if len(out) >= n: break
     return out
 
@@ -102,7 +103,7 @@ def continent(data, out, code, lang):
     CN = {'EU': ('Europe',), 'AS': ('Asia',), 'AF': ('Africa',), 'NA': ('North America',), 'SA': ('South America',), 'OC': ('Oceania',)}.get(code)  # the continent's own towns only
     inc = lambda p: CN is None or (GW['countries'].get(p.get('iso'), {}).get('cont') in CN)
     big = sorted([p for p in GW['places'] if b[0] < p['lon'] < b[1] and b[2] < p['lat'] < b[3] and inc(p)], key=lambda p: (-(p.get('cap') or 0), -p.get('pop', 0)))
-    towns = spread(([C['main']] if C.get('main') else []) + [(p.get('ru') or p['en'], p['en'], p['lat'], p['lon']) for p in big], (b[3] - b[2]) / 9)[:14 if not C.get('main') else 18]
+    towns = spread(([C['main']] if C.get('main') else []) + [(p.get('ru') or p['en'], uz_name(p), p['lat'], p['lon']) for p in big], (b[3] - b[2]) / 9)[:14 if not C.get('main') else 18]
     nb = [np.asarray(r, float) for c in GW['countries'].values() for r in c['rings']]
     view = dict(proj=C.get('proj') or f"+proj=laea +lat_0={C['c'][1]} +lon_0={C['c'][0]} +datum=WGS84 +units=m", bounds=b, globe=code == 'world', towns=towns, main=towns[0][0], borders=[(nb, '#7d8995', 0.7, 3)],
                 off=C['tz'], stem=f'country_{code}', src='glob', intro2={lang: {'ru': f"на 15 дней: {C['ru']}", 'uz': f"15 kunga: {C['uz']}"}[lang]}, sig=1.3, title={lang: f"{C[lang]} · {X['title']}"}, tzl={lang: ({'ru': 'по Ташкенту', 'uz': 'Toshkent vaqti'} if code == 'world' else {'ru': f"UTC{C['tz']:+d}", 'uz': f"UTC{C['tz']:+d}"})[lang]},

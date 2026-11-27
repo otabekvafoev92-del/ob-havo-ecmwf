@@ -232,7 +232,9 @@ class Geo:
 
 def city_name(p, lang):
     if lang == 'ru': return p['ru']
-    if lang == 'uz': return UZ_CITY.get(p['en'], p['en'])
+    if lang == 'uz':
+        from uz_names import uz_name
+        return uz_name(p)
     return p['tr'] or p['en']
 
 
