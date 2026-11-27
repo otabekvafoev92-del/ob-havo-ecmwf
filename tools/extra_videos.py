@@ -66,18 +66,25 @@ MCOL = ['#0B2545', '#1E63C6', '#d1495b', '#ee8434', '#2a9d8f', '#6a4c93', '#8d6e
 
 
 # ---------- data
-def om(url, params, tries=4):
+_OM = {}
+
+
+def om(url, params, tries=7):
+    """Open-Meteo, once per request (the two languages share it); its free limit is per minute: on 429 wait a minute and go on."""
+    key = url + json.dumps(params, sort_keys=True)
+    if key in _OM: return _OM[key]
     for k in range(tries):
         try:
             r = requests.get(url, params=params, timeout=120)
-            if r.ok: return r.json()
-            print('om', r.status_code, r.text[:200], flush=True)
+            if r.ok: _OM[key] = r.json(); return _OM[key]
+            print('om', r.status_code, r.text[:120], flush=True)
+            if r.status_code == 429: time.sleep(62); continue
         except Exception as e: print('om', e, flush=True)
         time.sleep(3 * (k + 1))
     return None
 
 
-def om_many(url, lats, lons, params, chunk=150):
+def om_many(url, lats, lons, params, chunk=100):
     """Open-Meteo for many points at once (in chunks): a list of results in the order of the points."""
     out = []
     for i in range(0, len(lats), chunk):
@@ -87,8 +94,11 @@ def om_many(url, lats, lons, params, chunk=150):
     return out
 
 
-def grid(d=0.5):
-    la = np.arange(BOX[2], BOX[3] + 1e-6, d); lo = np.arange(BOX[0], BOX[1] + 1e-6, d)
+GBOX = (50.5, 78.5, 36.0, 46.6)  # the data grid covers the whole drawn map (it is wider than Uzbekistan's box)
+
+
+def grid(d=0.75):
+    la = np.arange(GBOX[2], GBOX[3] + 1e-6, d); lo = np.arange(GBOX[0], GBOX[1] + 1e-6, d)
     LO, LA = np.meshgrid(lo, la); return la, lo, LA.ravel(), LO.ravel()
 
 
@@ -214,7 +224,7 @@ def v_pass(lang, tmp):
 
 # ---------- 2. frost
 def v_frost(lang, tmp):
-    X = T[lang]; la, lo, LA, LO = grid(0.5)
+    X = T[lang]; la, lo, LA, LO = grid()
     js = om_many(OM, LA, LO, dict(daily='temperature_2m_min', forecast_days=7))
     days = js[0]['daily']['time']; M = np.array([[x if x is not None else np.nan for x in j['daily']['temperature_2m_min']] for j in js], float).reshape(len(la), len(lo), -1)
     tj = om_many(OM, [t[2] for t in PV.TOWNS], [t[3] for t in PV.TOWNS], dict(daily='temperature_2m_min', forecast_days=7))
@@ -232,7 +242,7 @@ def v_frost(lang, tmp):
 
 # ---------- 3. wind and dust
 def v_dust(lang, tmp):
-    X = T[lang]; la, lo, LA, LO = grid(0.75)
+    X = T[lang]; la, lo, LA, LO = grid(1.0)
     wj = om_many(OM, LA, LO, dict(hourly='wind_speed_10m,wind_direction_10m', forecast_days=3, wind_speed_unit='ms'))
     dj = om_many(AQ, LA, LO, dict(hourly='dust', forecast_days=3), chunk=100)
     times = wj[0]['hourly']['time']; idx = list(range(0, min(len(times), 72), 3))
@@ -246,8 +256,9 @@ def v_dust(lang, tmp):
         t = dt.datetime.fromisoformat(times[i]); fig = frame(lang, X['dust_t'], f"{WD[lang][t.weekday()]} {t:%d.%m} · {t:%H}:00")
         ax = map_ax(fig)
         du = np.nan_to_num(DU[..., i]); ax.contourf(lo, la, du, levels=[20, 50, 100, 200, 400, 800, 5000], colors=['#f6e7c1', '#efd08f', '#e0a85a', '#c7792e', '#9c4f19', '#6b3410'], alpha=0.75, zorder=2)
-        sp = ax.streamplot(lo, la, np.nan_to_num(U[..., i]), np.nan_to_num(V[..., i]), color=np.nan_to_num(S[..., i]), cmap='Blues', norm=matplotlib.colors.Normalize(0, 15),
-                           density=1.6, linewidth=1.6, arrowsize=1.3, zorder=4)
+        wc = matplotlib.colors.LinearSegmentedColormap.from_list('w', ['#7aa6d6', '#1E63C6', '#0B2545', '#d1495b'])
+        sp = ax.streamplot(lo, la, np.nan_to_num(U[..., i]), np.nan_to_num(V[..., i]), color=np.nan_to_num(S[..., i]), cmap=wc, norm=matplotlib.colors.Normalize(0, 16),
+                           density=1.7, linewidth=1.8, arrowsize=1.4, zorder=4)
         towns(ax, lang); fig.text(0.02, 0.085, X['dust_leg'], fontsize=15, color=INK)
         foot(fig, X['src_aq']); f = tmp / f'dust_{lang}_{i}.png'; save(fig, f); items.append((f, 0.55))
     items[-1] = (items[-1][0], 2.5); items.append((outro(lang, tmp), 3.0)); return items
@@ -312,17 +323,18 @@ def v_short(lang, tmp):
     f = tmp / f'short_{lang}_0.png'; save(fig, f); items.append((f, 2.0))
     for part in range(2):
         fig = frame(lang, X['short_t'], f"{tm:%d.%m}", w, h)
-        ax = fig.add_axes([0.04, 0.07, 0.92, 0.84]); ax.set_xlim(0, 10); ax.set_ylim(0, 7.2); ax.axis('off')
+        ax = fig.add_axes([0.04, 0.07, 0.92, 0.84]); ax.set_xlim(0, 10); ax.set_ylim(0, 10 * 0.84 * h / (0.92 * w)); ax.axis('off')  # equal units: the icons stay round
+        top = ax.get_ylim()[1]
         for r, k in enumerate(range(part * 7, part * 7 + 7)):
-            p, j = PROV[k], js[k]['daily']; y = 6.6 - r
-            ax.add_patch(FancyBboxPatch((0.05, y - 0.42), 9.9, 0.84, boxstyle='round,pad=0,rounding_size=0.25', fc='white', ec='none', zorder=2))
-            ax.text(0.35, y, p[0] if lang == 'uz' else p[1], fontsize=30, fontweight='bold', color=INK, va='center', zorder=3)
-            wico(ax, 6.0, y + 0.05, j['weather_code'][1], 0.75)
+            p, j = PROV[k], js[k]['daily']; y = top - 1.15 - r * 2.2
+            ax.add_patch(FancyBboxPatch((0.05, y - 0.95), 9.9, 1.9, boxstyle='round,pad=0,rounding_size=0.35', fc='white', ec='none', zorder=2))
+            ax.text(0.4, y, p[0] if lang == 'uz' else p[1], fontsize=30, fontweight='bold', color=INK, va='center', zorder=3)
+            wico(ax, 6.1, y + 0.1, j['weather_code'][1], 1.5)
             lo_, hi_ = j['temperature_2m_min'][1], j['temperature_2m_max'][1]
-            ax.text(9.7, y + 0.12, f"{hi_:+.0f}°".replace('+0°', '0°'), fontsize=32, fontweight='bold', color='#e0601b', ha='right', va='center', zorder=3)
-            ax.text(9.7, y - 0.25, f"{lo_:+.0f}°".replace('+0°', '0°'), fontsize=20, color=MUTED, ha='right', va='center', zorder=3)
+            ax.text(9.7, y + 0.3, f"{hi_:+.0f}°".replace('+0°', '0°'), fontsize=32, fontweight='bold', color='#e0601b', ha='right', va='center', zorder=3)
+            ax.text(9.7, y - 0.5, f"{lo_:+.0f}°".replace('+0°', '0°'), fontsize=20, color=MUTED, ha='right', va='center', zorder=3)
             pp = j['precipitation_probability_max'][1]
-            if pp is not None and pp >= 20: ax.text(7.2, y, f'{pp:.0f}%', fontsize=22, fontweight='bold', color='#1E63C6', va='center', zorder=3)
+            if pp is not None and pp >= 20: ax.text(7.3, y, f'{pp:.0f}%', fontsize=22, fontweight='bold', color='#1E63C6', va='center', zorder=3)
         brand(fig, 0.5, 0.025, SIGN, fontsize=16, color=MUTED, ha='center', va='bottom')
         f = tmp / f'short_{lang}_{part + 1}.png'; save(fig, f); items.append((f, 6.0))
     items.append((outro(lang, tmp, w, h), 3.0)); return items, (w, h)
@@ -330,7 +342,7 @@ def v_short(lang, tmp):
 
 # ---------- 6. the week behind
 def v_week(lang, tmp):
-    X = T[lang]; la, lo, LA, LO = grid(0.5)
+    X = T[lang]; la, lo, LA, LO = grid()
     js = om_many(OM, LA, LO, dict(daily='precipitation_sum', past_days=7, forecast_days=1))
     R = np.array([np.nansum([x for x in j['daily']['precipitation_sum'][:7] if x is not None]) for j in js], float).reshape(len(la), len(lo))
     tj = om_many(OM, [t[2] for t in PV.TOWNS], [t[3] for t in PV.TOWNS], dict(daily='precipitation_sum,temperature_2m_max,temperature_2m_min', past_days=7, forecast_days=1))
@@ -416,7 +428,7 @@ def moon_phase(d):
 
 
 def v_sky(lang, tmp):
-    X = T[lang]; la, lo, LA, LO = grid(0.5)
+    X = T[lang]; la, lo, LA, LO = grid()
     js = om_many(OM, LA, LO, dict(hourly='cloud_cover', forecast_days=2))
     tt = [dt.datetime.fromisoformat(x) for x in js[0]['hourly']['time']]
     night = [i for i, t in enumerate(tt) if (t.date() == tt[0].date() and t.hour >= 20) or (t.date() > tt[0].date() and t.hour <= 4)]
