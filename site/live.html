@@ -178,6 +178,15 @@ function yandex() {
       const on = () => { YG = null; PV = ''; draw(); };
       YMAP.events.add(['actiontick', 'actiontickcomplete', 'boundschange', 'sizechange'], on);
       YMAP.events.add('click', e => { const [la, lo] = e.get('coords'); pick(la, lo); });
+      // the address search: a street, a mahalla, a house — the forecast for exactly that point
+      const SC = new ymaps.control.SearchControl({ options: { provider: 'yandex#search', noPlacemark: false, float: 'left', size: 'large', placeholderContent: { uz: 'Ko‘cha, mahalla, manzil…', ru: 'Улица, махалля, адрес…', tr: 'Sokak, adres…' }[LANG] || 'Улица, махалля, адрес…', boundedBy: [[37, 55.9], [45.7, 73.2]], strictBounds: false } });
+      YMAP.controls.add(SC);
+      SC.events.add('resultshow', e => {
+        SC.getResult(e.get('index')).then(r => {
+          const [la, lo] = r.geometry.getCoordinates(), nm = String(r.properties.get('name') || '').slice(0, 60);
+          if (isFinite(val(hour, 1, la, lo))) { sel = { lat: la, lon: lo, name: nm || TX.here, city: false }; $('hint').style.opacity = 0; draw(); }
+        }).catch(() => {});
+      });
       on();
     } catch (e) { console.warn('yandex', e); document.body.classList.remove('ya'); YMAP = null; }
   });
