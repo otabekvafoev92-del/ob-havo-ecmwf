@@ -1,0 +1,252 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+</head><body><canvas id="c" width="1920" height="1080"></canvas>
+<script>
+// The live weather scene of a city: rendered frame by frame (window.frame(k)) and captured by tools/city_live.py.
+// window.D = {hours:[{T,F,p,s,code,cl,vis,ws,wd,rh,t}], sun:{date:[riseH,setH]}, name, lab:{...}, map:{day,night,R,rings}, fph}
+const C = document.getElementById('c'), X = C.getContext('2d'), W = 1920, H = 1080;
+let D = null, IMG = {}, SPR = {};
+function rnd(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const lerp = (a, b, f) => a + (b - a) * f, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const mix = (c1, c2, f) => c1.map((v, i) => Math.round(lerp(v, c2[i], f)));
+const rgb = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+// ---------- sprites made once: soft clouds, the skyline layers
+function cloudSprite(seed, w, h) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'), r = rnd(seed);
+  g.filter = 'blur(10px)';
+  for (let i = 0; i < 26; i++) {
+    const x = w * (0.15 + 0.7 * r()), y = h * (0.45 + 0.3 * (r() - 0.5)) - Math.sin((x / w) * Math.PI) * h * 0.18, rr = h * (0.18 + 0.22 * r());
+    const gr = g.createRadialGradient(x, y - rr * 0.2, rr * 0.1, x, y, rr);
+    gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.6, 'rgba(240,244,250,0.7)'); gr.addColorStop(1, 'rgba(220,228,240,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, 7); g.fill();
+  }
+  // the shaded underside
+  g.globalCompositeOperation = 'source-atop'; const sh = g.createLinearGradient(0, h * 0.3, 0, h);
+  sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(70,85,105,0.55)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
+  return cv;
+}
+function buildLayer(seed, n, hmin, hmax, wmin, wmax, base) {
+  const r = rnd(seed), out = []; let x = -40;
+  while (x < W * 1.6) { const w = wmin + (wmax - wmin) * r(), h = hmin + (hmax - hmin) * Math.pow(r(), 1.6); out.push({ x, w, h, roof: r(), win: r() }); x += w + 2 + 10 * r(); }
+  return out;
+}
+function setup() {
+  SPR.clouds = [0, 1, 2, 3, 4, 5].map(i => cloudSprite(100 + i * 7, 520, 230));
+  SPR.L = [buildLayer(3, 0, 120, 300, 40, 110), buildLayer(5, 0, 90, 230, 50, 130), buildLayer(9, 0, 50, 160, 60, 150)];
+  const r = rnd(42); SPR.drops = Array.from({ length: 900 }, () => [r(), r(), 0.6 + 0.8 * r()]); SPR.flakes = Array.from({ length: 520 }, () => [r(), r(), 0.5 + r()]);
+  SPR.stars = Array.from({ length: 260 }, () => [r(), r() * 0.6, r()]); SPR.cars = Array.from({ length: 26 }, () => [r(), r() < 0.5 ? 1 : -1, 0.5 + r()]);
+  SPR.fog = [0, 1, 2].map(i => cloudSprite(300 + i, 900, 260));
+}
+
+// ---------- the weather at frame k (hours interpolated)
+function at(k) {
+  const fph = D.fph, hf = k / fph, i = Math.min(D.hours.length - 2, Math.floor(hf)), f = hf - i, a = D.hours[i], b = D.hours[i + 1];
+  const o = {}; for (const key of ['T', 'F', 'p', 's', 'cl', 'vis', 'ws', 'rh']) o[key] = lerp(a[key], b[key], f);
+  o.code = f < 0.5 ? a.code : b.code; o.wd = a.wd; o.t = new Date(Date.parse(a.t) + f * 3600e3); o.i = i; o.f = f;
+  const hr = o.t.getUTCHours() + o.t.getUTCMinutes() / 60, sun = D.sun[a.t.slice(0, 10)] || [7, 17];
+  o.hr = hr; o.rise = sun[0]; o.set = sun[1];
+  o.sunH = hr >= sun[0] && hr <= sun[1] ? Math.sin(Math.PI * (hr - sun[0]) / (sun[1] - sun[0])) : -Math.min(1, Math.min(Math.abs(hr - sun[0]), Math.abs(hr - sun[1]), Math.abs(hr + 24 - sun[1]), Math.abs(sun[0] + 24 - hr)) / 2.5);
+  o.snowy = o.s > 0.05 || [71, 73, 75, 77, 85, 86].includes(o.code); o.storm = o.code >= 95;
+  return o;
+}
+
+// ---------- the sky, the sun and the moon, stars
+function sky(o, k) {
+  const night = [[8, 14, 32], [24, 36, 66]], dusk = [[44, 58, 112], [250, 150, 92]], day = [[58, 128, 214], [178, 214, 246]];
+  let top, bot; const s = o.sunH;
+  if (s < -0.25) { top = night[0]; bot = night[1]; }
+  else if (s < 0.2) { const f = (s + 0.25) / 0.45; top = mix(night[0], dusk[0], f); bot = mix(night[1], dusk[1], f); }
+  else { const f = clamp((s - 0.2) / 0.4, 0, 1); top = mix(dusk[0], day[0], f); bot = mix(dusk[1], day[1], f); }
+  const grey = s > -0.1 ? mix([70, 78, 92], [158, 168, 180], clamp(s + 0.1, 0, 1)) : [34, 40, 54], kc = 0.78 * o.cl / 100 + (o.p > 0.2 ? 0.1 : 0);
+  top = mix(top, grey, kc); bot = mix(bot, grey, kc);
+  const g = X.createLinearGradient(0, 0, 0, H * 0.78); g.addColorStop(0, rgb(top)); g.addColorStop(1, rgb(bot)); X.fillStyle = g; X.fillRect(0, 0, W, H);
+  if (s < 0) {  // stars that twinkle
+    const a = clamp(-s * 2, 0, 1) * (1 - o.cl / 110);
+    for (const [x, y, z] of SPR.stars) { const tw = 0.5 + 0.5 * Math.sin(k * 0.15 + z * 40); X.fillStyle = `rgba(255,255,255,${a * (0.35 + 0.65 * tw) * z})`; X.fillRect(x * W, y * H, 1.5 + z * 1.6, 1.5 + z * 1.6); }
+  }
+  // the sun on its arc, with a glow and soft rays
+  if (o.hr >= o.rise - 0.4 && o.hr <= o.set + 0.4) {
+    const p = (o.hr - o.rise) / (o.set - o.rise), sx = W * (0.12 + 0.76 * p), sy = H * (0.70 - 0.52 * Math.sin(Math.PI * clamp(p, 0, 1))), vis = 1 - 0.85 * o.cl / 100;
+    const gl = X.createRadialGradient(sx, sy, 0, sx, sy, 420); gl.addColorStop(0, `rgba(255,236,170,${0.55 * vis})`); gl.addColorStop(0.25, `rgba(255,200,120,${0.22 * vis})`); gl.addColorStop(1, 'rgba(255,200,120,0)');
+    X.fillStyle = gl; X.fillRect(0, 0, W, H);
+    X.save(); X.translate(sx, sy); X.rotate(k * 0.002); X.globalAlpha = 0.10 * vis;
+    for (let r = 0; r < 14; r++) { X.rotate(Math.PI / 7); X.fillStyle = '#fff3c4'; X.beginPath(); X.moveTo(0, 0); X.lineTo(900, -30); X.lineTo(900, 30); X.fill(); }
+    X.restore(); X.fillStyle = `rgba(255,240,190,${0.4 + 0.6 * vis})`; X.beginPath(); X.arc(sx, sy, 42, 0, 7); X.fill();
+  } else {  // the moon
+    const span = (o.rise + 24 - o.set), p = (((o.hr - o.set) + 24) % 24) / span, mx = W * (0.15 + 0.7 * p), my = H * (0.62 - 0.42 * Math.sin(Math.PI * clamp(p, 0, 1))), vis = 1 - 0.85 * o.cl / 100;
+    const gl = X.createRadialGradient(mx, my, 0, mx, my, 220); gl.addColorStop(0, `rgba(220,230,255,${0.25 * vis})`); gl.addColorStop(1, 'rgba(220,230,255,0)'); X.fillStyle = gl; X.fillRect(0, 0, W, H);
+    X.fillStyle = `rgba(245,240,215,${0.3 + 0.7 * vis})`; X.beginPath(); X.arc(mx, my, 34, 0, 7); X.fill();
+    X.fillStyle = `rgba(10,18,40,${0.85 * vis})`; X.beginPath(); X.arc(mx + 14, my - 6, 30, 0, 7); X.fill();
+  }
+  return { top, bot };
+}
+
+// ---------- clouds drifting with the wind, in two depths
+function clouds(o, k, near) {
+  const n = Math.round(2 + o.cl / 100 * (near ? 7 : 9)), dir = (o.wd > 180 ? 1 : -1), sp = (0.4 + o.ws / 4) * dir, dark = clamp(o.p / 3, 0, 0.6);
+  const light = clamp(0.25 + o.sunH * 0.9, 0.18, 1);
+  for (let j = 0; j < n; j++) {
+    const spr = SPR.clouds[(j + (near ? 3 : 0)) % 6], sc = near ? 1.25 + (j % 3) * 0.25 : 0.65 + (j % 4) * 0.15;
+    const x = ((j * 397 + k * sp * (near ? 1.6 : 0.8)) % (W + 900) + (W + 900)) % (W + 900) - 600, y = near ? 40 + (j % 4) * 70 : 140 + (j % 5) * 55;
+    X.save(); X.globalAlpha = near ? 0.92 : 0.7; X.filter = `brightness(${light * (1 - dark)})`;
+    X.drawImage(spr, x, y, spr.width * sc, spr.height * sc); X.restore();
+  }
+}
+
+// ---------- the city: three layers of buildings with depth haze, landmarks, lit windows, traffic
+function city(o, k, S) {
+  const s = o.sunH, nightF = clamp(-s * 3 + 0.3, 0, 1), pan = k * 0.35;
+  const hazeC = mix(S.bot, [30, 40, 60], 0.3);
+  SPR.L.forEach((L, li) => {
+    const base = H * 0.80, par = [0.25, 0.55, 1][li], depth = [0.62, 0.38, 0.12][li];
+    // silhouettes: by day bluish grey with haze, at night darker than the sky so they stand out against it
+    const bc = s > 0 ? mix(mix([34, 44, 62], [58, 70, 90], clamp(s, 0, 1) * 0.6), hazeC, depth) : mix([7, 11, 20], [22, 30, 48], depth * 0.9);
+    X.fillStyle = rgb(bc);
+    for (const b of L) {
+      const x = ((b.x - pan * par) % (W * 1.6) + W * 1.6) % (W * 1.6) - 120;
+      X.fillRect(x, base - b.h, b.w, b.h);
+      if (b.roof > 0.8) { X.fillRect(x + b.w * 0.45, base - b.h - 26, 3, 26); }
+      if (li === 2 && nightF > 0) {  // the lit windows (more as the night goes on, a few flicker)
+        const r = rnd(Math.floor(b.x * 7)); for (let yy = base - b.h + 10; yy < base - 8; yy += 14) for (let xx = x + 6; xx < x + b.w - 6; xx += 11) {
+          const v = r(); if (v < 0.42 * nightF) { const fl = v < 0.03 ? (Math.sin(k * 0.6 + v * 99) > 0 ? 1 : 0.3) : 1; X.fillStyle = `rgba(255,214,140,${0.85 * fl})`; X.fillRect(xx, yy, 5, 7); }
+        } X.fillStyle = rgb(bc);
+      }
+    }
+    if (li === 1) {  // the landmarks between the far and the near rows
+      const tx = W * 0.56 - (k * 0.35 * par) % 60;  // in the open middle, between the cards (it barely moves: the eye's anchor)
+      if (D.tower) {  // a TV tower: a lattice spire with a pod and a blinking light
+        X.beginPath(); X.moveTo(tx - 22, base); X.lineTo(tx + 22, base); X.lineTo(tx + 5, base - 520); X.lineTo(tx - 5, base - 520); X.fill();
+        X.beginPath(); X.ellipse(tx, base - 330, 30, 16, 0, 0, 7); X.fill(); X.fillRect(tx - 2, base - 600, 4, 90);
+        if (Math.floor(k / 12) % 2) { X.fillStyle = '#ff4d4d'; X.beginPath(); X.arc(tx, base - 600, 5, 0, 7); X.fill(); }
+      } else {  // a minaret
+        X.fillRect(tx - 12, base - 380, 24, 380); X.fillRect(tx - 20, base - 330, 40, 12); X.beginPath(); X.arc(tx, base - 380, 14, Math.PI, 0); X.fill();
+      }
+      const dx = W * 0.40 - (k * 0.35 * par) % 60;  // a blue dome
+      X.fillStyle = rgb(bc); X.fillRect(dx - 80, base - 130, 160, 130); X.fillRect(dx - 58, base - 150, 116, 22);
+      const dg = X.createLinearGradient(dx - 50, 0, dx + 50, 0); dg.addColorStop(0, rgb(mix([28, 110, 160], bc, depth + 0.2))); dg.addColorStop(1, rgb(mix([60, 160, 210], bc, depth)));
+      X.fillStyle = dg; X.beginPath(); X.ellipse(dx, base - 130, 52, 64, 0, Math.PI, 0); X.fill();
+    }
+  });
+  // the street with cars
+  const gy = H * 0.80; const gg = X.createLinearGradient(0, gy, 0, H); gg.addColorStop(0, rgb(mix([40, 48, 62], S.bot, 0.2))); gg.addColorStop(1, '#0e1520');
+  X.fillStyle = gg; X.fillRect(0, gy, W, H - gy);
+  if (o.snowy) { X.fillStyle = 'rgba(240,246,255,0.85)'; X.fillRect(0, gy, W, 10); }
+  for (const [x0, d, v] of SPR.cars) {
+    const x = ((x0 * W + d * k * 6 * v) % W + W) % W, y = gy + (d > 0 ? 22 : 40);
+    X.fillStyle = d > 0 ? `rgba(255,240,200,${0.4 + 0.6 * nightF})` : `rgba(255,60,60,${0.4 + 0.5 * nightF})`; X.fillRect(x, y, 10, 4);
+    if (nightF > 0.3 && d > 0) { const lg = X.createLinearGradient(x, 0, x + 120, 0); lg.addColorStop(0, `rgba(255,240,200,${0.25 * nightF})`); lg.addColorStop(1, 'rgba(255,240,200,0)'); X.fillStyle = lg; X.fillRect(x, y - 4, 120, 12); }
+  }
+  if (o.p > 0.1 && !o.snowy) { X.fillStyle = 'rgba(160,190,230,0.12)'; X.fillRect(0, gy, W, H - gy); }  // a wet, shining road
+}
+
+// ---------- rain, snow, lightning, fog
+function precip(o, k) {
+  const slant = (o.wd > 180 ? 1 : -1) * (0.08 + o.ws / 40);
+  if (o.p > 0.03 && !o.snowy) {
+    const n = Math.min(900, Math.round(120 + o.p * 260)); X.strokeStyle = 'rgba(200,220,255,0.55)'; X.lineWidth = 1.6; X.beginPath();
+    for (let j = 0; j < n; j++) { const [x0, y0, v] = SPR.drops[j], y = ((y0 + k * 0.045 * v) % 1) * H * 0.82, x = ((x0 + y / H * slant) % 1 + 1) % 1 * W; X.moveTo(x, y); X.lineTo(x - slant * 40 * v, y - 40 * v); }
+    X.stroke();
+    X.fillStyle = 'rgba(210,230,255,0.5)'; for (let j = 0; j < n / 6; j++) { const [x0, y0] = SPR.drops[j]; const ph = (y0 * 10 + k * 0.3) % 1; X.beginPath(); X.ellipse(x0 * W, H * 0.81 + y0 * 40, 6 * ph, 2 * ph, 0, 0, 7); X.fill(); }
+  }
+  if (o.snowy) {
+    const n = Math.min(420, Math.round(90 + Math.max(o.s, 0.2) * 220));
+    for (let j = 0; j < n; j++) { const [x0, y0, v] = SPR.flakes[j], y = ((y0 + k * 0.006 * v) % 1) * H * 0.84, x = ((x0 + 0.02 * Math.sin(k * 0.05 + y0 * 20) + y / H * slant * 0.5) % 1 + 1) % 1 * W;
+      X.fillStyle = `rgba(255,255,255,${0.45 + 0.4 * v / 1.5})`; X.beginPath(); X.arc(x, y, 0.8 + 1.5 * v, 0, 7); X.fill(); }
+  }
+  if (o.storm) {
+    const ph = k % 37; if (ph < 3) { X.fillStyle = `rgba(255,255,255,${[0.55, 0.2, 0.4][ph]})`; X.fillRect(0, 0, W, H);
+      const r = rnd(Math.floor(k / 37) * 13 + 5); let x = W * (0.2 + 0.6 * r()), y = 0; X.strokeStyle = 'rgba(255,250,220,0.95)'; X.lineWidth = 4; X.beginPath(); X.moveTo(x, y);
+      while (y < H * 0.7) { x += (r() - 0.5) * 90; y += 40 + r() * 60; X.lineTo(x, y); } X.stroke(); }
+  }
+  if (o.vis < 3000) {  // fog banks sliding along the city
+    const a = clamp((3000 - o.vis) / 3000, 0, 1) * 0.85;
+    SPR.fog.forEach((f, j) => { const x = ((j * 700 + k * (1 + j * 0.5)) % (W + 900)) - 800; X.globalAlpha = a; X.drawImage(f, x, H * (0.45 + j * 0.1), f.width * 1.6, f.height * 1.6); });
+    X.globalAlpha = a * 0.5; X.fillStyle = '#c8d2dc'; X.fillRect(0, 0, W, H); X.globalAlpha = 1;
+  }
+}
+
+// ---------- the glass cards: name and readout, the map, the 48 hours
+function glass(x, y, w, h, r = 22, a = 0.42) {
+  X.save(); X.beginPath(); X.roundRect(x, y, w, h, r); X.fillStyle = `rgba(11,37,69,${a})`; X.fill();
+  X.strokeStyle = 'rgba(255,255,255,0.18)'; X.lineWidth = 1.5; X.stroke(); X.restore();
+}
+function icon(o, x, y, s, k) {  // a moving weather icon
+  X.save(); X.translate(x, y);
+  const sunny = o.cl < 70 && o.sunH > 0, moon = o.cl < 70 && o.sunH <= 0;
+  if (sunny) { X.save(); X.rotate(k * 0.02); X.fillStyle = '#FFB020'; for (let r = 0; r < 8; r++) { X.rotate(Math.PI / 4); X.fillRect(s * 0.42, -3, s * 0.18, 6); } X.restore(); X.fillStyle = '#FFC94A'; X.beginPath(); X.arc(0, 0, s * 0.32, 0, 7); X.fill(); }
+  if (moon) { X.fillStyle = '#f5f0d0'; X.beginPath(); X.arc(0, 0, s * 0.3, 0, 7); X.fill(); X.fillStyle = 'rgba(11,37,69,1)'; X.beginPath(); X.arc(s * 0.13, -s * 0.06, s * 0.26, 0, 7); X.fill(); }
+  if (o.cl >= 30) { const bob = Math.sin(k * 0.08) * 3; X.fillStyle = o.p > 0.1 ? '#b8c4d2' : '#eef2f7';
+    for (const [dx, dy, r] of [[-0.28, 0.1, 0.24], [0.02, -0.02, 0.32], [0.3, 0.12, 0.22], [0, 0.18, 0.26]]) { X.beginPath(); X.arc(dx * s + s * 0.1, dy * s + s * 0.15 + bob, r * s, 0, 7); X.fill(); } }
+  if (o.p > 0.05 && !o.snowy) { X.strokeStyle = '#6fb1ff'; X.lineWidth = 4; X.lineCap = 'round'; for (let j = 0; j < 3; j++) { const ph = ((k * 0.08 + j * 0.33) % 1); X.globalAlpha = 1 - ph; X.beginPath(); X.moveTo((-0.2 + 0.25 * j) * s, s * 0.45 + ph * s * 0.4); X.lineTo((-0.25 + 0.25 * j) * s, s * 0.6 + ph * s * 0.4); X.stroke(); } X.globalAlpha = 1; }
+  if (o.snowy) { X.fillStyle = '#fff'; for (let j = 0; j < 3; j++) { const ph = ((k * 0.03 + j * 0.33) % 1); X.globalAlpha = 1 - ph; X.beginPath(); X.arc((-0.2 + 0.25 * j) * s, s * 0.5 + ph * s * 0.4, 5, 0, 7); X.fill(); } X.globalAlpha = 1; }
+  if (o.storm && (k % 37) < 6) { X.fillStyle = '#FFB020'; X.beginPath(); X.moveTo(0, s * 0.3); X.lineTo(-s * 0.12, s * 0.62); X.lineTo(s * 0.02, s * 0.6); X.lineTo(-s * 0.06, s * 0.9); X.lineTo(s * 0.16, s * 0.5); X.lineTo(s * 0.02, s * 0.52); X.fill(); }
+  X.restore();
+}
+function readout(o, k) {
+  const L = D.lab; glass(48, 140, 560, 330);
+  X.fillStyle = '#ffd29c'; X.font = '800 26px Manrope, Inter, sans-serif'; X.fillText(D.name, 78, 192);
+  X.fillStyle = 'rgba(255,255,255,0.75)'; X.font = '600 22px Manrope, Inter, sans-serif';
+  X.fillText(`${L.wd[(o.t.getUTCDay() + 6) % 7]} ${String(o.t.getUTCDate()).padStart(2, '0')}.${String(o.t.getUTCMonth() + 1).padStart(2, '0')} · ${String(o.t.getUTCHours()).padStart(2, '0')}:${String(o.t.getUTCMinutes()).padStart(2, '0')}`, 78, 226);
+  const T = Math.round(o.T); X.fillStyle = '#fff'; X.font = '800 120px Manrope, Inter, sans-serif'; X.fillText(`${T > 0 ? '+' : ''}${T}°`, 70, 352);
+  icon(o, 470, 300, 120, k);
+  X.font = '800 30px Manrope, Inter, sans-serif'; X.fillText(L.wx[o.code] || '', 78, 404);
+  X.fillStyle = 'rgba(255,255,255,0.8)'; X.font = '600 21px Manrope, Inter, sans-serif';
+  X.fillText(`${L.feels} ${Math.round(o.F) > 0 ? '+' : ''}${Math.round(o.F)}° · ${L.wind} ${Math.round(o.ws)} ${L.ms} · ${L.hum} ${Math.round(o.rh)}%`, 78, 444);
+}
+function mapCard(o, k) {
+  const x = W - 48 - 520, y = 140, w = 520, h = 520, im = o.sunH > 0 ? IMG.day : IMG.night;
+  glass(x - 10, y - 10, w + 20, h + 64, 26, 0.5);
+  X.save(); X.beginPath(); X.roundRect(x, y, w, h, 18); X.clip();
+  // a slow camera move over the city (Ken Burns)
+  const z = 1.12 + 0.18 * (k / (D.hours.length * D.fph)), cx = im.width / 2 + Math.sin(k * 0.004) * im.width * 0.06, cy = im.height / 2 + Math.cos(k * 0.003) * im.height * 0.05;
+  const sw = im.width / z, sh = im.height / z; X.drawImage(im, cx - sw / 2, cy - sh / 2, sw, sh, x, y, w, h);
+  X.fillStyle = `rgba(10,20,40,${0.35 * o.cl / 100})`; X.fillRect(x, y, w, h);
+  // cloud shadows sliding over the map
+  X.globalAlpha = 0.22 * o.cl / 100; for (let j = 0; j < 3; j++) { const s = SPR.clouds[j]; X.drawImage(s, x + ((j * 260 + k * 1.2) % (w + 600)) - 400, y + j * 150, 600, 260); } X.globalAlpha = 1;
+  if (o.p > 0.03) { if (o.snowy) { X.fillStyle = 'rgba(255,255,255,0.9)'; for (let j = 0; j < 160; j++) { const [x0, y0, v] = SPR.flakes[j]; X.beginPath(); X.arc(x + x0 * w, y + ((y0 + k * 0.004 * v) % 1) * h, 2 + v, 0, 7); X.fill(); } }
+    else { X.strokeStyle = 'rgba(80,140,230,0.6)'; X.lineWidth = 1.5; X.beginPath(); for (let j = 0; j < 240; j++) { const [x0, y0, v] = SPR.drops[j]; const yy = y + ((y0 + k * 0.03 * v) % 1) * h, xx = x + x0 * w; X.moveTo(xx, yy); X.lineTo(xx - 6, yy - 18); } X.stroke(); } }
+  if (o.vis < 3000) { X.fillStyle = `rgba(214,222,230,${clamp((3000 - o.vis) / 3000, 0, 0.75)})`; X.fillRect(x, y, w, h); }
+  X.restore();
+  X.fillStyle = '#fff'; X.font = '700 20px Manrope, Inter, sans-serif'; X.fillText(D.lab.mapcap, x + 4, y + h + 38);
+}
+function timeline(o, k) {
+  const x = 48, y = H - 190, w = W - 96, h = 130, n = D.hours.length - 1; glass(x, y, w, h, 20, 0.5);
+  const Ts = D.hours.map(q => q.T), lo = Math.min(...Ts) - 2, hi = Math.max(...Ts) + 2, px = i => x + 30 + (w - 60) * i / n, py = v => y + h - 26 - (h - 52) * (v - lo) / (hi - lo);
+  const pm = Math.max(2, ...D.hours.map(q => q.p));
+  D.hours.forEach((q, i) => { if (q.p > 0.02) { X.fillStyle = q.s > 0 ? 'rgba(160,140,255,0.8)' : 'rgba(80,150,255,0.8)'; const bh = (h - 40) * Math.min(1, q.p / pm); X.fillRect(px(i) - 3, y + h - 16 - bh, 6, bh); } });
+  X.strokeStyle = '#ff9a4d'; X.lineWidth = 4; X.beginPath(); D.hours.forEach((q, i) => i ? X.lineTo(px(i), py(q.T)) : X.moveTo(px(i), py(q.T))); X.stroke();
+  X.fillStyle = 'rgba(255,255,255,0.75)'; X.font = '600 16px Manrope, Inter, sans-serif';
+  D.hours.forEach((q, i) => { const hh = +q.t.slice(11, 13); if (hh % 6 === 0) X.fillText(q.t.slice(11, 13), px(i) - 9, y + h - 2); if (hh === 0) { X.fillStyle = 'rgba(255,255,255,0.18)'; X.fillRect(px(i), y + 10, 2, h - 30); X.fillStyle = 'rgba(255,255,255,0.75)'; } });
+  const cx = px(o.i + o.f), cy = py(o.T); X.fillStyle = '#FFB020'; X.fillRect(cx - 1.5, y + 8, 3, h - 24);
+  X.beginPath(); X.arc(cx, cy, 9, 0, 7); X.fill(); X.strokeStyle = '#fff'; X.lineWidth = 3; X.stroke();
+}
+function header(k) {
+  const g = X.createLinearGradient(0, 0, 0, 110); g.addColorStop(0, 'rgba(11,37,69,0.92)'); g.addColorStop(1, 'rgba(11,37,69,0.0)'); X.fillStyle = g; X.fillRect(0, 0, W, 110);
+  // the Osmon mark: open rings and the amber sun
+  X.save(); X.translate(70, 54); X.lineCap = 'round'; X.strokeStyle = '#fff';
+  for (const [r, lw] of [[10, 4.2], [17, 4.2], [24, 4.2]]) { X.lineWidth = lw; X.beginPath(); X.arc(0, 0, r, -Math.PI * 0.25 + 0.5, -Math.PI * 0.25 - 0.5 + Math.PI * 2); X.stroke(); }
+  X.fillStyle = '#FFB020'; X.beginPath(); X.arc(0, 0, 5, 0, 7); X.fill(); X.restore();
+  X.fillStyle = '#fff'; X.font = '800 30px Manrope, Inter, sans-serif'; X.fillText('osmon', 108, 64);
+  X.font = '700 26px Manrope, Inter, sans-serif'; X.fillStyle = 'rgba(255,255,255,0.9)'; X.fillText(D.lab.title, 250, 64);
+  X.font = '600 17px Manrope, Inter, sans-serif'; X.fillStyle = 'rgba(255,255,255,0.75)'; X.textAlign = 'right';
+  X.fillText('Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', W - 48, 60); X.fillText(D.lab.src, W - 48, H - 30); X.textAlign = 'left';
+}
+
+window.init = async (data) => {
+  D = data; setup();
+  const load = src => new Promise(r => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = src; });
+  IMG.day = await load(D.map.day); IMG.night = await load(D.map.night) || IMG.day;
+  await document.fonts.ready; return true;
+};
+window.frame = (k) => {
+  const o = at(k); X.filter = 'none'; X.globalAlpha = 1;
+  const S = sky(o, k); clouds(o, k, false); city(o, k, S); clouds(o, k, true); precip(o, k);
+  // a slow fade in and out
+  readout(o, k); mapCard(o, k); timeline(o, k); header(k);
+  const N = (D.hours.length - 1) * D.fph; const fa = Math.min(1, k / 12, (N - k) / 12); if (fa < 1) { X.fillStyle = `rgba(0,0,0,${1 - fa})`; X.fillRect(0, 0, W, H); }
+  return true;
+};
+</script></body></html>

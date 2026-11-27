@@ -214,8 +214,8 @@ def city_img(rings, blds, R, night):
     import io
     from PIL import Image
     M = blds
-    fig = plt.figure(figsize=(7.3, 6.86), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_facecolor('#101827' if night else '#f2efe9')
-    ax.set_xlim(-R, R); ax.set_ylim(-R * 0.94, R * 0.94); ax.axis('off')
+    fig = plt.figure(figsize=(11, 11), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_facecolor('#101827' if night else '#f2efe9')
+    ax.set_xlim(-R, R); ax.set_ylim(-R, R); ax.axis('off')
     if M['green']: ax.add_collection(PolyCollection(M['green'], facecolors='#1d3b2f' if night else '#cfe8c4', edgecolors='none', zorder=1))
     if M['water']: ax.add_collection(PolyCollection(M['water'], facecolors='#173a5c' if night else '#a8d0f0', edgecolors='none', zorder=2))
     if M['river']: ax.add_collection(LineCollection(M['river'], colors='#2a5d8a' if night else '#8cc0ea', linewidths=2.2, zorder=2))
@@ -259,43 +259,40 @@ def draw_city(ax, rings, blds, R, A, i, f, k, day_frac):
     ax.plot([R * 0.62, R * 0.92], [-R * 0.74] * 2, color='#5b6876', lw=3, zorder=7); ax.text(R * 0.77, -R * 0.70, f'{R * 0.3:.1f} km', ha='center', fontsize=12, color='#5b6876', zorder=7)
 
 
+MAPCAP = {'uz': '{n} · xarita: OpenStreetMap', 'ru': '{n} · карта: OpenStreetMap'}
+TITLE = {'uz': 'Shahar ob-havosi jonli · 48 soat', 'ru': 'Погода в городе вживую · 48 часов'}
+
+
 def render(c, lang, out, shape):
-    rings, blds, R = shape; L = X[lang]; A = weather(c); n = len(A['t']) - 1
-    SKY['bld'] = SKY['bld'] or skyline()
-    tmp = pathlib.Path(tempfile.mkdtemp()); k = 0
-    for i in range(n):
-        for s in range(FPH):
-            f = s / FPH
-            fig = plt.figure(figsize=(W / DPI, H / DPI), dpi=DPI); fig.patch.set_facecolor('#f3f6fa')
-            fig.patches.append(Rectangle((0, 1 - 104 / H), 1, 104 / H, transform=fig.transFigure, fc=NAVY, ec='none', zorder=-1))
-            mark(fig, 48 / W, 1 - 52 / H, 46, ink='#ffffff', rings=(20, 32, 44)); fig.text(82 / W, 1 - 52 / H, 'osmon', fontsize=24, fontweight='bold', color='white', va='center')
-            fig.text(230 / W, 1 - 52 / H, f"{c[0] if lang == 'uz' else c[1]} · {L['title']}", fontsize=24, fontweight='bold', color='white', va='center')
-            sa = fig.add_axes([0.41, 0.25, 0.575, 0.635]); t, day_frac, pr, sn, code, cl, vis, ws, wdir = draw_scene(sa, A, i, f, k, lang)
-            ca = fig.add_axes([0.015, 0.25, 0.38, 0.635]); draw_city(ca, rings, blds, R, A, i, f, k, day_frac); boundary_inset(fig, ca, rings, R)
-            fig.text(1 - 24 / W, 1 - 52 / H, f"{L['wd'][t.weekday()]} {t:%d.%m} · {t:%H}:00", fontsize=26, fontweight='bold', color='#ffd29c', ha='right', va='center')
-            # the readout on the sky
-            T_ = lerp(A['temperature_2m'], i, f); Fe = lerp(A['apparent_temperature'], i, f)
-            from matplotlib.patches import FancyBboxPatch
-            sa.add_patch(FancyBboxPatch((0.015, 0.63), 0.42, 0.33, boxstyle='round,pad=0,rounding_size=0.02', transform=sa.transAxes, fc='#0B2545', ec='none', alpha=0.55, zorder=9.5))
-            sa.text(0.03, 0.93, f'{T_:+.0f}°'.replace('+0°', '0°').replace('-0°', '0°'), transform=sa.transAxes, fontsize=64, fontweight='bold', color='white', va='top', zorder=10)
-            sa.text(0.03, 0.74, L['wx'].get(code, ''), transform=sa.transAxes, fontsize=22, fontweight='bold', color='white', va='top', zorder=10)
-            sa.text(0.03, 0.67, f"{L['feels']} {Fe:+.0f}° · {L['wind']} {ws:.0f} {L['ms']} · {L['hum']} {lerp(A['relative_humidity_2m'], i, f):.0f}%".replace('+0°', '0°'), transform=sa.transAxes, fontsize=15, color='white', va='top', zorder=10)
-            # the 48 hours below
-            tl = fig.add_axes([0.015, 0.07, 0.97, 0.15]); tl.set_xlim(0, n); tl.set_facecolor('white')
-            Tm = A['temperature_2m']; tl.plot(np.arange(n + 1), Tm, color='#e0601b', lw=2.5); tl.set_ylim(np.nanmin(Tm) - 3, np.nanmax(Tm) + 3)
-            b2 = tl.twinx(); b2.bar(np.arange(n + 1) + 0.5, A['precipitation'], width=0.8, color=np.where(A['snowfall'] > 0, '#7b61ff', '#1E63C6'), alpha=0.8); b2.set_ylim(0, max(3, np.nanmax(A['precipitation']) * 2.5)); b2.set_yticks([])
-            tl.axvline(i + f, color=NAVY, lw=3)
-            for h0 in range(n + 1):
-                tt = A['t'][h0]
-                if tt.hour == 0: tl.axvline(h0, color='#dfe5ec', lw=1); tl.text(h0 + 0.3, tl.get_ylim()[1] - 0.6, f"{L['wd'][tt.weekday()]} {tt:%d.%m}", fontsize=12, color=MUTED, va='top')
-            tl.set_xticks(range(0, n + 1, 3)); tl.set_xticklabels([f"{A['t'][h0]:%H}" for h0 in range(0, n + 1, 3)], fontsize=10, color=MUTED); tl.tick_params(axis='y', labelsize=10, colors=MUTED)
-            for s_ in ('top', 'right'): tl.spines[s_].set_visible(False)
-            fig.text(24 / W, 14 / H, L['src'], fontsize=12, color=MUTED, va='bottom')
-            brand(fig, 1 - 24 / W, 14 / H, SIGN, fontsize=12, color=MUTED, ha='right', va='bottom', zorder=9)
-            fig.savefig(tmp / f'{k:04d}.jpg', dpi=DPI, facecolor=fig.get_facecolor(), pil_kwargs={'quality': 90}); plt.close(fig); k += 1
+    """The scene is drawn in a browser canvas (tools/city_scene.html: sky, sun and moon, clouds, the skyline, rain, snow, fog, the map card with a slow camera move)
+    and captured frame by frame with Playwright; 30 fps, 48 hours in ~19 s."""
+    import base64, io
+    from playwright.sync_api import sync_playwright
+    rings, M, R = shape; L = X[lang]; A = weather(c); n = len(A['t']) - 1
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    def png(night):
+        from PIL import Image
+        b = io.BytesIO(); Image.fromarray(city_img(rings, M, R, night)).save(b, 'JPEG', quality=88); return 'data:image/jpeg;base64,' + base64.b64encode(b.getvalue()).decode()
+    hours = [dict(t=A['t'][i].strftime('%Y-%m-%dT%H:%M:00Z'), T=float(np.nan_to_num(A['temperature_2m'][i])), F=float(np.nan_to_num(A['apparent_temperature'][i])),
+                  p=float(np.nan_to_num(A['precipitation'][i])), s=float(np.nan_to_num(A['snowfall'][i])), code=int(np.nan_to_num(A['weather_code'][i])),
+                  cl=float(np.nan_to_num(A['cloud_cover'][i])), vis=float(np.nan_to_num(A['visibility'][i], nan=20000)), ws=float(np.nan_to_num(A['wind_speed_10m'][i])),
+                  wd=float(np.nan_to_num(A['wind_direction_10m'][i])), rh=float(np.nan_to_num(A['relative_humidity_2m'][i]))) for i in range(n + 1)]
+    sun = {d: [a.hour + a.minute / 60, b.hour + b.minute / 60] for d, (a, b) in A['sun'].items()}
+    name = c[0] if lang == 'uz' else c[1]
+    data = dict(hours=hours, sun=sun, name=name, tower=c[0] == 'Toshkent', fph=15,
+                lab=dict(title=TITLE[lang], src=L['src'], wd=L['wd'], wx={str(k): v for k, v in L['wx'].items()}, feels=L['feels'], wind=L['wind'], ms=L['ms'], hum=L['hum'],
+                         mapcap=MAPCAP[lang].format(n=name)), map=dict(day=png(False), night=png(True)))
+    N = n * 15
+    with sync_playwright() as pw:
+        br = pw.chromium.launch(); pg = br.new_page(viewport={'width': W, 'height': H})
+        pg.goto((ROOT / 'tools' / 'city_scene.html').as_uri()); pg.wait_for_timeout(1500)
+        pg.evaluate('d => { d.lab.wx = Object.fromEntries(Object.entries(d.lab.wx).map(([k, v]) => [+k, v])); return window.init(d); }', data)
+        for k in range(N):
+            pg.evaluate(f'window.frame({k})'); pg.screenshot(path=str(tmp / f'{k:04d}.jpg'), type='jpeg', quality=88)
+        br.close()
     part = out.with_name('.' + out.name + '.part.mp4')
-    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '12', '-i', str(tmp / '%04d.jpg'), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a',
-                    '-vf', 'fps=24,format=yuv420p', '-c:v', 'libx264', '-crf', '22', '-preset', 'medium', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(part)], check=True)
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-framerate', '30', '-i', str(tmp / '%04d.jpg'), '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-map', '0:v', '-map', '1:a',
+                    '-vf', 'format=yuv420p', '-c:v', 'libx264', '-crf', '21', '-preset', 'medium', '-c:a', 'aac', '-b:a', '48k', '-shortest', '-movflags', '+faststart', str(part)], check=True)
     part.replace(out); shutil.rmtree(tmp); print(out, out.stat().st_size // 1024, 'KB', flush=True)
 
 

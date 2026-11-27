@@ -1,6 +1,6 @@
 name: City live videos
-# a live weather animation for each province's capital (tools/city_live.py): the city from above (boundary, buildings) and its skyline under
-# the coming 48 hours' sky; one job per city side by side, each kept on its own branch city-<k>; the bot sends them from there.
+# a live weather animation for each province's capital (tools/city_live.py + tools/city_scene.html): the skyline under the coming 48 hours'
+# sky (sun, moon, clouds, rain, snow, fog, lightning, traffic) and the city's street map from OpenStreetMap; one job per city side by side, each kept on its own branch city-<k>; the bot sends them from there.
 on:
   schedule:
     - cron: '41 0 * * *'    # 05:41 Tashkent
@@ -26,7 +26,8 @@ jobs:
         with: {path: ~/.cache/pip, key: pip-city-v1}
       - run: |
           sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || { sudo apt-get update -qq >/dev/null; sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; }
-          pip install -q numpy scipy matplotlib pillow requests qrcode pyproj
+          pip install -q numpy scipy matplotlib pillow requests qrcode pyproj playwright
+          python -m playwright install --with-deps chromium >/dev/null   # the scene is drawn in a browser canvas (tools/city_scene.html)
           sleep $(( ${{ matrix.k }} * 4 ))   # OpenStreetMap's servers: one city at a time
           timeout 2100 python -u -W ignore tools/city_live.py cv ${{ matrix.k }} uz,ru
           cd cv && git init -q && git checkout -q -b city-${{ matrix.k }} && git add -A \
