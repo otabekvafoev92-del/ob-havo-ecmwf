@@ -498,6 +498,14 @@ async function sendFog(env, chat, lang, rid, quiet) {  // 🌫 fog in the next 2
     if (!R.length) return quiet ? null : tg(env, 'sendMessage', { chat_id: chat, text: X.none });
     let mine = null;
     if (pl) for (const r of R) for (const d of r.districts) { const km = Math.hypot((d.lat - pl[0]) * 111, (d.lon - pl[1]) * 85); if (km < 30 && (!mine || km < mine.km)) mine = { ...d, km }; }
+    const fv = `${EVRAW}/air/fog24_${L2}.mp4`;
+    if (await head(fv)) {  // the 24-hour fog video, with a short caption (your district, how many districts)
+      const nD = R.reduce((a_, r) => a_ + r.districts.length, 0);
+      await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+      return tg(env, 'sendVideo', { chat_id: chat, video: `${fv}?v=${Math.floor(Date.now() / 1800e3)}`, supports_streaming: true, width: 1920, height: 1080, parse_mode: 'HTML',
+        caption: [X.h, mine ? `${X.mine}: <b>${esc(mine[L2])}</b> — ${span(mine)}` : '', `${{ ru: 'Районов в тумане', uz: 'Tumanli tumanlar', en: 'Districts with fog' }[lang]}: ${nD}`, X.tip].filter(Boolean).join('\n'),
+        ...(chat > 0 ? { reply_markup: { inline_keyboard: [[notifBtn(lang, 'fog')]] } } : {}) });
+    }
     const lines = [X.h, ''];
     if (mine) lines.push(`${X.mine}: <b>${esc(mine[L2])}</b> — ${span(mine)}`, '');
     for (const r of R) { lines.push(`<b>${esc(r[L2])}</b>`); for (const d of r.districts) lines.push(`  • ${esc(d[L2])} — ${span(d)}`); }
@@ -1292,6 +1300,8 @@ function reaction(d, lang, which) {
 // the 2-day video «where the rain comes from», with a window on the person's region when we know it (prob/moisture.py --days 2)
 async function moist2Url(env, lang, id, chat, k = null) {
   const L = lang === 'en' ? 'ru' : lang, head = u => fetch(u, { method: 'HEAD' }).then(r => r.ok).catch(() => false);
+  const nv = await vidUrl(id, L === 'uz' ? 'uz' : 'ru');  // the new look first (the 15-day hourly video: today and tomorrow are its first hours); the old «where the rain comes from» only when there is none
+  if (nv) return `${nv}?v=${Math.floor(Date.now() / 1800e3)}`;
   if (k == null && chat > 0) {
     const u = await getUser(env, chat), pl = u && u.place ? JSON.parse(u.place) : null;
     if (pl) { const A = await adminData(env, id); if (A) { let best = null, bd = 9e9; for (const a of A.adm1) { const d = (a.c[1] - pl[0]) ** 2 + ((a.c[0] - pl[1]) * Math.cos(pl[0] / 57.3)) ** 2; if (d < bd) { bd = d; best = a.id; } } if (bd < 9) k = best; } }
