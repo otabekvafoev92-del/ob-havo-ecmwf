@@ -77,14 +77,11 @@ def highlights(R, D, run, off, lang, n=3):
 
 
 def _brand(fig, y=0.955, x=0.025, size=20):
-    k = fig.get_figheight() / fig.get_figwidth(); r = 0.011
-    for a0, a1, col in ((200, 20, Rn.ACCENT), (20, 200, Rn.SKY)):
-        w = matplotlib.patches.Wedge((x, y), r, a0, a1, width=r * 0.45, facecolor=col, edgecolor='none')
-        w.set_transform(matplotlib.transforms.Affine2D().scale(1, 1 / k).translate(0, y - y / k) + fig.transFigure); fig.patches.append(w)
-    fig.text(x + 0.018, y, 'osmon', fontsize=size, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
-    t = fig.text(x + 0.018, y, 'osmon', fontsize=size, fontfamily=Rn.DISPLAY, fontweight='bold', color='none', va='center')
-    bb = t.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    fig.text(bb.x1, y, '.', fontsize=size, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.ACCENT, va='center')
+    """The channel's mark and the word osmon."""
+    from brand import mark
+    px = size * 2.0 * fig.dpi / 72; r = px / 2 / fig.bbox.width
+    mark(fig, x + r, y, px, ink=Rn.INK, rings=(20, 32, 44))
+    fig.text(x + 2 * r + 0.006, y, 'osmon', fontsize=size, fontfamily=Rn.DISPLAY, fontweight='bold', color=Rn.INK, va='center')
 
 
 def _when(lang, run, step, off, win):

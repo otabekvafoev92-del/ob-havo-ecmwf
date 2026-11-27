@@ -78,7 +78,7 @@ def draw(job):
         ax.annotate(txt, (s['lon'], s['lat']), xytext=(dx, dy), textcoords='offset pixels', ha='center', va='center', fontsize=14, fontweight='bold', color='#1f2933', zorder=9, linespacing=1.35,
                     bbox=dict(boxstyle='round,pad=0.5,rounding_size=0.8', fc=fc, ec=PV.ORANGE if best else '#9aa6b2', lw=3.2 if best else 1.0, alpha=0.95),
                     arrowprops=dict(arrowstyle='-', color='#5b6876', lw=1.2, shrinkA=0, shrinkB=9))
-    ax.text(0.995, 0.01, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
+    PV.brand(ax, 0.995, 0.01, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
     ax.text(0.005, 0.01, X['src'], transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=PV.FAINT, zorder=9)
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))

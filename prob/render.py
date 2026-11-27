@@ -6,6 +6,9 @@ Input (prob.npz, written by prob/fetch.py or tools/prob_from_browser.py):
   det (S,H,W) uint8 bit flags of deterministic models with ≥0.2 mm, det_names, det_avail (S, ndet) bool,
   amt (S,H,W) uint8 ensemble-mean 6 h amount, q = round(ln(1+mm)·40)
 """
+import sys as _sys, pathlib as _pl
+_sys.path.insert(0, str(_pl.Path(__file__).resolve().parent))
+from brand import brand  # noqa: E402  (the channel's mark next to the signature)
 import json, sys, os, argparse, subprocess, datetime as dt, pathlib
 import numpy as np
 import matplotlib
@@ -538,14 +541,12 @@ def _when(lang, run, step, off, win):
 
 
 def _brand(fig, x, y, size=15):
-    """The site's two-tone ring and the word osmon."""
-    k = fig.get_figheight() / fig.get_figwidth(); r = 0.0085 * size / 15
-    for a0, a1, col in ((200, 20, ACCENT), (20, 200, SKY)):
-        w = matplotlib.patches.Wedge((x, y), r, a0, a1, width=r * 0.45, facecolor=col, edgecolor='none')
-        w.set_transform(matplotlib.transforms.Affine2D().scale(1, 1 / k).translate(0, y - y / k) + fig.transFigure); fig.patches.append(w)
-    t = fig.text(x + r + 0.006, y, 'osmon', fontsize=size, fontfamily=DISPLAY, fontweight='bold', color=INK, va='center')
+    """The channel's mark (the sun and the open rings of the sky) and the word osmon."""
+    from brand import mark
+    px = size * 2.0 * fig.dpi / 72; r = px / 2 / fig.bbox.width
+    mark(fig, x + r, y, px, ink=INK, rings=(20, 32, 44) if size >= 14 else (22, 40))
+    t = fig.text(x + 2 * r + 0.006, y, 'osmon', fontsize=size, fontfamily=DISPLAY, fontweight='bold', color=INK, va='center')
     bb = t.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
-    fig.text(bb.x1, y, '.', fontsize=size, fontfamily=DISPLAY, fontweight='bold', color=ACCENT, va='center')
     return bb.x1 + 0.012
 
 
@@ -617,7 +618,7 @@ def _borders(ax, R):
     if (R.cont or R.id == 'cis') and 'UZ' in R.cpoly:  # Uzbekistan stands out on the world, continent and CIS maps
         ax.add_collection(PolyCollection(R.cpoly['UZ'], facecolor=matplotlib.colors.to_rgba(ACCENT, 0.12), edgecolor='none', zorder=4.5))
         ax.add_collection(LineCollection(R.cpoly['UZ'], colors=ACCENT, linewidths=1.8, zorder=6.5))
-    ax.text(0.99, 0.015, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, fontsize=7, color=FAINT, ha='right', va='bottom', zorder=13)
+    brand(ax, 0.99, 0.015, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, fontsize=7, color=FAINT, ha='right', va='bottom', zorder=13)
 
 
 def _cities(fig, ax, R, label, extra=()):

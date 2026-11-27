@@ -243,7 +243,7 @@ def frame(R, k, lang, path, loc, info, city):
         tx2.set_yticks([])
         for sp in tx2.spines.values(): sp.set_visible(False)
     fig.text(0.014, 0.012, 'ECMWF · NOAA · DWD', fontsize=6.6, color=Rn.FAINT, va='center')
-    fig.text(0.986, 0.012, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fontsize=6.6, color=Rn.FAINT, va='center', ha='right')
+    Rn.brand(fig, 0.986, 0.012, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fontsize=6.6, color=Rn.FAINT, va='center', ha='right')
     fig.savefig(path, dpi=150, facecolor=PAPER); plt.close(fig)
 
 

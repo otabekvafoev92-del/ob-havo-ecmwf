@@ -19,6 +19,7 @@ from scipy.ndimage import zoom, gaussian_filter
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'prob'))
 from render import load, probability, load_wx_npz  # noqa: E402
+from brand import brand, mark  # noqa: E402,F401  (the channel's mark next to the signature; the other videos use PV.brand)
 
 for f in (ROOT / 'prob' / 'fonts').glob('*.ttf'):
     try: matplotlib.font_manager.fontManager.addfont(str(f))
@@ -286,11 +287,12 @@ def draw(job):
         txt =  (tw[L] if TM else f"{tw[L]} · {cc_.get(tw[0], 0):.0f}%" if CM else f"{tw[L]}  {p_:.0f}%") + ((' · туман' if lang == 'ru' else ' · tuman') if fg_ else '')
         an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
                          bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#f1f3f5', ec=ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.72))
-    ax.text(0.995, 0.01, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
+    brand(ax, 0.995, 0.01, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
     for lb_, lo_, la_ in C.get('names', []): ax.text(lo_, la_, lb_, fontsize=10, color='#8a96a3', ha='center', va='center', zorder=3.6, style='italic')
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=NAVY, ec='none', zorder=-1))
-    fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=ORANGE, va='center')
+    from brand import mark; mark(fig, 0.016 + 22 / W, 0.953, 44, ink='#ffffff', rings=(20, 32, 44))  # the channel's logo
+    fig.text(0.016 + 50 / W, 0.953, 'osmon', fontsize=22, fontweight='bold', color='#ffffff', va='center')
     fig.text(0.093, 0.953, (C['title'][lang] if C.get('title') else X['title']).replace(X['title'], X['title_t'] if TM else X['title_c'] if CM else X['title']), fontsize=22, fontweight='bold', color='white', va='center')
     fig.text(0.984, 0.968, fr['when'], fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
     fig.text(0.984, 0.928, (C['tzl'][lang] if C.get('tzl') else X['tz']) + ' · ' + fr['day'], fontsize=14, color='#a9bdd6', ha='right', va='center')
@@ -375,12 +377,14 @@ def draw(job):
     # the opening and the closing cards
     if fr.get('card') == 'intro':
         a = fr['a']; fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
-        fig.text(0.5, 0.64, 'OSMON', fontsize=44, fontweight='bold', color=ORANGE, ha='center', va='center', alpha=a, zorder=31)
+        fig.text(0.5, 0.64, 'osmon', fontsize=44, fontweight='bold', color=NAVY, ha='center', va='center', alpha=a, zorder=31)
+        if a > 0.5: mark(fig, 0.5, 0.78, 110, ink=NAVY, rings=(20, 32, 44), zorder=31)
         fig.text(0.5, 0.56, X['intro1_t' if TM else 'intro1_c' if CM else 'intro1'], fontsize=40, fontweight='bold', color=INK, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.49, (C.get('intro2') or {}).get(lang) or X['intro2'], fontsize=26, color=MUTED, ha='center', va='center', alpha=a, zorder=31)
     if fr.get('card') == 'end':
         fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
-        fig.text(0.38, 0.70, 'OSMON', fontsize=44, fontweight='bold', color=ORANGE, ha='center', va='center', zorder=31)
+        fig.text(0.38, 0.70, 'osmon', fontsize=44, fontweight='bold', color=NAVY, ha='center', va='center', zorder=31)
+        mark(fig, 0.38, 0.84, 100, ink=NAVY, rings=(20, 32, 44), zorder=31)
         fig.text(0.38, 0.60, X['end1'], fontsize=30, fontweight='bold', color=INK, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.53, X['end2'], fontsize=26, color=MUTED, ha='center', va='center', zorder=31)
         qr2(fig)

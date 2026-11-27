@@ -222,7 +222,7 @@ def one_map(R, lang, path, cities, badge, when, title, F, kind, big, sub, summar
         yy -= dy
     # footer
     # (the summary is in the bot's caption; the picture keeps only the source)
-    fig.text(0.994, 0.012, src + '  ·  Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fontsize=6.5, color=Rn.FAINT, va='center', ha='right')
+    Rn.brand(fig, 0.994, 0.012, src + '  ·  Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fontsize=6.5, color=Rn.FAINT, va='center', ha='right')
     fig.savefig(path, dpi=200, facecolor=PAPER); plt.close(fig)  # 2560×1440: the most Telegram keeps for a photo
 
 
@@ -251,7 +251,7 @@ def draw_dust(R, aq, lang, path, cities):
         R.main = cities[0]
         Rn._cities(fig, ax, R, lambda p, main: lab.get(id(p), Rn.city_name(p, lang)))
     Rn._chips(fig, 0.03, 0.08, AQ_COL, X['bands'], w=0.153, h=0.032, gap=0.004, dark_from=4)
-    fig.text(0.986, 0.03, X['src'] + ' · Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fontsize=8, color=Rn.FAINT, va='center', ha='right')
+    Rn.brand(fig, 0.986, 0.03, X['src'] + ' · Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo', fontsize=8, color=Rn.FAINT, va='center', ha='right')
     fig.savefig(path, dpi=150, facecolor=Rn.BG); plt.close(fig)
     return worst
 
@@ -346,7 +346,7 @@ def draw(R, per, lang, path, cities):
     Rn._card(fig, 0.012, 0.035, 0.976, 0.075)
     fig.text(0.026, 0.073, words, fontsize=12, fontweight='bold', color=Rn.INK, va='center')
     fig.text(0.026, 0.047, X['src_p'] if per['key'] == 'past' else X['src_m'] if per['key'] in ('m0', 'm1') else X['src_f'], fontsize=8, color=Rn.MUTED, va='center')
-    fig.text(0.986, 0.047, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo · ECMWF CC BY 4.0', fontsize=8, color=Rn.FAINT, va='center', ha='right')
+    Rn.brand(fig, 0.986, 0.047, 'Bot - @ObHavo_ECMWF_bot · Kanal - @osmon_obhavo · ECMWF CC BY 4.0', fontsize=8, color=Rn.FAINT, va='center', ha='right')
     fig.savefig(path, dpi=150, facecolor=Rn.BG); plt.close(fig)
     return words
 
