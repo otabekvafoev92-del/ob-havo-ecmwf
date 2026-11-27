@@ -1705,43 +1705,43 @@ function chart15Svg(X, nm, sub, D, lang) {  // the 15 days as a dark Full HD cha
   const HI = D.map((d, i) => [cx(i), ty(d.hi)]), LO = D.map((d, i) => [cx(i), ty(d.lo)]);
   const band = spline(HI) + ' L' + spline(LO.slice().reverse()).slice(1);
   let o = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs>
-<linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#0d1b33"/><stop offset="0.6" stop-color="#101f38"/><stop offset="1" stop-color="#0a1426"/></linearGradient>
-<radialGradient id="glow" cx="0.82" cy="0.05" r="0.6"><stop offset="0" stop-color="#f08a24" stop-opacity="0.22"/><stop offset="1" stop-color="#f08a24" stop-opacity="0"/></radialGradient>
-<linearGradient id="band" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a3d" stop-opacity="0.32"/><stop offset="1" stop-color="#4f8fff" stop-opacity="0.18"/></linearGradient>
+<linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#eaf3ff"/><stop offset="0.6" stop-color="#f6f9fd"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+<radialGradient id="glow" cx="0.82" cy="0.05" r="0.6"><stop offset="0" stop-color="#ffb347" stop-opacity="0.30"/><stop offset="1" stop-color="#f08a24" stop-opacity="0"/></radialGradient>
+<linearGradient id="band" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a3d" stop-opacity="0.22"/><stop offset="1" stop-color="#4f8fff" stop-opacity="0.16"/></linearGradient>
 <linearGradient id="rain" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fb8ff"/><stop offset="1" stop-color="#1f5fc4"/></linearGradient>
 <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2d2ff"/><stop offset="1" stop-color="#8b5fe0"/></linearGradient>
 <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/></filter></defs>
 <rect width="${W}" height="${H}" fill="url(#bg)"/><rect width="${W}" height="${H}" fill="url(#glow)"/>`;
   // the title
-  o += `<rect x="56" y="58" width="10" height="92" rx="5" fill="#f08a24"/>` + T(nm, 90, 112, 56, '#ffffff', { b: 1 }) + T(sub, 92, 152, 28, '#ffd29c', { op: 0.9 });
+  o += `<rect x="56" y="58" width="10" height="92" rx="5" fill="#f08a24"/>` + T(nm, 90, 112, 56, '#13233c', { b: 1 }) + T(sub, 92, 152, 28, '#c4610f');
   const lg = [['#ff8a3d', X.hi], ['#6aa8ff', X.lo], ['#3d8fe6', X.p]]; let lx = W - 80;
-  for (const [c, t] of lg.slice().reverse()) { const w = [...t].length * 14 + 54; lx -= w; o += `<rect x="${lx}" y="86" width="${w - 14}" height="44" rx="22" fill="#ffffff" fill-opacity="0.07"/><circle cx="${lx + 22}" cy="108" r="8" fill="${c}"/>` + T(t, lx + 38, 117, 24, '#ffffff', { op: 0.85 }); }
+  for (const [c, t] of lg.slice().reverse()) { const w = [...t].length * 14 + 54; lx -= w; o += `<rect x="${lx}" y="86" width="${w - 14}" height="44" rx="22" fill="#ffffff" stroke="#d5e2f1" stroke-width="2"/><circle cx="${lx + 22}" cy="108" r="8" fill="${c}"/>` + T(t, lx + 38, 117, 24, '#33445c'); }
   // the columns: today, the weekends
   D.forEach((d, i) => { const wd = new Date(d.d + 'T12:00:00Z').getUTCDay();
-    if (i === 0) o += `<rect x="${(x0 + cw * i + 4).toFixed(1)}" y="196" width="${(cw - 8).toFixed(1)}" height="${H - 250}" rx="18" fill="#f08a24" fill-opacity="0.10" stroke="#f08a24" stroke-opacity="0.35"/>`;
-    else if (wd === 0 || wd === 6) o += `<rect x="${(x0 + cw * i + 4).toFixed(1)}" y="196" width="${(cw - 8).toFixed(1)}" height="${H - 250}" rx="18" fill="#ffffff" fill-opacity="0.035"/>`; });
+    if (i === 0) o += `<rect x="${(x0 + cw * i + 4).toFixed(1)}" y="196" width="${(cw - 8).toFixed(1)}" height="${H - 250}" rx="18" fill="#ffb347" fill-opacity="0.16" stroke="#f08a24" stroke-opacity="0.45" stroke-width="2"/>`;
+    else if (wd === 0 || wd === 6) o += `<rect x="${(x0 + cw * i + 4).toFixed(1)}" y="196" width="${(cw - 8).toFixed(1)}" height="${H - 250}" rx="18" fill="#2b5c9e" fill-opacity="0.05"/>`; });
   // the temperature scale
-  for (let t = Math.ceil(tmin / 5) * 5; t <= tmax; t += 5) { const y = ty(t).toFixed(1); o += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="#ffffff" stroke-opacity="${t === 0 ? 0.28 : 0.07}" stroke-width="${t === 0 ? 2 : 1}"${t === 0 ? ' stroke-dasharray="8 8"' : ''}/>` + T(`${t > 0 ? '+' : ''}${t}°`, x0 - 18, +y + 8, 22, '#ffffff', { a: 'end', op: 0.45 }); }
+  for (let t = Math.ceil(tmin / 5) * 5; t <= tmax; t += 5) { const y = ty(t).toFixed(1); o += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="#1d3150" stroke-opacity="${t === 0 ? 0.35 : 0.08}" stroke-width="${t === 0 ? 2 : 1}"${t === 0 ? ' stroke-dasharray="8 8"' : ''}/>` + T(`${t > 0 ? '+' : ''}${t}°`, x0 - 18, +y + 8, 22, '#5d6f88', { a: 'end' }); }
   o += `<path d="${band} Z" fill="url(#band)"/>`;
-  o += `<path d="${spline(HI)}" fill="none" stroke="#ff8a3d" stroke-width="10" stroke-opacity="0.35" filter="url(#sh)"/><path d="${spline(HI)}" fill="none" stroke="#ff8a3d" stroke-width="5" stroke-linecap="round"/>`;
-  o += `<path d="${spline(LO)}" fill="none" stroke="#6aa8ff" stroke-width="10" stroke-opacity="0.3" filter="url(#sh)"/><path d="${spline(LO)}" fill="none" stroke="#6aa8ff" stroke-width="4" stroke-linecap="round"/>`;
+  o += `<path d="${spline(HI)}" fill="none" stroke="#ff8a3d" stroke-width="10" stroke-opacity="0.25" filter="url(#sh)"/><path d="${spline(HI)}" fill="none" stroke="#ff8a3d" stroke-width="5" stroke-linecap="round"/>`;
+  o += `<path d="${spline(LO)}" fill="none" stroke="#3f86f0" stroke-width="10" stroke-opacity="0.22" filter="url(#sh)"/><path d="${spline(LO)}" fill="none" stroke="#3f86f0" stroke-width="4" stroke-linecap="round"/>`;
   const sg = v => { const r = Math.round(v); return `${r > 0 ? '+' : ''}${r}°`; };
   D.forEach((d, i) => { const [x, yh] = HI[i], yl = LO[i][1];
-    o += `<circle cx="${x.toFixed(1)}" cy="${yh.toFixed(1)}" r="8" fill="#0d1b33" stroke="#ff8a3d" stroke-width="4"/><circle cx="${x.toFixed(1)}" cy="${yl.toFixed(1)}" r="7" fill="#0d1b33" stroke="#6aa8ff" stroke-width="3.5"/>`;
-    o += T(sg(d.hi), x, yh - 20, 27, '#ffffff', { a: 'middle', b: 1 }) + T(sg(d.lo), x, yl + 38, 23, '#a9c8ff', { a: 'middle', b: 1 }); });
+    o += `<circle cx="${x.toFixed(1)}" cy="${yh.toFixed(1)}" r="8" fill="#ffffff" stroke="#ff7a24" stroke-width="4"/><circle cx="${x.toFixed(1)}" cy="${yl.toFixed(1)}" r="7" fill="#ffffff" stroke="#3f86f0" stroke-width="3.5"/>`;
+    o += T(sg(d.hi), x, yh - 20, 27, '#c2410c', { a: 'middle', b: 1 }) + T(sg(d.lo), x, yl + 38, 23, '#1d5fc9', { a: 'middle', b: 1 }); });
   // the chance of precipitation
   const py1 = 860, ph = 180;
-  o += `<line x1="${x0}" y1="${py1}" x2="${x1}" y2="${py1}" stroke="#ffffff" stroke-opacity="0.15"/>`;
+  o += `<line x1="${x0}" y1="${py1}" x2="${x1}" y2="${py1}" stroke="#1d3150" stroke-opacity="0.15"/>`;
   D.forEach((d, i) => { const x = cx(i), bw = cw * 0.56, h = Math.max(6, ph * d.p / 100), col = d.p < 15 ? '#ffffff' : null;
-    o += col ? `<rect x="${(x - bw / 2).toFixed(1)}" y="${py1 - 6}" width="${bw.toFixed(1)}" height="6" rx="3" fill="#ffffff" fill-opacity="0.15"/>`
-      : `<rect x="${(x - bw / 2).toFixed(1)}" y="${(py1 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="10" fill="url(#${d.snow ? 'snow' : 'rain'})" fill-opacity="${(0.45 + d.p / 180).toFixed(2)}"/>`;
+    o += col ? `<rect x="${(x - bw / 2).toFixed(1)}" y="${py1 - 6}" width="${bw.toFixed(1)}" height="6" rx="3" fill="#1d3150" fill-opacity="0.12"/>`
+      : `<rect x="${(x - bw / 2).toFixed(1)}" y="${(py1 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="10" fill="url(#${d.snow ? 'snow' : 'rain'})" fill-opacity="${(0.55 + d.p / 220).toFixed(2)}"/>`;
     const mmt = d.mm >= 0.5 ? `${d.mm < 9.5 ? d.mm.toFixed(0) : Math.round(d.mm)} ${lang === 'ru' ? 'мм' : 'mm'}` : '', inb = mmt && h >= 46;
-    if (d.p >= 15) o += T(`${Math.round(d.p)}%`, x, py1 - h - 12, 23, d.snow ? '#e2d2ff' : '#8fcbff', { a: 'middle', b: 1 });
-    if (mmt) o += inb ? T(mmt, x, py1 - 14, 19, '#ffffff', { a: 'middle', op: 0.9 }) : T(mmt, x, py1 - h - 42, 18, '#ffffff', { a: 'middle', op: 0.7 }); });
+    if (d.p >= 15) o += T(`${Math.round(d.p)}%`, x, py1 - h - 12, 23, d.snow ? '#7a4bc8' : '#1c63c0', { a: 'middle', b: 1 });
+    if (mmt) o += inb ? T(mmt, x, py1 - 14, 19, '#ffffff', { a: 'middle', op: 0.9 }) : T(mmt, x, py1 - h - 42, 18, '#4a5d78', { a: 'middle' }); });
   // the days
   D.forEach((d, i) => { const t = new Date(d.d + 'T12:00:00Z'), x = cx(i), we = t.getUTCDay() === 0 || t.getUTCDay() === 6;
-    o += svgIcon(icKey(d.ic), x, 902, 22) + T(WD[lang][t.getUTCDay()], x, 966, 25, i === 0 ? '#ffd29c' : we ? '#ffb4a0' : '#ffffff', { a: 'middle', b: 1 }) + T(`${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`, x, 996, 21, '#ffffff', { a: 'middle', op: 0.55 }); });
-  o += T(X.src, W / 2, H - 30, 22, '#ffffff', { a: 'middle', op: 0.45 });
+    o += `<circle cx="${x.toFixed(1)}" cy="906" r="31" fill="#2f5f96"/>` + svgIcon(icKey(d.ic), x, 902, 22) + T(WD[lang][t.getUTCDay()], x, 966, 25, i === 0 ? '#c4610f' : we ? '#d0453a' : '#13233c', { a: 'middle', b: 1 }) + T(`${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`, x, 996, 21, '#5d6f88', { a: 'middle' }); });
+  o += T(X.src, W / 2, H - 30, 22, '#7a8aa0', { a: 'middle' });
   return o + '</svg>';
 }
 async function photo15(env, chat, lang, lat, lon, place, D) {
