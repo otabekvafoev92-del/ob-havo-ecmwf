@@ -132,7 +132,9 @@ def still(a, sec):
 
 def title():
     f = fig(); header(f)
-    f.text(0.5, 0.55, TITLE, ha='center', fontsize=50, fontweight='bold', color=INK)
+    t = f.text(0.5, 0.55, TITLE, ha='center', fontsize=50, fontweight='bold', color=INK)
+    wpx = t.get_window_extent(f.canvas.get_renderer()).width; full = f.get_figwidth() * f.dpi
+    if wpx > 0.92 * full: t.set_fontsize(50 * 0.92 * full / wpx)  # a long title (Uzbek) gets smaller instead of being cut at the edges
     f.text(0.5, 0.45, f"{NAME}", ha='center', fontsize=30, color=MUTED)
     f.text(0.5, 0.38, f"{lab(WK[0]['mon']) if M else '1 ' + X['mon'][0]} — {lab(WK[-1]['mon'] + dt.timedelta(days=WK[-1]['n'] - 1))} {YR} · {X['lfl']}", ha='center', fontsize=24, color=MUTED)
     f.text(0.5, 0.06, X['src'], ha='center', fontsize=14, color=MUTED); return raw(f)

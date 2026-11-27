@@ -610,9 +610,10 @@ async function watchSet(env, chat, f) {
     .bind(chat, n.lat ?? null, n.lon ?? null, n.name ?? null, n.lang ?? null, n.on_ ?? 0, n.asked ?? null, n.st ?? '{}', n.checked ?? null).run();
 }
 // "where are you now?" — once a day at most; not after the person said no
-async function watchAsk(env, chat, lang) {
+const WQB = { ru: '🔔 Предупреждать о погоде у меня', uz: '🔔 Joyimdagi ob-havo haqida ogohlantirish', en: '🔔 Warn me about the weather here' };  // the button: rain soon, storm nearby, sharp change, mudflows, rivers
+async function watchAsk(env, chat, lang, force) {
   const W = WX[lang] || WX.ru, w = await watchGet(env, chat);
-  if (w && (w.asked === todayTZ() || (w.on_ === 0 && w.asked))) return;
+  if (!force && w && (w.asked === todayTZ() || (w.on_ === 0 && w.asked))) return;
   await watchSet(env, chat, { asked: todayTZ(), lang });
   const kb = [[{ text: W.send, request_location: true }], ...(w && w.lat != null ? [[{ text: W.sameP + (w.name || '📍') }]] : []), [{ text: W.off }]];
   return tg(env, 'sendMessage', { chat_id: chat, text: W.ask, parse_mode: 'HTML', reply_markup: { keyboard: kb, resize_keyboard: true, one_time_keyboard: true } });
@@ -1100,11 +1101,11 @@ async function subMenu(env, chat, lang, rid, which, u) {
   const CAP = { UZ: [41.311, 69.279], KZ: [51.169, 71.449], KG: [42.875, 74.612], TJ: [38.56, 68.774], TM: [37.96, 58.326], AZ: [40.41, 49.867], AM: [40.177, 44.513], BY: [53.9, 27.567], MD: [47.011, 28.863], RU: [55.756, 37.617], TR: [39.92, 32.854] };
   const pl = u && u.place ? JSON.parse(u.place) : CAP[rid] || CAP.UZ;
   let rows;
-  if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts')],
+  if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), { text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }],
     [{ text: M.remind, callback_data: `NS:${lang}:days` }], [{ text: R.fog, callback_data: `FG:${lang}:${rid}` }, { text: '⏰ ' + R.fog.replace(/^\S+\s/, ''), callback_data: `NS:${lang}:fog` }]];
   else if (which === 'mtnair') rows = [[a('mtn'), a('air')], [a('alerts')]];
   else rows = [[{ text: { ru: '🌐 Язык · Til · Language', uz: '🌐 Til · Язык · Language', en: '🌐 Language · Til · Язык' }[lang] || '🌐 Язык', callback_data: `MA:${lang}:langpick` }],
-    [{ text: M.country, callback_data: `MA:${lang}:countries` }, a('cities')], [a('daily'), a('notif')], ...(rid === 'UZ' ? [[a('dyn'), a('accuracy')]] : [[a('accuracy')]]), [a('help'), a('reset')]];
+    [{ text: M.country, callback_data: `MA:${lang}:countries` }, a('cities')], [a('daily'), a('notif')], [{ text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }], ...(rid === 'UZ' ? [[a('dyn'), a('accuracy')]] : [[a('accuracy')]]), [a('help'), a('reset')]];
   rows[1] && which === 'fc' && (rows[1][1] = { ...rows[1][1], text: M.photo });
   return tg(env, 'sendMessage', { chat_id: chat, text: M[which], parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
 }
@@ -2269,6 +2270,7 @@ async function handle(up, env) {
   if (kind === 'OA') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });  // the old 📅 maps: now the weeks videos
   if (kind === 'MP') return sendMountainText(env, chat.id, lang, id);
   if (kind === 'RG' && ADM.has(id)) return sendRegions(env, chat.id, lang, id);
+  if (kind === 'WQ') return watchAsk(env, chat.id, lang, true);
   if (kind === 'TJ' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);  // 🧭 was replaced by «where the moisture comes from»
   if (kind === 'MV' && TRJ.has(id)) return sendMoist15(env, chat.id, lang, id);
   if (kind === 'DV') return id === 'xlsx' || id === 'pdf' ? sendDynXlsx(env, chat.id, lang, id) : sendDynVideo(env, chat.id, lang, id === 'weeks' ? 'weeks' : 'month');
@@ -2472,7 +2474,7 @@ async function privateMsg(msg, env) {
     return tg(env, 'sendMessage', { chat_id: chat.id, text: ids.length ? T[lang].admSent : T[lang].admOff, reply_markup: replyKb(env, lang, (u && NAMES[u.region] && u.region) || 'UZ') });
   }
   if (cmd === 'guide') return sendGuide(env, chat.id, lang);
-  if (cmd === 'alerts') { const A = await alertsData(env), rid = (u && NAMES[u.region] && u.region) || null; const it = A ? A.items.filter(i => !rid || i.region === rid) : []; return tg(env, 'sendMessage', { chat_id: chat.id, text: it.length ? alertText(it, lang) : AL[lang].none, parse_mode: 'HTML' }); }
+  if (cmd === 'alerts') { const A = await alertsData(env), rid = (u && NAMES[u.region] && u.region) || null; const it = A ? A.items.filter(i => !rid || i.region === rid) : []; return tg(env, 'sendMessage', { chat_id: chat.id, text: it.length ? alertText(it, lang) : AL[lang].none, parse_mode: 'HTML', ...(chat.id > 0 ? { reply_markup: { inline_keyboard: [[{ text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }]] } } : {}) }); }
   if (cmd === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
   if (cmd === 'bugun' || cmd === 'today') return sendHourly(env, chat.id, u && u.lang && T[u.lang] ? u.lang : cmd === 'today' ? 'ru' : 'uz', (u && NAMES[u.region] && u.region) || 'UZ');
   if (cmd === 'prognoz') return tg(env, 'sendMessage', { chat_id: chat.id, text: T[lang].pick, reply_markup: countryRk(lang, u && u.region) });
@@ -2521,7 +2523,7 @@ async function privateMsg(msg, env) {
     if (act === 'home') return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[rid]} <b>${NAMES[rid][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, rid) });
     if (act === 'days' || act === 'cities') return cityPicker(env, chat.id, lang, rid, u);
     if (act === 'help') return tg(env, 'sendMessage', { chat_id: chat.id, text: HELP[lang], parse_mode: 'HTML', reply_markup: helpKb(lang) });
-    if (act === 'alerts') { if (rid === 'UZ') await sendRisk(env, chat.id, lang, false); await sendFog(env, chat.id, lang, rid, true); const A = await alertsData(env); const it = A ? A.items.filter(i => i.region === rid) : []; return tg(env, 'sendMessage', { chat_id: chat.id, text: it.length ? alertText(it, lang) : AL[lang].none, parse_mode: 'HTML' }); }
+    if (act === 'alerts') { if (rid === 'UZ') await sendRisk(env, chat.id, lang, false); await sendFog(env, chat.id, lang, rid, true); const A = await alertsData(env); const it = A ? A.items.filter(i => i.region === rid) : []; return tg(env, 'sendMessage', { chat_id: chat.id, text: it.length ? alertText(it, lang) : AL[lang].none, parse_mode: 'HTML', ...(chat.id > 0 ? { reply_markup: { inline_keyboard: [[{ text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }]] } } : {}) }); }
     if (act === 'video') {  // the video that matches the last forecast: that city's own video (Uzbekistan, Kazakhstan) or the country's
       const pl = u && u.place ? JSON.parse(u.place) : null, C = pl ? await cities(env, rid, lang) : null;
       const np = pl ? await nearestPlace(env, pl[0], pl[1], 8) : null;
