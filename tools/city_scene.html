@@ -205,7 +205,9 @@ function mapCard(o, k) {
   const sw = im.width / z, sh = im.height / z; X.drawImage(im, cx - sw / 2, cy - sh / 2, sw, sh, x, y, w, h);
   X.fillStyle = `rgba(10,20,40,${0.35 * o.cl / 100})`; X.fillRect(x, y, w, h);
   // cloud shadows sliding over the map
-  X.globalAlpha = 0.22 * o.cl / 100; for (let j = 0; j < 3; j++) { const s = SPR.clouds[j]; X.drawImage(s, x + ((j * 260 + k * 1.2) % (w + 600)) - 400, y + j * 150, 600, 260); } X.globalAlpha = 1;
+  for (let j = 0; j < 3; j++) {  // soft cloud shadows sliding over the map
+    const cx = x + ((j * 330 + k * 1.2) % (w + 500)) - 250, cy = y + 90 + j * 160, g = X.createRadialGradient(cx, cy, 10, cx, cy, 230);
+    g.addColorStop(0, `rgba(10,20,40,${0.35 * o.cl / 100})`); g.addColorStop(1, 'rgba(10,20,40,0)'); X.fillStyle = g; X.fillRect(x, y, w, h); }
   if (o.p > 0.03) { if (o.snowy) { X.fillStyle = 'rgba(255,255,255,0.9)'; for (let j = 0; j < 160; j++) { const [x0, y0, v] = SPR.flakes[j]; X.beginPath(); X.arc(x + x0 * w, y + ((y0 + k * 0.004 * v) % 1) * h, 2 + v, 0, 7); X.fill(); } }
     else { X.strokeStyle = 'rgba(80,140,230,0.6)'; X.lineWidth = 1.5; X.beginPath(); for (let j = 0; j < 240; j++) { const [x0, y0, v] = SPR.drops[j]; const yy = y + ((y0 + k * 0.03 * v) % 1) * h, xx = x + x0 * w; X.moveTo(xx, yy); X.lineTo(xx - 6, yy - 18); } X.stroke(); } }
   if (o.vis < 3000) { X.fillStyle = `rgba(214,222,230,${clamp((3000 - o.vis) / 3000, 0, 0.75)})`; X.fillRect(x, y, w, h); }
