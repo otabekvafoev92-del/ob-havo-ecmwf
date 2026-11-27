@@ -153,7 +153,7 @@ def picture(res, lang, path, ndays=10):
     for k, line in enumerate(lines):
         col, row = k % 2, k // 2
         fig.text(0.012 + col * 0.495, 0.195 - row * 0.05, line, fontsize=9.3, color=NAVY, va='center')
-    fig.text(0.988, 0.012, 'ECMWF · DWD · NOAA (Open-Meteo) · t.me/ObHavo_ECMWF_bot', fontsize=6.5, color=Rn.FAINT, ha='right', va='center')
+    fig.text(0.988, 0.012, 'ECMWF · DWD · NOAA (Open-Meteo) · @ObHavo_ECMWF_bot · @osmon_obhavo', fontsize=6.5, color=Rn.FAINT, ha='right', va='center')
     fig.savefig(path, dpi=150, facecolor='#f3f5f7'); plt.close(fig)
 
 

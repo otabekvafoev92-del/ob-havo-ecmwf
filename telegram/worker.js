@@ -272,8 +272,8 @@ async function setup(env, url) {
     { command: 'start', description: '🔤 Til / Язык / Dil' }] });
   await tg(env, 'setMyCommands', { scope: { type: 'all_group_chats' }, commands: [{ command: 'sozla', description: 'Davlat va til (adminlar uchun)' }, { command: 'settings', description: 'Страна и язык (для админов)' }, { command: 'bugun', description: 'Bugun va ertaga / Сегодня и завтра' }, { command: 'notify', description: '⏰ Nima yuborilsin / Что присылать (adminlar)' }, { command: 'help', description: 'Yordam / Помощь' }] });
   await tg(env, 'setChatMenuButton', { menu_button: { type: 'commands' } });  // ☰ opens the command menu
-  await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода · Hava — 15 kun, 6 model (ECMWF, NOAA). Guruhlarga avtomatik prognoz.' });
-  await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 9 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON/ICON-EPS, UK Met Office).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 9 моделям. Добавьте в группу — бот сам будет присылать прогноз.' });
+  await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода — 15 kun, 9 model (ECMWF, NOAA, DWD, UKMO). Kanal: @osmon_obhavo' });
+  await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 9 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON/ICON-EPS, UK Met Office).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 9 моделям. Добавьте в группу — бот сам будет присылать прогноз.\n\n📢 Kanal / Канал: @osmon_obhavo' });
   if (env.DB) await db(env);
   const me = await tg(env, 'getMe', {});
   return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
@@ -284,7 +284,15 @@ async function secret(env) {
   const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('osmon:' + env.BOT_TOKEN)));
   return [...h].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 48);
 }
+// the channel's mark: the sun and three open rings of the sky (the logo of @osmon_obhavo), drawn into the SVG cards
+const osmonMark = (x, y, size, ink = '#ffffff', op = 1) => `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(size / 100).toFixed(3)})" opacity="${op}"><g fill="none" stroke="${ink}" stroke-width="9" stroke-linecap="round" transform="rotate(-15 50 50)"><circle cx="50" cy="50" r="22" stroke-dasharray="115.19 23.04"/><circle cx="50" cy="50" r="40" stroke-dasharray="209.44 41.89"/></g><circle cx="50" cy="50" r="10" fill="#FFB020"/></g>`;
+// under every forecast the bot sends: the bot and the channel (media captions, albums, long texts)
+const SIGN = '@ObHavo_ECMWF_bot · @osmon_obhavo';
+const sig = (t, max = 1024) => (!t || t.includes('@osmon_obhavo') || t.length + SIGN.length + 2 > max) ? t : `${t}\n\n${SIGN}`;
 async function tg(env, method, body) {
+  if (body && /^send(Photo|Video|Animation|Document|Audio)$/.test(method) && typeof body.caption === 'string') body = { ...body, caption: sig(body.caption) };
+  else if (body && method === 'sendMediaGroup' && Array.isArray(body.media) && body.media[0] && typeof body.media[0].caption === 'string') body = { ...body, media: [{ ...body.media[0], caption: sig(body.media[0].caption) }, ...body.media.slice(1)] };
+  else if (body && method === 'sendMessage' && typeof body.text === 'string' && body.text.length >= 250 && !(body.reply_markup && body.reply_markup.force_reply)) body = { ...body, text: sig(body.text, 4096) };
   const r = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   return r.json();
 }
@@ -977,7 +985,7 @@ async function sendSat(env, chat, lang, rid, kind) {
   const t = new Date(Date.parse(kind === 'rain' ? meta.rain : meta.last) + (rid === 'KG' ? 6 : 5) * 3600e3).toISOString().slice(11, 16);
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('supports_streaming', 'true');
-  fd.append('caption', `${FLAG[rid]} ${NAMES[rid][lang]} · ${kind === 'rain' ? X.capr : X.capc} · ${X.last} ${t}`);
+  fd.append('caption', sig(`${FLAG[rid]} ${NAMES[rid][lang]} · ${kind === 'rain' ? X.capr : X.capc} · ${X.last} ${t}`));
   fd.append('video', new Blob([v], { type: 'video/mp4' }), `${rid}_${kind}.mp4`);
   return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
 }
@@ -1059,7 +1067,7 @@ async function sendDynXlsx(env, chat, lang, ext = 'xlsx') {  // the Excel or PDF
   const f = await fetch(lflRaw(`UZ_lfl_${L}.${ext}`, ref)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
   if (!f) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_document' });
-  const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', ext === 'pdf' ? X.pdfc : X.xlc);
+  const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', sig(ext === 'pdf' ? X.pdfc : X.xlc));
   fd.append('document', new Blob([f], { type: ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${L === 'uz' ? 'ob-havo_otgan_yil' : 'pogoda_vs_proshlyi_god'}_${todayTZ()}.${ext}`);
   return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
 }
@@ -1069,7 +1077,7 @@ async function sendDynVideo(env, chat, lang, kind) {
   if (!v) return tg(env, 'sendMessage', { chat_id: chat, text: X.none });
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
   const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('supports_streaming', 'true');
-  fd.append('caption', `📊 ${j ? j.title : ''} · ${j ? j.name : ''}`.slice(0, 1000));
+  fd.append('caption', sig(`📊 ${j ? j.title : ''} · ${j ? j.name : ''}`.slice(0, 1000)));
   fd.append('reply_markup', JSON.stringify({ inline_keyboard: [[{ text: X.open, web_app: { url: site(env, `lfl.html?lang=${L}`) } }], [{ text: kind === 'month' ? X.vw : X.vm, callback_data: `DV:${L}:${kind === 'month' ? 'weeks' : 'month'}` }]] }));
   fd.append('video', new Blob([v], { type: 'video/mp4' }), `UZ_${kind}.mp4`);
   return fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd }).then(r => r.json()).catch(() => null);
@@ -1373,7 +1381,7 @@ async function sendHourly(env, chat, lang, id) {
   // three buttons: the map, where the rain comes from, the notification
   const kb = chat > 0 ? { inline_keyboard: [[liveBtn(env, lang, id, chat)], [notifBtn(lang, 'hourly')]] } : { inline_keyboard: [[liveBtn(env, lang, id, chat)]] };
   let r = await tg(env, 'sendVideo', { chat_id: chat, video: url, caption: cap, parse_mode: 'HTML', supports_streaming: true, reply_markup: kb });
-  if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', cap); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
+  if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('caption', sig(cap)); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true'); fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `${id}_${lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
   if (!r.ok) return tg(env, 'sendMessage', { chat_id: chat, text: cap, parse_mode: 'HTML', reply_markup: kb });
   return r;
 }
@@ -1577,7 +1585,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
     const txt = [head, '', ...brief.map(x => `▸ ${x}`), '', ...Dw.map(x => day(x, x.d === today ? T[lang].tdy : x.d === tmrw ? T[lang].tmw : WDL[lang][new Date(x.d + 'T12:00:00Z').getUTCDay()])), cut, `<i>${K.note}</i>`].join('\n');
     // the week as a picture too: the place's photo, the week's brief, its days
     const cw_ = { name: place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`, sub: noEmo(head.replace(/<[^>]+>/g, '').replace(nm0.replace(/<[^>]+>/g, ''), '').replace(/^\s*·\s*/, '')), bh: K.brief, nh: K.next.replace(/.*/, { ru: 'По дням', uz: 'Kunma-kun', en: 'Day by day' }[lang]),
-      brief: brief.map(noEmo), note: noEmo(K.note), foot: 't.me/ObHavo_ECMWF_bot', now: null, two: [],
+      brief: brief.map(noEmo), note: noEmo(K.note), foot: SIGN, now: null, two: [],
       list: Dw.map(x => ({ wd: wd(x.d), ic: icKey(x.ic), lo: x.lo, hi: x.hi, lot: deg(x.lo), hit: deg(x.hi), p: x.p, mm: x.mm >= 0.5 ? `${x.mm < 9.5 ? x.mm.toFixed(0) : Math.round(x.mm)} ${L.mm}` : '', snow: !!x.snow })) };
     const cq_ = { city: place ? pname(place, 'en') : `${lat.toFixed(1)}, ${lon.toFixed(1)}`, country: place && NAMES[place[4]] ? NAMES[place[4]].en : '', lat, lon, month: +new Date(Date.now() + off * 3600e3).toISOString().slice(5, 7), code: NW ? NW.weather_code : 2, day: true, t: NW && NW.temperature_2m != null ? NW.temperature_2m : Dw[0].hi };
     if (await sendCard(env, chat, cw_, cq_, `${head}`, weeksKb(lang, a))) return true;
@@ -1595,7 +1603,7 @@ async function pointForecast(env, chat, lang, lat, lon, place, kbOver, range) {
   const exact = !place || Math.hypot(place[5] - lat, (place[6] - lon) * Math.cos(lat * Math.PI / 180)) > 0.02;  // a sent location, not a town's own point
   const pn = exact && wi && wi.short ? noEmo(wi.short) : place ? noEmo(pname(place, lang)) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
   const geoT = `${wi && wi.addr ? wi.addr + ' · ' : ''}${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-  const cardD = { name: pn, sub: `${L.head} · ${wd(D[0].d)}`, bh: K.brief, nh: K.next, brief: sum.map(noEmo).slice(0, 5), note: noEmo(K.note), foot: 't.me/ObHavo_ECMWF_bot',
+  const cardD = { name: pn, sub: `${L.head} · ${wd(D[0].d)}`, bh: K.brief, nh: K.next, brief: sum.map(noEmo).slice(0, 5), note: noEmo(K.note), foot: SIGN,
     now: NW && NW.temperature_2m != null ? { t: `${NW.temperature_2m > 0.5 ? '+' : ''}${Math.round(NW.temperature_2m)}°`.replace(/^-0°$/, '0°'), ic: wmoKey(NW.weather_code, NW.is_day),
       txt: ((WMO[lang] || WMO.ru)[NW.weather_code] || '').replace(/^./, c => c.toUpperCase()),
       more: `${(NOWX[lang] || NOWX.ru).feels} ${Math.round(NW.apparent_temperature)}° · ${(NOWX[lang] || NOWX.ru).hum} ${Math.round(NW.relative_humidity_2m)}% · ${(NOWX[lang] || NOWX.ru).wind} ${Math.round(NW.wind_speed_10m)} ${(NOWX[lang] || NOWX.ru).ms}${NW.is_day && NW.uv_index != null ? ` · ${uvText(NW.uv_index, lang)}` : ''}`, nc: nowcast(NW, lang), geo: geoT.length > 78 ? geoT.slice(0, 76) + '…' : geoT } : null,
@@ -1688,7 +1696,7 @@ function cardSvg(d, bg) {
     } else body += T('—', W - 230, yy + 38, 27, '#ffffff', { op: 0.35 }); });
   y += 16 + d.list.length * 58 + 50;
   body += wrapT(d.note, W - 112, 22, false, 2).map((l, i) => T(l, W / 2, y + i * 30, 22, '#ffffff', { a: 'middle', op: 0.5 })).join(''); y += 64;
-  body += T(d.foot, W / 2, y, 24, '#ffd29c', { a: 'middle', b: 1, op: 0.8 }); const H = y + 40;
+  body += T(d.foot, W / 2 + 20, y, 24, '#ffd29c', { a: 'middle', b: 1, op: 0.8 }) + osmonMark(W / 2 + 20 - d.foot.length * 6.6 - 40, y - 23, 30, '#ffffff', 0.85); const H = y + 40;
   const head = T(d.name, 56, 112, d.name.length > 16 ? 52 : 66, '#ffffff', { b: 1, sh: 1 }) + T(d.sub, 58, 162, 30, '#ffffff', { op: 0.9, sh: 1 }) +
     (d.now ? T(d.now.t, W - 56, 140, 120, '#ffffff', { b: 1, a: 'end', sh: 1 }) + svgIcon(d.now.ic, W - 56 - [...d.now.t].length * 72 - 60, 98, 52) + T(d.now.txt, W - 56, 196, 30, '#ffffff', { b: 1, a: 'end', sh: 1 }) + T(d.now.more, W - 56, 238, 24, '#ffffff', { a: 'end', op: 0.9, sh: 1 }) + (d.now.nc ? T(d.now.nc, W - 56, 280, 25, '#ffd29c', { a: 'end', b: 1, sh: 1 }) : '') + (d.now.geo ? T(d.now.geo, W - 56, 318, 20, '#ffffff', { a: 'end', op: 0.85, sh: 1 }) : '') : '');
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -1783,9 +1791,9 @@ async function sendCard(env, chat, d, q, caption, markup) {  // → the Telegram
   } catch (e) { console.log('card', e && e.stack); return null; }
 }
 /* ---------- 🖼 the 15 days of a place as one picture (Full HD, drawn by QuickChart from the same numbers as the text) ---------- */
-const PHX = { ru: { btn: '🖼 Фото прогноза на 15 дней', t: '{n} · прогноз на 15 дней', p: 'Вероятность осадков, %', hi: 'Днём, °C', lo: 'Ночью, °C', src: 'Osmon · модели ECMWF, NOAA, DWD, UKMO · t.me/ObHavo_ECMWF_bot', fail: '😔 Не удалось нарисовать картинку, попробуйте позже.' },
-  uz: { btn: '🖼 15 kunlik prognoz rasmi', t: '{n} · 15 kunlik prognoz', p: 'Yog‘in ehtimoli, %', hi: 'Kunduzi, °C', lo: 'Kechasi, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO modellari · t.me/ObHavo_ECMWF_bot', fail: '😔 Rasmni chizib bo‘lmadi, keyinroq urinib ko‘ring.' },
-  en: { btn: '🖼 15-day forecast picture', t: '{n} · 15-day forecast', p: 'Chance of precipitation, %', hi: 'By day, °C', lo: 'At night, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO models · t.me/ObHavo_ECMWF_bot', fail: '😔 Could not draw the picture, try again later.' } };
+const PHX = { ru: { btn: '🖼 Фото прогноза на 15 дней', t: '{n} · прогноз на 15 дней', p: 'Вероятность осадков, %', hi: 'Днём, °C', lo: 'Ночью, °C', src: 'Osmon · модели ECMWF, NOAA, DWD, UKMO · @ObHavo_ECMWF_bot · @osmon_obhavo', fail: '😔 Не удалось нарисовать картинку, попробуйте позже.' },
+  uz: { btn: '🖼 15 kunlik prognoz rasmi', t: '{n} · 15 kunlik prognoz', p: 'Yog‘in ehtimoli, %', hi: 'Kunduzi, °C', lo: 'Kechasi, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO modellari · @ObHavo_ECMWF_bot · @osmon_obhavo', fail: '😔 Rasmni chizib bo‘lmadi, keyinroq urinib ko‘ring.' },
+  en: { btn: '🖼 15-day forecast picture', t: '{n} · 15-day forecast', p: 'Chance of precipitation, %', hi: 'By day, °C', lo: 'At night, °C', src: 'Osmon · ECMWF, NOAA, DWD, UKMO models · @ObHavo_ECMWF_bot · @osmon_obhavo', fail: '😔 Could not draw the picture, try again later.' } };
 const phBtn = (lang, lat, lon) => ({ text: (PHX[lang] || PHX.ru).btn, callback_data: `PH:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}` });
 function chart15(X, nm, lab, D, rc, r1) {  // Chart.js 2 config as code (the label formatters are functions)
   const F = { hi: 'function(v){return (v>0?"+":"")+v+"°"}', pc: 'function(v){return v>=10?v+"%":""}', tk: 'function(v){return v+"°"}' };
@@ -2247,7 +2255,7 @@ async function handle(up, env) {
         const f = await fetch(url);
         if (f.ok) {
           const fd = new FormData();
-          fd.append('chat_id', String(chat.id)); fd.append('caption', text); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true');
+          fd.append('chat_id', String(chat.id)); fd.append('caption', sig(text)); fd.append('parse_mode', 'HTML'); fd.append('supports_streaming', 'true');
           fd.append('reply_markup', JSON.stringify(kb)); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), c.video);
           r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json();
         }
@@ -2449,7 +2457,7 @@ async function privateMsg(msg, env) {
     await tg(env, 'sendChatAction', { chat_id: chat.id, action: 'upload_video' });
     const url = `${base(env)}/prob/${b.video}?v=${fresh()}`;
     let r = await tg(env, 'sendVideo', { chat_id: chat.id, video: url, caption: b.title, supports_streaming: true });
-    if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat.id)); fd.append('caption', b.title); fd.append('supports_streaming', 'true'); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `osmon_${b.lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
+    if (!r.ok) { const f = await fetch(url); if (f.ok) { const fd = new FormData(); fd.append('chat_id', String(chat.id)); fd.append('caption', sig(b.title)); fd.append('supports_streaming', 'true'); fd.append('video', new Blob([await f.arrayBuffer()], { type: 'video/mp4' }), `osmon_${b.lang}.mp4`); r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd })).json(); } }
     await tg(env, 'sendPhoto', { chat_id: chat.id, photo: `${base(env)}/prob/${b.thumb}?v=${fresh()}`, caption: 'YouTube thumbnail' });
     const t = await (await fetch(`${base(env)}/prob/${b.text}`)).text().catch(() => '');
     return tg(env, 'sendMessage', { chat_id: chat.id, text: (r.ok ? '' : `⚠️ ${r.description || ''}\n${url}\n\n`) + t.slice(0, 4000), disable_web_page_preview: true });
@@ -2739,7 +2747,7 @@ async function sendGuide(env, chat, lang) {
   const f = await fetch(`https://raw.githubusercontent.com/otabekvafoev92-del/ob-havo-ecmwf/main/telegram/guide/osmon_guide_${lang}.pdf`);
   if (!f.ok) return tg(env, 'sendMessage', { chat_id: chat, text: HELP[lang], parse_mode: 'HTML' });
   const fd = new FormData();
-  fd.append('chat_id', String(chat)); fd.append('caption', T[lang].guideCap);
+  fd.append('chat_id', String(chat)); fd.append('caption', sig(T[lang].guideCap));
   fd.append('document', new Blob([await f.arrayBuffer()], { type: 'application/pdf' }), `Osmon_${lang === 'ru' ? 'instrukciya' : lang === 'en' ? 'guide' : 'yoriqnoma'}.pdf`);
   const r = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd })).json();
   if (r.ok && r.result.document && env.DB) await setKv(env, key, r.result.document.file_id);

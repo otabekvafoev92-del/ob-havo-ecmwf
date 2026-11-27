@@ -279,12 +279,15 @@ def render(job):
             a0.text(W / 2, cy, 'OSMON', ha='center', va='center', fontsize=48, fontweight='bold', color='#f08a24', zorder=11.5); cy += 80
             for ln in (X['end1'], X['end2']):
                 a0.text(W / 2, cy, ln, ha='center', va='center', fontsize=30, fontweight='bold' if ln is X['end2'] else 'normal', color='#ffffff', zorder=11.5); cy += 48
-            m = qr('https://t.me/ObHavo_ECMWF_bot')
-            if m is not None:
-                sz = min(W * 0.3, HEAD + HD - cy - 70); x0, y0_ = W / 2 - sz / 2, cy + 20
+            sz = min(W * 0.2, HEAD + HD - cy - 110)  # two QR codes: the bot and the channel
+            for k, (url, lab) in enumerate([('https://t.me/ObHavo_ECMWF_bot', '@ObHavo_ECMWF_bot'), ('https://t.me/osmon_obhavo', '@osmon_obhavo')]):
+                m = qr(url)
+                if m is None: continue
+                x0, y0_ = W / 2 + (k - 1) * (sz + 60) + 30, cy + 20
                 a0.add_patch(plt.Rectangle((x0 - 14, y0_ - 14), sz + 28, sz + 28, fc='#ffffff', ec='none', zorder=11.5))
                 a0.imshow(np.where(m, 0.1, 1.0)[..., None].repeat(3, 2), extent=(x0, x0 + sz, y0_ + sz, y0_), interpolation='nearest', zorder=11.6)
-                a0.set_xlim(0, W); a0.set_ylim(H, 0)
+                a0.text(x0 + sz / 2, y0_ + sz + 40, lab, ha='center', va='center', fontsize=22, fontweight='bold', color='#ffffff', zorder=11.6)
+            a0.set_xlim(0, W); a0.set_ylim(H, 0)
     if fr.get('intro') is not None:  # the opening: the title over a dark veil that lifts off the map
         al = fr['intro']; a0.add_patch(plt.Rectangle((0, 0), W, H, fc=NAVY, ec='none', alpha=0.93 * al, zorder=10.5))
         sc = 1 + 0.25 * al

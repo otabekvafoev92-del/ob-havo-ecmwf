@@ -109,6 +109,20 @@ def qr(url):
     except Exception: return None
 
 
+LINKS = [('https://t.me/ObHavo_ECMWF_bot', '@ObHavo_ECMWF_bot'), ('https://t.me/osmon_obhavo', '@osmon_obhavo')]
+
+
+def qr2(fig, x=0.62, y=0.40, h=0.30, z=32):
+    """The closing card's two QR codes side by side: the bot and the channel, each signed under it."""
+    wi, hi = fig.get_size_inches(); qw = h * hi / wi
+    for k, (url, lab) in enumerate(LINKS):
+        Q = qr(url)
+        if Q is None: continue
+        xx = x + k * (qw + 0.03)
+        qa = fig.add_axes([xx, y, qw, h]); qa.imshow(~Q, cmap='gray', interpolation='nearest'); qa.axis('off'); qa.set_zorder(z)
+        fig.text(xx + qw / 2, y - 0.03, lab, fontsize=15, fontweight='bold', color='#0B2545', ha='center', va='center', zorder=z)
+
+
 from matplotlib.path import Path as MPath
 BOLT = MPath([(0.2, 1.0), (-0.55, -0.05), (-0.05, -0.05), (-0.35, -1.0), (0.6, 0.2), (0.08, 0.2), (0.55, 1.0), (0.2, 1.0)], closed=True)  # ⚡
 
@@ -272,7 +286,7 @@ def draw(job):
         txt =  (tw[L] if TM else f"{tw[L]} · {cc_.get(tw[0], 0):.0f}%" if CM else f"{tw[L]}  {p_:.0f}%") + ((' · туман' if lang == 'ru' else ' · tuman') if fg_ else '')
         an = ax.annotate(txt, (tw[3], tw[2]), xytext=(dx, dy), textcoords='offset pixels', ha=ha, va=va, fontsize=fs, fontweight='bold' if main else 'semibold', color='#1f2933' if main else '#2f3a46', zorder=9,
                          bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#f1f3f5', ec=ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.72))
-    ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
+    ax.text(0.995, 0.01, '@ObHavo_ECMWF_bot · @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=FAINT, zorder=9)
     for lb_, lo_, la_ in C.get('names', []): ax.text(lo_, la_, lb_, fontsize=10, color='#8a96a3', ha='center', va='center', zorder=3.6, style='italic')
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=NAVY, ec='none', zorder=-1))
@@ -369,9 +383,7 @@ def draw(job):
         fig.text(0.38, 0.70, 'OSMON', fontsize=44, fontweight='bold', color=ORANGE, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.60, X['end1'], fontsize=30, fontweight='bold', color=INK, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.53, X['end2'], fontsize=26, color=MUTED, ha='center', va='center', zorder=31)
-        Q = C['qr']
-        if Q is not None:
-            qa = fig.add_axes([0.66, 0.36, 0.2 * H / W * 1.0, 0.44]); qa.imshow(~Q, cmap='gray', interpolation='nearest'); qa.axis('off'); qa.set_zorder(32)
+        qr2(fig)
     fig.savefig(pathlib.Path(V['dir']) / f'{i:04d}.png', dpi=DPI, facecolor='white')
     plt.close(fig)
 

@@ -56,7 +56,7 @@ def main():
               f"drawtext=fontfile={F}:text='{esc(now.strftime('%d.%m %H:%M'))}':x=w-tw-24:y=18:fontsize=28:fontcolor=0xffd29c,"
               f"drawbox=x=0:y=ih-56:w=iw:h=56:color=0x0b1220@0.6:t=fill,"
               f"drawtext=fontfile={F}:text='{esc(wtxt or 'камера в прямом эфире')}':x=24:y=h-42:fontsize=26:fontcolor=white,"
-              f"drawtext=fontfile={F}:text='t.me/ObHavo_ECMWF_bot':x=w-tw-24:y=h-40:fontsize=22:fontcolor=0xa9bdd6")
+              f"drawtext=fontfile={F}:text='@ObHavo_ECMWF_bot · @osmon_obhavo':x=w-tw-24:y=h-40:fontsize=22:fontcolor=0xa9bdd6")
         r = subprocess.run(['ffmpeg', '-y', '-v', 'error', '-rw_timeout', '15000000', '-i', u, '-t', str(TOTAL), '-an', '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-g', '25',
                             '-pix_fmt', 'yuv420p', str(f)], capture_output=True, text=True, timeout=180)
         if r.returncode == 0 and f.exists() and f.stat().st_size > 50000: parts.append((k, ru, uz, f))

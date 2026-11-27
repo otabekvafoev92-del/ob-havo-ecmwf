@@ -78,7 +78,7 @@ def draw(job):
         ax.annotate(txt, (s['lon'], s['lat']), xytext=(dx, dy), textcoords='offset pixels', ha='center', va='center', fontsize=14, fontweight='bold', color='#1f2933', zorder=9, linespacing=1.35,
                     bbox=dict(boxstyle='round,pad=0.5,rounding_size=0.8', fc=fc, ec=PV.ORANGE if best else '#9aa6b2', lw=3.2 if best else 1.0, alpha=0.95),
                     arrowprops=dict(arrowstyle='-', color='#5b6876', lw=1.2, shrinkA=0, shrinkB=9))
-    ax.text(0.995, 0.01, 't.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
+    ax.text(0.995, 0.01, '@ObHavo_ECMWF_bot · @osmon_obhavo', transform=ax.transAxes, ha='right', va='bottom', fontsize=11, color=PV.FAINT, zorder=9)
     ax.text(0.005, 0.01, X['src'], transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=PV.FAINT, zorder=9)
     # header
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
@@ -128,8 +128,7 @@ def draw(job):
         fig.text(0.38, 0.72, 'OSMON', fontsize=44, fontweight='bold', color=PV.ORANGE, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.64, X['end1'], fontsize=28, fontweight='bold', color=PV.INK, ha='center', va='center', zorder=31)
         fig.text(0.38, 0.57, X['end2'], fontsize=24, color=PV.MUTED, ha='center', va='center', zorder=31)
-        if C['qr'] is not None:
-            qa = fig.add_axes([0.66, 0.42, 0.18 * H / W, 0.4]); qa.imshow(~C['qr'], cmap='gray', interpolation='nearest'); qa.axis('off')
+        PV.qr2(fig, y=0.46, h=0.28)
     fig.savefig(pathlib.Path(V['dir']) / f'{i:04d}.png', dpi=DPI, facecolor='white'); plt.close(fig)
 
 

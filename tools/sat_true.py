@@ -113,7 +113,7 @@ def draw(job):
                     bbox=dict(boxstyle='round,pad=0.25,rounding_size=0.6', fc='#f1f3f5', ec='none', alpha=0.72))
     live = len(meta) > 5 and meta[5] is not None
     ax.text(0.006, 0.012, X['leg2' if live else 'leg'], transform=ax.transAxes, fontsize=13, color='white', zorder=9, bbox=dict(boxstyle='round,pad=0.4', fc='#0b1220', ec='none', alpha=0.55))
-    ax.text(0.994, 0.012, X['src'].format(s=meta[2 if lang != 'ru' else 1]) + ' · t.me/ObHavo_ECMWF_bot', transform=ax.transAxes, ha='right', fontsize=12, color='white', zorder=9,
+    ax.text(0.994, 0.012, X['src'].format(s=meta[2 if lang != 'ru' else 1]) + ' · @ObHavo_ECMWF_bot · @osmon_obhavo', transform=ax.transAxes, ha='right', fontsize=12, color='white', zorder=9,
             bbox=dict(boxstyle='round,pad=0.4', fc='#0b1220', ec='none', alpha=0.55))
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
     fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=PV.ORANGE, va='center')
