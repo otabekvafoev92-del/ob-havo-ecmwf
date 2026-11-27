@@ -579,6 +579,7 @@ async function videoMenu(env, chat, lang, rid, u) {  // all the videos as one me
   const rows = [[b('prob', 'VP'), b('temp', 'TV')], [b('cloud', 'CV'), ...(rid === 'UZ' ? [b('moist', 'MV')] : [])]];
   if (rid === 'UZ') rows.push([b('weeks', 'WV'), b('sat', 'ST')], [b('risk', 'RV'), b('air', 'AQV')], ...(XVN.length ? [[{ text: (XVX[lang] || XVX.ru).menu, callback_data: `XM:${lang}:UZ` }]] : []), [{ text: CAMB[lang] || CAMB.ru, callback_data: `CAM:${lang}:UZ` }]);
   if (pl) rows[rows.length - 1].push({ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place });
+  rows.push([{ text: { ru: '📢 Все видео канала @osmon_obhavo', uz: '📢 Kanaldagi barcha videolar · @osmon_obhavo', en: '📢 All the channel’s videos · @osmon_obhavo' }[lang] || '📢 @osmon_obhavo', url: 'https://t.me/osmon_obhavo' }]);
   return tg(env, 'sendMessage', { chat_id: chat, text: X.h.replace('{n}', `${FLAG[rid] || ''} ${NAMES[rid][lang]}`), parse_mode: 'HTML', reply_markup: { inline_keyboard: rows.filter(r => r.length) } });
 }
 async function newVids(id, lang) {  // the 15-day videos in the new look that exist for the place: chance of precipitation, temperature, clouds
@@ -1135,17 +1136,22 @@ function moreMenu(env, chat, lang, rid) {
     [a('air'), a('alerts')], ...(rid === 'UZ' ? [[a('mtn'), a('dyn')]] : []), [a('notif'), a('daily')], [a('brief'), a('cities')], [a('accuracy')], [{ text: lang === 'uz' ? '📊 Ob-havo o‘tgan yilga nisbatan' : '📊 Погода против прошлого года', web_app: { url: site(env, `lfl.html?lang=${lang}`) } }], [{ text: R.site, web_app: { url: site(env, `prob/${rid}/${lang}/prob`) } }],
     ...(TRJ.has(rid) ? [] : []), [a('help'), a('reset')]] } });
 }
-const rkAct = text => { for (const L of [...Object.values(RKS), ...Object.values(RKL), ...Object.values(RKL_OLD)]) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
-const RKS = {  // the main keyboard: six big buttons by meaning; each opens a small menu
+const rkAct = text => { for (const L of [...Object.values(RKS), ...Object.values(RKS_OLD), ...Object.values(RKL), ...Object.values(RKL_OLD)]) for (const [k, v] of Object.entries(L)) if (v === text) return k; return null; };
+// the main keyboard: 2 × 3 by geography — Uzbekistan and the world first, then my place and the mountains, then the videos and the settings
+const RKS = {
+  ru: { uzb: '🇺🇿 Узбекистан', world: '🌍 Мир', loc: '📍 Моё место', mtnair: '⛰️ Погода в горах', video: '▶️ Видео', settings: '⚙️ Настройки' },
+  uz: { uzb: '🇺🇿 O‘zbekiston', world: '🌍 Dunyo', loc: '📍 Mening joyim', mtnair: '⛰️ Tog‘larda ob-havo', video: '▶️ Videolar', settings: '⚙️ Sozlamalar' },
+  en: { uzb: '🇺🇿 Uzbekistan', world: '🌍 World', loc: '📍 My place', mtnair: '⛰️ Mountain weather', video: '▶️ Videos', settings: '⚙️ Settings' } };
+const RKS_OLD = {  // the earlier keyboard (people still have it until it is replaced)
   ru: { fc: '🌤 Прогноз', video: '🎬 Видео', regions: '🗺 Регионы', countries: '🌍 Страны', mtnair: '🏔 Горы · воздух', air: '🌫 Воздух', loc: '📍 Моё место', settings: '⚙️ Настройки' },
   uz: { fc: '🌤 Prognoz', video: '🎬 Video', regions: '🗺 Viloyatlar', countries: '🌍 Davlatlar', mtnair: '🏔 Tog‘lar · havo', air: '🌫 Havo sifati', loc: '📍 Mening joyim', settings: '⚙️ Sozlamalar' },
   en: { fc: '🌤 Forecast', video: '🎬 Video', regions: '🗺 Regions', countries: '🌍 Countries', mtnair: '🏔 Mountains · air', air: '🌫 Air quality', loc: '📍 My place', settings: '⚙️ Settings' } };
 function replyKb(env, lang, id) {
   const X = RKS[lang] || RKS.ru, b = t => ({ text: t });
   return { keyboard: [
-    [b(X.fc), b(X.video)],
-    [b(ADM.has(id) ? X.regions : X.countries), b(id === 'UZ' ? X.mtnair : X.air)],
-    [{ text: X.loc, request_location: true }, b(X.settings)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', en: 'City name…' }[lang] };
+    [b(X.uzb), b(X.world)],
+    [{ text: X.loc, request_location: true }, b(X.mtnair)],
+    [b(X.video), b(X.settings)]], resize_keyboard: true, is_persistent: true, input_field_placeholder: { uz: 'Shahar nomi…', ru: 'Название города…', en: 'City name…' }[lang] };
 }
 const SUBM = {  // the small menus behind the big buttons
   ru: { fc: '🌤 <b>Прогноз</b> — что показать?', mtnair: '🏔 <b>Горы и воздух</b>', settings: '⚙️ <b>Настройки</b>', week: '📆 Неделя по дням', photo: '🖼 График на 15 дней (фото)', country: '🌍 Страна и континент', remind: '⏰ Присылать прогноз на 15 дней каждый день' },
@@ -1156,12 +1162,15 @@ async function subMenu(env, chat, lang, rid, which, u) {
   const CAP = { UZ: [41.311, 69.279], KZ: [51.169, 71.449], KG: [42.875, 74.612], TJ: [38.56, 68.774], TM: [37.96, 58.326], AZ: [40.41, 49.867], AM: [40.177, 44.513], BY: [53.9, 27.567], MD: [47.011, 28.863], RU: [55.756, 37.617], TR: [39.92, 32.854] };
   const pl = u && u.place ? JSON.parse(u.place) : CAP[rid] || CAP.UZ;
   let rows;
-  if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), { text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }],
+  if (which === 'uzb') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, { ...phBtn(lang, +pl[0], +pl[1]), text: M.photo }], [a('regions'), a('alerts')],
+    [{ text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }], [{ text: R.fog, callback_data: `FG:${lang}:UZ` }, { text: M.remind, callback_data: `NS:${lang}:days` }]];
+  else if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), { text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }],
     [{ text: M.remind, callback_data: `NS:${lang}:days` }], [{ text: R.fog, callback_data: `FG:${lang}:${rid}` }, { text: '⏰ ' + R.fog.replace(/^\S+\s/, ''), callback_data: `NS:${lang}:fog` }]];
   else if (which === 'mtnair') rows = [[a('mtn'), a('air')], [a('alerts')]];
   else rows = [[{ text: { ru: '🌐 Язык · Til · Language', uz: '🌐 Til · Язык · Language', en: '🌐 Language · Til · Язык' }[lang] || '🌐 Язык', callback_data: `MA:${lang}:langpick` }],
     [{ text: M.country, callback_data: `MA:${lang}:countries` }, a('cities')], [a('daily'), a('notif')], [{ text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }], ...(rid === 'UZ' ? [[a('dyn'), a('accuracy')]] : [[a('accuracy')]]), [a('help'), a('reset')]];
   rows[1] && which === 'fc' && (rows[1][1] = { ...rows[1][1], text: M.photo });
+  if (which === 'uzb') return tg(env, 'sendMessage', { chat_id: chat, text: { ru: '🇺🇿 <b>Узбекистан</b> — прогноз, области, предупреждения', uz: '🇺🇿 <b>O‘zbekiston</b> — prognoz, viloyatlar, ogohlantirishlar', en: '🇺🇿 <b>Uzbekistan</b> — forecast, provinces, warnings' }[lang], parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
   return tg(env, 'sendMessage', { chat_id: chat, text: M[which], parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
 }
 // countries and cities are keyboards too: the chosen one is marked with ✅
@@ -2697,6 +2706,8 @@ async function privateMsg(msg, env) {
     if (cmd === 'week' || cmd === 'hafta' || cmd === 'nedelya') return tg(env, 'sendMessage', { chat_id: chat.id, text: (WKX[lang] || WKX.ru).pick, reply_markup: weeksKb(lang) });
     
     if (['rain', 'video', 'hourly', 'evv', 'traj'].includes(act)) return videoMenu(env, chat.id, lang, rid, u);  // one menu for all the videos
+    if (act === 'uzb') { if (rid !== 'UZ') await saveUser(env, chat.id, { lang, region: 'UZ' }); return subMenu(env, chat.id, lang, 'UZ', 'uzb', u); }
+    if (act === 'world') return tg(env, 'sendMessage', { chat_id: chat.id, text: { ru: '🌍 <b>Мир</b> — выберите часть света или страну, или просто напишите название города (например: <b>Париж</b>, <b>Dubai</b>)', uz: '🌍 <b>Dunyo</b> — qit’a yoki davlatni tanlang yoki shahar nomini yozing (masalan: <b>Parij</b>, <b>Dubai</b>)', en: '🌍 <b>World</b> — pick a continent or a country, or just type a city name (e.g. <b>Paris</b>, <b>Dubai</b>)' }[lang], parse_mode: 'HTML', reply_markup: countryRk(lang, u && u.region) });
     if (act === 'fc' || act === 'mtnair' || act === 'settings' || act === 'more') return subMenu(env, chat.id, lang, rid, act === 'more' ? 'settings' : act, u);
     if (act === 'langpick') return tg(env, 'sendMessage', { chat_id: chat.id, text: '🌐 Tilni tanlang · Выберите язык · Choose the language', reply_markup: langKb('LS') });
     if (act === 'csearch') return tg(env, 'sendMessage', { chat_id: chat.id, text: { ru: '🔎 Напишите название или начало названия страны или города, например: <b>Каз</b>, <b>Уз</b>, <b>Таш</b>, <b>Герм</b>, <b>Дуб</b>.', uz: '🔎 Davlat yoki shahar nomini yoki boshini yozing, masalan: <b>Qoz</b>, <b>O‘zb</b>, <b>Tosh</b>, <b>Germ</b>, <b>Dub</b>.', en: '🔎 Type a country or city name or its beginning, e.g. <b>Kaz</b>, <b>Uzb</b>, <b>Tash</b>, <b>Germ</b>, <b>Dub</b>.' }[lang], parse_mode: 'HTML' });
