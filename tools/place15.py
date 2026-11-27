@@ -107,7 +107,7 @@ def render(data, out, lang, view):
         lst.write_text(''.join(f"file '{i:04d}.png'\nduration {V['frames'][i]['d']}\n" for i in range(a, b)) + f"file '{b - 1:04d}.png'\n")
         seg = out / f'seg_{k}.mp4'
         subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-maxrate', '1600k', '-bufsize', '3200k',
-                        '-preset', 'slow', '-tune', 'animation', '-g', '60', str(seg)], check=True)
+                        '-preset', 'medium', '-tune', 'animation', '-g', '60', str(seg)], check=True)
         json.dump(dict(lv=levels(lang, a, b), mode=PV.CTX.get('mode'), name=name.name), open(out / f'seg_{k}.json', 'w'))
         print('part', part, 'frames', a, b, seg, seg.stat().st_size // 1024, 'KB', flush=True)
         return seg

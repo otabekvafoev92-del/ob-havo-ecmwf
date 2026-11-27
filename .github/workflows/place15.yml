@@ -1,6 +1,6 @@
 name: 15-day video for a place (on demand)
 # the bot asks for it (🎬 button under a place's forecast): the country's video and the place's close-up, hour by hour for 15 days
-# (tools/place15.py). Every video is drawn by 3 machines side by side (a third of the frames each); part 0 waits for the other two,
+# (tools/place15.py). Every video is drawn by 5 machines side by side (a fifth of the frames each); part 0 waits for the other four,
 # joins them (tools/seg_join.py) and puts the video on the branch od-<chat>-<kind>, then pokes the bot, which sends it at once.
 on:
   workflow_dispatch:
@@ -18,10 +18,10 @@ jobs:
     strategy:
       matrix:
         kind: ${{ fromJSON(inputs.only == 'place' && '["place"]' || '["country","place"]') }}
-        part: [0, 1, 2]
+        part: [0, 1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env: {N: 3, GH_TOKEN: '${{ github.token }}', SEG: 'seg-${{ inputs.chat }}-${{ matrix.kind }}', RUN: '${{ github.run_id }}'}
+    env: {N: 5, GH_TOKEN: '${{ github.token }}', SEG: 'seg-${{ inputs.chat }}-${{ matrix.kind }}', RUN: '${{ github.run_id }}'}
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 1}

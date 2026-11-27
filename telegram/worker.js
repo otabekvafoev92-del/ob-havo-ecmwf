@@ -188,7 +188,7 @@ export default {
     // each job on its own, so one failure (or Cloudflare's limit of requests per run) cannot stop the others;
     // the check of the site builds goes first: it is small and it matters most
     const run = (name, f) => f().catch(e => console.log(name, e && e.stack));
-    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil((async () => { await run('watch', () => watchTick(env)); await run('chan', () => chanTick(env)); await run('pv', () => pvTick(env)); await run('sat', () => satTick(env)); })());  // its own runs: the weather at people's places
+    if (ev && ev.cron === WATCH_CRON) return ctx.waitUntil((async () => { await run('watch', () => watchTick(env)); await run('chan', () => chanTick(env)); await run('pre', () => prebuildTick(env)); await run('pv', () => pvTick(env)); await run('sat', () => satTick(env)); })());  // its own runs: the weather at people's places
     ctx.waitUntil((async () => {
       await run('stale', () => staleTick(env));
       await run('pv', () => pvTick(env));
@@ -1884,10 +1884,27 @@ const PVX = { ru: { btn: '🎬 Видео 15 дней по часам: стра�
   uz: { btn: '🎬 15 kunlik soatma-soat video: davlat + shu joy', wait: '⏳ 2 ta video tayyorlayapman: butun davlat va {n} yaqindan — 15 kunga soatma-soat yog‘in va harorat. 5–7 daqiqada shu yerga yuboraman.', waitP: '⏳ Davlat videosi — yuqorida. «{n}» yaqindan videosini tayyorlayapman, taxminan 5 daqiqada yuboraman.', late: '😔 Video tayyor bo‘lmadi, birozdan keyin qayta urinib ko‘ring.', capC: '🎬 {n}: 15 kunga soatma-soat yog‘in ehtimoli va harorat', capP: '📍 {n}: 15 kunga soatma-soat yog‘in ehtimoli va harorat', busy: '⏳ Video tayyorlanmoqda, tayyor bo‘lishi bilan yuboraman.', fail: '😔 Videoni tayyorlashni boshlab bo‘lmadi, keyinroq urinib ko‘ring.' },
   en: { btn: '🎬 15-day hourly video: country + this place', wait: '⏳ Preparing 2 videos: the whole country and {n} close up — precipitation and temperature for 15 days by the hour. I will send them here in 5–7 minutes.', waitP: '⏳ The country video is above. The close-up of «{n}» is on its way, in about 5 minutes.', late: '😔 The video was not ready in time, please try again a little later.', capC: '🎬 {n}: chance of precipitation and temperature for 15 days by the hour', capP: '📍 {n}: chance of precipitation and temperature for 15 days by the hour', busy: '⏳ The video is being prepared, I will send it when it is ready.', fail: '😔 Could not start the video, try again later.' } };
 const pvBtn = (lang, lat, lon) => ({ text: (PVX[lang] || PVX.ru).btn, callback_data: `PV:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}`, style: 'primary' });
+// a place's video already made in the last 12 hours within 10 km (same language) goes out again at once: Telegram keeps the file, nothing is built
+async function pvCached(env, lat, lon, L2) {
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS pvc (id INTEGER PRIMARY KEY AUTOINCREMENT, lat REAL, lon REAL, lang TEXT, fid TEXT, n TEXT, f TEXT, t INTEGER)');
+  const rows = (await env.DB.prepare('SELECT * FROM pvc WHERE lang = ?1 AND t > ?2 AND lat BETWEEN ?3 AND ?4 AND lon BETWEEN ?5 AND ?6')
+    .bind(L2, Date.now() - 12 * 3600e3, lat - 0.1, lat + 0.1, lon - 0.13, lon + 0.13).all()).results || [];
+  let best = null, bd = 10;
+  for (const r of rows) { const d = Math.hypot((r.lat - lat) * 111, (r.lon - lon) * 111 * Math.cos(lat * Math.PI / 180)); if (d <= bd) { bd = d; best = r; } }
+  return best;
+}
 async function placeVideo(env, chat, lang, lat, lon) {
   const X = PVX[lang] || PVX.ru, key = `pv_${chat}`, last = +(await kv(env, key) || 0);
+  const L2 = lang === 'uz' ? 'uz' : 'ru', hit = await pvCached(env, lat, lon, L2).catch(() => null);
+  if (hit) {
+    const r = await tg(env, 'sendVideo', { chat_id: chat, video: hit.fid, supports_streaming: true, caption: X.capP.replace('{n}', hit.n) + (hit.f ? `\n🗺 ${hit.f}` : '') });
+    if (r.ok) return r;
+  }
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS pvq (day TEXT, lat REAL, lon REAL, lang TEXT, n INTEGER, PRIMARY KEY (day, lat, lon, lang))');  // which places people ask for: built ahead every night
+  await env.DB.prepare('INSERT INTO pvq (day, lat, lon, lang, n) VALUES (?1, ?2, ?3, ?4, 1) ON CONFLICT (day, lat, lon, lang) DO UPDATE SET n = n + 1')
+    .bind(todayTZ(), Math.round(lat * 20) / 20, Math.round(lon * 20) / 20, L2).run().catch(() => {});
   if (Date.now() - last < 4 * 60e3) return tg(env, 'sendMessage', { chat_id: chat, text: X.busy });
-  const p = await nearestPlace(env, lat, lon, 25), L2 = lang === 'uz' ? 'uz' : 'ru', coord = `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const p = await nearestPlace(env, lat, lon, 25), coord = `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
   const wi = await whereIs(env, lat, lon, lang), name = wi ? wi.short : p ? pname(p, lang) : coord;
   const full = `${wi ? wi.full : name} · ${coord}`, iso = p ? p[4] : (wi && wi.cc) || '';  // under the video: which place it is, with its district and region
   const cn = iso && NAMES[iso] ? NAMES[iso][lang] : '';
@@ -1899,7 +1916,7 @@ async function placeVideo(env, chat, lang, lat, lon) {
   if (!r.ok) { console.log('place15', r.status, await r.text()); return tg(env, 'sendMessage', { chat_id: chat, text: X.fail }); }
   await setKv(env, key, String(Date.now()));
   const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]').filter(x => x.c !== String(chat) && Date.now() - x.t < 90 * 60e3);
-  pend.push({ c: String(chat), l: lang, n: name, f: full, cn, t: Date.now(), k: cv ? ['place'] : ['country', 'place'] }); await setKv(env, 'pv_pend', JSON.stringify(pend));
+  pend.push({ c: String(chat), l: lang, n: name, f: full, cn, t: Date.now(), k: cv ? ['place'] : ['country', 'place'], lat, lon, L2 }); await setKv(env, 'pv_pend', JSON.stringify(pend));
   return tg(env, 'sendMessage', { chat_id: chat, text: (cv ? X.waitP : X.wait).replace('{n}', name) });
 }
 // the on-demand videos are made by GitHub (place15.yml → branch od-<chat>); every cron run the bot looks for the finished ones and sends them
@@ -1968,9 +1985,32 @@ async function chanTick(env) {
     const r = await ghApi(env, 'actions/workflows/place15.yml/dispatches', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ref: 'main', inputs: { lat: String(lat), lon: String(lon), name, iso: 'UZ', lang: 'uz', chat: tag, only: 'place' } }) });
     if (!r.ok) { console.log('chan prov', name, r.status); break; }
-    pend.push({ c: tag, to: String(CHAN), l: 'uz', n: name, f: `${name}, O‘zbekiston · ${lat.toFixed(2)}, ${lon.toFixed(2)}`, cn: 'O‘zbekiston', t: Date.now(), k: ['place'] });
+    pend.push({ c: tag, to: String(CHAN), l: 'uz', lat, lon, L2: 'uz', n: name, f: `${name}, O‘zbekiston · ${lat.toFixed(2)}, ${lon.toFixed(2)}`, cn: 'O‘zbekiston', t: Date.now(), k: ['place'] });
   }
   await setKv(env, 'pv_pend', JSON.stringify(pend)); await setKv(env, `chan_prov_${day}`, String(k));
+}
+// every night from 03:00: the places asked for at least twice in the last 7 days are built ahead, so in the morning they go out at once;
+// the video is sent silently to the admin to get Telegram's file id, then that message is deleted
+async function prebuildTick(env) {
+  const now = new Date(Date.now() + TZ * 3600e3), h = now.getUTCHours(); if (h < 3 || h >= 5) return;
+  const admin = await kv(env, 'admin'); if (!admin) return;
+  const day = now.toISOString().slice(0, 10), done = +(await kv(env, `pre_${day}`) || 0); if (done >= 30) return;
+  await env.DB.exec('CREATE TABLE IF NOT EXISTS pvq (day TEXT, lat REAL, lon REAL, lang TEXT, n INTEGER, PRIMARY KEY (day, lat, lon, lang))');
+  const since = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const top = (await env.DB.prepare('SELECT lat, lon, lang, SUM(n) AS n FROM pvq WHERE day >= ?1 GROUP BY lat, lon, lang HAVING SUM(n) >= 2 ORDER BY SUM(n) DESC LIMIT 30').bind(since).all()).results || [];
+  const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]').filter(x => Date.now() - x.t < 90 * 60e3);
+  let k = done;
+  for (let n = 0; n < 4 && k < top.length; k++) {
+    const q = top[k];
+    if (await pvCached(env, q.lat, q.lon, q.lang)) continue;  // already made in the last 12 hours
+    const p = await nearestPlace(env, q.lat, q.lon, 25), wi = await whereIs(env, q.lat, q.lon, q.lang).catch(() => null);
+    const name = wi ? wi.short : p ? pname(p, q.lang) : `${q.lat.toFixed(2)}, ${q.lon.toFixed(2)}`, iso = p ? p[4] : (wi && wi.cc) || '', tag = `pre${k}`;
+    const r = await ghApi(env, 'actions/workflows/place15.yml/dispatches', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ref: 'main', inputs: { lat: String(q.lat), lon: String(q.lon), name, iso, lang: q.lang, chat: tag, only: 'place' } }) });
+    if (!r.ok) break;
+    pend.push({ c: tag, to: String(admin), store: 1, l: q.lang, lat: q.lat, lon: q.lon, L2: q.lang, n: name, f: `${wi ? wi.full : name} · ${q.lat.toFixed(2)}, ${q.lon.toFixed(2)}`, t: Date.now(), k: ['place'] }); n++;
+  }
+  await setKv(env, 'pv_pend', JSON.stringify(pend)); await setKv(env, `pre_${day}`, String(k));
 }
 async function pvTick(env) {  // each video is pushed by its own job to od-<chat>-<kind>; the job then pokes /pv, so it goes out at once (the cron is the fallback)
   const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]'); if (!pend.length) return;
@@ -1986,9 +2026,15 @@ async function pvTick(env) {  // each video is pushed by its own job to od-<chat
       if (!ins.meta || !ins.meta.changes) continue;
       const tree = await ghApi(env, `git/trees/${sha}`).then(r => r.ok ? r.json() : null).catch(() => null);
       for (const f of ((tree && tree.tree) || []).map(f => f.path).filter(f => f.endsWith('.mp4'))) {
-        const r = await tg(env, 'sendVideo', { chat_id: x.to || x.c, video: `https://raw.githubusercontent.com/${REPO}/${sha}/${f}`, supports_streaming: true, width: 1920, height: 1080,
+        const r = await tg(env, 'sendVideo', { chat_id: x.to || x.c, disable_notification: !!x.store, video: `https://raw.githubusercontent.com/${REPO}/${sha}/${f}`, supports_streaming: true, width: 1920, height: 1080,
           caption: (f.startsWith('place') ? X.capP.replace('{n}', x.n) + (x.f ? `\n🗺 ${x.f}` : '') : X.capC.replace('{n}', x.cn || x.n)) });
         if (!r.ok) console.log('pv send', x.c, f, r.description);
+        else if (f.startsWith('place') && x.lat != null && r.result && r.result.video) {  // kept for the next request nearby
+          await env.DB.exec('CREATE TABLE IF NOT EXISTS pvc (id INTEGER PRIMARY KEY AUTOINCREMENT, lat REAL, lon REAL, lang TEXT, fid TEXT, n TEXT, f TEXT, t INTEGER)');
+          await env.DB.prepare('INSERT INTO pvc (lat, lon, lang, fid, n, f, t) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)').bind(x.lat, x.lon, x.L2 || 'ru', r.result.video.file_id, x.n, x.f || '', Date.now()).run();
+          await env.DB.prepare('DELETE FROM pvc WHERE t < ?1').bind(Date.now() - 3 * 864e5).run();
+        }
+        if (x.store && r.ok) await tg(env, 'deleteMessage', { chat_id: x.to, message_id: r.result.message_id });
       }
     }
     if (left.length && Date.now() - x.t < 45 * 60e3) { keep.push({ ...x, k: left }); continue; }
