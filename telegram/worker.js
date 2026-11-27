@@ -534,10 +534,39 @@ async function sendRisk(env, chat, lang, only) {  // ⚠️ the 15-day dangerous
   return tg(env, 'sendVideo', { chat_id: chat, video: `${url}?v=${Math.floor(Date.now() / 1800e3)}`, supports_streaming: true, width: 1920, height: 1080, parse_mode: 'HTML',
     caption: `${X.risk} · ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b>\n${{ ru: 'Вероятности ансамбля ECMWF: ливни, снегопады, сильный ветер, грозы, мороз и жара', uz: 'ECMWF ansambl ehtimollari: jala, qor, kuchli shamol, momaqaldiroq, sovuq va jazirama', en: 'ECMWF ensemble probabilities: downpours, snowfall, strong wind, thunderstorms, frost and heat' }[lang]}` });
 }
+// the eight newer videos of Uzbekistan (tools/extra_videos.py → branch "extra"): buttons, sending, and the channel's schedule (notif secs x_<name>)
+const XVN = ['pass', 'frost', 'dust', 'models', 'short', 'week', 'snow', 'sky'];
+const XVX = {
+  ru: { pass: ['🏔 Горные дороги (Камчик)', 'Горные дороги на 3 дня по часам: снег, гололёд, туман, ветер · Камчик, Тахтакарача, дорога на Чимган'], frost: ['🥶 Заморозки на 7 ночей', 'Заморозки на 7 ночей: где ниже 0° — берегите сады и теплицы'],
+    dust: ['🌪 Ветер и пыль', 'Ветер и пыль на 3 дня (CAMS)'], models: ['🧮 Модели спорят', 'Как 10 моделей мира видят Ташкент на 7 дней'], short: ['📱 Завтра по областям (вертикальное)', 'Завтра в 14 областях'],
+    week: ['📊 Итоги недели', 'Итоги недели: осадки, самое тёплое и холодное место'], snow: ['❄️ Снег в горах', 'Снег в горах: неделю назад и сейчас, прогноз высоты снега'], sky: ['🌌 Ночное небо', 'Ночное небо: где ясно, закат, восход, Луна'],
+    menu: '🆕 Новые видео', none: 'Это видео ещё готовится, попробуйте позже.' },
+  uz: { pass: ['🏔 Tog‘ yo‘llari (Qamchiq)', 'Tog‘ yo‘llari 3 kun soatma-soat: qor, muz, tuman, shamol · Qamchiq, Taxtaqoracha, Chimyon yo‘li'], frost: ['🥶 Tungi sovuq · 7 kun', 'Tungi sovuq 7 kunga: 0° dan past joylar — bog‘lar va issiqxonalarni asrang'],
+    dust: ['🌪 Shamol va chang', 'Shamol va chang 3 kunga (CAMS)'], models: ['🧮 Modellar bahslashmoqda', '10 ta jahon modeli Toshkentni 7 kunga qanday ko‘rmoqda'], short: ['📱 Ertaga viloyatlarda (vertikal)', 'Ertaga 14 viloyatda'],
+    week: ['📊 Hafta yakuni', 'Hafta yakuni: yog‘in, eng issiq va eng sovuq joy'], snow: ['❄️ Tog‘lardagi qor', 'Tog‘lardagi qor: bir hafta oldin va hozir, qor qalinligi prognozi'], sky: ['🌌 Tungi osmon', 'Tungi osmon: qayer ochiq, quyosh botishi va chiqishi, Oy'],
+    menu: '🆕 Yangi videolar', none: 'Bu video hali tayyorlanmoqda, keyinroq urinib ko‘ring.' } };
+XVX.en = XVX.ru;
+async function sendExtra(env, chat, lang, name, sched = false) {
+  const wd = new Date(Date.now() + TZ * 3600e3).getUTCDay();
+  if (sched && ((name === 'week' && wd !== 0) || (name === 'snow' && wd !== 6))) return { ok: true, skipped: true };  // the weekly ones: Sunday and Saturday
+  const X = XVX[lang] || XVX.ru, L = lang === 'uz' ? 'uz' : 'ru';
+  const b = await ghApi(env, 'branches/extra').then(r => r.ok ? r.json() : null).catch(() => null), sha = b && b.commit && b.commit.sha;
+  if (!sha) return sched ? { ok: false } : tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  const url = `https://raw.githubusercontent.com/${REPO}/${sha}/${name}_${L}.mp4`;
+  if (!(await fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false))) return sched ? { ok: false } : tg(env, 'sendMessage', { chat_id: chat, text: X.none });
+  if (!sched) await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
+  const vert = name === 'short';
+  return tg(env, 'sendVideo', { chat_id: chat, video: url, supports_streaming: true, width: vert ? 1080 : 1920, height: vert ? 1920 : 1080, caption: `🎬 ${FLAG.UZ} <b>${X[name][1]}</b>`, parse_mode: 'HTML' });
+}
+async function extraMenu(env, chat, lang) {
+  const X = XVX[lang] || XVX.ru, rows = [];
+  for (let i = 0; i < XVN.length; i += 2) rows.push(XVN.slice(i, i + 2).map(n => ({ text: X[n][0], callback_data: `XV:${lang}:${n}` })));
+  return tg(env, 'sendMessage', { chat_id: chat, text: `${X.menu} · ${FLAG.UZ} ${NAMES.UZ[lang]}`, reply_markup: { inline_keyboard: rows } });
+}
 async function videoMenu(env, chat, lang, rid, u) {  // all the videos as one menu: two big buttons a row
   const X = VMX[lang] || VMX.ru, b = (t, k) => ({ text: X[t], callback_data: `${k}:${lang}:${rid}` }), pl = u && u.place ? JSON.parse(u.place) : null;
   const rows = [[b('prob', 'VP'), b('temp', 'TV')], [b('cloud', 'CV'), ...(rid === 'UZ' ? [b('moist', 'MV')] : [])]];
-  if (rid === 'UZ') rows.push([b('weeks', 'WV'), b('sat', 'ST')], [b('risk', 'RV'), b('air', 'AQV')], [{ text: CAMB[lang] || CAMB.ru, callback_data: `CAM:${lang}:UZ` }]);
+  if (rid === 'UZ') rows.push([b('weeks', 'WV'), b('sat', 'ST')], [b('risk', 'RV'), b('air', 'AQV')], [{ text: (XVX[lang] || XVX.ru).menu, callback_data: `XM:${lang}:UZ` }], [{ text: CAMB[lang] || CAMB.ru, callback_data: `CAM:${lang}:UZ` }]);
   if (pl) rows[rows.length - 1].push({ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place });
   return tg(env, 'sendMessage', { chat_id: chat, text: X.h.replace('{n}', `${FLAG[rid] || ''} ${NAMES[rid][lang]}`), parse_mode: 'HTML', reply_markup: { inline_keyboard: rows.filter(r => r.length) } });
 }
@@ -776,7 +805,8 @@ async function notifTick(env, small = false) {
       else if (n.sec === 'hourly') r = await sendHourly(env, n.chat_id, lang, rid);
       else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
       else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
-      else if (n.sec === 'cam' || n.sec === 'cam2') r = await sendCam(env, n.chat_id, lang);  // the Amirsoy cameras (the channel: 09:00 and 12:00)
+      else if (n.sec === 'cam' || n.sec === 'cam2') r = await sendCam(env, n.chat_id, lang);
+      else if (n.sec.startsWith('x_')) r = await sendExtra(env, n.chat_id, lang, n.sec.slice(2), true);  // the newer videos (the channel's schedule)  // the Amirsoy cameras (the channel: 09:00 and 12:00)
       else if (n.sec === 'air') r = await sendAir(env, n.chat_id, lang, rid);
       else if (n.sec === 'traj') r = await sendTrajLite(env, n.chat_id, lang, TRJ.has(rid) ? rid : 'UZ');
     } catch (e) {
@@ -2370,6 +2400,8 @@ async function handle(up, env) {
   if (kind === 'CY') return sendCountry(env, chat.id, lang, id);
   if (kind === 'CR' && NAMES[id]) { await saveUser(env, chat.id, { lang, region: id }); return tg(env, 'sendMessage', { chat_id: chat.id, text: `${FLAG[id] || '🌍'} <b>${NAMES[id][lang]}</b> · ${T[lang].menu}`, parse_mode: 'HTML', reply_markup: replyKb(env, lang, id) }); }
   if (kind === 'WK') return weekDays(env, chat.id, lang, id);
+  if (kind === 'XM') return extraMenu(env, chat.id, lang);
+  if (kind === 'XV' && XVN.includes(id)) return sendExtra(env, chat.id, lang, id);
   if (kind === 'ST') {  // the satellite in true colour: the latest clear pass as a picture, the last two days' passes as a video (tools/sat_true.py)
     const L = lang === 'uz' ? 'uz' : 'ru', v = Math.floor(Date.now() / 600e3), cap = `🛰 ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b> · ${(VHX[lang] || VHX.ru).sat}`;
     const sb = await ghApi(env, 'branches/sattrue').then(r => r.ok ? r.json() : null).catch(() => null), ssha = sb && sb.commit && sb.commit.sha;  // the newest video, not a cached one

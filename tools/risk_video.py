@@ -132,8 +132,9 @@ def draw(job):
                     bbox=dict(boxstyle='round,pad=0.3,rounding_size=0.7', fc='#f1f3f5', ec=PV.ORANGE if main else 'none', lw=2.0 if main else 0, alpha=0.78))
     PV.brand(ax, 0.005, 0.01, X['src'], transform=ax.transAxes, ha='left', va='bottom', fontsize=10, color=PV.FAINT, zorder=9)
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=PV.NAVY, ec='none', zorder=-1))
-    fig.text(0.016, 0.953, 'OSMON', fontsize=22, fontweight='bold', color=PV.ORANGE, va='center')
-    fig.text(0.093, 0.953, X['title'], fontsize=22, fontweight='bold', color='white', va='center')
+    PV.mark(fig, 0.016 + 22 / 1920, 0.953, 44, ink='#ffffff', rings=(20, 32, 44))  # the channel's logo
+    fig.text(0.016 + 50 / 1920, 0.953, 'osmon', fontsize=22, fontweight='bold', color='#ffffff', va='center')
+    fig.text(0.12, 0.953, X['title'], fontsize=22, fontweight='bold', color='white', va='center')
     fig.text(0.984, 0.968, fr['when'], fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
     fig.text(0.984, 0.928, X['tz'], fontsize=14, color='#a9bdd6', ha='right', va='center')
     fig.patches.append(Rectangle((0, 0.903), 1, 0.004, transform=fig.transFigure, fc='#2c3e57', ec='none', zorder=0))
@@ -160,12 +161,14 @@ def draw(job):
     for sp in bx.spines.values(): sp.set_visible(False)
     if fr.get('card') == 'intro':
         a = fr['a']; fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.86 * a, ec='none', zorder=30))
-        fig.text(0.5, 0.64, 'OSMON', fontsize=44, fontweight='bold', color=PV.ORANGE, ha='center', va='center', alpha=a, zorder=31)
+        fig.text(0.5, 0.64, 'osmon', fontsize=44, fontweight='bold', color=PV.NAVY, ha='center', va='center', alpha=a, zorder=31)
+        if a > 0.5: PV.mark(fig, 0.5, 0.78, 105, ink=PV.NAVY, rings=(20, 32, 44), zorder=31)
         fig.text(0.5, 0.56, X['intro1'], fontsize=40, fontweight='bold', color=PV.INK, ha='center', va='center', alpha=a, zorder=31)
         fig.text(0.5, 0.49, X['intro2'], fontsize=26, color=PV.MUTED, ha='center', va='center', alpha=a, zorder=31)
     if fr.get('card') == 'end':
         fig.patches.append(Rectangle((0, 0.205), 1, 0.701, transform=fig.transFigure, fc='white', alpha=0.9, ec='none', zorder=30))
-        fig.text(0.5, 0.62, 'OSMON', fontsize=44, fontweight='bold', color=PV.ORANGE, ha='center', va='center', zorder=31)
+        fig.text(0.5, 0.62, 'osmon', fontsize=44, fontweight='bold', color=PV.NAVY, ha='center', va='center', zorder=31)
+        PV.mark(fig, 0.5, 0.76, 105, ink=PV.NAVY, rings=(20, 32, 44), zorder=31)
         fig.text(0.5, 0.54, X['end1'], fontsize=30, fontweight='bold', color=PV.INK, ha='center', va='center', zorder=31)
         fig.text(0.5, 0.47, X['end2'], fontsize=26, color=PV.MUTED, ha='center', va='center', zorder=31)
     fig.savefig(pathlib.Path(C['dir'][lang]) / f'{i:04d}.png', dpi=DPI, facecolor='white'); plt.close(fig)

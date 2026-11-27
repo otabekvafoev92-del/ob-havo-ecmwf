@@ -293,7 +293,7 @@ def draw(job):
     fig.patches.append(Rectangle((0, 0.906), 1, 0.094, transform=fig.transFigure, fc=NAVY, ec='none', zorder=-1))
     from brand import mark; mark(fig, 0.016 + 22 / W, 0.953, 44, ink='#ffffff', rings=(20, 32, 44))  # the channel's logo
     fig.text(0.016 + 50 / W, 0.953, 'osmon', fontsize=22, fontweight='bold', color='#ffffff', va='center')
-    fig.text(0.093, 0.953, (C['title'][lang] if C.get('title') else X['title']).replace(X['title'], X['title_t'] if TM else X['title_c'] if CM else X['title']), fontsize=22, fontweight='bold', color='white', va='center')
+    fig.text(0.12, 0.953, (C['title'][lang] if C.get('title') else X['title']).replace(X['title'], X['title_t'] if TM else X['title_c'] if CM else X['title']), fontsize=22, fontweight='bold', color='white', va='center')
     fig.text(0.984, 0.968, fr['when'], fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
     fig.text(0.984, 0.928, (C['tzl'][lang] if C.get('tzl') else X['tz']) + ' · ' + fr['day'], fontsize=14, color='#a9bdd6', ha='right', va='center')
     # progress over the 15 days

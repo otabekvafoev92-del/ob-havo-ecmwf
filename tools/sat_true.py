@@ -119,7 +119,7 @@ def draw(job):
     PV.mark(fig, 0.016 + 22 / W, 0.953, 44, ink='#ffffff', rings=(20, 32, 44))  # the channel's logo
     fig.text(0.016 + 50 / W, 0.953, 'osmon', fontsize=22, fontweight='bold', color='white', va='center')
     d = meta[0]; h = meta[3]
-    fig.text(0.093, 0.953, X['title_live' if live else 'title'], fontsize=22, fontweight='bold', color='white', va='center')
+    fig.text(230 / W, 0.953, X['title_live' if live else 'title'], fontsize=22, fontweight='bold', color='white', va='center')
     if live:
         lt = meta[5]
         fig.text(0.984, 0.968, f"{X['wd'][lt.weekday()]} {lt:%d.%m} · {lt:%H:%M}", fontsize=24, fontweight='bold', color='#ffd29c', ha='right', va='center')
