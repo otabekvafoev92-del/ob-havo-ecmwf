@@ -1,7 +1,8 @@
 """Check that the GEPS reader in prob/fetch.py works: members, values and timing for a few lead times (out.txt on the probe branch)."""
-import subprocess, sys, site, time, datetime as dt
-subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '--user', 'numpy', 'scipy', 'eccodes'], check=True)
-site.addsitedir(site.getusersitepackages())
+import subprocess, sys
+subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '--user', 'numpy', 'scipy', 'eccodes', 'requests'], check=True)
+code = r'''
+import sys, time, datetime as dt
 sys.path.insert(0, '../prob'); sys.path.insert(0, '..')
 import numpy as np
 import fetch as F
@@ -12,3 +13,7 @@ for s, w in [(6, 6), (24, 6), (195, 3), (198, 6), (360, 6)]:
     t = time.time(); a = G.amounts(s, w)
     out.append(f'+{s}h/{w}: ' + ('none' if a is None else f'{len(a)} members, max {max(float(x[0].max()) for x in a):.1f} mm, mean {np.mean([x[0].mean() for x in a]):.3f}') + f' ({time.time() - t:.1f} s)')
 open('out.txt', 'w').write('\n'.join(out) + '\n'); print('\n'.join(out))
+'''
+r = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True)
+if r.returncode: open('out.txt', 'w').write(r.stdout + r.stderr[-3000:])
+print(r.stdout, r.stderr[-3000:])
