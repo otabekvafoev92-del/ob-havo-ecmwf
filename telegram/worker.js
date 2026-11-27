@@ -535,7 +535,7 @@ async function sendRisk(env, chat, lang, only) {  // ⚠️ the 15-day dangerous
     caption: `${X.risk} · ${FLAG.UZ} <b>${NAMES.UZ[lang]}</b>\n${{ ru: 'Вероятности ансамбля ECMWF: ливни, снегопады, сильный ветер, грозы, мороз и жара', uz: 'ECMWF ansambl ehtimollari: jala, qor, kuchli shamol, momaqaldiroq, sovuq va jazirama', en: 'ECMWF ensemble probabilities: downpours, snowfall, strong wind, thunderstorms, frost and heat' }[lang]}` });
 }
 // the eight newer videos of Uzbekistan (tools/extra_videos.py → branch "extra"): buttons, sending, and the channel's schedule (notif secs x_<name>)
-const XVN = ['short'];  // the others are being remade as animated scenes (the chart versions were not good enough)
+const XVN = [];  // the newer videos are the channel's own (@osmon_obhavo): not in the bot's menu
 const XVN_ALL = ['pass', 'frost', 'dust', 'models', 'short', 'week', 'snow', 'sky'];
 const XVX = {
   ru: { pass: ['🏔 Горные дороги (Камчик)', 'Горные дороги на 3 дня по часам: снег, гололёд, туман, ветер · Камчик, Тахтакарача, дорога на Чимган'], frost: ['🥶 Заморозки на 7 ночей', 'Заморозки на 7 ночей: где ниже 0° — берегите сады и теплицы'],
@@ -559,6 +559,16 @@ async function sendExtra(env, chat, lang, name, sched = false) {
   const vert = name === 'short';
   return tg(env, 'sendVideo', { chat_id: chat, video: url, supports_streaming: true, width: vert ? 1080 : 1920, height: vert ? 1920 : 1080, caption: `🎬 ${FLAG.UZ} <b>${X[name][1]}</b>`, parse_mode: 'HTML' });
 }
+// the channel's own: a live animation of a province capital (tools/city_live.py → branch city-<k>); Tashkent every morning, two more cities a day in turn
+const CITYN = [['Toshkent', 'Ташкент'], ['Nurafshon', 'Нурафшан'], ['Andijon', 'Андижан'], ['Farg‘ona', 'Фергана'], ['Qo‘qon', 'Коканд'], ['Namangan', 'Наманган'], ['Guliston', 'Гулистан'],
+  ['Jizzax', 'Джизак'], ['Samarqand', 'Самарканд'], ['Qarshi', 'Карши'], ['Termiz', 'Термез'], ['Buxoro', 'Бухара'], ['Navoiy', 'Навои'], ['Urganch', 'Ургенч'], ['Nukus', 'Нукус']];
+async function sendCity(env, chat, lang, k) {
+  const L = lang === 'uz' ? 'uz' : 'ru', b = await ghApi(env, `branches/city-${k}`).then(r => r.ok ? r.json() : null).catch(() => null), sha = b && b.commit && b.commit.sha;
+  if (!sha) return { ok: false };
+  const nm = CITYN[k][L === 'uz' ? 0 : 1], cap = L === 'uz' ? `🏙 <b>${nm}</b> · shahar ob-havosi jonli · 48 soat\nQuyosh, bulutlar, yomg‘ir va qor — soatma-soat` : `🏙 <b>${nm}</b> · погода в городе вживую · 48 часов\nСолнце, облака, дождь и снег — по часам`;
+  return tg(env, 'sendVideo', { chat_id: chat, video: `https://raw.githubusercontent.com/${REPO}/${sha}/city${k}_${L}.mp4`, supports_streaming: true, width: 1920, height: 1080, caption: cap, parse_mode: 'HTML' });
+}
+function cityOfDay(n) { const d = Math.floor((Date.now() + TZ * 3600e3) / 864e5); return 1 + ((d * 2 + n) % 14); }
 async function extraMenu(env, chat, lang) {
   const X = XVX[lang] || XVX.ru, rows = [];
   for (let i = 0; i < XVN.length; i += 2) rows.push(XVN.slice(i, i + 2).map(n => ({ text: X[n][0], callback_data: `XV:${lang}:${n}` })));
@@ -567,7 +577,7 @@ async function extraMenu(env, chat, lang) {
 async function videoMenu(env, chat, lang, rid, u) {  // all the videos as one menu: two big buttons a row
   const X = VMX[lang] || VMX.ru, b = (t, k) => ({ text: X[t], callback_data: `${k}:${lang}:${rid}` }), pl = u && u.place ? JSON.parse(u.place) : null;
   const rows = [[b('prob', 'VP'), b('temp', 'TV')], [b('cloud', 'CV'), ...(rid === 'UZ' ? [b('moist', 'MV')] : [])]];
-  if (rid === 'UZ') rows.push([b('weeks', 'WV'), b('sat', 'ST')], [b('risk', 'RV'), b('air', 'AQV')], [{ text: (XVX[lang] || XVX.ru).menu, callback_data: `XM:${lang}:UZ` }], [{ text: CAMB[lang] || CAMB.ru, callback_data: `CAM:${lang}:UZ` }]);
+  if (rid === 'UZ') rows.push([b('weeks', 'WV'), b('sat', 'ST')], [b('risk', 'RV'), b('air', 'AQV')], ...(XVN.length ? [[{ text: (XVX[lang] || XVX.ru).menu, callback_data: `XM:${lang}:UZ` }]] : []), [{ text: CAMB[lang] || CAMB.ru, callback_data: `CAM:${lang}:UZ` }]);
   if (pl) rows[rows.length - 1].push({ ...pvBtn(lang, +pl[0], +pl[1]), text: X.place });
   return tg(env, 'sendMessage', { chat_id: chat, text: X.h.replace('{n}', `${FLAG[rid] || ''} ${NAMES[rid][lang]}`), parse_mode: 'HTML', reply_markup: { inline_keyboard: rows.filter(r => r.length) } });
 }
@@ -807,7 +817,9 @@ async function notifTick(env, small = false) {
       else if (n.sec === 'outlook') r = await sendOutlookPart(env, n.chat_id, lang, 'w1');
       else if (n.sec === 'mtn') r = await sendMountains(env, n.chat_id, lang);
       else if (n.sec === 'cam' || n.sec === 'cam2') r = await sendCam(env, n.chat_id, lang);
-      else if (n.sec.startsWith('x_')) r = await sendExtra(env, n.chat_id, lang, n.sec.slice(2), true);  // the newer videos (the channel's schedule)  // the Amirsoy cameras (the channel: 09:00 and 12:00)
+      else if (n.sec.startsWith('x_')) r = await sendExtra(env, n.chat_id, lang, n.sec.slice(2), true);
+      else if (n.sec === 'c_tash') r = await sendCity(env, n.chat_id, lang, 0);  // the channel's own city animations
+      else if (n.sec === 'c_r1' || n.sec === 'c_r2') r = await sendCity(env, n.chat_id, lang, cityOfDay(n.sec === 'c_r1' ? 0 : 1));  // the newer videos (the channel's schedule)  // the Amirsoy cameras (the channel: 09:00 and 12:00)
       else if (n.sec === 'air') r = await sendAir(env, n.chat_id, lang, rid);
       else if (n.sec === 'traj') r = await sendTrajLite(env, n.chat_id, lang, TRJ.has(rid) ? rid : 'UZ');
     } catch (e) {
