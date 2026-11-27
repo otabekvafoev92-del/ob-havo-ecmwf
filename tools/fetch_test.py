@@ -1,6 +1,7 @@
 """Short run of prob/fetch.py (12 h) to check the new models: ICON-EPS, IFS 0.1°, UK Met Office."""
 import subprocess, sys, os
 subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'eccodes', 'numpy', 'scipy', 'netCDF4'], check=True)
+import site, importlib; site.addsitedir(site.getusersitepackages()); importlib.invalidate_caches()
 r = subprocess.run([sys.executable, '-u', '../prob/fetch.py', 'p.npz', '--max-step', '12', '--glob', '', '--wx', ''], capture_output=True, text=True)
 txt = r.stdout[-6000:] + '\nERR\n' + r.stderr[-3000:]
 try:

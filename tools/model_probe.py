@@ -1,6 +1,7 @@
 """UKMO accumulation files per step, and one file's variables."""
 import subprocess, sys, re, requests
 subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'netCDF4', 'numpy'], check=True)
+import site, importlib; site.addsitedir(site.getusersitepackages()); importlib.invalidate_caches()
 import netCDF4, numpy as np
 S = requests.Session(); out = []
 def P(*a): s = ' '.join(str(x) for x in a); print(s, flush=True); out.append(s)
