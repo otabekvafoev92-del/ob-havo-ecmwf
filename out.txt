@@ -1,0 +1,6 @@
+run 2026-11-27 00:00:00 url https://dd.weather.gc.ca/20261127/WXO-DD/ensemble/geps/grib2/raw/00/024/CMC_geps-raw_APCP_SFC_0_latlon0p5x0p5_2026112700_P024_allmbrs.grib2
++6h/6: 21 members, max 61.2 mm, mean 0.469 (1.1 s)
++24h/6: 21 members, max 83.1 mm, mean 0.461 (1.7 s)
++195h/3: none (0.0 s)
++198h/6: 21 members, max 98.9 mm, mean 0.551 (2.0 s)
++360h/6: 21 members, max 112.1 mm, mean 0.502 (2.0 s)
