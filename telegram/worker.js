@@ -1370,6 +1370,26 @@ async function nearestPlace(env, lat, lon, km = 35) {
   for (const p of await places(env)) { const d = Math.hypot((p[5] - lat) * 111, (p[6] - lon) * 111 * Math.cos(lat * Math.PI / 180)); if (d < bd) { bd = d; best = p; } }
   return best;
 }
+// what a point on the map is: the village or town, its district and region (OpenStreetMap), else the nearest known place and how far
+async function whereIs(env, lat, lon, lang) {
+  const L = lang === 'uz' ? 'uz,ru' : lang === 'en' ? 'en' : 'ru';
+  try {
+    const j = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1&accept-language=${L}`,
+      { headers: { 'user-agent': 'OsmonWeatherBot/1.0 (t.me/ObHavo_ECMWF_bot)' }, signal: AbortSignal.timeout(4000) }).then(r => r.ok ? r.json() : null);
+    const a = j && j.address;
+    if (a) {
+      const spot = a.village || a.town || a.city || a.hamlet || a.suburb || a.municipality || a.neighbourhood || '';
+      const dist = a.county || a.city_district || a.district || '', reg = a.state || a.region || '';
+      const parts = [spot, dist, reg].filter((v, i, A) => v && A.indexOf(v) === i);
+      if (parts.length) return { short: spot || dist || reg, full: parts.join(', '), cc: (a.country_code || '').toUpperCase() };
+    }
+  } catch (e) { console.log('whereIs', e && e.message); }
+  const p = await nearestPlace(env, lat, lon, 80);
+  if (p) { const km = Math.round(Math.hypot((p[5] - lat) * 111, (p[6] - lon) * 111 * Math.cos(lat * Math.PI / 180))), nm = pname(p, lang);
+    const near = km < 3 ? nm : ({ ru: `${km} км от ${nm}`, uz: `${nm}dan ${km} km`, en: `${km} km from ${nm}` }[lang] || `${km} км от ${nm}`);
+    return { short: km < 3 ? nm : near, full: near, cc: p[4] }; }
+  return null;
+}
 // the weather right now (Open-Meteo current conditions: the latest model analysis and nowcast, every 15 minutes)
 const WMO = {
   uz: { 0: 'ochiq osmon', 1: 'asosan ochiq', 2: 'qisman bulutli', 3: 'bulutli', 45: 'tuman', 48: 'qirovli tuman', 51: 'mayda yomg‘ir', 53: 'mayda yomg‘ir', 55: 'mayda yomg‘ir', 56: 'muzlovchi yomg‘ir', 57: 'muzlovchi yomg‘ir', 61: 'yengil yomg‘ir', 63: 'yomg‘ir', 65: 'kuchli yomg‘ir', 66: 'muzlovchi yomg‘ir', 67: 'muzlovchi yomg‘ir', 71: 'yengil qor', 73: 'qor', 75: 'kuchli qor', 77: 'qor donalari', 80: 'jala', 81: 'jala', 82: 'kuchli jala', 85: 'qor', 86: 'kuchli qor', 95: 'momaqaldiroq', 96: 'do‘lli momaqaldiroq', 99: 'do‘lli momaqaldiroq' },
@@ -1768,17 +1788,19 @@ const pvBtn = (lang, lat, lon) => ({ text: (PVX[lang] || PVX.ru).btn, callback_d
 async function placeVideo(env, chat, lang, lat, lon) {
   const X = PVX[lang] || PVX.ru, key = `pv_${chat}`, last = +(await kv(env, key) || 0);
   if (Date.now() - last < 4 * 60e3) return tg(env, 'sendMessage', { chat_id: chat, text: X.busy });
-  const p = await nearestPlace(env, lat, lon, 25), name = p ? pname(p, lang) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`, L2 = lang === 'uz' ? 'uz' : 'ru';
-  const cn = p && NAMES[p[4]] ? NAMES[p[4]][lang] : '';
+  const p = await nearestPlace(env, lat, lon, 25), L2 = lang === 'uz' ? 'uz' : 'ru', coord = `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const wi = await whereIs(env, lat, lon, lang), name = wi ? wi.short : p ? pname(p, lang) : coord;
+  const full = `${wi ? wi.full : name} · ${coord}`, iso = p ? p[4] : (wi && wi.cc) || '';  // under the video: which place it is, with its district and region
+  const cn = iso && NAMES[iso] ? NAMES[iso][lang] : '';
   // the country's video is built every run anyway: when it is there, it goes out now and only the close-up is made
-  const cv = p ? await vidUrl(p[4], L2) : null;
+  const cv = iso ? await vidUrl(iso, L2) : null;
   if (cv) await tg(env, 'sendVideo', { chat_id: chat, video: cv, supports_streaming: true, width: 1920, height: 1080, caption: X.capC.replace('{n}', cn || name) });
   const r = await ghApi(env, 'actions/workflows/place15.yml/dispatches', { method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ ref: 'main', inputs: { lat: String(lat), lon: String(lon), name, iso: p ? p[4] : '', lang: L2, chat: String(chat), only: cv ? 'place' : '' } }) });
+    body: JSON.stringify({ ref: 'main', inputs: { lat: String(lat), lon: String(lon), name, iso, lang: L2, chat: String(chat), only: cv ? 'place' : '' } }) });
   if (!r.ok) { console.log('place15', r.status, await r.text()); return tg(env, 'sendMessage', { chat_id: chat, text: X.fail }); }
   await setKv(env, key, String(Date.now()));
   const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]').filter(x => x.c !== String(chat) && Date.now() - x.t < 90 * 60e3);
-  pend.push({ c: String(chat), l: lang, n: name, cn, t: Date.now(), k: cv ? ['place'] : ['country', 'place'] }); await setKv(env, 'pv_pend', JSON.stringify(pend));
+  pend.push({ c: String(chat), l: lang, n: name, f: full, cn, t: Date.now(), k: cv ? ['place'] : ['country', 'place'] }); await setKv(env, 'pv_pend', JSON.stringify(pend));
   return tg(env, 'sendMessage', { chat_id: chat, text: (cv ? X.waitP : X.wait).replace('{n}', name) });
 }
 // the on-demand videos are made by GitHub (place15.yml → branch od-<chat>); every cron run the bot looks for the finished ones and sends them
@@ -1820,7 +1842,7 @@ async function pvTick(env) {  // each video is pushed by its own job to od-<chat
       const tree = await ghApi(env, `git/trees/${sha}`).then(r => r.ok ? r.json() : null).catch(() => null);
       for (const f of ((tree && tree.tree) || []).map(f => f.path).filter(f => f.endsWith('.mp4'))) {
         const r = await tg(env, 'sendVideo', { chat_id: x.c, video: `https://raw.githubusercontent.com/${REPO}/${sha}/${f}`, supports_streaming: true, width: 1920, height: 1080,
-          caption: (f.startsWith('place') ? X.capP.replace('{n}', x.n) : X.capC.replace('{n}', x.cn || x.n)) });
+          caption: (f.startsWith('place') ? X.capP.replace('{n}', x.n) + (x.f ? `\n🗺 ${x.f}` : '') : X.capC.replace('{n}', x.cn || x.n)) });
         if (!r.ok) console.log('pv send', x.c, f, r.description);
       }
     }
