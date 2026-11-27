@@ -1162,8 +1162,9 @@ async function subMenu(env, chat, lang, rid, which, u) {
   const CAP = { UZ: [41.311, 69.279], KZ: [51.169, 71.449], KG: [42.875, 74.612], TJ: [38.56, 68.774], TM: [37.96, 58.326], AZ: [40.41, 49.867], AM: [40.177, 44.513], BY: [53.9, 27.567], MD: [47.011, 28.863], RU: [55.756, 37.617], TR: [39.92, 32.854] };
   const pl = u && u.place ? JSON.parse(u.place) : CAP[rid] || CAP.UZ;
   let rows;
+  const tr = `${base(env)}/live.html?r=UZ&l=${lang}&lat=41.311&lon=69.279&traffic=1`, trB = { text: { ru: '🚗 Пробки на карте (Яндекс)', uz: '🚗 Tirbandliklar xaritada (Yandex)', en: '🚗 Traffic on the map (Yandex)' }[lang] || '🚗 Пробки', ...(chat > 0 ? { web_app: { url: tr } } : { url: tr }) };
   if (which === 'uzb') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, { ...phBtn(lang, +pl[0], +pl[1]), text: M.photo }], [a('regions'), a('alerts')],
-    [{ text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }], [{ text: R.fog, callback_data: `FG:${lang}:UZ` }, { text: M.remind, callback_data: `NS:${lang}:days` }]];
+    [{ text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }], [{ text: R.fog, callback_data: `FG:${lang}:UZ` }, { text: M.remind, callback_data: `NS:${lang}:days` }], [trB]];
   else if (which === 'fc') rows = [[a('now'), a('days')], [{ text: M.week, callback_data: `MA:${lang}:wkpick` }, phBtn(lang, +pl[0], +pl[1])], [a('alerts'), { text: WQB[lang] || WQB.ru, callback_data: `WQ:${lang}` }],
     [{ text: M.remind, callback_data: `NS:${lang}:days` }], [{ text: R.fog, callback_data: `FG:${lang}:${rid}` }, { text: '⏰ ' + R.fog.replace(/^\S+\s/, ''), callback_data: `NS:${lang}:fog` }]];
   else if (which === 'mtnair') rows = [[a('mtn'), a('air')], [a('alerts')]];
