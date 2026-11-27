@@ -1,8 +1,7 @@
 name: Phone videos (stations 6 h + ECMWF 12 h / 3 days)
 # vertical videos for the bot (tools/ecmwf_video.py): what the stations reported over the last 6 hours, then the ECMWF forecast for 12 hours and 3 days; kept on the "ev" branch
+# the bot's button for these was removed (2026-11-27): no schedule any more, so the machines are free for the other videos
 on:
-  schedule:
-    - cron: '58 0,3,6,9,12,15,18,21 * * *'
   workflow_dispatch:
 permissions: {contents: write}
 concurrency: {group: ev, cancel-in-progress: false}
