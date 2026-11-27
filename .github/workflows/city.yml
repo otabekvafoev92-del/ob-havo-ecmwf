@@ -1,0 +1,34 @@
+name: City live videos
+# a live weather animation for each province's capital (tools/city_live.py): the city from above (boundary, buildings) and its skyline under
+# the coming 48 hours' sky; one job per city side by side, each kept on its own branch city-<k>; the bot sends them from there.
+on:
+  schedule:
+    - cron: '41 0 * * *'    # 05:41 Tashkent
+    - cron: '41 12 * * *'   # 17:41 Tashkent
+  workflow_dispatch:
+    inputs:
+      cities: {required: false, default: '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]'}
+permissions: {contents: write}
+jobs:
+  c:
+    strategy:
+      fail-fast: false
+      matrix:
+        k: ${{ fromJSON(inputs.cities || '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/cache@v4
+        with: {path: ~/.cache/pip, key: pip-city-v1}
+      - run: |
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || { sudo apt-get update -qq >/dev/null; sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; }
+          pip install -q numpy scipy matplotlib pillow requests qrcode pyproj
+          sleep $(( ${{ matrix.k }} * 4 ))   # OpenStreetMap's servers: one city at a time
+          timeout 2100 python -u -W ignore tools/city_live.py cv ${{ matrix.k }} uz,ru
+          cd cv && git init -q && git checkout -q -b city-${{ matrix.k }} && git add -A \
+            && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "city ${{ matrix.k }} $(date -u +%F' '%H:%M)" \
+            && git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" city-${{ matrix.k }}

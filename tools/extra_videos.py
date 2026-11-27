@@ -31,7 +31,7 @@ TZ = 'Asia/Tashkent'
 BOX = (55.5, 73.6, 36.9, 45.9)  # Uzbekistan and around: lon0, lon1, lat0, lat1
 COSL = math.cos(math.radians(41.4))
 PROV = [('Toshkent', 'Ташкент', 41.311, 69.279), ('Toshkent vil.', 'Ташкентская обл.', 41.0, 69.36), ('Andijon', 'Андижан', 40.783, 72.344),
-        ('Farg‘ona', 'Фергана', 40.384, 71.784), ('Namangan', 'Наманган', 40.998, 71.673), ('Sirdaryo', 'Сырдарья', 40.49, 68.785),
+        ('Farg‘ona', 'Фергана', 40.384, 71.784), ('Qo‘qon', 'Коканд', 40.528, 70.943), ('Namangan', 'Наманган', 40.998, 71.673), ('Sirdaryo (Guliston)', 'Сырдарья (Гулистан)', 40.49, 68.785),
         ('Jizzax', 'Джизак', 40.116, 67.842), ('Samarqand', 'Самарканд', 39.655, 66.976), ('Qashqadaryo', 'Кашкадарья', 38.861, 65.79),
         ('Surxondaryo', 'Сурхандарья', 37.224, 67.278), ('Buxoro', 'Бухара', 39.768, 64.421), ('Navoiy', 'Навои', 40.103, 65.374),
         ('Xorazm', 'Хорезм', 41.55, 60.631), ('Qoraqalpog‘iston', 'Каракалпакстан', 42.461, 59.611)]
@@ -321,13 +321,13 @@ def v_short(lang, tmp):
     fig.text(0.5, 0.56, f"{WD[lang][tm.weekday()]} · {tm:%d.%m.%Y}", fontsize=40, color=AMBER, ha='center', va='center', fontweight='bold')
     mark(fig, 0.5, 0.36, 260, ink='#ffffff', rings=(20, 32, 44)); brand(fig, 0.5, 0.06, SIGN, fontsize=18, color='#c9d8ec', ha='center', va='bottom')
     f = tmp / f'short_{lang}_0.png'; save(fig, f); items.append((f, 2.0))
-    for part in range(2):
+    for part in range(3):  # 15 places, five a screen
         fig = frame(lang, X['short_t'], f"{tm:%d.%m}", w, h)
         ax = fig.add_axes([0.04, 0.07, 0.92, 0.84]); ax.set_xlim(0, 10); ax.set_ylim(0, 10 * 0.84 * h / (0.92 * w)); ax.axis('off')  # equal units: the icons stay round
         top = ax.get_ylim()[1]
-        for r, k in enumerate(range(part * 7, part * 7 + 7)):
-            p, j = PROV[k], js[k]['daily']; y = top - 1.15 - r * 2.2
-            ax.add_patch(FancyBboxPatch((0.05, y - 0.95), 9.9, 1.9, boxstyle='round,pad=0,rounding_size=0.35', fc='white', ec='none', zorder=2))
+        for r, k in enumerate(range(part * 5, min(len(PROV), part * 5 + 5))):
+            p, j = PROV[k], js[k]['daily']; y = top - 1.6 - r * 3.0
+            ax.add_patch(FancyBboxPatch((0.05, y - 1.25), 9.9, 2.5, boxstyle='round,pad=0,rounding_size=0.35', fc='white', ec='none', zorder=2))
             ax.text(0.4, y, p[0] if lang == 'uz' else p[1], fontsize=30, fontweight='bold', color=INK, va='center', zorder=3)
             wico(ax, 6.1, y + 0.1, j['weather_code'][1], 1.5)
             lo_, hi_ = j['temperature_2m_min'][1], j['temperature_2m_max'][1]
@@ -336,7 +336,7 @@ def v_short(lang, tmp):
             pp = j['precipitation_probability_max'][1]
             if pp is not None and pp >= 20: ax.text(7.3, y, f'{pp:.0f}%', fontsize=22, fontweight='bold', color='#1E63C6', va='center', zorder=3)
         brand(fig, 0.5, 0.025, SIGN, fontsize=16, color=MUTED, ha='center', va='bottom')
-        f = tmp / f'short_{lang}_{part + 1}.png'; save(fig, f); items.append((f, 6.0))
+        f = tmp / f'short_{lang}_{part + 1}.png'; save(fig, f); items.append((f, 4.5))
     items.append((outro(lang, tmp, w, h), 3.0)); return items, (w, h)
 
 

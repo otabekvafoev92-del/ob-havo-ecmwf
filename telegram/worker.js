@@ -1966,26 +1966,27 @@ async function placeVideo(env, chat, lang, lat, lon) {
 }
 // the on-demand videos are made by GitHub (place15.yml → branch od-<chat>); every cron run the bot looks for the finished ones and sends them
 // what is new in the bot: sent once to the bot's admin on the next cron run after a deploy
-const CHANGES = { v: '2026-11-28a', text: `🆕 <b>Osmon: новое · было → стало</b>
+const CHANGES = { v: '2026-11-28b', text: `🆕 <b>Osmon: 8 новых видео</b> (кнопка «🆕 Новые видео» в меню видео)
 
-🧮 <b>Модели</b>
-• Было: 9 моделей.
-• Стало: 10 — добавлен канадский ансамбль GEPS (21 вариант) в вероятности осадков сайта, видео и бота.
-• Новое в сводке прогноза: «второе мнение» 10 моделей мира (ECMWF, AIFS, GFS, AIGFS, ICON, UK Met Office, Канада GEM, Китай CMA, Япония JMA, Франция ARPEGE) — например «Завтра осадки ждут 3 из 10 моделей мира».
+🏔 <b>Горные дороги</b> — Камчик, Тахтакарача, дорога на Чимган: снег, гололёд, туман, ветер на 3 дня по часам. В канал — каждый день в 07:00.
+🌪 <b>Ветер и пыль</b> — потоки ветра и пыль (CAMS) на 3 дня. Канал — 10:00.
+❄️ <b>Снег в горах</b> — снимки спутника неделю назад и сейчас + прогноз высоты снега (Чимган, Амирсой, Бельдерсай). Канал — по субботам 11:00.
+🧮 <b>Модели спорят</b> — 10 моделей мира о Ташкенте на 7 дней. Канал — 13:00.
+🥶 <b>Заморозки</b> — минимальная температура на 7 ночей, где ниже 0°. Канал — 18:00.
+📱 <b>Завтра по областям</b> — вертикальное видео 9:16 для историй, Reels, Shorts. Канал — 19:00.
+📊 <b>Итоги недели</b> — осадки за 7 дней, самое тёплое и холодное место. Канал — по воскресеньям 19:00.
+🌌 <b>Ночное небо</b> — где ясно ночью, закат, восход, Луна. Канал — 21:00.
 
-⚡ <b>Видео места</b>
-• Было: каждый запрос собирался заново, ~3 минуты.
-• Стало: если за 12 часов уже было видео в радиусе 10 км — оно приходит сразу. Частые места собираются ночью заранее. Новая сборка — 5 машин вместо 3, ~2,5 минуты.
+🎨 <b>Новый логотип</b> во всех видео: знак Osmon в шапке, на первом и последнем кадре и рядом с подписью Bot / Kanal.
+🛰 <b>Спутник</b>: днём — цветной снимок с датой и часом, ночью — облака сейчас (Meteosat, инфракрасный); подпись говорит, что именно на снимке.
 
-🤖 <b>Бот обновляется сам</b> при каждом изменении кода (токен Cloudflare в GitHub).
-
-Ниже: карточка Ташкента со «вторым мнением» и видео места.` };
+Видео собираются сами 2 раза в день (05:23 и 16:23). Ниже — примеры.` };
 async function changesTick(env) {
   const admin = await kv(env, 'admin'); if (!admin || (await kv(env, 'changes_v')) === CHANGES.v) return;
   await setKv(env, 'changes_v', CHANGES.v);
   await tg(env, 'sendMessage', { chat_id: admin, text: CHANGES.text, parse_mode: 'HTML' });
   const lang = ((await getUser(env, +admin)) || {}).lang || 'ru', tash = await nearestPlace(env, 41.311, 69.28, 20);
-  for (const [k, f] of [['card', () => pointForecast(env, +admin, lang, 41.311, 69.28, tash, null)], ['pv', () => placeVideo(env, +admin, lang, 41.311, 69.28)]])
+  for (const [k, f] of [['short', () => sendExtra(env, +admin, lang, 'short')], ['pass', () => sendExtra(env, +admin, lang, 'pass')], ['models', () => sendExtra(env, +admin, lang, 'models')], ['sky', () => sendExtra(env, +admin, lang, 'sky')]])
     await f().catch(e => console.log('changes demo', k, e && e.message));
 }
 // the channel @osmon_obhavo: every morning a 15-day video of each of Uzbekistan's 14 provinces (place15.yml, the same close-up as "my place");
