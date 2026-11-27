@@ -83,11 +83,11 @@ TOWNS = [('Ташкент', 'Toshkent', 41.31, 69.28), ('Самарканд', 'S
 OFF = {'Ташкент': (-30, 6, 'right', 'center'), 'Самарканд': (26, -14, 'left', 'top'), 'Бухара': (-28, 0, 'right', 'center'), 'Нукус': (0, 28, 'center', 'bottom'),
        'Ургенч': (0, -28, 'center', 'top'), 'Наманган': (0, 30, 'center', 'bottom'), 'Андижан': (28, 6, 'left', 'center'), 'Фергана': (26, -14, 'left', 'top'),
        'Карши': (-26, -10, 'right', 'top'), 'Термез': (28, 0, 'left', 'center'), 'Навои': (-6, 28, 'right', 'bottom'), 'Джизак': (8, 28, 'left', 'bottom')}
-TX = {'ru': dict(title='Вероятность осадков и температура · 15 дней', tz='по Ташкенту', day='день {i} из {n}', rain='дождь', snow='снег', mix='мокрый снег', wind='ветер', temp='температура', iso='изотермы через 5°', cloud='облачность', clear='ясно', overcast='сплошные тучи', title_c='Тучи и осадки · 15 дней', intro1_c='Тучи и осадки', title_t='Температура воздуха · 15 дней', chart_tt='{n}: температура по периодам, °C', chart_tc='{n}: облачность по периодам, %', intro1_t='Температура воздуха',
+TX = {'ru': dict(title='Вероятность осадков и температура · 15 дней', tz='по Ташкенту', day='день {i} из {n}', rain='дождь', snow='снег', mix='мокрый снег', wind='ветер', temp='температура', iso='изотермы через 5°', cloud='облачность', clear='ясно', overcast='сплошные тучи', title_c='Тучи и грозы · 15 дней', intro1_c='Тучи и грозы', title_t='Температура воздуха · 15 дней', chart_tt='{n}: температура по периодам, °C', chart_tc='{n}: облачность по периодам, %', intro1_t='Температура воздуха',
                  leg='Вероятность осадков (больше 0,2 мм) за период, %', models='Модели: ECMWF IFS и AIFS, NOAA GFS и GEFS, DWD ICON · {n} вариантов прогноза',
                  chart='Ташкент: вероятность осадков по периодам (столбики) и температура (линия)', wd=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
                  intro1='Осадки и температура', intro2='на 15 дней по всему Узбекистану', end1='Погода в вашем районе и посёлке', end2='в Telegram-боте @ObHavo_ECMWF_bot'),
-      'uz': dict(title='Yog‘ingarchilik ehtimoli va harorat · 15 kun', tz='Toshkent vaqti', day='{i}-kun / {n}', rain='yomg‘ir', snow='qor', mix='ho‘l qor', wind='shamol', temp='harorat', iso='har 5° izoterma', cloud='bulutlilik', clear='ochiq', overcast='qalin bulut', title_c='Bulut va yog‘in · 15 kun', intro1_c='Bulut va yog‘in', title_t='Havo harorati · 15 kun', chart_tt='{n}: davrlar bo‘yicha harorat, °C', chart_tc='{n}: davrlar bo‘yicha bulutlilik, %', intro1_t='Havo harorati',
+      'uz': dict(title='Yog‘ingarchilik ehtimoli va harorat · 15 kun', tz='Toshkent vaqti', day='{i}-kun / {n}', rain='yomg‘ir', snow='qor', mix='ho‘l qor', wind='shamol', temp='harorat', iso='har 5° izoterma', cloud='bulutlilik', clear='ochiq', overcast='qalin bulut', title_c='Bulut va momaqaldiroq · 15 kun', intro1_c='Bulut va momaqaldiroq', title_t='Havo harorati · 15 kun', chart_tt='{n}: davrlar bo‘yicha harorat, °C', chart_tc='{n}: davrlar bo‘yicha bulutlilik, %', intro1_t='Havo harorati',
                  leg='Davr ichida yog‘ingarchilik (0,2 mm dan ko‘p) ehtimoli, %', models='Modellar: ECMWF IFS va AIFS, NOAA GFS va GEFS, DWD ICON · {n} ta prognoz varianti',
                  chart='Toshkent: davrlar bo‘yicha yog‘in ehtimoli (ustunlar) va harorat (chiziq)', wd=['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
                  intro1='Yog‘ingarchilik va harorat', intro2='butun O‘zbekiston bo‘yicha 15 kunga', end1='Tumaningiz va qishlog‘ingiz ob-havosi', end2='Telegram-botda: @ObHavo_ECMWF_bot')}
@@ -235,7 +235,7 @@ def draw(job):
         cl = np.zeros(fr['Cl'].shape + (4,), np.float32); cl[..., :3] = (0.6, 0.64, 0.7); cl[..., 3] = np.clip((fr['Cl'] - 0.5) / 0.5, 0, 1) ** 1.3 * 0.32 * a_in
         ax.imshow(cl, extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=1.5)
         ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
-    if P.max() >= 6 and not TM:
+    if P.max() >= 6 and not TM and not CM:  # (the clouds video shows the clouds and thunderstorms only)
         ax.imshow(precip_rgba(P, sf, a_in * (0.62 if CM else 1)), extent=(LO[0], LO[-1], LA[0], LA[-1]), origin='lower', interpolation='bicubic', aspect='auto', zorder=2)
         ax.set_xlim(x0, x1); ax.set_ylim(C['la0'], C['la1']); ax.set_aspect(1 / C['cosl'])
         if P.max() >= 50: ax.contour(LO, LA, P, levels=[50, 90], colors=['#ffffff'], linewidths=0.6, alpha=0.4 * a_in, zorder=2.05)
@@ -289,10 +289,7 @@ def draw(job):
         g_ = np.linspace(0, 1, 200); cb_ = np.array(matplotlib.colors.to_rgb(LANDC)) * (1 - g_[:, None] ** 1.1 * 0.93) + g_[:, None] ** 1.1 * 0.93
         bx_ = fig.add_axes([0.11, 0.171, 0.24, 0.024]); bx_.imshow(cb_[None], aspect='auto', interpolation='bilinear'); bx_.axis('off')
         for v_, t_ in ((0.02, X['clear']), (0.98, X['overcast'])): fig.text(0.11 + 0.24 * v_, 0.183, t_, fontsize=9.5, fontweight='bold', color=INK, ha='left' if v_ < 0.5 else 'right', va='center')
-        xb = 0.37
-        for R_, nm in ((RR, X['rain']), (MR, X['mix']), (SR, X['snow'])):
-            fig.patches.append(FancyBboxPatch((xb, 0.171), 0.022, 0.024, boxstyle='round,pad=0,rounding_size=0.004', transform=fig.transFigure, fc=tuple(R_[3]), ec='none'))
-            fig.text(xb + 0.026, 0.183, nm, fontsize=12, color=MUTED, va='center'); xb += 0.034 + 0.0062 * len(nm)
+        xb = 0.39
         fig.add_artist(matplotlib.lines.Line2D([xb, xb + 0.008, xb + 0.016, xb + 0.024], [0.178, 0.186, 0.181, 0.188], color='#2a3d57', lw=1.3, alpha=0.6, transform=fig.transFigure)); fig.text(xb + 0.03, 0.183, X['wind'], fontsize=12, color=MUTED, va='center')
         lg = fig.add_axes([xb + 0.075, 0.165, 0.02, 0.036]); lg.set_xlim(-1, 1); lg.set_ylim(-1.2, 1.2); lg.axis('off'); bolt(lg, 0, 0, 600)
         fig.text(xb + 0.097, 0.183, 'гроза' if lang == 'ru' else 'momaqaldiroq', fontsize=12, color=MUTED, va='center')
