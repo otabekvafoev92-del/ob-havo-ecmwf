@@ -274,9 +274,11 @@ async function setup(env, url) {
   await tg(env, 'setChatMenuButton', { menu_button: { type: 'commands' } });  // ☰ opens the command menu
   await tg(env, 'setMyShortDescription', { short_description: 'Ob-havo · Погода — 15 kun, 9 model (ECMWF, NOAA, DWD, UKMO). Kanal: @osmon_obhavo' });
   await tg(env, 'setMyDescription', { description: '☀️ Osmon — ob-havo prognozi 15 kunga\n🌧 Yog‘in ehtimoli, 🌡 harorat, ☁️ bulutlar — 9 ta model asosida (ECMWF IFS/AIFS, NOAA GFS/GEFS, DWD ICON/ICON-EPS, UK Met Office).\n🌍 Butun dunyo, qit’alar, MDH va Turkiya.\n👥 Guruh yoki kanalga qo‘shing — prognozni o‘zi yuboradi.\n\nПогода на 15 дней по 9 моделям. Добавьте в группу — бот сам будет присылать прогноз.\n\n📢 Kanal / Канал: @osmon_obhavo' });
+  const cd = await tg(env, 'setChatDescription', { chat_id: CHAN, description: '☀️ O‘zbekiston va dunyo ob-havosi har kuni: 14 viloyat bo‘yicha 15 kunlik video, tog‘lar, Amirsoy, havo sifati, ogohlantirishlar. ECMWF va 9 ta model.\n🇷🇺 Погода Узбекистана и мира каждый день.\nBot - @ObHavo_ECMWF_bot\nKanal - @osmon_obhavo' });  // the channel's own description (the bot is its admin)
+  if (!cd.ok && !/not modified/i.test(cd.description || '')) console.log('channel description', cd.description);
   if (env.DB) await db(env);
   const me = await tg(env, 'getMe', {});
-  return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+  return new Response(hook.ok ? `OK: @${me.result && me.result.username} is connected. Channel description: ${cd.ok ? 'set' : cd.description}. Open Telegram and send /start.` : `Error: ${JSON.stringify(hook)}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
 }
 
 // Telegram sends this header with every update (set in /setup): fake updates posted to the worker are refused
