@@ -68,18 +68,27 @@ def city_shape(c):
             for poly in polys:
                 a = np.asarray(poly[0]); x, y = to(a[:, 0], a[:, 1]); rings.append(np.c_[x, y])
             break
-    q = f'[out:json][timeout:120];way["building"](around:{int(R * 1000 * 1.15)},{la0},{lo0});out geom;'
-    b = []
+    # the map itself, drawn by us from OpenStreetMap: buildings, streets by class, rivers and canals, water, parks and green
+    rr = int(R * 1000 * 1.25)
+    q = (f'[out:json][timeout:150];(way["building"](around:{rr},{la0},{lo0});way["highway"~"motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street"](around:{rr},{la0},{lo0});'
+         f'way["waterway"~"river|canal|stream"](around:{rr},{la0},{lo0});way["natural"="water"](around:{rr},{la0},{lo0});way["leisure"~"park|garden|stadium"](around:{rr},{la0},{lo0});'
+         f'way["landuse"~"grass|forest|cemetery|recreation_ground"](around:{rr},{la0},{lo0}););out geom;')
+    M = dict(b=[], water=[], green=[], river=[], roads={})
     for url in ('https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'):
         j = get_json(url, None, tries=2, post={'data': q})
         if j:
             for el in j.get('elements', []):
-                gm = el.get('geometry')
-                if gm and len(gm) >= 3:
-                    x, y = to([p['lon'] for p in gm], [p['lat'] for p in gm]); b.append(np.c_[x, y])
+                gm = el.get('geometry'); tg = el.get('tags', {})
+                if not gm or len(gm) < 2: continue
+                x, y = to([p['lon'] for p in gm], [p['lat'] for p in gm]); a = np.c_[x, y]
+                if 'building' in tg and len(gm) >= 3: M['b'].append(a)
+                elif 'highway' in tg: M['roads'].setdefault(tg['highway'], []).append(a)
+                elif tg.get('waterway'): M['river'].append(a)
+                elif tg.get('natural') == 'water' and len(gm) >= 3: M['water'].append(a)
+                elif len(gm) >= 3: M['green'].append(a)
             break
-    print(c[0], 'boundary rings', len(rings), 'buildings', len(b), flush=True)
-    return rings, b, R
+    print(c[0], 'boundary rings', len(rings), 'buildings', len(M['b']), 'roads', sum(len(v) for v in M['roads'].values()), flush=True)
+    return rings, M, R
 
 
 def weather(c):
@@ -153,7 +162,7 @@ def draw_scene(ax, A, i, f, k, lang):
         for dx, dy, r in ((-1, 0, 1), (0, 0.5, 1.3), (1, 0, 1.05), (0.4, -0.3, 0.9), (-0.5, -0.3, 0.9)):
             ax.add_patch(Circle((x + dx * s * 0.9, y + dy * s * 0.6), s * r * 0.75, fc=col, ec='none', alpha=0.88, zorder=3))
     # the city
-    for kind, x0, w, h, r in SKY['bld']:
+    for kind, x0, w, h, r in sorted(SKY['bld'], key=lambda b: b[0] != 'b'):
         lit = day_frac < 0
         col = '#1d2b3f' if not lit else '#0d1626'
         if kind == 'b':
@@ -161,10 +170,16 @@ def draw_scene(ax, A, i, f, k, lang):
             if lit:
                 rng = np.random.default_rng(int(x0 * 1e4)); wx = rng.random((int(h * 40), max(1, int(w * 60)))) > 0.55
                 yy, xx = np.nonzero(wx); ax.scatter(x0 + (xx + 0.5) / max(1, wx.shape[1]) * w, 0.18 + (yy + 0.5) / max(1, wx.shape[0]) * h, s=3, marker='s', c='#ffd98a', alpha=0.85, lw=0, zorder=6)
-        elif kind == 'dome':
-            ax.add_patch(Rectangle((x0 - w / 2, 0.18), w, h * 0.55, fc=col, ec='none', zorder=5)); ax.add_patch(Circle((x0, 0.18 + h * 0.55), w * 0.42, fc='#2a6f97' if not lit else '#123047', ec='none', zorder=5))
+        elif kind == 'dome':  # a domed hall: a wide base, a drum, the blue dome, a golden finial
+            ax.add_patch(Rectangle((x0 - w * 0.75, 0.18), w * 1.5, h * 0.45, fc='#2c3e57' if not lit else '#16233a', ec='none', zorder=5.5))
+            ax.add_patch(Rectangle((x0 - w * 0.42, 0.18 + h * 0.45), w * 0.84, h * 0.18, fc='#2c3e57' if not lit else '#16233a', ec='none', zorder=5.5))
+            from matplotlib.patches import Ellipse
+            ax.add_patch(Ellipse((x0, 0.18 + h * 0.63), w * 0.84, h * 0.62, fc='#2a8fbd' if not lit else '#1d4f6e', ec='none', zorder=5.4))
+            ax.plot([x0, x0], [0.18 + h * 0.93, 0.18 + h * 1.05], color='#e9c46a', lw=2, zorder=5.6)
         elif kind == 'min':
-            ax.add_patch(Rectangle((x0, 0.18), w, h, fc=col, ec='none', zorder=5))
+            ax.add_patch(Rectangle((x0, 0.18), w, h, fc='#2c3e57' if not lit else '#16233a', ec='none', zorder=5.5))
+            ax.add_patch(Rectangle((x0 - w * 0.4, 0.18 + h * 0.86), w * 1.8, h * 0.05, fc='#2c3e57' if not lit else '#16233a', ec='none', zorder=5.5))
+            ax.add_patch(Circle((x0 + w / 2, 0.18 + h * 0.97), w * 0.7, fc='#2a8fbd' if not lit else '#1d4f6e', ec='none', zorder=5.5))
         elif kind == 'tower':
             ax.add_patch(MPoly([[x0 - 0.012, 0.18], [x0 + 0.024, 0.18], [x0 + 0.010, 0.18 + h], [x0 + 0.002, 0.18 + h]], closed=True, fc=col, ec='none', zorder=5))
             ax.add_patch(Circle((x0 + 0.006, 0.18 + h * 0.72), 0.014, fc=col, ec='none', zorder=5))
@@ -198,12 +213,34 @@ def city_img(rings, blds, R, night):
     if night in _CITY: return _CITY[night]
     import io
     from PIL import Image
-    fig = plt.figure(figsize=(7.3, 6.86), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_facecolor('#141d2b' if night else '#e9eef4')
+    M = blds
+    fig = plt.figure(figsize=(7.3, 6.86), dpi=100); ax = fig.add_axes([0, 0, 1, 1]); ax.set_facecolor('#101827' if night else '#f2efe9')
     ax.set_xlim(-R, R); ax.set_ylim(-R * 0.94, R * 0.94); ax.axis('off')
-    if blds: ax.add_collection(PolyCollection(blds, facecolors='#ffd98a' if night else '#8796a8', edgecolors='none', alpha=0.6 if night else 0.9))
-    for r in rings: ax.plot(r[:, 0], r[:, 1], color='#FFB020', lw=2.5)
+    if M['green']: ax.add_collection(PolyCollection(M['green'], facecolors='#1d3b2f' if night else '#cfe8c4', edgecolors='none', zorder=1))
+    if M['water']: ax.add_collection(PolyCollection(M['water'], facecolors='#173a5c' if night else '#a8d0f0', edgecolors='none', zorder=2))
+    if M['river']: ax.add_collection(LineCollection(M['river'], colors='#2a5d8a' if night else '#8cc0ea', linewidths=2.2, zorder=2))
+    if M['b']: ax.add_collection(PolyCollection(M['b'], facecolors='#e9c46a' if night else '#d9d2c6', edgecolors='none' if night else '#c4bbac', linewidths=0.2, alpha=0.55 if night else 1, zorder=3))
+    W_ = {'motorway': 4.5, 'trunk': 4.2, 'primary': 3.6, 'secondary': 3.0, 'tertiary': 2.4, 'residential': 1.4, 'unclassified': 1.4, 'living_street': 1.1}
+    for cls in ('living_street', 'residential', 'unclassified', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway'):
+        L_ = M['roads'].get(cls)
+        if not L_: continue
+        w = W_[cls]; main = cls in ('motorway', 'trunk', 'primary', 'secondary')
+        ax.add_collection(LineCollection(L_, colors='#0a101b' if night else '#c9c2b6', linewidths=w + 1.2, capstyle='round', zorder=4))
+        ax.add_collection(LineCollection(L_, colors=('#c79a3a' if main else '#3a4658') if night else ('#ffd88a' if main else '#ffffff'), linewidths=w, capstyle='round', zorder=4.1))
+    for r in rings: ax.plot(r[:, 0], r[:, 1], color='#FFB020', lw=2.5, zorder=5)
     buf = io.BytesIO(); fig.savefig(buf, format='png', facecolor=ax.get_facecolor()); plt.close(fig)
     _CITY[night] = np.asarray(Image.open(buf).convert('RGB')); return _CITY[night]
+
+
+def boundary_inset(fig, ax, rings, R):
+    """A small map in the corner: the whole city within its boundary, the square shown big beside it."""
+    if not rings: return
+    allp = np.concatenate(rings); x0, y0 = allp.min(0); x1, y1 = allp.max(0); sp = max(x1 - x0, y1 - y0) * 0.55; cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    bb = ax.get_position(); ins = fig.add_axes([bb.x0 + 0.006, bb.y1 - 0.20, 0.10, 0.10 * W / H * 0.95])
+    ins.set_facecolor('#0B2545'); ins.patch.set_alpha(0.75); ins.set_xlim(cx - sp, cx + sp); ins.set_ylim(cy - sp, cy + sp); ins.set_aspect(1); ins.set_xticks([]); ins.set_yticks([])
+    for s_ in ins.spines.values(): s_.set_color('#FFB020'); s_.set_linewidth(1)
+    for r in rings: ins.fill(r[:, 0], r[:, 1], fc='#FFB020', alpha=0.25); ins.plot(r[:, 0], r[:, 1], color='#FFB020', lw=1.5)
+    ins.add_patch(Rectangle((-R, -R * 0.94), 2 * R, 1.88 * R, fc='none', ec='white', lw=1.5))
 
 
 def draw_city(ax, rings, blds, R, A, i, f, k, day_frac):
@@ -234,10 +271,12 @@ def render(c, lang, out, shape):
             mark(fig, 48 / W, 1 - 52 / H, 46, ink='#ffffff', rings=(20, 32, 44)); fig.text(82 / W, 1 - 52 / H, 'osmon', fontsize=24, fontweight='bold', color='white', va='center')
             fig.text(230 / W, 1 - 52 / H, f"{c[0] if lang == 'uz' else c[1]} · {L['title']}", fontsize=24, fontweight='bold', color='white', va='center')
             sa = fig.add_axes([0.41, 0.25, 0.575, 0.635]); t, day_frac, pr, sn, code, cl, vis, ws, wdir = draw_scene(sa, A, i, f, k, lang)
-            ca = fig.add_axes([0.015, 0.25, 0.38, 0.635]); draw_city(ca, rings, blds, R, A, i, f, k, day_frac)
+            ca = fig.add_axes([0.015, 0.25, 0.38, 0.635]); draw_city(ca, rings, blds, R, A, i, f, k, day_frac); boundary_inset(fig, ca, rings, R)
             fig.text(1 - 24 / W, 1 - 52 / H, f"{L['wd'][t.weekday()]} {t:%d.%m} · {t:%H}:00", fontsize=26, fontweight='bold', color='#ffd29c', ha='right', va='center')
             # the readout on the sky
             T_ = lerp(A['temperature_2m'], i, f); Fe = lerp(A['apparent_temperature'], i, f)
+            from matplotlib.patches import FancyBboxPatch
+            sa.add_patch(FancyBboxPatch((0.015, 0.63), 0.42, 0.33, boxstyle='round,pad=0,rounding_size=0.02', transform=sa.transAxes, fc='#0B2545', ec='none', alpha=0.55, zorder=9.5))
             sa.text(0.03, 0.93, f'{T_:+.0f}°'.replace('+0°', '0°').replace('-0°', '0°'), transform=sa.transAxes, fontsize=64, fontweight='bold', color='white', va='top', zorder=10)
             sa.text(0.03, 0.74, L['wx'].get(code, ''), transform=sa.transAxes, fontsize=22, fontweight='bold', color='white', va='top', zorder=10)
             sa.text(0.03, 0.67, f"{L['feels']} {Fe:+.0f}° · {L['wind']} {ws:.0f} {L['ms']} · {L['hum']} {lerp(A['relative_humidity_2m'], i, f):.0f}%".replace('+0°', '0°'), transform=sa.transAxes, fontsize=15, color='white', va='top', zorder=10)
