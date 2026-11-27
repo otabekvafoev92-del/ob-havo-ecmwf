@@ -1,21 +1,30 @@
 name: Amirsoy webcams (30 s video)
-# every 15 minutes: the Amirsoy cameras that are online now, 30 seconds with the weather on the top (tools/amirsoy_cam.py); kept on the "cam" branch
+# every 12 minutes: the Amirsoy cameras that are online now, 30 seconds with the weather on the top (tools/amirsoy_cam.py); kept on the "cam" branch.
+# GitHub's own schedule can be late by 10+ minutes, so one job keeps going for ~5.8 hours and records every 12 minutes itself;
+# the schedule only starts the next such job (a new one replaces the old one)
 on:
   schedule:
-    - cron: '7,22,37,52 * * * *'
+    - cron: '3 */6 * * *'
+    - cron: '33 */3 * * *'   # a spare start if a job died: it simply takes over
   workflow_dispatch: {}
 permissions: {contents: write}
 concurrency: {group: cam, cancel-in-progress: true}
 jobs:
   v:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - run: |
           (sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null))
           pip install -q requests
-          python3 -u tools/amirsoy_cam.py cam
-          cd cam && git init -q && git checkout -q -b cam && git add -A
-          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "amirsoy $(date -u +%F' '%H:%M)"
-          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" cam
+          end=$(( $(date +%s) + 345*60 ))
+          while [ $(date +%s) -lt $end ]; do
+            t0=$(date +%s); rm -rf cam
+            if timeout 600 python3 -u tools/amirsoy_cam.py cam; then
+              ( cd cam && git init -q && git checkout -q -b cam && git add -A \
+                && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "amirsoy $(date -u +%F' '%H:%M)" \
+                && git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" cam ) || echo push failed
+            fi
+            left=$(( 720 - ($(date +%s) - t0) )); [ $left -gt 0 ] && sleep $left
+          done

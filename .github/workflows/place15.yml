@@ -10,25 +10,33 @@ on:
       iso: {required: false, default: ''}
       lang: {required: false, default: 'ru'}
       chat: {required: true}
+      only: {required: false, default: ''}
 permissions: {contents: write, actions: read}
 jobs:
   v:
+    # the country and the close-up are made side by side; when the bot already sent the ready country video, only the close-up
+    strategy:
+      matrix:
+        kind: ${{ fromJSON(inputs.only == 'place' && '["place"]' || '["country","place"]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
+      - uses: actions/cache@v4
+        with: {path: ~/.cache/pip, key: pip-place15-v1}
       - env: {GH_TOKEN: '${{ github.token }}'}
         run: |
-          (sudo apt-get update -qq >/dev/null || true); sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; rm -rf ~/.cache/matplotlib
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter >/dev/null 2>&1 || { sudo apt-get update -qq >/dev/null; sudo apt-get install -y -qq --no-install-recommends --fix-missing ffmpeg fonts-inter >/dev/null; }; rm -rf ~/.cache/matplotlib
           pip install -q numpy scipy matplotlib pyproj qrcode requests eccodes metpy pillow
           id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=npz&per_page=1" --jq '.artifacts[0].workflow_run.id')
           timeout 600 gh run download $id -n npz -D data && ls -la data
           # fog only near Central Asia (its data box)
           if python3 -c "import sys; la,lo=float('${{ inputs.lat }}'),float('${{ inputs.lon }}'); sys.exit(0 if 32<=la<=50 and 45<=lo<=85 else 1)"; then timeout 600 python -u -W ignore tools/fog_fetch.py data/prob.npz data/fog.npz || true; fi
-          timeout 1800 python -u -W ignore tools/place15.py data out --lang "${{ inputs.lang }}" --lat "${{ inputs.lat }}" --lon "${{ inputs.lon }}" --name "${{ inputs.name }}" --iso "${{ inputs.iso }}" --chat "${{ inputs.chat }}"
+          timeout 1800 python -u -W ignore tools/place15.py data out --lang "${{ inputs.lang }}" --lat "${{ inputs.lat }}" --lon "${{ inputs.lon }}" --name "${{ inputs.name }}" --iso "${{ inputs.iso }}" --chat "${{ inputs.chat }}" --only ${{ matrix.kind }}
           # the videos on the branch "od-<chat>": the bot picks them up from there and sends them to the chat (no bot token needed here)
-          cd out && rm -f files.json && git init -q && git checkout -q -b od-${{ inputs.chat }} && git add -A
-          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm "place ${{ inputs.name }} for ${{ inputs.chat }}"
-          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" od-${{ inputs.chat }}
+          cd out && rm -f files.json && git init -q && git checkout -q -b od-${{ inputs.chat }}-${{ matrix.kind }} && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -q --allow-empty -m "place ${{ inputs.name }} for ${{ inputs.chat }}"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" od-${{ inputs.chat }}-${{ matrix.kind }}
+          curl -fsS -m 20 https://osmon-bot.vafoev-otabek97.workers.dev/pv || true  # the bot sends it now, not at its next cron run

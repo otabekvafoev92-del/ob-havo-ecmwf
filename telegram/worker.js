@@ -175,6 +175,7 @@ export default {
       const row = env.DB ? await env.DB.prepare('SELECT s FROM cards WHERE id = ?1').bind(id).first().catch(() => null) : null;
       return row ? new Response(row.s, { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=21600' } }) : new Response('not found', { status: 404 });
     }
+    if (url.pathname === '/pv') { ctx.waitUntil(pvTick(env).catch(e => console.log('pv', e && e.stack))); return new Response('ok'); }  // poked by place15.yml when a video is pushed
     if (req.method === 'GET' && url.pathname === '/setup') return setup(env, url);
     if (url.pathname === '/hit' || url.pathname === '/stats') return visits(req, env, url);
     if (req.method === 'GET' && url.pathname === '/invite') return new Response(JSON.stringify(await invite(env, +(url.searchParams.get('n') || 12))), { headers: { 'content-type': 'application/json' } });
@@ -843,15 +844,18 @@ async function mountainsKb(env, chat, lang, M, cur) {
   return { inline_keyboard: rows };
 }
 const CAMB = { ru: '📹 Амирсой — камеры сейчас', uz: '📹 Amirsoy — kameralar hozir', en: '📹 Amirsoy — webcams now' };
-async function sendCam(env, chat, lang) {  // the last 30 seconds of the Amirsoy cameras that are online (tools/amirsoy_cam.py, every 30 minutes)
-  const M = await fetch(`${EVRAW}/cam/meta.json?v=${Math.floor(Date.now() / 300e3)}`).then(r => r.ok ? r.json() : null).catch(() => null);
+async function sendCam(env, chat, lang) {  // the last 30 seconds of the Amirsoy cameras that are online (tools/amirsoy_cam.py, every 12 minutes)
+  // the newest recording: the branch's last commit straight from the API (the raw files' CDN can lag by minutes)
+  const b = await ghApi(env, 'branches/cam').then(r => r.ok ? r.json() : null).catch(() => null), sha = b && b.commit && b.commit.sha;
+  const base = sha ? `https://raw.githubusercontent.com/${REPO}/${sha}` : `${EVRAW}/cam`;
+  const M = await fetch(`${base}/meta.json${sha ? '' : `?v=${Math.floor(Date.now() / 120e3)}`}`).then(r => r.ok ? r.json() : null).catch(() => null);
   if (!M || !M.ok) return tg(env, 'sendMessage', { chat_id: chat, text: { ru: '📹 Камеры Амирсоя сейчас не в сети — попробуйте позже.', uz: '📹 Amirsoy kameralari hozir ishlamayapti — keyinroq urinib ko‘ring.', en: '📹 The Amirsoy cameras are offline now — try later.' }[lang] });
   const w = M.weather, L2 = lang === 'uz' ? 'uz' : 'ru';
   const cap = [`📹 <b>${{ ru: 'Амирсой', uz: 'Amirsoy', en: 'Amirsoy' }[lang]}</b> · ${M.cams.map(c => c[L2]).join(' · ')}`, `🕒 ${M.made.slice(8, 10)}.${M.made.slice(5, 7)} ${M.made.slice(11, 16)} ${{ ru: 'по Ташкенту', uz: 'Toshkent vaqti', en: 'Tashkent time' }[lang]}`,
     w ? `🌡 ${w.temperature_2m > 0 ? '+' : ''}${Math.round(w.temperature_2m)}° · 💨 ${Math.round(w.wind_speed_10m)} ${{ ru: 'м/с', uz: 'm/s', en: 'm/s' }[lang]}${w.snow_depth ? ` · ❄️ ${Math.round(w.snow_depth * 100)} ${{ ru: 'см снега', uz: 'sm qor', en: 'cm of snow' }[lang]}` : ''}` : '',
-    `<i>${{ ru: 'Видео обновляется каждые 15 минут', uz: 'Video har 15 daqiqada yangilanadi', en: 'Updated every 15 minutes' }[lang]}</i>`].filter(Boolean).join('\n');
+  ].filter(Boolean).join('\n');
   await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_video' });
-  return tg(env, 'sendVideo', { chat_id: chat, video: `${EVRAW}/cam/amirsoy.mp4?v=${M.made}`, caption: cap, parse_mode: 'HTML', supports_streaming: true, width: 1280, height: 720 });
+  return tg(env, 'sendVideo', { chat_id: chat, video: sha ? `${base}/amirsoy.mp4` : `${base}/amirsoy.mp4?v=${M.made}`, caption: cap, parse_mode: 'HTML', supports_streaming: true, width: 1280, height: 720 });
 }
 async function sendMountains(env, chat, lang) {
   const X = MTX[lang] || MTX.ru, M = await mountainsData(env);
@@ -1690,34 +1694,92 @@ function chart15(X, nm, lab, D, rc, r1) {  // Chart.js 2 config as code (the lab
       plugins: { datalabels: { display: true } } } };
   return JSON.stringify(cfg).replace(/"@(hi|pc|tk)"/g, (m, k) => F[k]);
 }
+function chart15Svg(X, nm, sub, D, lang) {  // the 15 days as a dark Full HD chart: the day/night temperature band, the chance of rain or snow, the day's icon
+  const W = 1920, H = 1080, F = 'font-family="DejaVu Sans, Verdana, sans-serif"', n = D.length;
+  const T = (t, x, y, sz, col, o = {}) => `<text x="${x}" y="${y}" ${F} font-size="${sz}" font-weight="${o.b ? 700 : 400}" fill="${col}"${o.a ? ` text-anchor="${o.a}"` : ''}${o.op ? ` fill-opacity="${o.op}"` : ''}>${esc(String(t))}</text>`;
+  const x0 = 120, x1 = W - 80, cw = (x1 - x0) / n, cx = i => x0 + cw * (i + 0.5);
+  const tmin = Math.min(...D.map(d => d.lo)), tmax = Math.max(...D.map(d => d.hi)), ty0 = 250, ty1 = 600, tsp = Math.max(6, tmax - tmin);
+  const ty = t => ty1 - (t - tmin) / tsp * (ty1 - ty0);
+  const spline = P => P.map((p, k) => { if (!k) return `M${p[0].toFixed(1)} ${p[1].toFixed(1)}`; const a = P[k - 2] || P[k - 1], b = P[k - 1], c = p, d = P[k + 1] || p;
+    return `C${(b[0] + (c[0] - a[0]) / 6).toFixed(1)} ${(b[1] + (c[1] - a[1]) / 6).toFixed(1)} ${(c[0] - (d[0] - b[0]) / 6).toFixed(1)} ${(c[1] - (d[1] - b[1]) / 6).toFixed(1)} ${c[0].toFixed(1)} ${c[1].toFixed(1)}`; }).join(' ');
+  const HI = D.map((d, i) => [cx(i), ty(d.hi)]), LO = D.map((d, i) => [cx(i), ty(d.lo)]);
+  const band = spline(HI) + ' L' + spline(LO.slice().reverse()).slice(1);
+  let o = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#0d1b33"/><stop offset="0.6" stop-color="#101f38"/><stop offset="1" stop-color="#0a1426"/></linearGradient>
+<radialGradient id="glow" cx="0.82" cy="0.05" r="0.6"><stop offset="0" stop-color="#f08a24" stop-opacity="0.22"/><stop offset="1" stop-color="#f08a24" stop-opacity="0"/></radialGradient>
+<linearGradient id="band" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a3d" stop-opacity="0.32"/><stop offset="1" stop-color="#4f8fff" stop-opacity="0.18"/></linearGradient>
+<linearGradient id="rain" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fb8ff"/><stop offset="1" stop-color="#1f5fc4"/></linearGradient>
+<linearGradient id="snow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2d2ff"/><stop offset="1" stop-color="#8b5fe0"/></linearGradient>
+<filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/></filter></defs>
+<rect width="${W}" height="${H}" fill="url(#bg)"/><rect width="${W}" height="${H}" fill="url(#glow)"/>`;
+  // the title
+  o += `<rect x="56" y="58" width="10" height="92" rx="5" fill="#f08a24"/>` + T(nm, 90, 112, 56, '#ffffff', { b: 1 }) + T(sub, 92, 152, 28, '#ffd29c', { op: 0.9 });
+  const lg = [['#ff8a3d', X.hi], ['#6aa8ff', X.lo], ['#3d8fe6', X.p]]; let lx = W - 80;
+  for (const [c, t] of lg.slice().reverse()) { const w = [...t].length * 14 + 54; lx -= w; o += `<rect x="${lx}" y="86" width="${w - 14}" height="44" rx="22" fill="#ffffff" fill-opacity="0.07"/><circle cx="${lx + 22}" cy="108" r="8" fill="${c}"/>` + T(t, lx + 38, 117, 24, '#ffffff', { op: 0.85 }); }
+  // the columns: today, the weekends
+  D.forEach((d, i) => { const wd = new Date(d.d + 'T12:00:00Z').getUTCDay();
+    if (i === 0) o += `<rect x="${(x0 + cw * i + 4).toFixed(1)}" y="196" width="${(cw - 8).toFixed(1)}" height="${H - 250}" rx="18" fill="#f08a24" fill-opacity="0.10" stroke="#f08a24" stroke-opacity="0.35"/>`;
+    else if (wd === 0 || wd === 6) o += `<rect x="${(x0 + cw * i + 4).toFixed(1)}" y="196" width="${(cw - 8).toFixed(1)}" height="${H - 250}" rx="18" fill="#ffffff" fill-opacity="0.035"/>`; });
+  // the temperature scale
+  for (let t = Math.ceil(tmin / 5) * 5; t <= tmax; t += 5) { const y = ty(t).toFixed(1); o += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="#ffffff" stroke-opacity="${t === 0 ? 0.28 : 0.07}" stroke-width="${t === 0 ? 2 : 1}"${t === 0 ? ' stroke-dasharray="8 8"' : ''}/>` + T(`${t > 0 ? '+' : ''}${t}°`, x0 - 18, +y + 8, 22, '#ffffff', { a: 'end', op: 0.45 }); }
+  o += `<path d="${band} Z" fill="url(#band)"/>`;
+  o += `<path d="${spline(HI)}" fill="none" stroke="#ff8a3d" stroke-width="10" stroke-opacity="0.35" filter="url(#sh)"/><path d="${spline(HI)}" fill="none" stroke="#ff8a3d" stroke-width="5" stroke-linecap="round"/>`;
+  o += `<path d="${spline(LO)}" fill="none" stroke="#6aa8ff" stroke-width="10" stroke-opacity="0.3" filter="url(#sh)"/><path d="${spline(LO)}" fill="none" stroke="#6aa8ff" stroke-width="4" stroke-linecap="round"/>`;
+  const sg = v => { const r = Math.round(v); return `${r > 0 ? '+' : ''}${r}°`; };
+  D.forEach((d, i) => { const [x, yh] = HI[i], yl = LO[i][1];
+    o += `<circle cx="${x.toFixed(1)}" cy="${yh.toFixed(1)}" r="8" fill="#0d1b33" stroke="#ff8a3d" stroke-width="4"/><circle cx="${x.toFixed(1)}" cy="${yl.toFixed(1)}" r="7" fill="#0d1b33" stroke="#6aa8ff" stroke-width="3.5"/>`;
+    o += T(sg(d.hi), x, yh - 20, 27, '#ffffff', { a: 'middle', b: 1 }) + T(sg(d.lo), x, yl + 38, 23, '#a9c8ff', { a: 'middle', b: 1 }); });
+  // the chance of precipitation
+  const py1 = 860, ph = 180;
+  o += `<line x1="${x0}" y1="${py1}" x2="${x1}" y2="${py1}" stroke="#ffffff" stroke-opacity="0.15"/>`;
+  D.forEach((d, i) => { const x = cx(i), bw = cw * 0.56, h = Math.max(6, ph * d.p / 100), col = d.p < 15 ? '#ffffff' : null;
+    o += col ? `<rect x="${(x - bw / 2).toFixed(1)}" y="${py1 - 6}" width="${bw.toFixed(1)}" height="6" rx="3" fill="#ffffff" fill-opacity="0.15"/>`
+      : `<rect x="${(x - bw / 2).toFixed(1)}" y="${(py1 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="10" fill="url(#${d.snow ? 'snow' : 'rain'})" fill-opacity="${(0.45 + d.p / 180).toFixed(2)}"/>`;
+    const mmt = d.mm >= 0.5 ? `${d.mm < 9.5 ? d.mm.toFixed(0) : Math.round(d.mm)} ${lang === 'ru' ? 'мм' : 'mm'}` : '', inb = mmt && h >= 46;
+    if (d.p >= 15) o += T(`${Math.round(d.p)}%`, x, py1 - h - 12, 23, d.snow ? '#e2d2ff' : '#8fcbff', { a: 'middle', b: 1 });
+    if (mmt) o += inb ? T(mmt, x, py1 - 14, 19, '#ffffff', { a: 'middle', op: 0.9 }) : T(mmt, x, py1 - h - 42, 18, '#ffffff', { a: 'middle', op: 0.7 }); });
+  // the days
+  D.forEach((d, i) => { const t = new Date(d.d + 'T12:00:00Z'), x = cx(i), we = t.getUTCDay() === 0 || t.getUTCDay() === 6;
+    o += svgIcon(icKey(d.ic), x, 902, 22) + T(WD[lang][t.getUTCDay()], x, 966, 25, i === 0 ? '#ffd29c' : we ? '#ffb4a0' : '#ffffff', { a: 'middle', b: 1 }) + T(`${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`, x, 996, 21, '#ffffff', { a: 'middle', op: 0.55 }); });
+  o += T(X.src, W / 2, H - 30, 22, '#ffffff', { a: 'middle', op: 0.45 });
+  return o + '</svg>';
+}
 async function photo15(env, chat, lang, lat, lon, place, D) {
   const X = PHX[lang] || PHX.ru, nm = place ? pname(place, lang) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;  // no flag: the picture's font has no flags
-  const lab = D.map(x => { const t = new Date(x.d + 'T12:00:00Z'); return [`${x.ic} ${WD[lang][t.getUTCDay()]}`, `${String(t.getUTCDate()).padStart(2, '0')}.${String(t.getUTCMonth() + 1).padStart(2, '0')}`]; });
-  const rc = x => x.p < 10 ? '#e7edf3' : x.snow ? ['#eadcff', '#d3bcfa', '#b897f0', '#9b72e2', '#7a4bc8'][Math.min(4, Math.floor(x.p / 20))] : ['#d4e9f9', '#93c6ee', '#4a98e0', '#1c63c0', '#5b2fa8'][Math.min(4, Math.floor(x.p / 20))];
-  const r1 = v => Math.round(v), chart = chart15(X, nm, lab, D, rc, r1);
-  const r = await fetch('https://quickchart.io/chart/create', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chart, width: 1920, height: 1080, devicePixelRatio: 1, backgroundColor: '#ffffff', format: 'png', version: '2' }) }).then(r => r.json()).catch(() => null);
-  if (!r || !r.url) return tg(env, 'sendMessage', { chat_id: chat, text: X.fail });
-  await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
-  const o = await tg(env, 'sendDocument', { chat_id: chat, document: r.url + '.png', caption: `🖼 ${X.t.replace('{n}', nm)}\n${X.src}`, ...(chat > 0 ? { reply_markup: { inline_keyboard: [[pvBtn(lang, lat, lon)]] } } : {}) });
-  if (!o.ok) return tg(env, 'sendPhoto', { chat_id: chat, photo: r.url, caption: `🖼 ${X.t.replace('{n}', nm)}\n${X.src}` });
-  return o;
+  const cn = place && NAMES[place[4]] ? NAMES[place[4]][lang] : '', sub = [cn, X.t.replace('{n} · ', '')].filter(Boolean).join(' · ');
+  try {
+    await tg(env, 'sendChatAction', { chat_id: chat, action: 'upload_photo' });
+    await env.DB.prepare('CREATE TABLE IF NOT EXISTS cards (id TEXT PRIMARY KEY, s TEXT, t INTEGER)').run();
+    const id = [...crypto.getRandomValues(new Uint8Array(9))].map(v => v.toString(16).padStart(2, '0')).join('');
+    await env.DB.prepare('INSERT INTO cards (id, s, t) VALUES (?1, ?2, ?3)').bind(id, chart15Svg(X, nm, sub, D, lang), Date.now()).run();
+    const url = `https://wsrv.nl/?url=${encodeURIComponent(`${BOT_ORIGIN}/card/${id}.svg`)}&output=jpg&q=90`;
+    const cap = `🖼 <b>${esc(X.t.replace('{n}', nm))}</b>\n<i>${esc(X.src)}</i>`, mk = chat > 0 ? { reply_markup: { inline_keyboard: [[pvBtn(lang, lat, lon)]] } } : {};
+    const o = await tg(env, 'sendPhoto', { chat_id: chat, photo: url, caption: cap, parse_mode: 'HTML', ...mk });
+    if (o.ok) return o;
+    console.log('photo15', o.description);
+  } catch (e) { console.log('photo15', e && e.stack); }
+  return tg(env, 'sendMessage', { chat_id: chat, text: X.fail });
 }
 /* ---------- 🎬 the 15-day video of a place on demand: the country's video and the place's close-up (.github/workflows/place15.yml) ---------- */
-const PVX = { ru: { btn: '🎬 Видео 15 дней по часам: страна + это место', wait: '⏳ Готовлю 2 видео: вся страна и {n} крупно — осадки и температура на 15 дней по часам. Пришлю сюда минут через 15–25.', late: '😔 Видео не успело подготовиться, попробуйте ещё раз чуть позже.', capC: '🎬 {n}: вероятность осадков и температура на 15 дней по часам', capP: '📍 {n}: вероятность осадков и температура на 15 дней по часам', busy: '⏳ Видео уже готовится, пришлю, как будет готово.', fail: '😔 Не удалось запустить подготовку видео, попробуйте позже.' },
-  uz: { btn: '🎬 15 kunlik soatma-soat video: davlat + shu joy', wait: '⏳ 2 ta video tayyorlayapman: butun davlat va {n} yaqindan — 15 kunga soatma-soat yog‘in va harorat. 15–25 daqiqada shu yerga yuboraman.', late: '😔 Video tayyor bo‘lmadi, birozdan keyin qayta urinib ko‘ring.', capC: '🎬 {n}: 15 kunga soatma-soat yog‘in ehtimoli va harorat', capP: '📍 {n}: 15 kunga soatma-soat yog‘in ehtimoli va harorat', busy: '⏳ Video tayyorlanmoqda, tayyor bo‘lishi bilan yuboraman.', fail: '😔 Videoni tayyorlashni boshlab bo‘lmadi, keyinroq urinib ko‘ring.' },
-  en: { btn: '🎬 15-day hourly video: country + this place', wait: '⏳ Preparing 2 videos: the whole country and {n} close up — precipitation and temperature for 15 days by the hour. I will send them here in 15–25 minutes.', late: '😔 The video was not ready in time, please try again a little later.', capC: '🎬 {n}: chance of precipitation and temperature for 15 days by the hour', capP: '📍 {n}: chance of precipitation and temperature for 15 days by the hour', busy: '⏳ The video is being prepared, I will send it when it is ready.', fail: '😔 Could not start the video, try again later.' } };
+const PVX = { ru: { btn: '🎬 Видео 15 дней по часам: страна + это место', wait: '⏳ Готовлю 2 видео: вся страна и {n} крупно — осадки и температура на 15 дней по часам. Пришлю сюда минут через 5–7.', waitP: '⏳ Видео страны — выше. Крупный план «{n}» готовлю, пришлю минут через 5.', late: '😔 Видео не успело подготовиться, попробуйте ещё раз чуть позже.', capC: '🎬 {n}: вероятность осадков и температура на 15 дней по часам', capP: '📍 {n}: вероятность осадков и температура на 15 дней по часам', busy: '⏳ Видео уже готовится, пришлю, как будет готово.', fail: '😔 Не удалось запустить подготовку видео, попробуйте позже.' },
+  uz: { btn: '🎬 15 kunlik soatma-soat video: davlat + shu joy', wait: '⏳ 2 ta video tayyorlayapman: butun davlat va {n} yaqindan — 15 kunga soatma-soat yog‘in va harorat. 5–7 daqiqada shu yerga yuboraman.', waitP: '⏳ Davlat videosi — yuqorida. «{n}» yaqindan videosini tayyorlayapman, taxminan 5 daqiqada yuboraman.', late: '😔 Video tayyor bo‘lmadi, birozdan keyin qayta urinib ko‘ring.', capC: '🎬 {n}: 15 kunga soatma-soat yog‘in ehtimoli va harorat', capP: '📍 {n}: 15 kunga soatma-soat yog‘in ehtimoli va harorat', busy: '⏳ Video tayyorlanmoqda, tayyor bo‘lishi bilan yuboraman.', fail: '😔 Videoni tayyorlashni boshlab bo‘lmadi, keyinroq urinib ko‘ring.' },
+  en: { btn: '🎬 15-day hourly video: country + this place', wait: '⏳ Preparing 2 videos: the whole country and {n} close up — precipitation and temperature for 15 days by the hour. I will send them here in 5–7 minutes.', waitP: '⏳ The country video is above. The close-up of «{n}» is on its way, in about 5 minutes.', late: '😔 The video was not ready in time, please try again a little later.', capC: '🎬 {n}: chance of precipitation and temperature for 15 days by the hour', capP: '📍 {n}: chance of precipitation and temperature for 15 days by the hour', busy: '⏳ The video is being prepared, I will send it when it is ready.', fail: '😔 Could not start the video, try again later.' } };
 const pvBtn = (lang, lat, lon) => ({ text: (PVX[lang] || PVX.ru).btn, callback_data: `PV:${lang}:${(+lat).toFixed(3)}:${(+lon).toFixed(3)}`, style: 'primary' });
 async function placeVideo(env, chat, lang, lat, lon) {
   const X = PVX[lang] || PVX.ru, key = `pv_${chat}`, last = +(await kv(env, key) || 0);
-  if (Date.now() - last < 8 * 60e3) return tg(env, 'sendMessage', { chat_id: chat, text: X.busy });
-  const p = await nearestPlace(env, lat, lon, 25), name = p ? pname(p, lang) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  if (Date.now() - last < 4 * 60e3) return tg(env, 'sendMessage', { chat_id: chat, text: X.busy });
+  const p = await nearestPlace(env, lat, lon, 25), name = p ? pname(p, lang) : `${lat.toFixed(2)}, ${lon.toFixed(2)}`, L2 = lang === 'uz' ? 'uz' : 'ru';
+  const cn = p && NAMES[p[4]] ? NAMES[p[4]][lang] : '';
+  // the country's video is built every run anyway: when it is there, it goes out now and only the close-up is made
+  const cv = p ? await vidUrl(p[4], L2) : null;
+  if (cv) await tg(env, 'sendVideo', { chat_id: chat, video: cv, supports_streaming: true, width: 1920, height: 1080, caption: X.capC.replace('{n}', cn || name) });
   const r = await ghApi(env, 'actions/workflows/place15.yml/dispatches', { method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ ref: 'main', inputs: { lat: String(lat), lon: String(lon), name, iso: p ? p[4] : '', lang: lang === 'uz' ? 'uz' : 'ru', chat: String(chat) } }) });
+    body: JSON.stringify({ ref: 'main', inputs: { lat: String(lat), lon: String(lon), name, iso: p ? p[4] : '', lang: L2, chat: String(chat), only: cv ? 'place' : '' } }) });
   if (!r.ok) { console.log('place15', r.status, await r.text()); return tg(env, 'sendMessage', { chat_id: chat, text: X.fail }); }
   await setKv(env, key, String(Date.now()));
   const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]').filter(x => x.c !== String(chat) && Date.now() - x.t < 90 * 60e3);
-  pend.push({ c: String(chat), l: lang, n: name, cn: p && NAMES[p[4]] ? NAMES[p[4]][lang] : '', t: Date.now() }); await setKv(env, 'pv_pend', JSON.stringify(pend));
-  return tg(env, 'sendMessage', { chat_id: chat, text: X.wait.replace('{n}', name) });
+  pend.push({ c: String(chat), l: lang, n: name, cn, t: Date.now(), k: cv ? ['place'] : ['country', 'place'] }); await setKv(env, 'pv_pend', JSON.stringify(pend));
+  return tg(env, 'sendMessage', { chat_id: chat, text: (cv ? X.waitP : X.wait).replace('{n}', name) });
 }
 // the on-demand videos are made by GitHub (place15.yml → branch od-<chat>); every cron run the bot looks for the finished ones and sends them
 // what is new in the bot: sent once to the bot's admin on the next cron run after a deploy
@@ -1743,24 +1805,31 @@ async function changesTick(env) {
   await setKv(env, 'changes_v', CHANGES.v);
   await tg(env, 'sendMessage', { chat_id: admin, text: CHANGES.text, parse_mode: 'HTML' });
 }
-async function pvTick(env) {
+async function pvTick(env) {  // each video is pushed by its own job to od-<chat>-<kind>; the job then pokes /pv, so it goes out at once (the cron is the fallback)
   const pend = JSON.parse((await kv(env, 'pv_pend')) || '[]'); if (!pend.length) return;
   const keep = [];
   for (const x of pend) {
-    const X = PVX[x.l] || PVX.ru;
-    const b = await ghApi(env, `branches/od-${x.c}`).then(r => r.ok ? r.json() : null).catch(() => null);
-    const sha = b && b.commit && b.commit.sha, when = b && Date.parse(b.commit.commit.committer.date);
-    if (!sha || when < x.t) { if (Date.now() - x.t < 75 * 60e3) keep.push(x); else await tg(env, 'sendMessage', { chat_id: x.c, text: X.late }); continue; }
-    const tree = await ghApi(env, `git/trees/${sha}`).then(r => r.ok ? r.json() : null).catch(() => null);
-    const files = ((tree && tree.tree) || []).map(f => f.path).filter(f => f.endsWith('.mp4')).sort((a, c) => (a.startsWith('place') ? 1 : 0) - (c.startsWith('place') ? 1 : 0));
-    for (const f of files) {
-      const r = await tg(env, 'sendVideo', { chat_id: x.c, video: `https://raw.githubusercontent.com/${REPO}/${sha}/${f}`, supports_streaming: true, width: 1920, height: 1080,
-        caption: (f.startsWith('place') ? X.capP.replace('{n}', x.n) : X.capC.replace('{n}', x.cn || x.n)) });
-      if (!r.ok) console.log('pv send', x.c, f, r.description);
+    const X = PVX[x.l] || PVX.ru, left = [];
+    for (const k of (x.k || ['country', 'place'])) {
+      const b = await ghApi(env, `branches/od-${x.c}-${k}`).then(r => r.ok ? r.json() : null).catch(() => null);
+      const sha = b && b.commit && b.commit.sha, when = b && Date.parse(b.commit.commit.committer.date);
+      if (!sha || when < x.t) { left.push(k); continue; }
+      const lock = `pvs_${x.c}_${sha}`;  // two pokes at once must not send it twice
+      const ins = await env.DB.prepare('INSERT OR IGNORE INTO meta (k, v) VALUES (?1, ?2)').bind(lock, String(Date.now())).run();
+      if (!ins.meta || !ins.meta.changes) continue;
+      const tree = await ghApi(env, `git/trees/${sha}`).then(r => r.ok ? r.json() : null).catch(() => null);
+      for (const f of ((tree && tree.tree) || []).map(f => f.path).filter(f => f.endsWith('.mp4'))) {
+        const r = await tg(env, 'sendVideo', { chat_id: x.c, video: `https://raw.githubusercontent.com/${REPO}/${sha}/${f}`, supports_streaming: true, width: 1920, height: 1080,
+          caption: (f.startsWith('place') ? X.capP.replace('{n}', x.n) : X.capC.replace('{n}', x.cn || x.n)) });
+        if (!r.ok) console.log('pv send', x.c, f, r.description);
+      }
     }
+    if (left.length && Date.now() - x.t < 45 * 60e3) { keep.push({ ...x, k: left }); continue; }
+    if (left.length) await tg(env, 'sendMessage', { chat_id: x.c, text: X.late });
     await setKv(env, `pv_${x.c}`, '0');
   }
   await setKv(env, 'pv_pend', JSON.stringify(keep));
+  await env.DB.prepare("DELETE FROM meta WHERE k LIKE 'pvs_%' AND CAST(v AS INTEGER) < ?1").bind(Date.now() - 864e5).run();
 }
 // the data stopped updating (the GitHub workflow failed): tell the bot's admin, at most every 12 hours
 // every morning at 09:00 (Tashkent): how many people used the bot and the site
