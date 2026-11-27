@@ -1936,52 +1936,26 @@ async function placeVideo(env, chat, lang, lat, lon) {
 }
 // the on-demand videos are made by GitHub (place15.yml → branch od-<chat>); every cron run the bot looks for the finished ones and sends them
 // what is new in the bot: sent once to the bot's admin on the next cron run after a deploy
-const CHANGES = { v: '2026-11-27c', text: `🆕 <b>Osmon: что изменилось · было → стало</b>
-
-📢 <b>Бот и канал связаны</b>
-• Было: бот сам по себе, канала не было.
-• Стало: канал @osmon_obhavo. Под каждым текстом, фото, видео и альбомом: «Bot - @ObHavo_ECMWF_bot / Kanal - @osmon_obhavo». В описании бота — ссылка на канал, у канала — своё описание.
-
-🗓 <b>Канал публикует сам, каждый день</b>
-• 05:00–06:30 — видео на 15 дней по каждой из 14 областей
-• 07:00 — весь мир, Европа, Азия, Узбекистан
-• 08:00 — картинка 15 дней (Ташкент) · 09:00 — камеры Амирсоя и горы · 12:00 — Амирсой и воздух · 20:00 — сводка · 21:00 — туман · опасная погода — сразу
-
-🎬 <b>Видео</b>
-• Было: в углу «t.me/ObHavo_ECMWF_bot», в конце один QR-код.
-• Стало: в кадре «Bot - … · Kanal - …», в конце два QR-кода — бот и канал.
-• Спутник: было — видео почти не менялось; стало — новое каждые 40 минут, под видео время обновления.
-
-🖼 <b>Карточка погоды</b>
-• Было: координаты не видны; у Ташкента фото мечети; в горах случайные фото.
-• Стало: адрес по точке — страна, область, район, улица — и широта/долгота; для присланной локации — точное место. Ташкент — телебашня, Ташкентская область — Чарвак, горы выше 1300 м — фото гор. Внизу знак Osmon.
-• Новое: прогноз на 2–6 часов («дождь через 40 минут»), УФ-индекс, «ощущается как».
-
-🗺 <b>Кнопка «Xaritada ko‘rsatish (tuman ajratilgan)»</b>
-• Было: «Ma’lumotlar tayyorlanmoqda…», карта не открывалась.
-• Стало: открывается карта с выделенным районом.
-
-🔔 <b>Предупреждения у моего места</b>
-• Было: только сильный дождь, снег, ветер.
-• Стало: ещё гроза рядом (с направлением), резкое похолодание/потепление на 8°+, сели в горах при сильных осадках, паводок на реках (GloFAS). Кнопка «🔔 Предупреждать о погоде у меня».
+const CHANGES = { v: '2026-11-28a', text: `🆕 <b>Osmon: новое · было → стало</b>
 
 🧮 <b>Модели</b>
-• Было: ECMWF, NOAA, DWD.
-• Стало: 9 моделей — ECMWF IFS 9 км, AIFS, ансамбль ECMWF, NOAA GFS/GEFS, DWD ICON и ICON-EPS, UK Met Office.
+• Было: 9 моделей.
+• Стало: 10 — добавлен канадский ансамбль GEPS (21 вариант) в вероятности осадков сайта, видео и бота.
+• Новое в сводке прогноза: «второе мнение» 10 моделей мира (ECMWF, AIFS, GFS, AIGFS, ICON, UK Met Office, Канада GEM, Китай CMA, Япония JMA, Франция ARPEGE) — например «Завтра осадки ждут 3 из 10 моделей мира».
 
-📡 <b>Метеостанции и туман</b>: добавлены Гулистан, Сырдарья, Ангрен, Пскент — все области.
+⚡ <b>Видео места</b>
+• Было: каждый запрос собирался заново, ~3 минуты.
+• Стало: если за 12 часов уже было видео в радиусе 10 км — оно приходит сразу. Частые места собираются ночью заранее. Новая сборка — 5 машин вместо 3, ~2,5 минуты.
 
-✂️ <b>Убрано</b>: видео 12 ч / 3 дня, «Откуда идёт дождь», «Недели и месяцы (карты)».
+🤖 <b>Бот обновляется сам</b> при каждом изменении кода (токен Cloudflare в GitHub).
 
-🔤 <b>Узбекский текст</b>: o‘, g‘ и апостроф — правильными знаками, названия районов по-официальному, «дж» → «j».
-
-Ниже — примеры: карточка погоды и камера Амирсоя.` };
+Ниже: карточка Ташкента со «вторым мнением» и видео места.` };
 async function changesTick(env) {
   const admin = await kv(env, 'admin'); if (!admin || (await kv(env, 'changes_v')) === CHANGES.v) return;
   await setKv(env, 'changes_v', CHANGES.v);
   await tg(env, 'sendMessage', { chat_id: admin, text: CHANGES.text, parse_mode: 'HTML' });
   const lang = ((await getUser(env, +admin)) || {}).lang || 'ru', tash = await nearestPlace(env, 41.311, 69.28, 20);
-  for (const [k, f] of [['card', () => pointForecast(env, +admin, lang, 41.311, 69.28, tash, null)], ['cam', () => sendCam(env, +admin, lang)]])
+  for (const [k, f] of [['card', () => pointForecast(env, +admin, lang, 41.311, 69.28, tash, null)], ['pv', () => placeVideo(env, +admin, lang, 41.311, 69.28)]])
     await f().catch(e => console.log('changes demo', k, e && e.message));
 }
 // the channel @osmon_obhavo: every morning a 15-day video of each of Uzbekistan's 14 provinces (place15.yml, the same close-up as "my place");
