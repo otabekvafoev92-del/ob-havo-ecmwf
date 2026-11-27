@@ -27,7 +27,7 @@ TX = {'ru': dict(fact='Факт · метеостанции', fc='Прогноз
                  ww='{t} xabari')}
 UZN = {'Ташкент': 'Toshkent', 'Самарканд': 'Samarqand', 'Бухара': 'Buxoro', 'Нукус': 'Nukus', 'Ургенч': 'Urganch', 'Наманган': 'Namangan', 'Андижан': 'Andijon', 'Фергана': 'Farg‘ona',
        'Карши': 'Qarshi', 'Термез': 'Termiz', 'Навои': 'Navoiy', 'Джизак': 'Jizzax', 'Гулистан': 'Guliston', 'Коканд': 'Qo‘qon', 'Шахрисабз': 'Shahrisabz', 'Зарафшан': 'Zarafshon'}
-MAIN = ['TASHKENT', 'SAMARKAND', 'BUKHARA', 'NUKUS', 'URGENCH', 'NAMANGAN', 'ANDIZHAN', 'FERGANA', 'KARSHI', 'TERMEZ', 'NAVOI', 'DZIZAK']
+MAIN = ['TASHKENT', 'SAMARKAND', 'BUKHARA', 'NUKUS', 'URGENCH', 'NAMANGAN', 'ANDIZHAN', 'FERGANA', 'KARSHI', 'TERMEZ', 'NAVOI', 'DZIZAK', 'GULISTAN', 'SYRDARYA', 'ANGREN', 'PSKENT']  # the regions' centres first
 
 
 def stations():
@@ -199,8 +199,8 @@ def main():
             # the side panel: the main towns, now and in 6 hours
             px = fig.add_axes([0.745, 0, 0.255, 1]); px.axis('off'); px.set_xlim(0, 1); px.set_ylim(0, 1)
             px.add_patch(plt.Rectangle((0, 0), 1, 1, color='#f5f7f9')); px.text(0.06, 0.95, X['now'], fontsize=15, fontweight='bold', color='#1f2d3d'); px.text(0.66, 0.95, X['in6'], fontsize=13, fontweight='bold', color='#c0562b')
-            for i, tw in enumerate(sorted(summary['towns'], key=lambda z: MAIN.index(next((m for m in MAIN if m in st[z['wmo']]['en']), MAIN[-1])))[:12]):
-                y = 0.88 - i * 0.068; px.text(0.06, y, tw[lang], fontsize=13, color='#1f2d3d', va='center')
+            for i, tw in enumerate(sorted(summary['towns'], key=lambda z: next((k for k, m in enumerate(MAIN) if m in st[z['wmo']]['en']), len(MAIN)))[:14]):  # every region: 14 lines
+                y = 0.88 - i * 0.05; px.text(0.06, y, tw[lang], fontsize=13, color='#1f2d3d', va='center')
                 px.text(0.56, y, f"{tw['t']:+.0f}°", fontsize=15, fontweight='bold', color='#1f2d3d', va='center', ha='right')
                 if tw['t6'] is not None: px.text(0.9, y, f"{tw['t6']:+.0f}°", fontsize=15, fontweight='bold', color='#c0562b', va='center', ha='right')
             for i, (nm, c) in enumerate(X['lg']):
