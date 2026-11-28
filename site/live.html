@@ -300,7 +300,7 @@ function yandex() {
           cv.style.transformOrigin = '0 0'; cv.style.transition = tk.duration ? `transform ${tk.duration}ms ${tk.timingFunction || 'ease-out'}` : 'none';
           cv.style.transform = `translate(${tx}px, ${ty}px) scale(${k})`; zEnd = performance.now() + (tk.duration || 0); clearTimeout(zt); zt = setTimeout(settle, (tk.duration || 0) + 900); return; }
         YG = null; PV = ''; draw(); drawn(); });
-      YMAP.events.add(['actionend', 'boundschange', 'sizechange'], () => { clearTimeout(zt); zt = setTimeout(settle, zooming ? Math.max(40, zEnd - performance.now() + 20) : 0); });
+      YMAP.events.add(['actionend', 'boundschange', 'sizechange'], () => { clearTimeout(zt); zt = setTimeout(settle, Math.max(0, zEnd - performance.now() + 20)); });  // the map tells its new bounds at the start of a zoom: wait for its end
       YMAP.events.add('click', e => { const [la, lo] = e.get('coords'); pick(la, lo); });
       settle();
     } catch (e) { console.warn('yandex', e); document.body.classList.remove('ya'); YMAP = null; }
