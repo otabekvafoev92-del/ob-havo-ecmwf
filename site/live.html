@@ -523,7 +523,7 @@ function draw() {
     cx.strokeStyle = '#7f93aa'; cx.lineWidth = 1.1; cx.stroke(P2('a1'));                    // the regions, clearer
   } else if (!M.a1 && M.admin && ours) if (M.admin) { cx.strokeStyle = '#c9d3de'; cx.lineWidth = 0.7; cx.stroke(P2('admin')); }
   const nameBoxes = [];
-  if (GEO) {  // every region's name, and every district's name where it fits (closer = more of them), under the city pills
+  if (GEO && !YMAP) {  // every region's name (over the Yandex map its own names are used), and every district's name where it fits (closer = more of them), under the city pills
     cx.textAlign = 'center'; cx.textBaseline = 'middle';
     const put = (a, font, color, pad) => { const [px, py] = proj(a.c[0], a.c[1]); if (px < 16 || py < 12 || px > W - 16 || py > Hc - 12) return;
       cx.font = font; const tx = (a.name[LANG] || a.name.ru).replace(/ обл\.$| viloyati$/, ''), w = cx.measureText(tx).width, b = [px - w / 2 - pad, py - 8, w + pad * 2, 16];
@@ -540,7 +540,7 @@ function draw() {
   cx.textBaseline = 'middle';
   for (const { c, main } of pills) {
     const t = val(h, 1, c.lat, c.lon); if (!isFinite(t)) continue;
-    const [px, py] = proj(c.lon, c.lat), txt = `${c[LANG] || c.ru}  ${fmtT(t)}`;
+    const [px, py] = proj(c.lon, c.lat), txt = YMAP ? fmtT(t) : `${c[LANG] || c.ru}  ${fmtT(t)}`;  // over the Yandex map: the degrees only, the names are the map's
     cx.font = `${main ? 700 : 600} ${main ? 14 : 12}px 'Golos Text',sans-serif`;
     const w = cx.measureText(txt).width + 14, hh = main ? 24 : 21;
     let placed = null;
