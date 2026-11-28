@@ -223,8 +223,13 @@ async function worldGrid() {
   for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) { LA.push(IMY(y1 - (y1 - y0) * y / (ny - 1)).toFixed(2)); let lo = lo0 + (lo1 - lo0) * x / (nx - 1); lo = ((lo + 540) % 360) - 180; LO.push(lo.toFixed(2)); }
   const st = new Date(M.start + ':00Z'), en = new Date(st.getTime() + (H - 1) * 3600e3), f = d => d.toISOString().slice(0, 16);
   try {
+<<<<<<< Updated upstream
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LA}&longitude=${LO}&hourly=precipitation_probability,temperature_2m,cloud_cover,wind_speed_10m&wind_speed_unit=ms&timezone=GMT&past_days=2&start_hour=${f(st)}&end_hour=${f(en)}`).then(r => r.json());
     if (my !== WGT) return; const A = Array.isArray(r) ? r : [r]; if (A.length !== nx * ny) return;
+=======
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LA}&longitude=${LO}&hourly=precipitation_probability,temperature_2m,cloud_cover,wind_speed_10m&wind_speed_unit=ms&timezone=GMT&start_hour=${f(st)}&end_hour=${f(en)}`).then(r => r.json());
+    if (my !== WGT) return; const A = Array.isArray(r) ? r : [r]; if (A.length !== nx * ny) { WGK = ''; console.warn('world', r && r.reason); return; }
+>>>>>>> Stashed changes
     const d = new Float32Array(H * 4 * nx * ny).fill(NaN);
     A.forEach((q, i) => { const hr = q.hourly || {}; for (let h = 0; h < H; h++) {
       const put = (k, x) => { if (x != null) d[(h * 4 + k) * nx * ny + i] = x; };
