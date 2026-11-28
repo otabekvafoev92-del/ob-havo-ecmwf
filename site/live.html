@@ -235,15 +235,16 @@ async function worldGrid() {
 }
 const WF = {};  // the world picture per whole hour
 function wfield(h) {
-  if (WF[h]) return WF[h]; const g = WG, off = WF[h] = document.createElement('canvas'), F = 4, gx = (g.nx - 1) * F + 1, gy = (g.ny - 1) * F + 1; off.width = gx; off.height = gy;
+  if (WF[h]) return WF[h]; const g = WG, off = WF[h] = document.createElement('canvas'), F = 8, gx = (g.nx - 1) * F + 1, gy = (g.ny - 1) * F + 1; off.width = gx; off.height = gy;
   const o = off.getContext('2d'), im = o.createImageData(gx, gy);
   for (let y = 0; y < gy; y++) for (let x = 0; x < gx; x++) {
     const la = IMY(g.y1 - (g.y1 - g.y0) * y / (gy - 1)), lo = g.lo0 + (g.lo1 - g.lo0) * x / (gx - 1), i = (y * gx + x) * 4;
     const p = valW(h, 0, la, lo), t = valW(h, 1, la, lo), c = valW(h, 2, la, lo);
-    let col = null, a = 0;
-    if (p >= 30) { col = (t <= 0.5 ? SNOWC : RAIN)[Math.min(3, Math.floor((p - 30) / 20))]; a = 225; }
-    else if (p >= 15) { col = (t <= 0.5 ? SNOWC : RAIN)[0]; a = 110 + (p - 15) * 7; }
-    else if (c >= 0.1) { col = [104, 118, 140]; a = 20 + Math.min(1, (c - 0.1) / 0.9) * 120; }
+    let col = null, a = 0;  // soft ramps, not steps: the coarse world grid is drawn large
+    const ra = Math.max(0, Math.min(1, (p - 10) / 35)) * 225, ca = c >= 0.05 ? (15 + Math.min(1, (c - 0.05) / 0.95) * 125) : 0;
+    if (ra > 0 && ra >= ca * 0.6) { const T = t <= 0.5 ? SNOWC : RAIN, f = Math.max(0, Math.min(2.999, (p - 30) / 20)), k = Math.floor(f), m = f - k, A = T[k], Bc = T[Math.min(3, k + 1)];
+      col = [A[0] + (Bc[0] - A[0]) * m, A[1] + (Bc[1] - A[1]) * m, A[2] + (Bc[2] - A[2]) * m]; a = Math.max(ra, ca); }
+    else if (ca) { col = [104, 118, 140]; a = ca; }
     if (col) { im.data[i] = col[0]; im.data[i + 1] = col[1]; im.data[i + 2] = col[2]; im.data[i + 3] = Math.round(a); }
   }
   o.putImageData(im, 0, 0); return off;
