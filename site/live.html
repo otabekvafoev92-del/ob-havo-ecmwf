@@ -28,7 +28,6 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 #zoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
 #zoom button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.95);font:700 20px 'Golos Text',sans-serif;color:var(--ink)}
 #map{display:block;width:100%;position:relative}
-#fx{position:absolute;left:0;top:0;pointer-events:none}
 #ymap{position:absolute;left:0;top:0;width:100%;height:0}
 .ya #map{position:absolute;left:0;top:0;pointer-events:none}.ya #zoom{display:none}
 #hint{position:absolute;left:10px;right:58px;bottom:8px;transition:opacity .4s;font-size:11px;color:var(--muted);background:rgba(255,255,255,.85);padding:3px 8px;border-radius:8px}
@@ -49,7 +48,7 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 <body>
 <div id="load">…</div>
 <header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div><button id="fs" title="Во весь экран" aria-label="Во весь экран">⛶</button></header>
-<div id="main"><div id="mapwrap"><div id="ymap"></div><canvas id="map"></canvas><canvas id="fx"></canvas><div id="hint"></div><form id="srch" autocomplete="off"><input id="sq" type="search" enterkeyhint="search"><button id="sb" type="submit">🔍</button></form>
+<div id="main"><div id="mapwrap"><div id="ymap"></div><canvas id="map"></canvas><div id="hint"></div><form id="srch" autocomplete="off"><input id="sq" type="search" enterkeyhint="search"><button id="sb" type="submit">🔍</button></form>
 <div id="place"><div class="nm" id="pn"></div><div class="wh" id="pw"></div><div class="tv" id="pt"></div><div class="rows" id="pr"></div></div>
 <div id="zoom"><button id="zin" aria-label="+">+</button><button id="zout" aria-label="−">−</button><button id="zfit" aria-label="⤢" style="font-size:15px">⤢</button></div></div>
 <div id="dock"><button class="rb" id="play"></button><button class="rb alt" id="snd"></button><canvas id="tl"></canvas></div></div>
@@ -84,7 +83,7 @@ async function load() {
   if (isFinite(+Q.get('lat')) && isFinite(+Q.get('lon')) && Q.get('lat')) {  // opened for a place (a district, a town): it is chosen and outlined
     const la = +Q.get('lat'), lo = +Q.get('lon'), c = M.cities.find(c => Math.hypot(c.lat - la, (c.lon - lo) * 0.75) < 0.1);  /* the map is not laid out yet: by degrees, not pixels */ sel = { lat: la, lon: lo, name: Q.get('n') || (c ? (c[LANG] || c.ru) : TX.here), city: false }; }
   $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = '▶'; $('play').setAttribute('aria-label', TX.play); $('snd').textContent = '🔈'; $('snd').setAttribute('aria-label', TX.son);
-  $('load').remove(); setup(); draw(); search(); fxLoop(); yandex();
+  $('load').remove(); setup(); draw(); search(); yandex();
   // make the other hours' pictures and lines in the quiet moments, from the current hour on, so playing is smooth
   let wi = 0; const order = Array.from({ length: H }, (_, i) => (Math.floor(hour) + i) % H);
   const idle = window.requestIdleCallback || (f => setTimeout(() => f({ timeRemaining: () => 8 }), 30));
@@ -218,34 +217,45 @@ async function worldGrid() {
   if (WG && v.s >= WG.la0 && v.n <= WG.la1 && v.w >= WG.lo0 && v.e <= WG.lo1 && (v.e - v.w) > (WG.lo1 - WG.lo0) * 0.45) return;  // the grid there still fits
   const dx = (v.e - v.w) * 0.15, dy = (MY(v.n) - MY(v.s)) * 0.15;  // a margin, so a small pan needs nothing new
   const lo0 = v.w - dx, lo1 = v.e + dx, y0 = MY(Math.max(-80, v.s)) - dy, y1 = MY(Math.min(82, v.n)) + dy;
-  const nx = 17, ny = Math.max(7, Math.min(14, Math.round(nx * (y1 - y0) / ((lo1 - lo0) * Math.PI / 180)))), key = [lo0, lo1, y0, y1].map(x => x.toFixed(2)).join();
+  const nx = 13, ny = Math.max(6, Math.min(11, Math.round(nx * (y1 - y0) / ((lo1 - lo0) * Math.PI / 180)))), key = [lo0, lo1, y0, y1].map(x => x.toFixed(2)).join();
   if (key === WGK) return; WGK = key; const my = ++WGT;
   const LA = [], LO = [];
   for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) { LA.push(IMY(y1 - (y1 - y0) * y / (ny - 1)).toFixed(2)); let lo = lo0 + (lo1 - lo0) * x / (nx - 1); lo = ((lo + 540) % 360) - 180; LO.push(lo.toFixed(2)); }
   const st = new Date(M.start + ':00Z'), en = new Date(st.getTime() + (H - 1) * 3600e3), f = d => d.toISOString().slice(0, 16);
   try {
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LA}&longitude=${LO}&hourly=precipitation_probability,temperature_2m,cloud_cover,wind_speed_10m&wind_speed_unit=ms&timezone=GMT&start_hour=${f(st)}&end_hour=${f(en)}`).then(r => r.json());
+    const rs = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LA}&longitude=${LO}&hourly=precipitation_probability,temperature_2m,cloud_cover,wind_speed_10m&wind_speed_unit=ms&timezone=GMT&start_hour=${f(st)}&end_hour=${f(en)}`);
+    if (rs.status === 429) { WGK = ''; setTimeout(worldGrid, 20000); return; }  // too many for this minute: once more a little later
+    const r = await rs.json();
     if (my !== WGT) return; const A = Array.isArray(r) ? r : [r]; if (A.length !== nx * ny) { WGK = ''; console.warn('world', r && r.reason); return; }
     const d = new Float32Array(H * 4 * nx * ny).fill(NaN);
     A.forEach((q, i) => { const hr = q.hourly || {}; for (let h = 0; h < H; h++) {
       const put = (k, x) => { if (x != null) d[(h * 4 + k) * nx * ny + i] = x; };
       put(0, (hr.precipitation_probability || [])[h]); put(1, (hr.temperature_2m || [])[h]); const c = (hr.cloud_cover || [])[h]; put(2, c == null ? null : c / 100); put(3, (hr.wind_speed_10m || [])[h]); } });
-    WG = { lo0, lo1, y0, y1, la0: IMY(y0), la1: IMY(y1), nx, ny, d }; for (const k in WF) delete WF[k]; draw();
+    WG = { lo0, lo1, y0, y1, la0: IMY(y0), la1: IMY(y1), nx, ny, d }; for (const k in WF) delete WF[k]; for (const k in WMV) delete WMV[k]; draw();
   } catch (e) { WGK = ''; console.warn('world', e); }
 }
 const WF = {};  // the world picture per whole hour
+const WMV = {};  // the world's rain track per hour, on a 4× finer grid (in degrees of longitude and Mercator y)
+function wmotion(h) {
+  if (WMV[h]) return WMV[h]; const g = WG, F = 4, U = (g.nx - 1) * F + 1, V = (g.ny - 1) * F + 1, h1 = Math.min(H - 1, h + 1), R = 6;
+  const grid = hh => { const a = new Float32Array(U * V); for (let y = 0; y < V; y++) for (let x = 0; x < U; x++) { const v = valW(hh, 0, IMY(g.y1 - (g.y1 - g.y0) * y / (V - 1)), g.lo0 + (g.lo1 - g.lo0) * x / (U - 1)); a[y * U + x] = v === v ? v : -1; } return a; };
+  const A = grid(h), Bg = grid(h1); let best = [0, 0], bs = Infinity, wet = 0; for (const v of A) if (v >= 25) wet++;
+  if (wet > 10 && h1 !== h) for (let sy = -R; sy <= R; sy++) for (let sx = -R; sx <= R; sx++) { let ss = 0, n = 0;
+    for (let y = R; y < V - R; y++) for (let x = R; x < U - R; x++) { const a = A[y * U + x], b = Bg[(y + sy) * U + x + sx]; if (a < 0 || b < 0 || (a < 25 && b < 25)) continue; ss += (a - b) * (a - b); n++; }
+    const q = n > 8 ? ss / n * (1 + 0.03 * (sx * sx + sy * sy)) : Infinity; if (q < bs) { bs = q; best = [sx, sy]; } }
+  return WMV[h] = [best[0] * (g.lo1 - g.lo0) / (U - 1), -best[1] * (g.y1 - g.y0) / (V - 1)];
+}
 function wfield(h) {
-  if (WF[h]) return WF[h]; const g = WG, off = WF[h] = document.createElement('canvas'), F = 8, gx = (g.nx - 1) * F + 1, gy = (g.ny - 1) * F + 1; off.width = gx; off.height = gy;
-  const o = off.getContext('2d'), im = o.createImageData(gx, gy);
+  const h0 = Math.floor(h), fr = h - h0, whole = fr < 0.01 || h0 >= H - 1; if (whole && WF[h0]) return WF[h0];
+  const g = WG, F = 6, gx = (g.nx - 1) * F + 1, gy = (g.ny - 1) * F + 1, off = whole ? (WF[h0] = document.createElement('canvas')) : (WF.tmp || (WF.tmp = document.createElement('canvas'))); off.width = gx; off.height = gy;
+  const o = off.getContext('2d'), im = o.createImageData(gx, gy), h1 = Math.min(H - 1, h0 + 1), [dlo, dY] = whole ? [0, 0] : wmotion(h0), E = F * 1.5;
   for (let y = 0; y < gy; y++) for (let x = 0; x < gx; x++) {
-    const la = IMY(g.y1 - (g.y1 - g.y0) * y / (gy - 1)), lo = g.lo0 + (g.lo1 - g.lo0) * x / (gx - 1), i = (y * gx + x) * 4;
-    const p = valW(h, 0, la, lo), t = valW(h, 1, la, lo), c = valW(h, 2, la, lo);
-    let col = null, a = 0;  // soft ramps, not steps: the coarse world grid is drawn large
-    const ra = Math.max(0, Math.min(1, (p - 10) / 35)) * 225, ca = c >= 0.05 ? (15 + Math.min(1, (c - 0.05) / 0.95) * 125) : 0;
-    if (ra > 0 && ra >= ca * 0.6) { const T = t <= 0.5 ? SNOWC : RAIN, f = Math.max(0, Math.min(2.999, (p - 30) / 20)), k = Math.floor(f), m = f - k, A = T[k], Bc = T[Math.min(3, k + 1)];
-      col = [A[0] + (Bc[0] - A[0]) * m, A[1] + (Bc[1] - A[1]) * m, A[2] + (Bc[2] - A[2]) * m]; a = Math.max(ra, ca); }
-    else if (ca) { col = [104, 118, 140]; a = ca; }
-    if (col) { im.data[i] = col[0]; im.data[i + 1] = col[1]; im.data[i + 2] = col[2]; im.data[i + 3] = Math.round(a); }
+    const Y = g.y1 - (g.y1 - g.y0) * y / (gy - 1), lo = g.lo0 + (g.lo1 - g.lo0) * x / (gx - 1), i = (y * gx + x) * 4, e = Math.min(1, x / E, y / E, (gx - 1 - x) / E, (gy - 1 - y) / E);
+    let p, t, c;
+    if (whole) { const la = IMY(Y); p = valW(h0, 0, la, lo); t = valW(h0, 1, la, lo); c = valW(h0, 2, la, lo); }
+    else { const la0 = IMY(Y - fr * dY), lo0 = lo - fr * dlo, la1 = IMY(Y + (1 - fr) * dY), lo1 = lo + (1 - fr) * dlo, mix = (v, d) => { const a = valW(h0, v, la0, lo0), b = valW(h1, v, la1, lo1); return a === a ? (b === b ? a * (1 - fr) + b * fr : a) : (b === b ? b : d); };
+      p = mix(0, 0); t = mix(1, 5); c = mix(2, 0); }
+    shade(im.data, i, p, t, c, e);
   }
   o.putImageData(im, 0, 0); return off;
 }
@@ -254,8 +264,7 @@ function wpaint(h) {  // over the view, outside the region's country (that one h
   const [x0, y0] = proj(g.lo0, g.la1), [x1, y1] = proj(g.lo1, g.la0);
   const clip = new Path2D(); clip.rect(0, 0, W, Hc); clip.addPath(P2('country'));
   cx.save(); cx.clip(clip, 'evenodd'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
-  cx.globalAlpha = 1; cx.drawImage(wfield(h0), x0, y0, x1 - x0, y1 - y0);
-  if (fr > 0.02) { cx.globalAlpha = fr; cx.drawImage(wfield(h1), x0, y0, x1 - x0, y1 - y0); }
+  cx.globalAlpha = 1; cx.drawImage(wfield(h), x0, y0, x1 - x0, y1 - y0);
   cx.restore();
   // the temperature at every third point of the grid, outside the country, where it fits
   cx.font = "700 11px 'Golos Text',sans-serif"; cx.textAlign = 'center'; cx.textBaseline = 'middle'; const bx = [];
@@ -321,20 +330,27 @@ function P2(name) {
 // the precipitation layer: a small image of the grid (row 0 = the north), smoothed when it is drawn large
 const LAT_N = () => Math.max(M.lat[0], M.lat[1]), LAT_S = () => Math.min(M.lat[0], M.lat[1]);
 const FC = {};  // one small picture per whole hour, made once
+function shade(d, i, p, t, c, e) {  // one cell's colour: rain/snow by chance (soft ramps), else light clouds; e = 0…1 fade at the grid's edge
+  const ra = Math.max(0, Math.min(1, (p - 12) / 30)) * 230, ca = c >= 0.15 ? Math.min(1, (c - 0.15) / 0.85) * 70 : 0;
+  if (ra > 0 && ra >= ca) { const T = t <= 0.5 ? SNOWC : RAIN, f = Math.max(0, Math.min(2.999, (p - 30) / 20)), k = Math.floor(f), m = f - k, A = T[k], Bc = T[Math.min(3, k + 1)];
+    d[i] = A[0] + (Bc[0] - A[0]) * m; d[i + 1] = A[1] + (Bc[1] - A[1]) * m; d[i + 2] = A[2] + (Bc[2] - A[2]) * m; d[i + 3] = ra * e; }
+  else if (ca) { d[i] = 120; d[i + 1] = 132; d[i + 2] = 150; d[i + 3] = ca * e; }
+  else d[i + 3] = 0;
+}
+// the picture at hour h (fractional too): between whole hours the rain moves along its track (from h0 it slides forward, into h1 it slides in),
+// a true in-between picture each frame, not two pictures fading over each other
 function field(h) {
-  if (FC[h]) return FC[h]; const off = FC[h] = document.createElement('canvas'); off.width = NX; off.height = NY;
-  const o = off.getContext('2d'), im = o.createImageData(NX, NY), n = LAT_N(), s_ = LAT_S();
+  const h0 = Math.floor(h), fr = h - h0, whole = fr < 0.01 || h0 >= H - 1; if (whole && FC[h0]) return FC[h0];
+  const off = whole ? (FC[h0] = document.createElement('canvas')) : (FC.tmp || (FC.tmp = document.createElement('canvas'))); off.width = NX; off.height = NY;
+  const o = off.getContext('2d'), im = o.createImageData(NX, NY), n = LAT_N(), s_ = LAT_S(), h1 = Math.min(H - 1, h0 + 1);
+  const mv = whole ? [0, 0] : motion(h0), dlo = mv[0] * (M.lon[1] - M.lon[0]) / (NX - 1), dla = -mv[1] * (n - s_) / (NY - 1);
   for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
-    const lat = n - (n - s_) * y / (NY - 1), lon = M.lon[0] + (M.lon[1] - M.lon[0]) * x / (NX - 1);
-    const p = val(h, 0, lat, lon), t = val(h, 1, lat, lon), i = (y * NX + x) * 4;
-    if (p >= 15 && p < 30) {  // a small chance of rain or snow: a pale tint, so even a dry day shows where it may fall
-      const c = (t <= 0.5 ? SNOWC : RAIN)[0]; im.data[i] = c[0]; im.data[i + 1] = c[1]; im.data[i + 2] = c[2]; im.data[i + 3] = Math.round(110 + (p - 15) * 7); continue; }
-    if (!(p >= 30)) {  // no rain or snow here: the clouds, grey and soft (thicker = darker)
-      const c = val(h, 2, lat, lon);
-      if (c >= 0.1) { im.data[i] = 104; im.data[i + 1] = 118; im.data[i + 2] = 140; im.data[i + 3] = Math.round((20 + Math.min(1, (c - 0.1) / 0.9) * 120) * Math.min(1, x / 5, y / 5, (NX - 1 - x) / 5, (NY - 1 - y) / 5)); } else im.data[i + 3] = 0;  // c is 0…1
-      continue; }
-    const c = (t <= 0.5 ? SNOWC : RAIN)[Math.min(3, Math.floor((p - 30) / 20))];
-    im.data[i] = c[0]; im.data[i + 1] = c[1]; im.data[i + 2] = c[2]; im.data[i + 3] = 235;
+    const lat = n - (n - s_) * y / (NY - 1), lon = M.lon[0] + (M.lon[1] - M.lon[0]) * x / (NX - 1), i = (y * NX + x) * 4, e = Math.min(1, x / 5, y / 5, (NX - 1 - x) / 5, (NY - 1 - y) / 5);
+    let p, t, c;
+    if (whole) { p = valR(h0, 0, lat, lon); t = valR(h0, 1, lat, lon); c = valR(h0, 2, lat, lon); }
+    else { const la0 = lat - fr * dla, lo0 = lon - fr * dlo, la1 = lat + (1 - fr) * dla, lo1 = lon + (1 - fr) * dlo, mix = (v, d) => { const a = valR(h0, v, la0, lo0), b = valR(h1, v, la1, lo1); return a === a ? (b === b ? a * (1 - fr) + b * fr : a) : (b === b ? b : d); };
+      p = mix(0, 0); t = mix(1, 5); c = mix(2, 0); }
+    shade(im.data, i, p, t, c, e);
   }
   o.putImageData(im, 0, 0); return off;
 }
@@ -364,44 +380,6 @@ function motion(h) {
   return MV[h] = [best[0], best[1] * flip];
 }
 
-// falling rain and snow: streaks and flakes over the wet areas, carried the way the rain moves (a layer of its own, always alive)
-let FX = null, fxc = null; const PT = [];
-function fxLoop() {
-  FX = $('fx'); fxc = FX.getContext('2d');
-  for (let i = 0; i < 260; i++) PT.push({ x: Math.random(), y: Math.random(), l: 0, s: 0.6 + Math.random() * 0.8 });
-  const tick = () => {
-    requestAnimationFrame(tick); if (document.hidden || !W) return;
-    const dpr = devicePixelRatio || 1; if (FX.width !== Math.round(W * dpr) || FX.height !== Math.round(Hc * dpr)) { FX.width = Math.round(W * dpr); FX.height = Math.round(Hc * dpr); FX.style.width = W + 'px'; FX.style.height = Hc + 'px'; }
-    FX.style.opacity = cv.style.opacity || 1; fxc.setTransform(dpr, 0, 0, dpr, 0, 0); fxc.clearRect(0, 0, W, Hc);
-    const mv = motion(Math.min(H - 1, Math.floor(hour))), [a0, b0] = proj(M.lon[0], LAT_N()), [a1, b1] = proj(M.lon[1], LAT_S());
-    const cxp = (a1 - a0) / (NX - 1) * mv[0], cyp = (b1 - b0) / (NY - 1) * mv[1], drift = Math.min(1.6, Math.hypot(cxp, cyp) / 60), ang = Math.atan2(cyp, cxp);
-    const wx = drift ? Math.cos(ang) * drift : 0, wy = drift ? Math.sin(ang) * drift : 0;
-    fxc.lineCap = 'round';
-    for (const q of PT) {
-      let tries = 0, p, t;
-      while (true) {
-        const px = q.x * W, py = q.y * Hc, [la, lo] = (() => { const u = unproj(px, py); return [u[1], u[0]]; })();
-        p = val(hour, 0, la, lo); t = val(hour, 1, la, lo);
-        if (p >= 30 && q.l > 0) break;
-        if (++tries > 3) { p = NaN; break; }
-        q.x = Math.random(); q.y = Math.random(); q.l = 30 + Math.random() * 50;  // a new one somewhere: it lives only where it rains or snows
-      }
-      if (!(p >= 30)) continue;
-      q.l--; const k = Math.min(1, (p - 25) / 55), snow = t <= 0.5;
-      if (snow) {
-        const vx = (wx * 2 + Math.sin((q.l + q.s * 50) / 7) * 0.35) / W, vy = (0.6 + wy) * q.s / Hc; q.x += vx; q.y += vy;
-        fxc.fillStyle = `rgba(255,255,255,${0.55 + 0.4 * k})`; fxc.beginPath(); fxc.arc(q.x * W, q.y * Hc, 1.3 + q.s, 0, 7); fxc.fill();
-        fxc.strokeStyle = 'rgba(120,90,170,.35)'; fxc.lineWidth = 0.6; fxc.stroke();
-      } else {
-        const vx = (wx * 3 + 1.2) * q.s, vy = (6 + wy * 2) * q.s; q.x += vx / W; q.y += vy / Hc;
-        fxc.strokeStyle = `rgba(40,95,165,${0.35 + 0.45 * k})`; fxc.lineWidth = 1.1;
-        fxc.beginPath(); fxc.moveTo(q.x * W, q.y * Hc); fxc.lineTo(q.x * W - vx * 1.6, q.y * Hc - vy * 1.6); fxc.stroke();
-      }
-      if (q.x < 0 || q.x > 1 || q.y < 0 || q.y > 1) q.l = 0;
-    }
-  };
-  requestAnimationFrame(tick);
-}
 
 // the edges of the rain/snow areas and the isotherms every 5° (labelled), inside the country
 const LC = {};  // the contour lines per whole hour, made once (the heavy part: a finer grid, a blur, d3)
@@ -480,8 +458,8 @@ function draw() {
   if (!YMAP) { cx.fillStyle = '#e6e9ed'; cx.fillRect(0, 0, W, Hc); cx.fillStyle = '#e1e5ea'; cx.fill(nb); cx.strokeStyle = '#fff'; cx.lineWidth = 1.2; cx.stroke(nb); cx.fillStyle = '#fff'; cx.fill(co); }
   else cx.globalAlpha = 0.85;  // over the Yandex map: no paper, the weather a little see-through
   // the rain/snow picture: the two whole hours around h, the later one fading in (both made once and kept)
-  const h0 = Math.floor(h), h1 = Math.min(H - 1, h0 + 1), fr = h - h0, f0 = field(h0), f1 = fr > 0.02 ? field(h1) : null;
-  const mv = motion(h0), both = a => { cx.globalAlpha = a; paint(f0, mv[0] * fr, mv[1] * fr); if (f1) { cx.globalAlpha = a * fr; paint(f1, -mv[0] * (1 - fr), -mv[1] * (1 - fr)); } };  // the areas slide the way they move
+  const f0 = field(h);
+  const both = a => { cx.globalAlpha = a; paint(f0); };
   if (WG) wpaint(h); else { cx.save(); both(0.35); cx.restore(); }   // the world around (Open-Meteo), or the neighbours faint
   cx.save(); cx.clip(co); both(1); cx.restore();                     // the country: full colour
   lines(h);
