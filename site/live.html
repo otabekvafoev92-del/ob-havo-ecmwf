@@ -274,6 +274,20 @@ function wpaint(h) {  // over the view, outside the region's country (that one h
     cx.fillStyle = t <= 0 ? '#3a78b5' : '#c0603a'; cx.fillText(tx, px, py + 0.5);
   }
 }
+
+// every country's border over the Yandex map (a light file made from Natural Earth: whole numbers = 1/20 of a degree), as one path per view
+let BD = null, BDP = null, BDK = '';
+fetch('borders.json').then(r => r.ok ? r.json() : null).then(a => { if (!a) return;
+  BD = a.map(f => { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (let i = 0; i < f.length; i += 2) { const x = f[i] / 20, y = f[i + 1] / 20; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } return { f, b: [x0, y0, x1, y1] }; });
+  if (W) draw(); }).catch(() => {});
+function borders() {
+  if (!BD || !YMAP) return; const g = ygeo(), key = `${W},${Hc},${g.z},${g.c[0]},${g.c[1]}`;
+  if (key !== BDK) { BDK = key; BDP = new Path2D(); const v = worldNeed(), m = 2;
+    for (const r of BD) { const b = r.b; if (b[2] < v.w - m || b[0] > v.e + m || b[3] < v.s - m || b[1] > v.n + m) continue;
+      const f = r.f; for (let i = 0; i < f.length; i += 2) { const [a, c] = proj(f[i] / 20, f[i + 1] / 20); i ? BDP.lineTo(a, c) : BDP.moveTo(a, c); } BDP.closePath(); } }
+  cx.save(); cx.globalAlpha = 1; cx.lineJoin = 'round'; cx.strokeStyle = 'rgba(255,255,255,.7)'; cx.lineWidth = 2.6; cx.stroke(BDP);
+  cx.strokeStyle = 'rgba(70,84,104,.75)'; cx.lineWidth = 1.1; cx.stroke(BDP); cx.restore();
+}
 // the Yandex map underneath (the free JavaScript API; the key works only on this site): it pans and zooms, our weather is drawn over it in its projection;
 // if it does not load, our own map stays
 const YKEY = '649694b8-d22e-45ca-a243-a11d798074da';
@@ -470,6 +484,7 @@ function draw() {
   if (WG) wpaint(h); else { cx.save(); both(0.35); cx.restore(); }   // the world around (Open-Meteo), or the neighbours faint
   cx.save(); cx.clip(co); both(1); cx.restore();                     // the country: full colour
   lines(h);
+  borders();
   if (M.a1) {  // the districts when the map is close enough, the regions always
     cx.strokeStyle = '#b3c0ce'; cx.lineWidth = Z >= 1.6 ? 0.75 : 0.55; cx.stroke(P2('a2'));  // the districts, always
     cx.strokeStyle = '#7f93aa'; cx.lineWidth = 1.1; cx.stroke(P2('a1'));                    // the regions, clearer
