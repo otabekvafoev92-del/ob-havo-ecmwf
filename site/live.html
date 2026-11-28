@@ -287,7 +287,7 @@ function wfield(h) {
 function wpaint(h) {  // over the view, outside the region's country (that one has its own, finer data)
   if (!WG) return; const h0 = Math.floor(h), h1 = Math.min(H - 1, h0 + 1), fr = h - h0, g = WG;
   const [x0, y0] = proj(g.lo0, g.la1), [x1, y1] = proj(g.lo1, g.la0);
-  const clip = new Path2D(), [r0x, r0y] = proj(M.lon[0], LAT_N()), [r1x, r1y] = proj(M.lon[1], LAT_S()), ix = (r1x - r0x) / (NX - 1) * 2.5, iy = (r1y - r0y) / (NY - 1) * 2.5;
+  const clip = new Path2D(), [r0x, r0y] = proj(M.lon[0], LAT_N()), [r1x, r1y] = proj(M.lon[1], LAT_S()), ix = (r1x - r0x) / (NX - 1) * 6, iy = (r1y - r0y) / (NY - 1) * 6;
   clip.rect(0, 0, W, Hc); clip.rect(r0x + ix, r0y + iy, r1x - r0x - 2 * ix, r1y - r0y - 2 * iy);  // outside the inner part of the region's grid
   cx.save(); cx.clip(clip, 'evenodd'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
   cx.globalAlpha = 1; cx.drawImage(wfield(h), x0, y0, x1 - x0, y1 - y0);
@@ -391,7 +391,7 @@ function field(h) {
   const o = off.getContext('2d'), im = o.createImageData(NX, NY), n = LAT_N(), s_ = LAT_S(), h1 = Math.min(H - 1, h0 + 1);
   const mv = whole ? [0, 0] : motion(h0), dlo = mv[0] * (M.lon[1] - M.lon[0]) / (NX - 1), dla = -mv[1] * (n - s_) / (NY - 1);
   for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
-    const lat = n - (n - s_) * y / (NY - 1), lon = M.lon[0] + (M.lon[1] - M.lon[0]) * x / (NX - 1), i = (y * NX + x) * 4, e = Math.min(1, x / 5, y / 5, (NX - 1 - x) / 5, (NY - 1 - y) / 5);
+    const lat = n - (n - s_) * y / (NY - 1), lon = M.lon[0] + (M.lon[1] - M.lon[0]) * x / (NX - 1), i = (y * NX + x) * 4, e = Math.min(1, x / 11, y / 11, (NX - 1 - x) / 11, (NY - 1 - y) / 11);  // a wide soft edge: the region's own data meets the world's without a frame
     let p, t, c;
     if (whole) { p = valR(h0, 0, lat, lon); t = valR(h0, 1, lat, lon); c = valR(h0, 2, lat, lon); }
     else { const la0 = lat - fr * dla, lo0 = lon - fr * dlo, la1 = lat + (1 - fr) * dla, lo1 = lon + (1 - fr) * dlo, mix = (v, d) => { const a = valR(h0, v, la0, lo0), b = valR(h1, v, la1, lo1); return a === a ? (b === b ? a * (1 - fr) + b * fr : a) : (b === b ? b : d); };
