@@ -259,7 +259,7 @@ function wpaint(h) {  // over the view, outside the region's country (that one h
   cx.font = "700 11px 'Golos Text',sans-serif"; cx.textAlign = 'center'; cx.textBaseline = 'middle'; const bx = [];
   for (let y = 1; y < g.ny - 1; y += 2) for (let x = 1 + (y % 4 === 1 ? 0 : 1); x < g.nx - 1; x += 3) {
     const la = IMY(g.y1 - (g.y1 - g.y0) * y / (g.ny - 1)), lo = g.lo0 + (g.lo1 - g.lo0) * x / (g.nx - 1), t = valW(h, 1, la, lo); if (!(t === t)) continue;
-    const [px, py] = proj(lo, la); if (px < 20 || py < 20 || px > W - 20 || py > Hc - 30 || cx.isPointInPath(P2('country'), px, py)) continue;
+    const [px, py] = proj(lo, la); if (px < 20 || py < 20 || px > W - 20 || py > Hc - 30 || cx.isPointInPath(P2('country'), px * (devicePixelRatio || 1), py * (devicePixelRatio || 1))) continue;
     const tx = fmtT(t), w = cx.measureText(tx).width + 10, b = [px - w / 2, py - 9, w, 18];
     if (bx.some(q => b[0] < q[0] + q[2] + 6 && q[0] < b[0] + b[2] + 6 && b[1] < q[1] + q[3] + 6 && q[1] < b[1] + b[3] + 6)) continue; bx.push(b);
     cx.fillStyle = 'rgba(255,255,255,.88)'; cx.beginPath(); cx.roundRect(b[0], b[1], b[2], b[3], 9); cx.fill();
