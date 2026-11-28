@@ -196,7 +196,9 @@ function yandex() {
   sc.onload = () => ymaps.ready(() => {
     try {
       const el = $('ymap'); el.style.height = Hc + 'px';
-      YMAP = new ymaps.Map('ymap', { center: [sel.lat, sel.lon], zoom: 9, controls: ['zoomControl', 'typeSelector', 'trafficControl'] }, { suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true });
+      const pt = !!Q.get('lat'), cz = pt ? [sel.lat, sel.lon] : [(LAT_N() + LAT_S()) / 2, (M.lon[0] + M.lon[1]) / 2];  // a place: close to it; else the whole region
+      YMAP = new ymaps.Map('ymap', { center: cz, zoom: pt ? 9 : 6, controls: ['zoomControl', 'typeSelector', 'trafficControl'] }, { suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true });
+      if (!pt) YMAP.setBounds([[LAT_S(), M.lon[0]], [LAT_N(), M.lon[1]]], { checkZoomRange: true });
       document.body.classList.add('ya');
       if (Q.get('traffic') === '1') { const t = YMAP.controls.get('trafficControl'); t.state.set('providerKey', 'traffic#actual'); t.showTraffic(); }  // the jams now (Yandex's own layer, live)
       const on = () => { YG = null; PV = ''; draw(); };
@@ -238,9 +240,11 @@ function field(h) {
   for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
     const lat = n - (n - s_) * y / (NY - 1), lon = M.lon[0] + (M.lon[1] - M.lon[0]) * x / (NX - 1);
     const p = val(h, 0, lat, lon), t = val(h, 1, lat, lon), i = (y * NX + x) * 4;
+    if (p >= 15 && p < 30) {  // a small chance of rain or snow: a pale tint, so even a dry day shows where it may fall
+      const c = (t <= 0.5 ? SNOWC : RAIN)[0]; im.data[i] = c[0]; im.data[i + 1] = c[1]; im.data[i + 2] = c[2]; im.data[i + 3] = Math.round(110 + (p - 15) * 7); continue; }
     if (!(p >= 30)) {  // no rain or snow here: the clouds, grey and soft (thicker = darker)
       const c = val(h, 2, lat, lon);
-      if (c >= 20) { im.data[i] = 112; im.data[i + 1] = 126; im.data[i + 2] = 148; im.data[i + 3] = Math.round(Math.min(1, (c - 20) / 80) * 150); } else im.data[i + 3] = 0;
+      if (c >= 0.1) { im.data[i] = 104; im.data[i + 1] = 118; im.data[i + 2] = 140; im.data[i + 3] = Math.round((20 + Math.min(1, (c - 0.1) / 0.9) * 120) * Math.min(1, x / 5, y / 5, (NX - 1 - x) / 5, (NY - 1 - y) / 5)); } else im.data[i + 3] = 0;  // c is 0…1
       continue; }
     const c = (t <= 0.5 ? SNOWC : RAIN)[Math.min(3, Math.floor((p - 30) / 20))];
     im.data[i] = c[0]; im.data[i + 1] = c[1]; im.data[i + 2] = c[2]; im.data[i + 3] = 235;
