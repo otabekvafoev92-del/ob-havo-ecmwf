@@ -15,6 +15,7 @@ from regions import NAMES, T as TT
 import admin_wx as AW
 
 HOURS = 48
+LIVE_HOURS = 168  # the interactive map: 7 days
 TX = {
     'ru': dict(title='Сегодня и завтра по часам', today='Сегодня', tomorrow='Завтра', now='Сейчас', rain='дождь', snow='снег', dry='без осадков', wind='ветер', ms='м/с',
                when='Осадки', none='Осадков не ожидается', low='Осадки маловероятны ({p} %)', likely='вероятны {a}–{b} ч (до {p} %)', wear='Что надеть', umbrella='зонт', boots='непромокаемая обувь', windbr='ветровка',
@@ -55,7 +56,7 @@ def rain_spans(P, hours, lang, day0, pday=None):
     return X['likely'].format(a=hours[a].hour, b=(hours[b].hour + 1) % 24 or 24, p=max(int(P[a:b + 1].max()), pd_))
 
 
-def to_hours(R, D, run, off):
+def to_hours(R, D, run, off, n=None):
     """Interpolate the region's fields from model windows to every hour of local today and tomorrow (00:00 → 23:00),
     so the video always covers whole days, whenever it was built."""
     st = np.array([int(x) for x in D['steps']], float); wn = np.array([int(x) for x in D['win']], float)
@@ -63,7 +64,7 @@ def to_hours(R, D, run, off):
     now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
     midnight = (now + dt.timedelta(hours=off)).replace(hour=0, minute=0, second=0, microsecond=0) - dt.timedelta(hours=off)  # local 00:00 in UTC
     h0 = max(np.floor(mid[0]), np.round((midnight - run).total_seconds() / 3600))
-    hrs = h0 + np.arange(HOURS)
+    hrs = h0 + np.arange(n or HOURS)
     def lerp(F):
         out = []
         for h in hrs:
@@ -260,9 +261,9 @@ def export_live(R, region, loc, out, run, off, suffix='live', times=None):
     LON, LAT = R.LON[0], R.LAT[:, 0]
     cols = np.flatnonzero((LON >= lo0) & (LON <= lo1)); rows = np.flatnonzero((LAT >= la0) & (LAT <= la1))
     if not len(cols) or not len(rows): return
-    st = max(1, int(np.ceil(np.sqrt(len(cols) * len(rows) / 15000))))  # big countries (Russia) on a coarser grid
+    NH = len(times) if times is not None else (len(loc) if loc is not None else HOURS)
+    st = max(1, int(np.ceil(np.sqrt(len(cols) * len(rows) / (15000 * 48 / max(48, NH))))))  # big countries (Russia), and long spans, on a coarser grid: the file stays small
     cols, rows = cols[::st], rows[::st]
-    NH = len(times) if times is not None else HOURS
     sub = lambda F: None if F is None else np.asarray(F)[:NH][:, rows][:, :, cols]
     def enc(F, f, lo=0.0):
         if F is None: return np.full((NH, len(rows), len(cols)), 255, np.uint8)
@@ -316,8 +317,13 @@ def main():
             Pw = np.array(R.P, copy=True)  # the chance on the model windows, before they become hours (the daily rule)
             hrs, loc = to_hours(R, D, run, off)
             if first:
-                try: export_live(R, region, loc, out, run, off)
-                except Exception as e: print('live export failed:', region, e, flush=True)
+                try:  # the interactive map: 7 days, every hour (its own copy of the region: the videos keep their 48 hours)
+                    R7 = Rn.Region(D, geo, region, P, D['amt']); _, loc7 = to_hours(R7, D, run, off, LIVE_HOURS)
+                    export_live(R7, region, loc7, out, run, off); del R7
+                except Exception as e:
+                    print('live 7-day export failed, the 48 hours instead:', region, e, flush=True)
+                    try: export_live(R, region, loc, out, run, off)
+                    except Exception as e2: print('live export failed:', region, e2, flush=True)
                 if region in AW.COUNTRIES:  # the weather by regions and districts (Uzbekistan, Kazakhstan, Kyrgyzstan)
                     try: AW.build(R, region, loc, win_day, Pw, out, [l for l in a.langs.split(',') if l != 'tr'], run)
                     except Exception as e: print('admin failed:', region, e, flush=True)
