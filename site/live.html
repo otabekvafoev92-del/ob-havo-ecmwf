@@ -289,15 +289,20 @@ function yandex() {
       if (!pt) YMAP.setBounds([[LAT_S(), M.lon[0]], [LAT_N(), M.lon[1]]], { checkZoomRange: true });
       document.body.classList.add('ya');
       if (Q.get('traffic') === '1') { const t = YMAP.controls.get('trafficControl'); t.state.set('providerKey', 'traffic#actual'); t.showTraffic(); }  // the jams now (Yandex's own layer, live)
-      let LZ = YMAP.getZoom(), zt = 0, wt = 0;
-      const show = () => { cv.style.transition = 'opacity .25s'; cv.style.opacity = 1; };
-      const on = () => { YG = null; PV = ''; draw(); LZ = YMAP.getZoom(); show(); clearTimeout(wt); wt = setTimeout(worldGrid, 450); };
-      YMAP.events.add('actiontick', e => { const tk = e.get('tick');  // a zoom is animated by the map: hide ours till it ends, never draw it ahead of the map
-        if (tk && Math.abs(tk.zoom - LZ) > 1e-3) { cv.style.transition = 'none'; cv.style.opacity = 0; clearTimeout(zt); zt = setTimeout(on, 700); return; }
-        YG = null; PV = ''; draw(); });
-      YMAP.events.add(['actionend', 'boundschange', 'sizechange'], () => { clearTimeout(zt); zt = setTimeout(on, 30); });
+      // zooming: the map animates its own zoom; ours follows the same animation as a scale and shift of the drawn picture
+      // (from the state it was drawn in to the map's target), and is drawn sharp again when the zoom ends — no hiding, no jump
+      let zt = 0, wt = 0, LD = null, zooming = false, zEnd = 0;
+      const drawn = () => { const g = ygeo(); LD = { c: g.c.slice(), z: g.z }; };
+      const settle = () => { zooming = false; cv.style.transition = 'none'; cv.style.transform = ''; YG = null; PV = ''; draw(); drawn(); clearTimeout(wt); wt = setTimeout(worldGrid, 450); };
+      YMAP.events.add('actiontick', e => { const tk = e.get('tick');
+        if (tk && LD && (zooming || Math.abs(tk.zoom - LD.z) > 1e-3)) {
+          zooming = true; const k = Math.pow(2, tk.zoom - LD.z), c1 = tk.globalPixelCenter, tx = k * (LD.c[0] - W / 2) - c1[0] + W / 2, ty = k * (LD.c[1] - Hc / 2) - c1[1] + Hc / 2;
+          cv.style.transformOrigin = '0 0'; cv.style.transition = tk.duration ? `transform ${tk.duration}ms ${tk.timingFunction || 'ease-out'}` : 'none';
+          cv.style.transform = `translate(${tx}px, ${ty}px) scale(${k})`; zEnd = performance.now() + (tk.duration || 0); clearTimeout(zt); zt = setTimeout(settle, (tk.duration || 0) + 900); return; }
+        YG = null; PV = ''; draw(); drawn(); });
+      YMAP.events.add(['actionend', 'boundschange', 'sizechange'], () => { clearTimeout(zt); zt = setTimeout(settle, zooming ? Math.max(40, zEnd - performance.now() + 20) : 0); });
       YMAP.events.add('click', e => { const [la, lo] = e.get('coords'); pick(la, lo); });
-      on();
+      settle();
     } catch (e) { console.warn('yandex', e); document.body.classList.remove('ya'); YMAP = null; }
   });
   document.head.appendChild(sc);
