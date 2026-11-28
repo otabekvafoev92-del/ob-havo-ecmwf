@@ -93,7 +93,8 @@ async function load() {
 
 // the grid: value of variable v at hour h (fractional) and grid position (fx, fy)
 const raw = (h, v, y, x) => B[((h * 4 + v) * NY + y) * NX + x];
-function val(h, v, lat, lon) {  // no arrays made inside: this runs tens of thousands of times per picture
+function val(h, v, lat, lon) { const r = valR(h, v, lat, lon); return r === r ? r : WG ? valW(h, v, lat, lon) : NaN; }
+function valR(h, v, lat, lon) {  // no arrays made inside: this runs tens of thousands of times per picture
   const fx = (lon - M.lon[0]) / (M.lon[1] - M.lon[0]) * (NX - 1), fy = (lat - M.lat[0]) / (M.lat[1] - M.lat[0]) * (NY - 1);
   if (!(fx >= 0 && fy >= 0 && fx <= NX - 1 && fy <= NY - 1)) return NaN;
   const x0 = Math.min(NX - 2, Math.floor(fx)), y0 = Math.min(NY - 2, Math.floor(fy)), ax = fx - x0, ay = fy - y0;
@@ -173,9 +174,10 @@ function search() {
     f.classList.remove('bad'); $('sb').textContent = '…';
     try {
       const cc = /^[A-Z]{2}$/.test(REG) ? '&countrycodes=' + REG.toLowerCase() : '';
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=${LANG}${cc}&q=${encodeURIComponent(t)}`).then(r => r.json());
+      const go = c => fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=${LANG}${c}&q=${encodeURIComponent(t)}`).then(r => r.json());
+      let r = cc ? await go(cc) : []; if (!(r && r[0]) && YMAP) r = await go('');  // the region first, then anywhere in the world
       const g = r && r[0], la = g && +g.lat, lo = g && +g.lon;
-      if (g && isFinite(val(hour, 1, la, lo))) {
+      if (g && (YMAP || isFinite(val(hour, 1, la, lo)))) {
         sel = { lat: la, lon: lo, name: String(g.name || t).slice(0, 60), city: false }; $('hint').style.opacity = 0; q.blur();
         if (YMAP) YMAP.setCenter([la, lo], Math.max(YMAP.getZoom(), 13)); draw();
       } else f.classList.add('bad');
@@ -185,7 +187,75 @@ function search() {
   q.addEventListener('input', () => f.classList.remove('bad'));
 }
 function pick(lat, lon) { $('hint').style.opacity = 0;
-  if (isFinite(val(hour, 1, lat, lon))) { sel = { lat, lon, name: TX.here, city: false }; const c = nearCity(lat, lon); if (c) sel = { lat: c.lat, lon: c.lon, name: c[LANG] || c.ru, city: true }; draw(); } }
+  if (YMAP || isFinite(val(hour, 1, lat, lon))) { sel = { lat, lon, name: TX.here, city: false }; const c = nearCity(lat, lon); if (c) sel = { lat: c.lat, lon: c.lon, name: c[LANG] || c.ru, city: true }; draw(); } }
+
+// the whole world: outside the region's own grid, the weather for what is on screen comes from Open-Meteo (free, the same models),
+// a small grid over the view (even in Mercator, like the map), the same hours as the region's data; made again when the map moves away
+let WG = null, WGT = 0, WGK = '';
+const MY = la => Math.log(Math.tan(Math.PI / 4 + la * Math.PI / 360)), IMY = y => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
+function valW(h, v, lat, lon) {
+  const g = WG; let lo = lon; while (lo < g.lo0) lo += 360; while (lo > g.lo0 + 360) lo -= 360;
+  const fx = (lo - g.lo0) / (g.lo1 - g.lo0) * (g.nx - 1), fy = (g.y1 - MY(lat)) / (g.y1 - g.y0) * (g.ny - 1);
+  if (!(fx >= 0 && fy >= 0 && fx <= g.nx - 1 && fy <= g.ny - 1)) return NaN;
+  const x0 = Math.min(g.nx - 2, Math.floor(fx)), y0 = Math.min(g.ny - 2, Math.floor(fy)), ax = fx - x0, ay = fy - y0;
+  const h0 = Math.max(0, Math.min(H - 1, Math.floor(h))), h1 = Math.min(H - 1, h0 + 1), wh = h - h0;
+  let s = 0, w = 0;
+  for (let j = 0; j < 2; j++) { const kh = j ? wh : 1 - wh; if (kh <= 0) continue;
+    const o = ((j ? h1 : h0) * 4 + v) * g.ny * g.nx;
+    for (const [dy, dx, k] of [[0, 0, (1 - ay) * (1 - ax)], [0, 1, (1 - ay) * ax], [1, 0, ay * (1 - ax)], [1, 1, ay * ax]]) {
+      const b = g.d[o + (y0 + dy) * g.nx + x0 + dx]; if (b === b && k > 0) { s += b * k * kh; w += k * kh; } } }
+  return w ? s / w : NaN;
+}
+function worldNeed() {  // the view, and whether the region's grid already covers it
+  const b = YMAP.getBounds(); let [[s, w], [n, e]] = b; s = Math.max(-78, s); n = Math.min(80, n);
+  if (e < w) e += 360; if (e - w > 360) { w = -180; e = 180; }
+  const inR = s >= LAT_S() && n <= LAT_N() && w >= M.lon[0] && e <= M.lon[1];
+  return { s, n, w, e, inR };
+}
+async function worldGrid() {
+  if (!YMAP || M.times) return; const v = worldNeed(); if (v.inR) return;
+  if (WG && v.s >= WG.la0 && v.n <= WG.la1 && v.w >= WG.lo0 && v.e <= WG.lo1 && (v.e - v.w) > (WG.lo1 - WG.lo0) * 0.45) return;  // the grid there still fits
+  const dx = (v.e - v.w) * 0.15, dy = (MY(v.n) - MY(v.s)) * 0.15;  // a margin, so a small pan needs nothing new
+  const lo0 = v.w - dx, lo1 = v.e + dx, y0 = MY(Math.max(-80, v.s)) - dy, y1 = MY(Math.min(82, v.n)) + dy;
+  const nx = 13, ny = Math.max(6, Math.min(11, Math.round(nx * (y1 - y0) / ((lo1 - lo0) * Math.PI / 180)))), key = [lo0, lo1, y0, y1].map(x => x.toFixed(2)).join();
+  if (key === WGK) return; WGK = key; const my = ++WGT;
+  const LA = [], LO = [];
+  for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) { LA.push(IMY(y1 - (y1 - y0) * y / (ny - 1)).toFixed(2)); let lo = lo0 + (lo1 - lo0) * x / (nx - 1); lo = ((lo + 540) % 360) - 180; LO.push(lo.toFixed(2)); }
+  const st = new Date(M.start + ':00Z'), en = new Date(st.getTime() + (H - 1) * 3600e3), f = d => d.toISOString().slice(0, 16);
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LA}&longitude=${LO}&hourly=precipitation_probability,temperature_2m,cloud_cover,wind_speed_10m&wind_speed_unit=ms&timezone=GMT&start_hour=${f(st)}&end_hour=${f(en)}`).then(r => r.json());
+    if (my !== WGT) return; const A = Array.isArray(r) ? r : [r]; if (A.length !== nx * ny) { WGK = ''; console.warn('world', r && r.reason); return; }
+    const d = new Float32Array(H * 4 * nx * ny).fill(NaN);
+    A.forEach((q, i) => { const hr = q.hourly || {}; for (let h = 0; h < H; h++) {
+      const put = (k, x) => { if (x != null) d[(h * 4 + k) * nx * ny + i] = x; };
+      put(0, (hr.precipitation_probability || [])[h]); put(1, (hr.temperature_2m || [])[h]); const c = (hr.cloud_cover || [])[h]; put(2, c == null ? null : c / 100); put(3, (hr.wind_speed_10m || [])[h]); } });
+    WG = { lo0, lo1, y0, y1, la0: IMY(y0), la1: IMY(y1), nx, ny, d }; for (const k in WF) delete WF[k]; draw();
+  } catch (e) { WGK = ''; console.warn('world', e); }
+}
+const WF = {};  // the world picture per whole hour
+function wfield(h) {
+  if (WF[h]) return WF[h]; const g = WG, off = WF[h] = document.createElement('canvas'), F = 4, gx = (g.nx - 1) * F + 1, gy = (g.ny - 1) * F + 1; off.width = gx; off.height = gy;
+  const o = off.getContext('2d'), im = o.createImageData(gx, gy);
+  for (let y = 0; y < gy; y++) for (let x = 0; x < gx; x++) {
+    const la = IMY(g.y1 - (g.y1 - g.y0) * y / (gy - 1)), lo = g.lo0 + (g.lo1 - g.lo0) * x / (gx - 1), i = (y * gx + x) * 4;
+    const p = valW(h, 0, la, lo), t = valW(h, 1, la, lo), c = valW(h, 2, la, lo);
+    let col = null, a = 0;
+    if (p >= 30) { col = (t <= 0.5 ? SNOWC : RAIN)[Math.min(3, Math.floor((p - 30) / 20))]; a = 225; }
+    else if (p >= 15) { col = (t <= 0.5 ? SNOWC : RAIN)[0]; a = 110 + (p - 15) * 7; }
+    else if (c >= 0.1) { col = [104, 118, 140]; a = 20 + Math.min(1, (c - 0.1) / 0.9) * 120; }
+    if (col) { im.data[i] = col[0]; im.data[i + 1] = col[1]; im.data[i + 2] = col[2]; im.data[i + 3] = Math.round(a); }
+  }
+  o.putImageData(im, 0, 0); return off;
+}
+function wpaint(h) {  // over the view, outside the region's country (that one has its own, finer data)
+  if (!WG) return; const h0 = Math.floor(h), h1 = Math.min(H - 1, h0 + 1), fr = h - h0, g = WG;
+  const [x0, y0] = proj(g.lo0, g.la1), [x1, y1] = proj(g.lo1, g.la0);
+  const clip = new Path2D(); clip.rect(0, 0, W, Hc); clip.addPath(P2('country'));
+  cx.save(); cx.clip(clip, 'evenodd'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+  cx.globalAlpha = 1; cx.drawImage(wfield(h0), x0, y0, x1 - x0, y1 - y0);
+  if (fr > 0.02) { cx.globalAlpha = fr; cx.drawImage(wfield(h1), x0, y0, x1 - x0, y1 - y0); }
+  cx.restore();
+}
 // the Yandex map underneath (the free JavaScript API; the key works only on this site): it pans and zooms, our weather is drawn over it in its projection;
 // if it does not load, our own map stays
 const YKEY = '649694b8-d22e-45ca-a243-a11d798074da';
@@ -201,8 +271,13 @@ function yandex() {
       if (!pt) YMAP.setBounds([[LAT_S(), M.lon[0]], [LAT_N(), M.lon[1]]], { checkZoomRange: true });
       document.body.classList.add('ya');
       if (Q.get('traffic') === '1') { const t = YMAP.controls.get('trafficControl'); t.state.set('providerKey', 'traffic#actual'); t.showTraffic(); }  // the jams now (Yandex's own layer, live)
-      const on = () => { YG = null; PV = ''; draw(); };
-      YMAP.events.add(['actiontick', 'actiontickcomplete', 'boundschange', 'sizechange'], on);
+      let LZ = YMAP.getZoom(), zt = 0, wt = 0;
+      const show = () => { cv.style.transition = 'opacity .25s'; cv.style.opacity = 1; };
+      const on = () => { YG = null; PV = ''; draw(); LZ = YMAP.getZoom(); show(); clearTimeout(wt); wt = setTimeout(worldGrid, 450); };
+      YMAP.events.add('actiontick', e => { const tk = e.get('tick');  // a zoom is animated by the map: hide ours till it ends, never draw it ahead of the map
+        if (tk && Math.abs(tk.zoom - LZ) > 1e-3) { cv.style.transition = 'none'; cv.style.opacity = 0; clearTimeout(zt); zt = setTimeout(on, 700); return; }
+        YG = null; PV = ''; draw(); });
+      YMAP.events.add(['actionend', 'boundschange', 'sizechange'], () => { clearTimeout(zt); zt = setTimeout(on, 30); });
       YMAP.events.add('click', e => { const [la, lo] = e.get('coords'); pick(la, lo); });
       on();
     } catch (e) { console.warn('yandex', e); document.body.classList.remove('ya'); YMAP = null; }
@@ -335,7 +410,7 @@ function draw() {
   // the rain/snow picture: the two whole hours around h, the later one fading in (both made once and kept)
   const h0 = Math.floor(h), h1 = Math.min(H - 1, h0 + 1), fr = h - h0, f0 = field(h0), f1 = fr > 0.02 ? field(h1) : null;
   const both = a => { cx.globalAlpha = a; paint(f0); if (f1) { cx.globalAlpha = a * fr; paint(f1); } };
-  cx.save(); both(0.35); cx.restore();                               // the neighbours: faint
+  if (WG) wpaint(h); else { cx.save(); both(0.35); cx.restore(); }   // the world around (Open-Meteo), or the neighbours faint
   cx.save(); cx.clip(co); both(1); cx.restore();                     // the country: full colour
   lines(h);
   if (M.a1) {  // the districts when the map is close enough, the regions always
