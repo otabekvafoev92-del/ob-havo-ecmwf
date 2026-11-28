@@ -259,7 +259,8 @@ function wfield(h) {
 function wpaint(h) {  // over the view, outside the region's country (that one has its own, finer data)
   if (!WG) return; const h0 = Math.floor(h), h1 = Math.min(H - 1, h0 + 1), fr = h - h0, g = WG;
   const [x0, y0] = proj(g.lo0, g.la1), [x1, y1] = proj(g.lo1, g.la0);
-  const clip = new Path2D(); clip.rect(0, 0, W, Hc); clip.addPath(P2('country'));
+  const clip = new Path2D(), [r0x, r0y] = proj(M.lon[0], LAT_N()), [r1x, r1y] = proj(M.lon[1], LAT_S()), ix = (r1x - r0x) / (NX - 1) * 2.5, iy = (r1y - r0y) / (NY - 1) * 2.5;
+  clip.rect(0, 0, W, Hc); clip.rect(r0x + ix, r0y + iy, r1x - r0x - 2 * ix, r1y - r0y - 2 * iy);  // outside the inner part of the region's grid
   cx.save(); cx.clip(clip, 'evenodd'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
   cx.globalAlpha = 1; cx.drawImage(wfield(h), x0, y0, x1 - x0, y1 - y0);
   cx.restore();
@@ -481,8 +482,8 @@ function draw() {
   // the rain/snow picture: the two whole hours around h, the later one fading in (both made once and kept)
   const f0 = field(h);
   const both = a => { cx.globalAlpha = a; paint(f0); };
-  if (WG) wpaint(h); else { cx.save(); both(0.35); cx.restore(); }   // the world around (Open-Meteo), or the neighbours faint
-  cx.save(); cx.clip(co); both(1); cx.restore();                     // the country: full colour
+  if (WG) wpaint(h);                                                 // the world around (Open-Meteo), under the region's own picture
+  cx.save(); both(1); cx.restore();                                  // the region's grid, its edges fading into the world: the clouds go on across the borders
   lines(h);
   borders();
   if (M.a1) {  // the districts when the map is close enough, the regions always
@@ -500,7 +501,7 @@ function draw() {
     for (const a of GEO.adm2) put(a, `500 ${Z >= 3.5 ? 11 : Z >= 2 ? 10 : 8.5}px 'Golos Text',sans-serif`, 'rgba(90,108,130,.75)', 1);  // then the districts
     cx.textAlign = 'left';
   }
-  cx.strokeStyle = '#2b3a4e'; cx.lineWidth = 1.8; cx.stroke(co);
+  cx.strokeStyle = 'rgba(43,58,78,.85)'; cx.lineWidth = 1.1; cx.stroke(co);
   // the cities: a white pill with the name and temperature
   const boxes = [], dots = M.cities.map(c => proj(c.lon, c.lat));
   const pills = M.cities.map(c => ({ c, main: sel.city && c.lat === sel.lat && c.lon === sel.lon })).sort((a, b) => b.main - a.main);
