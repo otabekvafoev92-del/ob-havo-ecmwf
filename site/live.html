@@ -28,6 +28,7 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 #zoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
 #zoom button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.95);font:700 20px 'Golos Text',sans-serif;color:var(--ink)}
 #map{display:block;width:100%;position:relative}
+#fx{position:absolute;left:0;top:0;pointer-events:none}
 #ymap{position:absolute;left:0;top:0;width:100%;height:0}
 .ya #map{position:absolute;left:0;top:0;pointer-events:none}.ya #zoom{display:none}
 #hint{position:absolute;left:10px;right:58px;bottom:8px;transition:opacity .4s;font-size:11px;color:var(--muted);background:rgba(255,255,255,.85);padding:3px 8px;border-radius:8px}
@@ -48,7 +49,7 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 <body>
 <div id="load">…</div>
 <header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div><button id="fs" title="Во весь экран" aria-label="Во весь экран">⛶</button></header>
-<div id="main"><div id="mapwrap"><div id="ymap"></div><canvas id="map"></canvas><div id="hint"></div><form id="srch" autocomplete="off"><input id="sq" type="search" enterkeyhint="search"><button id="sb" type="submit">🔍</button></form>
+<div id="main"><div id="mapwrap"><div id="ymap"></div><canvas id="map"></canvas><canvas id="fx"></canvas><div id="hint"></div><form id="srch" autocomplete="off"><input id="sq" type="search" enterkeyhint="search"><button id="sb" type="submit">🔍</button></form>
 <div id="place"><div class="nm" id="pn"></div><div class="wh" id="pw"></div><div class="tv" id="pt"></div><div class="rows" id="pr"></div></div>
 <div id="zoom"><button id="zin" aria-label="+">+</button><button id="zout" aria-label="−">−</button><button id="zfit" aria-label="⤢" style="font-size:15px">⤢</button></div></div>
 <div id="dock"><button class="rb" id="play"></button><button class="rb alt" id="snd"></button><canvas id="tl"></canvas></div></div>
@@ -83,7 +84,7 @@ async function load() {
   if (isFinite(+Q.get('lat')) && isFinite(+Q.get('lon')) && Q.get('lat')) {  // opened for a place (a district, a town): it is chosen and outlined
     const la = +Q.get('lat'), lo = +Q.get('lon'), c = M.cities.find(c => Math.hypot(c.lat - la, (c.lon - lo) * 0.75) < 0.1);  /* the map is not laid out yet: by degrees, not pixels */ sel = { lat: la, lon: lo, name: Q.get('n') || (c ? (c[LANG] || c.ru) : TX.here), city: false }; }
   $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = '▶'; $('play').setAttribute('aria-label', TX.play); $('snd').textContent = '🔈'; $('snd').setAttribute('aria-label', TX.son);
-  $('load').remove(); setup(); draw(); search(); yandex();
+  $('load').remove(); setup(); draw(); search(); fxLoop(); yandex();
   // make the other hours' pictures and lines in the quiet moments, from the current hour on, so playing is smooth
   let wi = 0; const order = Array.from({ length: H }, (_, i) => (Math.floor(hour) + i) % H);
   const idle = window.requestIdleCallback || (f => setTimeout(() => f({ timeRemaining: () => 8 }), 30));
@@ -336,9 +337,69 @@ function field(h) {
   }
   o.putImageData(im, 0, 0); return off;
 }
-function paint(f) {  // the grid image over its cells (each pixel is the centre of a cell)
+function paint(f, ox = 0, oy = 0) {  // the grid image over its cells (each pixel is the centre of a cell), moved by (ox, oy) cells
   const [x0, y0] = proj(M.lon[0], LAT_N()), [x1, y1] = proj(M.lon[1], LAT_S()), dx = (x1 - x0) / (NX - 1), dy = (y1 - y0) / (NY - 1);
-  cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(f, x0 - dx / 2, y0 - dy / 2, x1 - x0 + dx, y1 - y0 + dy);
+  cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(f, x0 - dx / 2 + ox * dx, y0 - dy / 2 + oy * dy, x1 - x0 + dx, y1 - y0 + dy);
+}
+
+
+// how the rain and snow move from one hour to the next: the shift (in grid cells, picture rows down) that best lays hour h on hour h+1,
+// so between the hours the areas slide along instead of only fading
+const MV = {};
+function motion(h) {
+  if (MV[h]) return MV[h]; const h1 = Math.min(H - 1, h + 1), sc = M.scale[0], th = (25 + sc[1]) * sc[0], o0 = h * 4 * NY * NX, o1 = h1 * 4 * NY * NX, R = 4;
+  let best = [0, 0], bs = Infinity, wet = 0;
+  for (let i = 0; i < NX * NY; i++) { const a = B[o0 + i]; if (a !== 255 && a >= th) wet++; }
+  if (wet < 12 || h1 === h) return MV[h] = best;
+  for (let sy = -R; sy <= R; sy++) for (let sx = -R; sx <= R; sx++) {
+    let ss = 0, n = 0;
+    for (let y = R; y < NY - R; y++) for (let x = R; x < NX - R; x++) {
+      const a = B[o0 + y * NX + x], b = B[o1 + (y + sy) * NX + x + sx]; if (a === 255 || b === 255 || (a < th && b < th)) continue;
+      ss += (a - b) * (a - b); n++; }
+    const sc2 = n > 6 ? ss / n * (1 + 0.04 * (sx * sx + sy * sy)) : Infinity;
+    if (sc2 < bs) { bs = sc2; best = [sx, sy]; }
+  }
+  const flip = M.lat[0] > M.lat[1] ? 1 : -1;  // the data's rows run north→south or south→north; the picture's always north→south
+  return MV[h] = [best[0], best[1] * flip];
+}
+
+// falling rain and snow: streaks and flakes over the wet areas, carried the way the rain moves (a layer of its own, always alive)
+let FX = null, fxc = null; const PT = [];
+function fxLoop() {
+  FX = $('fx'); fxc = FX.getContext('2d');
+  for (let i = 0; i < 260; i++) PT.push({ x: Math.random(), y: Math.random(), l: 0, s: 0.6 + Math.random() * 0.8 });
+  const tick = () => {
+    requestAnimationFrame(tick); if (document.hidden || !W) return;
+    const dpr = devicePixelRatio || 1; if (FX.width !== Math.round(W * dpr) || FX.height !== Math.round(Hc * dpr)) { FX.width = Math.round(W * dpr); FX.height = Math.round(Hc * dpr); FX.style.width = W + 'px'; FX.style.height = Hc + 'px'; }
+    FX.style.opacity = cv.style.opacity || 1; fxc.setTransform(dpr, 0, 0, dpr, 0, 0); fxc.clearRect(0, 0, W, Hc);
+    const mv = motion(Math.min(H - 1, Math.floor(hour))), [a0, b0] = proj(M.lon[0], LAT_N()), [a1, b1] = proj(M.lon[1], LAT_S());
+    const cxp = (a1 - a0) / (NX - 1) * mv[0], cyp = (b1 - b0) / (NY - 1) * mv[1], drift = Math.min(1.6, Math.hypot(cxp, cyp) / 60), ang = Math.atan2(cyp, cxp);
+    const wx = drift ? Math.cos(ang) * drift : 0, wy = drift ? Math.sin(ang) * drift : 0;
+    fxc.lineCap = 'round';
+    for (const q of PT) {
+      let tries = 0, p, t;
+      while (true) {
+        const px = q.x * W, py = q.y * Hc, [la, lo] = (() => { const u = unproj(px, py); return [u[1], u[0]]; })();
+        p = val(hour, 0, la, lo); t = val(hour, 1, la, lo);
+        if (p >= 30 && q.l > 0) break;
+        if (++tries > 3) { p = NaN; break; }
+        q.x = Math.random(); q.y = Math.random(); q.l = 30 + Math.random() * 50;  // a new one somewhere: it lives only where it rains or snows
+      }
+      if (!(p >= 30)) continue;
+      q.l--; const k = Math.min(1, (p - 25) / 55), snow = t <= 0.5;
+      if (snow) {
+        const vx = (wx * 2 + Math.sin((q.l + q.s * 50) / 7) * 0.35) / W, vy = (0.6 + wy) * q.s / Hc; q.x += vx; q.y += vy;
+        fxc.fillStyle = `rgba(255,255,255,${0.55 + 0.4 * k})`; fxc.beginPath(); fxc.arc(q.x * W, q.y * Hc, 1.3 + q.s, 0, 7); fxc.fill();
+        fxc.strokeStyle = 'rgba(120,90,170,.35)'; fxc.lineWidth = 0.6; fxc.stroke();
+      } else {
+        const vx = (wx * 3 + 1.2) * q.s, vy = (6 + wy * 2) * q.s; q.x += vx / W; q.y += vy / Hc;
+        fxc.strokeStyle = `rgba(40,95,165,${0.35 + 0.45 * k})`; fxc.lineWidth = 1.1;
+        fxc.beginPath(); fxc.moveTo(q.x * W, q.y * Hc); fxc.lineTo(q.x * W - vx * 1.6, q.y * Hc - vy * 1.6); fxc.stroke();
+      }
+      if (q.x < 0 || q.x > 1 || q.y < 0 || q.y > 1) q.l = 0;
+    }
+  };
+  requestAnimationFrame(tick);
 }
 
 // the edges of the rain/snow areas and the isotherms every 5° (labelled), inside the country
@@ -419,7 +480,7 @@ function draw() {
   else cx.globalAlpha = 0.85;  // over the Yandex map: no paper, the weather a little see-through
   // the rain/snow picture: the two whole hours around h, the later one fading in (both made once and kept)
   const h0 = Math.floor(h), h1 = Math.min(H - 1, h0 + 1), fr = h - h0, f0 = field(h0), f1 = fr > 0.02 ? field(h1) : null;
-  const both = a => { cx.globalAlpha = a; paint(f0); if (f1) { cx.globalAlpha = a * fr; paint(f1); } };
+  const mv = motion(h0), both = a => { cx.globalAlpha = a; paint(f0, mv[0] * fr, mv[1] * fr); if (f1) { cx.globalAlpha = a * fr; paint(f1, -mv[0] * (1 - fr), -mv[1] * (1 - fr)); } };  // the areas slide the way they move
   if (WG) wpaint(h); else { cx.save(); both(0.35); cx.restore(); }   // the world around (Open-Meteo), or the neighbours faint
   cx.save(); cx.clip(co); both(1); cx.restore();                     // the country: full colour
   lines(h);
