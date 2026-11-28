@@ -38,9 +38,11 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 #place .tv{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;line-height:1.15}
 #place .rows{font-size:11px;line-height:1.45;color:var(--muted)}
 #place .rows b{font-size:11.5px;color:var(--ink)}
-#srch{position:absolute;left:10px;bottom:34px;display:flex;width:min(330px,calc(100% - 70px));box-shadow:0 2px 8px rgba(43,58,78,.18);border-radius:10px;overflow:hidden;z-index:3}
+#srch{position:absolute;left:10px;bottom:34px;display:flex;width:min(400px,calc(100% - 64px));box-shadow:0 2px 8px rgba(43,58,78,.18);border-radius:10px;overflow:hidden;z-index:3}
 #srch input{flex:1;min-width:0;border:0;padding:9px 10px;font:14px 'Golos Text',sans-serif;color:var(--ink);background:rgba(255,255,255,.97);outline:none}
 #srch button{border:0;background:#ffcc00;color:#222;font:700 13px 'Golos Text',sans-serif;padding:0 12px}
+#srch #me,#srch #star{background:#fff;padding:0 9px;font-size:16px;border-right:1px solid #e3e8ee}#srch #star.on{color:#e0a100}
+#toast{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);background:rgba(43,58,78,.92);color:#fff;font:600 12.5px 'Golos Text',sans-serif;padding:7px 12px;border-radius:10px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:4;max-width:86%;text-align:center}
 #srch.bad input{background:#fff1f0}
 #load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--paper);font-size:15px;color:var(--muted);z-index:9}
 </style>
@@ -48,7 +50,7 @@ header .t{font-family:Unbounded,sans-serif;font-weight:700;font-size:22px;color:
 <body>
 <div id="load">…</div>
 <header><div class="c" id="hc"></div><div class="d" id="hd"></div><div class="t" id="ht"></div><button id="fs" title="Во весь экран" aria-label="Во весь экран">⛶</button></header>
-<div id="main"><div id="mapwrap"><div id="ymap"></div><canvas id="map"></canvas><div id="hint"></div><form id="srch" autocomplete="off"><input id="sq" type="search" enterkeyhint="search"><button id="sb" type="submit">🔍</button></form>
+<div id="main"><div id="mapwrap"><div id="ymap"></div><canvas id="map"></canvas><div id="hint"></div><div id="toast"></div><form id="srch" autocomplete="off"><button id="me" type="button" aria-label="📍">📍</button><button id="star" type="button" aria-label="⭐">☆</button><input id="sq" type="search" enterkeyhint="search"><button id="sb" type="submit">🔍</button></form>
 <div id="place"><div class="nm" id="pn"></div><div class="wh" id="pw"></div><div class="tv" id="pt"></div><div class="rows" id="pr"></div></div>
 <div id="zoom"><button id="zin" aria-label="+">+</button><button id="zout" aria-label="−">−</button><button id="zfit" aria-label="⤢" style="font-size:15px">⤢</button></div></div>
 <div id="dock"><button class="rb" id="play"></button><button class="rb alt" id="snd"></button><canvas id="tl"></canvas></div></div>
@@ -80,10 +82,11 @@ async function load() {
   hour = M.times ? Math.max(0, M.times.findIndex((t, i) => i === H - 1 || new Date(M.times[i + 1] + ':00Z') > now)) : Math.max(0, Math.min(H - 1, Math.floor((now - st) / 3600e3)));
   const mc = M.cities.find(c => c.ru === (M.main[LANG] || M.main.ru)) || M.cities[0];
   sel = { lat: mc.lat, lon: mc.lon, name: mc[LANG] || mc.ru, city: true };
+  const me = myPlace(); if (me && !Q.get('lat')) { sel = { lat: me.lat, lon: me.lon, name: me.name || MYN[LANG] || MYN.ru, city: false }; SELPT = true; }  // the person's own place, saved here before
   if (isFinite(+Q.get('lat')) && isFinite(+Q.get('lon')) && Q.get('lat')) {  // opened for a place (a district, a town): it is chosen and outlined
     const la = +Q.get('lat'), lo = +Q.get('lon'), c = M.cities.find(c => Math.hypot(c.lat - la, (c.lon - lo) * 0.75) < 0.1);  /* the map is not laid out yet: by degrees, not pixels */ sel = { lat: la, lon: lo, name: Q.get('n') || (c ? (c[LANG] || c.ru) : TX.here), city: false }; }
   $('hc').textContent = TX.names[REG] || REG; $('hint').textContent = TX.hint; $('play').textContent = '▶'; $('play').setAttribute('aria-label', TX.play); $('snd').textContent = '🔈'; $('snd').setAttribute('aria-label', TX.son);
-  $('load').remove(); setup(); draw(); search(); yandex();
+  $('load').remove(); setup(); draw(); search(); myPlaceUI(); yandex();
   // make the other hours' pictures and lines in the quiet moments, from the current hour on, so playing is smooth
   let wi = 0; const order = Array.from({ length: H }, (_, i) => (Math.floor(hour) + i) % H);
   const idle = window.requestIdleCallback || (f => setTimeout(() => f({ timeRemaining: () => 8 }), 30));
@@ -165,6 +168,31 @@ function setup() {
   addEventListener('resize', () => { setup(); draw(); });
   try { tg && tg.onEvent && tg.onEvent('viewportChanged', () => { setup(); draw(); }); } catch (e) {}  // Telegram opens small and then grows: the map grows with it
 }
+
+// the person's own place: 📍 finds it (the phone's location), ☆ keeps the chosen point as it; it opens there next time
+const MYN = { uz: 'Mening joyim', ru: 'Моё место', tr: 'Konumum' }, MYT = {
+  uz: { saved: '⭐ Saqlandi: xarita endi shu joydan ochiladi', noloc: 'Joylashuv aniqlanmadi — xaritada joyni bosing va ☆ bilan saqlang', finding: 'Joylashuv aniqlanmoqda…' },
+  ru: { saved: '⭐ Сохранено: карта теперь откроется здесь', noloc: 'Не удалось определить место — нажмите на карту и сохраните ☆', finding: 'Определяю местоположение…' },
+  tr: { saved: '⭐ Kaydedildi: harita artık burada açılacak', noloc: 'Konum bulunamadı — haritaya dokunun ve ☆ ile kaydedin', finding: 'Konum bulunuyor…' } };
+let SELPT = false;
+function myPlace() { try { const v = JSON.parse(localStorage.getItem('osmon_me') || 'null'); return v && isFinite(v.lat) && isFinite(v.lon) ? v : null; } catch (e) { return null; } }
+function toast(t, ms = 2600) { const e = $('toast'); e.textContent = t; e.style.opacity = 1; clearTimeout(toast.t); toast.t = setTimeout(() => e.style.opacity = 0, ms); }
+function starState() { const m = myPlace(), on = !!(m && sel && Math.abs(m.lat - sel.lat) < 1e-4 && Math.abs(m.lon - sel.lon) < 1e-4); $('star').textContent = on ? '★' : '☆'; $('star').classList.toggle('on', on); }
+function savePlace() { try { localStorage.setItem('osmon_me', JSON.stringify({ lat: sel.lat, lon: sel.lon, name: sel.name })); } catch (e) {} starState(); toast((MYT[LANG] || MYT.ru).saved); }
+function myPlaceUI() {
+  const X = MYT[LANG] || MYT.ru;
+  $('star').onclick = () => { if (sel) savePlace(); };
+  $('me').onclick = () => {
+    if (!navigator.geolocation) return toast(X.noloc, 4000);
+    toast(X.finding, 8000);
+    navigator.geolocation.getCurrentPosition(p => {
+      const la = p.coords.latitude, lo = p.coords.longitude;
+      sel = { lat: la, lon: lo, name: MYN[LANG] || MYN.ru, city: false }; $('hint').style.opacity = 0;
+      if (YMAP) YMAP.setCenter([la, lo], Math.max(YMAP.getZoom(), 11)); savePlace(); draw();
+    }, () => toast(X.noloc, 4500), { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 });
+  };
+  starState();
+}
 // the address search (OpenStreetMap's free geocoder): a street, a mahalla, a house — the forecast for exactly that point
 const SQ = { uz: 'Ko‘cha, mahalla, manzil…', ru: 'Улица, махалля, адрес…', tr: 'Sokak, mahalle, adres…', en: 'Street, mahalla, address…' };
 function search() {
@@ -217,7 +245,7 @@ async function worldGrid() {
   if (WG && v.s >= WG.la0 && v.n <= WG.la1 && v.w >= WG.lo0 && v.e <= WG.lo1 && (v.e - v.w) > (WG.lo1 - WG.lo0) * 0.45) return;  // the grid there still fits
   const dx = (v.e - v.w) * 0.15, dy = (MY(v.n) - MY(v.s)) * 0.15;  // a margin, so a small pan needs nothing new
   const lo0 = v.w - dx, lo1 = v.e + dx, y0 = MY(Math.max(-80, v.s)) - dy, y1 = MY(Math.min(82, v.n)) + dy;
-  const nx = 13, ny = Math.max(6, Math.min(11, Math.round(nx * (y1 - y0) / ((lo1 - lo0) * Math.PI / 180)))), key = [lo0, lo1, y0, y1].map(x => x.toFixed(2)).join();
+  const nx = 10, ny = Math.max(5, Math.min(9, Math.round(nx * (y1 - y0) / ((lo1 - lo0) * Math.PI / 180)))), key = [lo0, lo1, y0, y1].map(x => x.toFixed(2)).join();
   if (key === WGK) return; WGK = key; const my = ++WGT;
   const LA = [], LO = [];
   for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) { LA.push(IMY(y1 - (y1 - y0) * y / (ny - 1)).toFixed(2)); let lo = lo0 + (lo1 - lo0) * x / (nx - 1); lo = ((lo + 540) % 360) - 180; LO.push(lo.toFixed(2)); }
@@ -299,7 +327,7 @@ function yandex() {
   sc.onload = () => ymaps.ready(() => {
     try {
       const el = $('ymap'); el.style.height = Hc + 'px';
-      const pt = !!Q.get('lat'), cz = pt ? [sel.lat, sel.lon] : [(LAT_N() + LAT_S()) / 2, (M.lon[0] + M.lon[1]) / 2];  // a place: close to it; else the whole region
+      const pt = !!Q.get('lat') || SELPT, cz = pt ? [sel.lat, sel.lon] : [(LAT_N() + LAT_S()) / 2, (M.lon[0] + M.lon[1]) / 2];  // a place: close to it; else the whole region
       YMAP = new ymaps.Map('ymap', { center: cz, zoom: pt ? 9 : 6, controls: ['zoomControl', 'typeSelector', 'trafficControl'] }, { suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true });
       if (!pt) YMAP.setBounds([[LAT_S(), M.lon[0]], [LAT_N(), M.lon[1]]], { checkZoomRange: true });
       document.body.classList.add('ya');
@@ -546,6 +574,7 @@ function header(h) {
 }
 function card(h) {
   const p = val(h, 0, sel.lat, sel.lon), t = val(h, 1, sel.lat, sel.lon), c = val(h, 2, sel.lat, sel.lon), w = val(h, 3, sel.lat, sel.lon);
+  starState();
   $('pn').textContent = sel.name; $('pw').textContent = where(sel.lon, sel.lat); $('pt').textContent = isFinite(t) ? fmtT(t) : '—';
   $('pr').innerHTML = `${t <= 0.5 ? '❄' : '☂'} <b>${isFinite(p) ? Math.round(p) : '—'}%</b> · ☁ <b>${isFinite(c) ? Math.round(c * 100) : '—'}%</b> · 💨 <b>${isFinite(w) ? Math.round(w) : '—'} ${TX.ms}</b>`;
 }
@@ -564,6 +593,7 @@ function timeline(h) {
     if (newDay && i) { g.strokeStyle = '#dde3ea'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, 2); g.lineTo(x, base + 2); g.stroke(); }
     g.fillStyle = '#6b7a8c'; g.textAlign = 'left';
     if (M.times) { if (newDay && x - lastLab >= 22) { g.fillText(String(t.getUTCDate()), x + 2, hh - 6); lastLab = x; } }  // 15 days: the date only, as many as fit
+    else if (H > 60) { if (newDay && x - lastLab >= 26) { g.fillText(`${TX.wd[(t.getUTCDay() + 6) % 7]} ${t.getUTCDate()}`, x + 2, hh - 6); lastLab = x; } }  // a week: the days
     else if (t.getUTCHours() % 6 === 0) { g.textAlign = 'center'; g.fillText(t.getUTCHours() === 0 ? `${TX.wd[(t.getUTCDay() + 6) % 7]}` : p2(t.getUTCHours()), x + bw / 2, hh - 6); }
   }
   const ok = T.filter(isFinite), lo = Math.min(...ok), hi = Math.max(...ok), ty = t => base - 8 - (t - lo) / Math.max(1, hi - lo) * (base - 24);
@@ -576,7 +606,7 @@ function timeline(h) {
 
 // playing: one hour per 0.9 s, the map flowing smoothly between hours
 let raf, t0;
-const SPD = () => M.times ? 2800 : 3600;  // ms per step: a quarter of the old speed (0.25×), calm to watch
+const SPD = () => M.times ? 2800 : H > 60 ? 1100 : 3600;  // a week plays quicker (about 3 minutes)  // ms per step: a quarter of the old speed (0.25×), calm to watch
 let mute = false;  // the person turned the sound off: ▶ then plays silently
 function start() { playing = true; $('play').textContent = '❚❚';
   if (!mute) { if (!sound) toggleSound(); else sound.resume(); }  // the sound starts with the picture (pressing ▶ lets the browser play it)
