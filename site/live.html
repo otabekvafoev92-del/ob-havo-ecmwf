@@ -237,13 +237,10 @@ async function worldGrid() {
 const WF = {};  // the world picture per whole hour
 const WMV = {};  // the world's rain track per hour, on a 4× finer grid (in degrees of longitude and Mercator y)
 function wmotion(h) {
-  if (WMV[h]) return WMV[h]; const g = WG, F = 4, U = (g.nx - 1) * F + 1, V = (g.ny - 1) * F + 1, h1 = Math.min(H - 1, h + 1), R = 6;
+  if (WMV[h]) return WMV[h]; const g = WG, F = 4, U = (g.nx - 1) * F + 1, V = (g.ny - 1) * F + 1, K = 3, ha = Math.max(0, Math.min(H - 1 - K, h - 1)), hb = ha + K;
   const grid = hh => { const a = new Float32Array(U * V); for (let y = 0; y < V; y++) for (let x = 0; x < U; x++) { const v = valW(hh, 0, IMY(g.y1 - (g.y1 - g.y0) * y / (V - 1)), g.lo0 + (g.lo1 - g.lo0) * x / (U - 1)); a[y * U + x] = v === v ? v : -1; } return a; };
-  const A = grid(h), Bg = grid(h1); let best = [0, 0], bs = Infinity, wet = 0; for (const v of A) if (v >= 25) wet++;
-  if (wet > 10 && h1 !== h) for (let sy = -R; sy <= R; sy++) for (let sx = -R; sx <= R; sx++) { let ss = 0, n = 0;
-    for (let y = R; y < V - R; y++) for (let x = R; x < U - R; x++) { const a = A[y * U + x], b = Bg[(y + sy) * U + x + sx]; if (a < 0 || b < 0 || (a < 25 && b < 25)) continue; ss += (a - b) * (a - b); n++; }
-    const q = n > 8 ? ss / n * (1 + 0.03 * (sx * sx + sy * sy)) : Infinity; if (q < bs) { bs = q; best = [sx, sy]; } }
-  return WMV[h] = [best[0] * (g.lo1 - g.lo0) / (U - 1), -best[1] * (g.y1 - g.y0) / (V - 1)];
+  const m = hb > ha ? track(grid(ha), grid(hb), U, V, 6, 25) : [0, 0];
+  return WMV[h] = [m[0] / K * (g.lo1 - g.lo0) / (U - 1), -m[1] / K * (g.y1 - g.y0) / (V - 1)];
 }
 function wfield(h) {
   const h0 = Math.floor(h), fr = h - h0, whole = fr < 0.01 || h0 >= H - 1; if (whole && WF[h0]) return WF[h0];
@@ -363,21 +360,26 @@ function paint(f, ox = 0, oy = 0) {  // the grid image over its cells (each pixe
 // how the rain and snow move from one hour to the next: the shift (in grid cells, picture rows down) that best lays hour h on hour h+1,
 // so between the hours the areas slide along instead of only fading
 const MV = {};
+// the best shift laying grid A on grid Bg (cells; -1 = no data), refined between cells, and how sure it is
+function track(A, Bg, U, V, R, th) {
+  let wet = 0; for (const v of A) if (v >= th) wet++; if (wet < 10) return [0, 0];
+  const S = {}, cost = (sx, sy) => { const k = sx + ',' + sy; if (k in S) return S[k]; let ss = 0, n = 0;
+    for (let y = R; y < V - R; y++) for (let x = R; x < U - R; x++) { const a = A[y * U + x], b = Bg[(y + sy) * U + x + sx]; if (a < 0 || b < 0 || (a < th && b < th)) continue; ss += (a - b) * (a - b); n++; }
+    return S[k] = n > 8 ? ss / n * (1 + 0.01 * (sx * sx + sy * sy)) : Infinity; };
+  let bx = 0, by = 0, bs = Infinity;
+  for (let sy = -R; sy <= R; sy++) for (let sx = -R; sx <= R; sx++) { const q = cost(sx, sy); if (q < bs) { bs = q; bx = sx; by = sy; } }
+  if (!isFinite(bs)) return [0, 0];
+  const sub = (m, c, p) => { const d = m - 2 * c + p; return isFinite(d) && d > 0 ? Math.max(-0.5, Math.min(0.5, (m - p) / (2 * d))) : 0; };  // a parabola through the three costs
+  const fx = Math.abs(bx) < R ? sub(cost(bx - 1, by), bs, cost(bx + 1, by)) : 0, fy = Math.abs(by) < R ? sub(cost(bx, by - 1), bs, cost(bx, by + 1)) : 0;
+  return [bx + fx, by + fy];
+}
+// how the rain and snow move per hour (cells, picture rows down): found over 3 hours, where the shift is large enough to measure, then per hour
 function motion(h) {
-  if (MV[h]) return MV[h]; const h1 = Math.min(H - 1, h + 1), sc = M.scale[0], th = (25 + sc[1]) * sc[0], o0 = h * 4 * NY * NX, o1 = h1 * 4 * NY * NX, R = 4;
-  let best = [0, 0], bs = Infinity, wet = 0;
-  for (let i = 0; i < NX * NY; i++) { const a = B[o0 + i]; if (a !== 255 && a >= th) wet++; }
-  if (wet < 12 || h1 === h) return MV[h] = best;
-  for (let sy = -R; sy <= R; sy++) for (let sx = -R; sx <= R; sx++) {
-    let ss = 0, n = 0;
-    for (let y = R; y < NY - R; y++) for (let x = R; x < NX - R; x++) {
-      const a = B[o0 + y * NX + x], b = B[o1 + (y + sy) * NX + x + sx]; if (a === 255 || b === 255 || (a < th && b < th)) continue;
-      ss += (a - b) * (a - b); n++; }
-    const sc2 = n > 6 ? ss / n * (1 + 0.04 * (sx * sx + sy * sy)) : Infinity;
-    if (sc2 < bs) { bs = sc2; best = [sx, sy]; }
-  }
-  const flip = M.lat[0] > M.lat[1] ? 1 : -1;  // the data's rows run north→south or south→north; the picture's always north→south
-  return MV[h] = [best[0], best[1] * flip];
+  if (MV[h]) return MV[h]; const K = 3, ha = Math.max(0, Math.min(H - 1 - K, h - 1)), hb = ha + K, R = 6;
+  if (hb <= ha) return MV[h] = [0, 0];
+  const grid = hh => { const a = new Float32Array(NX * NY), o = hh * 4 * NY * NX, sc = M.scale[0]; for (let i = 0; i < NX * NY; i++) { const b = B[o + i]; a[i] = b === 255 ? -1 : b / sc[0] - sc[1]; } return a; };
+  const m = track(grid(ha), grid(hb), NX, NY, R, 25), flip = M.lat[0] > M.lat[1] ? 1 : -1;  // the data's rows run north→south or south→north; the picture's always north→south
+  return MV[h] = [m[0] / K, m[1] * flip / K];
 }
 
 
