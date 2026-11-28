@@ -284,14 +284,22 @@ function wfield(h) {
   }
   o.putImageData(im, 0, 0); return off;
 }
+function regionMask() {  // the region grid's weight per cell (1 inside, fading to 0 at its edge), the same as its picture's
+  if (FC.mask) return FC.mask; const m = FC.mask = document.createElement('canvas'); m.width = NX; m.height = NY;
+  const o = m.getContext('2d'), im = o.createImageData(NX, NY);
+  for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) im.data[(y * NX + x) * 4 + 3] = Math.round(255 * Math.min(1, x / 11, y / 11, (NX - 1 - x) / 11, (NY - 1 - y) / 11));
+  o.putImageData(im, 0, 0); return m;
+}
 function wpaint(h) {  // over the view, outside the region's country (that one has its own, finer data)
   if (!WG) return; const h0 = Math.floor(h), h1 = Math.min(H - 1, h0 + 1), fr = h - h0, g = WG;
   const [x0, y0] = proj(g.lo0, g.la1), [x1, y1] = proj(g.lo1, g.la0);
-  const clip = new Path2D(), [r0x, r0y] = proj(M.lon[0], LAT_N()), [r1x, r1y] = proj(M.lon[1], LAT_S()), ix = (r1x - r0x) / (NX - 1) * 6, iy = (r1y - r0y) / (NY - 1) * 6;
-  clip.rect(0, 0, W, Hc); clip.rect(r0x + ix, r0y + iy, r1x - r0x - 2 * ix, r1y - r0y - 2 * iy);  // outside the inner part of the region's grid
-  cx.save(); cx.clip(clip, 'evenodd'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
-  cx.globalAlpha = 1; cx.drawImage(wfield(h), x0, y0, x1 - x0, y1 - y0);
-  cx.restore();
+  // the world's picture gives way to the region's own exactly as much as the region's fades in: a mask with the same soft edge
+  const [r0x, r0y] = proj(M.lon[0], LAT_N()), [r1x, r1y] = proj(M.lon[1], LAT_S()), dx = (r1x - r0x) / (NX - 1), dy = (r1y - r0y) / (NY - 1);
+  const dpr = devicePixelRatio || 1, off = WF.scr || (WF.scr = document.createElement('canvas')); off.width = Math.round(W * dpr); off.height = Math.round(Hc * dpr);
+  const o = off.getContext('2d'); o.setTransform(dpr, 0, 0, dpr, 0, 0); o.imageSmoothingEnabled = true; o.imageSmoothingQuality = 'high';
+  o.drawImage(wfield(h), x0, y0, x1 - x0, y1 - y0);
+  o.globalCompositeOperation = 'destination-out'; o.drawImage(regionMask(), r0x - dx / 2, r0y - dy / 2, r1x - r0x + dx, r1y - r0y + dy);
+  cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1; cx.drawImage(off, 0, 0); cx.restore();
   // the temperature at every third point of the grid, outside the country, where it fits
   cx.font = "700 11px 'Golos Text',sans-serif"; cx.textAlign = 'center'; cx.textBaseline = 'middle'; const bx = [];
   for (let y = 1; y < g.ny - 1; y += 2) for (let x = 1 + (y % 4 === 1 ? 0 : 1); x < g.nx - 1; x += 3) {
