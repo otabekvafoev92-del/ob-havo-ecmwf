@@ -238,7 +238,10 @@ function field(h) {
   for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
     const lat = n - (n - s_) * y / (NY - 1), lon = M.lon[0] + (M.lon[1] - M.lon[0]) * x / (NX - 1);
     const p = val(h, 0, lat, lon), t = val(h, 1, lat, lon), i = (y * NX + x) * 4;
-    if (!(p >= 30)) { im.data[i + 3] = 0; continue; }
+    if (!(p >= 30)) {  // no rain or snow here: the clouds, grey and soft (thicker = darker)
+      const c = val(h, 2, lat, lon);
+      if (c >= 20) { im.data[i] = 112; im.data[i + 1] = 126; im.data[i + 2] = 148; im.data[i + 3] = Math.round(Math.min(1, (c - 20) / 80) * 150); } else im.data[i + 3] = 0;
+      continue; }
     const c = (t <= 0.5 ? SNOWC : RAIN)[Math.min(3, Math.floor((p - 30) / 20))];
     im.data[i] = c[0]; im.data[i + 1] = c[1]; im.data[i + 2] = c[2]; im.data[i + 3] = 235;
   }
